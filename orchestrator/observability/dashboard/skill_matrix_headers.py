@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import html
 from dataclasses import dataclass
-from typing import Optional
 
 from orchestrator.observability.dashboard.skill_matrix_columns import (
     SKILL_MATRIX_COLUMNS,
@@ -41,7 +40,7 @@ class SkillMatrixHeaderState:
 
 def skill_matrix_header_state(
     column: SkillMatrixColumn,
-    active_key: Optional[str],
+    active_key: str | None,
     descending: bool,
 ) -> SkillMatrixHeaderState:
     """What one heading offers on a click, and the arrow it carries now."""
@@ -56,7 +55,7 @@ def skill_matrix_header_state(
 
 def skill_matrix_header_cell(
     column: SkillMatrixColumn,
-    active_key: Optional[str],
+    active_key: str | None,
     descending: bool,
 ) -> str:
     """Render one heading as the link that re-sorts the table by it."""
@@ -75,7 +74,7 @@ def skill_matrix_header_cell(
 
 
 def skill_matrix_header_html(
-    active_key: Optional[str],
+    active_key: str | None,
     descending: bool,
 ) -> str:
     """Render the whole header row, one sort control per column."""

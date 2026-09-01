@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 
 @dataclass(frozen=True)
@@ -69,7 +69,7 @@ class IngestContext:
 
     log_path: Path
     insert_sql: str
-    source_path: Optional[str]
+    source_path: str | None
     json_adapter: Callable[[Any], Any]
     counters: SyncCounters
     start: float

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import Optional
 
 from orchestrator.workflow.stages.decomposition import blocked as _blocked
 
@@ -53,7 +52,7 @@ LAST_ACTION_COMMENT_ID = 999
 
 def _make_children(
     parent_number: int,
-    child_labels: list[Optional[str]],
+    child_labels: list[str | None],
 ) -> list[FakeIssue]:
     return [
         make_issue(parent_number * 10 + child_offset, label=label)
@@ -61,7 +60,7 @@ def _make_children(
     ]
 
 
-def _dependency_state(dep_graph: Optional[dict]) -> dict:
+def _dependency_state(dep_graph: dict | None) -> dict:
     if dep_graph is None:
         return {}
     return {"dep_graph": dep_graph}
@@ -70,8 +69,8 @@ def _dependency_state(dep_graph: Optional[dict]) -> dict:
 def _seed_parent_with_children(
     *,
     parent_number: int,
-    child_labels: list[Optional[str]],
-    dep_graph: Optional[dict] = None,
+    child_labels: list[str | None],
+    dep_graph: dict | None = None,
 ) -> tuple[FakeGitHubClient, FakeIssue, list[FakeIssue]]:
     gh = FakeGitHubClient()
     parent = make_issue(parent_number, label=LABEL_BLOCKED)

@@ -138,7 +138,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -376,7 +375,7 @@ def _record_observed_close(
     spec: config.RepoSpec,
     issue_number: int,
     *,
-    polled: Optional[Issue] = None,
+    polled: Issue | None = None,
 ) -> bool:
     """Write down, on the thread, a close no pass could be handed.
 
@@ -453,8 +452,8 @@ def _observed_close_posted(
     spec: config.RepoSpec,
     issue_number: int,
     *,
-    polled: Optional[Issue] = None,
-) -> Optional[int]:
+    polled: Issue | None = None,
+) -> int | None:
     """Post this cycle's close receipt, unless something already says it.
 
     Answers which cycle this observation belongs to, having discharged the
@@ -488,7 +487,7 @@ def _ending_cycle(
     spec: config.RepoSpec,
     issue_number: int,
     generation: LateGeneration,
-) -> Optional[int]:
+) -> int | None:
     """Which cycle a close observed now would end on this issue, if any.
 
     The record's own answer, and -- for the one window where the record has
@@ -601,7 +600,7 @@ def _closed_under_a_label(
 
 def _owns_a_live_cycle(
     gh: GitHubClient, spec: config.RepoSpec, issue_number: int,
-) -> Optional[bool]:
+) -> bool | None:
     """Whether this issue's record carries a cycle a close would end, or None.
 
     Asked for a CLOSED issue whose submit was refused, and only then: the
@@ -727,7 +726,7 @@ def _refuses_cancelled(
     gh: GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     state: PinnedState,
 ) -> bool:
     """Whether this issue is a cancelled cycle's ending and nothing else.
@@ -811,7 +810,7 @@ def _retired_close_adopted(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-) -> Optional[LateGeneration]:
+) -> LateGeneration | None:
     """Put back a cycle a retirement dropped, if a close was seen inside it.
 
     The one window the reinstatement behind the retirement write cannot cover
@@ -922,7 +921,7 @@ def _parked_ending(spec: config.RepoSpec, issue: Issue) -> bool:
 
 
 def _ends_here(
-    state: PinnedState, generation: LateGeneration, label: Optional[str],
+    state: PinnedState, generation: LateGeneration, label: str | None,
 ) -> bool:
     """Whether the cycle's terminal may be written from where the issue is.
 
@@ -1320,7 +1319,7 @@ def _cancelled_marker(issue: Issue, generation: LateGeneration) -> str:
     )
 
 
-def _held_pull_request(generation: LateGeneration) -> Optional[int]:
+def _held_pull_request(generation: LateGeneration) -> int | None:
     """The held pull request this pass may act on, if there is one.
 
     Both halves of the hold or neither. The number alone is not a hold this
@@ -1522,7 +1521,7 @@ def _terminal_proved(
 def _terminal_recovered(
     gh: GitHubClient,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     state: PinnedState,
     generation: LateGeneration,
 ) -> None:
@@ -1580,7 +1579,7 @@ def _terminal_recovered(
 
 
 def _terminal_unproved(
-    label: Optional[str], state: PinnedState, generation: LateGeneration,
+    label: str | None, state: PinnedState, generation: LateGeneration,
 ) -> bool:
     """Whether this issue is the one window the remote has to answer for.
 
@@ -1711,7 +1710,7 @@ def _reported(
 
 def _plan_pr_entry(
     generation: LateGeneration, target: str,
-) -> Optional[LateResource]:
+) -> LateResource | None:
     """The ledger entry this pass just wrote for the held PR.
 
     None where the update could not be applied at all, which the recording

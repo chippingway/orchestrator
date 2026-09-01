@@ -50,7 +50,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import StrEnum
-from typing import Optional
 
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.state import (
@@ -260,37 +259,37 @@ class LateGeneration:
     generation: int = 0
     root_issue: int = 0
     current_issue: int = 0
-    lineage_depth: Optional[int] = None
+    lineage_depth: int | None = None
     scope: str = ""
     candidate_sha: str = ""
     base_sha: str = ""
-    threshold: Optional[int] = None
-    additions: Optional[int] = None
-    phase: Optional[LatePhase] = None
-    title_body_hash: Optional[str] = None
-    comment_hash: Optional[str] = None
-    comment_watermark_id: Optional[int] = None
-    plan_pr_number: Optional[int] = None
+    threshold: int | None = None
+    additions: int | None = None
+    phase: LatePhase | None = None
+    title_body_hash: str | None = None
+    comment_hash: str | None = None
+    comment_watermark_id: int | None = None
+    plan_pr_number: int | None = None
     plan_pr_head: str = ""
-    plan_pr_body: Optional[str] = None
+    plan_pr_body: str | None = None
     post_publication: bool = False
-    source_stage: Optional[WorkflowLabel] = None
-    published_pr_number: Optional[int] = None
+    source_stage: WorkflowLabel | None = None
+    published_pr_number: int | None = None
     published_sha: str = ""
     resources: tuple[LateResource, ...] = ()
     consumers: tuple[int, ...] = ()
     split_children: tuple[int, ...] = ()
     links_announced: bool = False
-    opaque_resources: Optional[str] = None
-    opaque_consumers: Optional[str] = None
+    opaque_resources: str | None = None
+    opaque_consumers: str | None = None
     owner_check_pending: bool = False
     cancelled: bool = False
-    cancelled_at: Optional[str] = None
-    cancelled_phase: Optional[LatePhase] = None
+    cancelled_at: str | None = None
+    cancelled_phase: LatePhase | None = None
     restart_pending: bool = False
-    restart_target: Optional[str] = None
-    restart_cycle_id: Optional[int] = None
-    restart_predecessor: Optional[int] = None
+    restart_target: str | None = None
+    restart_cycle_id: int | None = None
+    restart_predecessor: int | None = None
 
     @property
     def is_present(self) -> bool:

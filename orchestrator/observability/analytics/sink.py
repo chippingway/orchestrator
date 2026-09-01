@@ -49,7 +49,7 @@ def build_record(
     repo: str,
     issue: int,
     event: str,
-    stage: typing.Optional[str] = None,
+    stage: str | None = None,
     **extras: typing.Any,
 ) -> dict:
     """Build a single analytics record.
@@ -76,7 +76,7 @@ def build_record(
 
 
 def append_jsonl_record(
-    path: typing.Optional[Path],
+    path: Path | None,
     lock: threading.Lock,
     record: dict,
 ) -> None:

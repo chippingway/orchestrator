@@ -39,7 +39,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Sequence
 
 from orchestrator.observability.dashboard import (
     breakdowns,
@@ -148,10 +148,10 @@ def widget_readers(*, st: Any, key, prev_key, tz_offset_choice: int):
 def build_read_keys(
     *,
     window: windows.DateWindow,
-    repo_filter: Optional[str],
-    event_filter: Optional[Sequence[str]],
-    stage_filter: Optional[Sequence[str]],
-    issue_filter: Optional[int],
+    repo_filter: str | None,
+    event_filter: Sequence[str] | None,
+    stage_filter: Sequence[str] | None,
+    issue_filter: int | None,
 ):
     """Build current and previous-window cache keys."""
     key = filters.cache_key(

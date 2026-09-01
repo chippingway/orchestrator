@@ -32,7 +32,6 @@ poll.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.github.pinned_state import PinnedState
@@ -163,7 +162,7 @@ _DAMAGED_RECORD_PARK = (
 
 
 def _unreadable_record(
-    label: Optional[WorkflowLabel], state: PinnedState,
+    label: WorkflowLabel | None, state: PinnedState,
 ) -> str:
     """Why this issue's late record may not be acted on, or "" if it may.
 

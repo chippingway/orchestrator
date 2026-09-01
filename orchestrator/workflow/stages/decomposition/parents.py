@@ -25,7 +25,6 @@ manifest against what the body says now.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -78,7 +77,7 @@ def _route_parent_drift(
 
 def _read_child_labels(
     gh: GitHubClient, issue: Issue, children: list,
-) -> Optional[_ChildScan]:
+) -> _ChildScan | None:
     """Fetch each recorded child issue and its current workflow label.
 
     Returns a child scan with issues and labels keyed by child number, or
@@ -88,7 +87,7 @@ def _read_child_labels(
     / umbrella within a tick, so a child's own label flip cannot race this
     read.
     """
-    child_labels: dict[int, Optional[str]] = {}
+    child_labels: dict[int, str | None] = {}
     child_issues: dict[int, Issue] = {}
     for child_number in children:
         try:
@@ -224,7 +223,7 @@ def _usable_child_scan(
     issue: Issue,
     state: PinnedState,
     children: list,
-) -> Optional[_ChildScan]:
+) -> _ChildScan | None:
     scan = _read_child_labels(gh, issue, children)
     if scan is None:
         return None

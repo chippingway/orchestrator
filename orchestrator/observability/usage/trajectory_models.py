@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.usage.skills import SkillTriggers
 
@@ -57,7 +57,7 @@ class TrajectoryStep:
     kind: str
     name: str = ""
     tool_id: str = ""
-    turn: Optional[int] = None
+    turn: int | None = None
     step_payload: Any = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -120,7 +120,7 @@ class TurnUsage:
     output_tokens: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
-    cost_usd: Optional[float] = None
+    cost_usd: float | None = None
     cost_source: str = "estimated"
 
     def to_dict(self) -> dict[str, Any]:
@@ -141,12 +141,12 @@ class AgentTrajectory:
     """Structured trajectory reconstructed from one agent JSONL stream."""
 
     backend: str
-    system_prompt: Optional[str] = None
+    system_prompt: str | None = None
     tools: tuple[str, ...] = ()
     skills: SkillTriggers = field(default_factory=SkillTriggers)
     steps: tuple[TrajectoryStep, ...] = ()
     source_items: tuple[SourceItem, ...] = ()
-    final_output: Optional[str] = None
+    final_output: str | None = None
     turns: tuple[TurnUsage, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:

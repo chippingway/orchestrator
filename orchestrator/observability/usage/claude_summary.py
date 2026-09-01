@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from orchestrator.observability.usage import (
     claude_rows,
@@ -61,7 +61,7 @@ def aggregate_by_model(
 
 def estimate_total(
     per_model: dict[str, protocol.TokenBucket],
-) -> Optional[float]:
+) -> float | None:
     if not per_model:
         return None
     estimates: list[float] = []
@@ -76,8 +76,8 @@ def estimate_total(
 def turn_count(
     events: list[dict[str, Any]],
     records: list[claude_rows.ClaudeUsageRow],
-) -> Optional[int]:
-    reported_turns: Optional[int] = None
+) -> int | None:
+    reported_turns: int | None = None
     for event in events:
         if event.get(protocol.TYPE) == protocol.RESULT_KEY:
             candidate = event.get("num_turns")

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from github import GithubException
 from github.PullRequest import PullRequest
@@ -29,11 +29,11 @@ _HTTP_FORBIDDEN = 403
 class CheckSurfaceRead:
     """Normalized state and read outcome for one checks surface."""
 
-    state: Optional[str] = None
+    state: str | None = None
     read_failed: bool = False
 
 
-def normalize_combined_status(combined_status: Any) -> Optional[str]:
+def normalize_combined_status(combined_status: Any) -> str | None:
     """Convert a legacy combined status into the shared state model."""
     status = combined_status.state
     if not status or (
@@ -44,7 +44,7 @@ def normalize_combined_status(combined_status: Any) -> Optional[str]:
     return CHECK_STATE_FAILURE if status == "error" else status
 
 
-def normalize_check_runs(check_runs: Iterable[Any]) -> Optional[str]:
+def normalize_check_runs(check_runs: Iterable[Any]) -> str | None:
     """Convert check-run conclusions into the shared state model."""
     conclusions = {check_run.conclusion for check_run in check_runs}
     if not conclusions:
@@ -59,7 +59,7 @@ def normalize_check_runs(check_runs: Iterable[Any]) -> Optional[str]:
 
 
 def fold_check_states(
-    states: Iterable[Optional[str]],
+    states: Iterable[str | None],
     *,
     read_failed: bool,
 ) -> str:

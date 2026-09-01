@@ -33,7 +33,7 @@ apart from "the agent proposed something the lineage forbids".
 from __future__ import annotations
 
 import re
-from typing import Any, Optional, Tuple
+from typing import Any, Tuple
 
 from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split.events import LateVerdictCategory
@@ -72,7 +72,7 @@ _NO_QUESTION = "question decision requires a non-empty question"
 
 def _parse_late_reply(
     last_message: str,
-) -> Tuple[Optional[_LateAdjudication], Optional[str]]:
+) -> Tuple[_LateAdjudication | None, str | None]:
     """Parse a fenced `orchestrator-late-manifest` block.
 
     Returns `(adjudication, None)` for a reply that decided something, and
@@ -94,7 +94,7 @@ def _parse_late_reply(
 
 def _adjudication(
     late_manifest: dict,
-) -> Tuple[Optional[_LateAdjudication], Optional[str]]:
+) -> Tuple[_LateAdjudication | None, str | None]:
     """Route one decoded late manifest onto the verdict it declares."""
     decision = late_manifest.get(_DECISION)
     if decision not in _DECISIONS:
@@ -112,7 +112,7 @@ def _adjudication(
 
 def _split_adjudication(
     late_manifest: dict,
-) -> Tuple[Optional[_LateAdjudication], Optional[str]]:
+) -> Tuple[_LateAdjudication | None, str | None]:
     """Validate a late split against the initial mode's own split rules."""
     split_error = _validation._split_manifest_error(late_manifest)
     if split_error is not None:
@@ -127,7 +127,7 @@ def _split_adjudication(
 
 def _question_adjudication(
     late_manifest: dict,
-) -> Tuple[Optional[_LateAdjudication], Optional[str]]:
+) -> Tuple[_LateAdjudication | None, str | None]:
     """Require a question to say what it is asking before it may park one."""
     asked = _text(late_manifest, _QUESTION)
     if not asked:
@@ -141,7 +141,7 @@ def _question_adjudication(
 
 def _category(
     late_manifest: dict, *, required: bool,
-) -> Optional[LateVerdictCategory]:
+) -> LateVerdictCategory | None:
     """Map a declared category onto the closed vocabulary, or leave it out.
 
     Mapped rather than trusted, so an agent's own spelling records as

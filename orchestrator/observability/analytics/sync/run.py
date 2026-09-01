@@ -29,7 +29,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics.sync.database import (
@@ -55,18 +55,18 @@ log = logging.getLogger("orchestrator.analytics.sync")
 class SyncRequest:
     """Resolved source, destination, and injected adapters for one sync."""
 
-    log_path: Optional[Path]
-    db_url: Optional[str]
+    log_path: Path | None
+    db_url: str | None
     connect_fn: Callable[[str], Any]
     json_adapter: Callable[[Any], Any]
 
     @classmethod
     def resolve(
         cls,
-        log_path: Optional[Path],
-        db_url: Optional[str],
-        connect: Optional[Callable[[str], Any]],
-        json_adapter: Optional[Callable[[Any], Any]],
+        log_path: Path | None,
+        db_url: str | None,
+        connect: Callable[[str], Any] | None,
+        json_adapter: Callable[[Any], Any] | None,
     ) -> SyncRequest:
         settings = analytics_config.live_settings()
         return cls(
@@ -178,10 +178,10 @@ class SyncRun:
 
 def sync_jsonl_to_postgres(
     *,
-    log_path: Optional[Path] = None,
-    db_url: Optional[str] = None,
-    connect: Optional[Callable[[str], Any]] = None,
-    json_adapter: Optional[Callable[[Any], Any]] = None,
+    log_path: Path | None = None,
+    db_url: str | None = None,
+    connect: Callable[[str], Any] | None = None,
+    json_adapter: Callable[[Any], Any] | None = None,
 ) -> SyncResult:
     """Replay the configured analytics JSONL records into Postgres."""
     request = SyncRequest.resolve(

@@ -3,7 +3,6 @@
 """Stateless pull-request helpers exposed by the fake GitHub client."""
 from __future__ import annotations
 
-from typing import Optional
 
 from tests.support.github.models import FakePR
 
@@ -12,7 +11,7 @@ _STATE_CLOSED = "closed"
 _STATE_OPEN = "open"
 
 
-def _resolve_pr(owner_or_pr, pr: Optional[FakePR]) -> FakePR:
+def _resolve_pr(owner_or_pr, pr: FakePR | None) -> FakePR:
     return pr or owner_or_pr
 
 
@@ -30,7 +29,7 @@ def _pr_has_label(owner_or_pr, pr_or_label, label_name=None) -> bool:
     )
 
 
-def _pr_state(owner_or_pr, pr: Optional[FakePR] = None) -> str:
+def _pr_state(owner_or_pr, pr: FakePR | None = None) -> str:
     pull_request = _resolve_pr(owner_or_pr, pr)
     if pull_request.merged:
         return "merged"
@@ -41,14 +40,14 @@ def _pr_state(owner_or_pr, pr: Optional[FakePR] = None) -> str:
 
 def _pr_is_mergeable(
     owner_or_pr,
-    pr: Optional[FakePR] = None,
-) -> Optional[bool]:
+    pr: FakePR | None = None,
+) -> bool | None:
     return _resolve_pr(owner_or_pr, pr).mergeable
 
 
 def _pr_is_approved(
     owner_or_pr,
-    pr: Optional[FakePR] = None,
+    pr: FakePR | None = None,
     *,
     head_sha: str,
 ) -> bool:
@@ -61,7 +60,7 @@ def _pr_is_approved(
 
 def _pr_has_changes_requested(
     owner_or_pr,
-    pr: Optional[FakePR] = None,
+    pr: FakePR | None = None,
     *,
     head_sha: str,
 ) -> bool:
@@ -77,6 +76,6 @@ def _pr_has_changes_requested(
 
 def _pr_combined_check_state(
     owner_or_pr,
-    pr: Optional[FakePR] = None,
+    pr: FakePR | None = None,
 ) -> str:
     return _resolve_pr(owner_or_pr, pr).check_state

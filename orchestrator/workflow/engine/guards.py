@@ -23,7 +23,6 @@ holding that snapshot for however long the agent ran.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -112,7 +111,7 @@ def _paused_during_agent_run(gh: GitHubClient, issue: Issue) -> bool:
 def _park_awaiting_human(
     gh: GitHubClient, issue: Issue, state: PinnedState, message: str,
     *,
-    reason: Optional[str] = None,
+    reason: str | None = None,
 ) -> None:
     """Post `message` and mark the issue as awaiting a human reply.
 

@@ -25,7 +25,7 @@ keep their own.
 from __future__ import annotations
 
 import html
-from typing import Optional, Sequence
+from typing import Sequence
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillTriggerMatrixRow,
@@ -64,7 +64,7 @@ SKILL_MATRIX_EXTRA_CSS = """
 def skill_matrix_html(
     rows: Sequence[SkillTriggerMatrixRow],
     *,
-    sort_key: Optional[str] = None,
+    sort_key: str | None = None,
     descending: bool = False,
 ) -> str:
     """Render the invocation-level per-skill matrix to inline HTML."""

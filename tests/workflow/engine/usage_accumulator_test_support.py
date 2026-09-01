@@ -3,7 +3,6 @@
 """Fixtures and the callable agent the usage-accumulator tests run on."""
 from __future__ import annotations
 
-from typing import Optional
 
 from tests.support import fakes
 from tests.workflow import fixtures
@@ -19,7 +18,7 @@ _fake_worktree = fixtures._fake_worktree
 
 class _PoisonedThenFreshRun:
     def __init__(self) -> None:
-        self.calls: list[Optional[str]] = []
+        self.calls: list[str | None] = []
 
     def __call__(self, *_args, resume_session_id=None, **_kwargs):
         self.calls.append(resume_session_id)

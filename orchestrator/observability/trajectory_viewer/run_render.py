@@ -28,7 +28,7 @@ loadable in an install carrying no viewer dependencies at all.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.trajectory_viewer.models import (
     TimelineEntry,
@@ -96,7 +96,7 @@ def render_system_prompt(st: Any, run: TrajectoryRun) -> None:
 def render_timeline_entry(
     st: Any,
     index: int,
-    strip: Optional[TurnUsageView],
+    strip: TurnUsageView | None,
     entry: TimelineEntry,
 ) -> None:
     """Draw one entry, under the usage strip where it opens a new turn."""

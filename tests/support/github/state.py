@@ -4,12 +4,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, Optional
+from typing import Iterable
 
 from tests.support.github.models import FakeComment, FakeIssue, FakePR
 
 
-_LabelHistory = list[tuple[int, Optional[str]]]
+_LabelHistory = list[tuple[int, str | None]]
 _CommentHistory = list[tuple[int, str]]
 
 
@@ -61,7 +61,7 @@ class _FakeEventHistory:
 
 @dataclass(frozen=True)
 class _IssueSeed:
-    label: Optional[str] = None
+    label: str | None = None
     comments: Iterable[FakeComment] = ()
     title: str = "test issue"
     body: str = "test body"

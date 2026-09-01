@@ -21,7 +21,7 @@ redaction pass as a partial value.
 from __future__ import annotations
 
 import re
-from typing import Optional, Tuple
+from typing import Tuple
 
 from github.Issue import Issue
 
@@ -165,7 +165,7 @@ def _parse_documentation_verdict(last_message: str) -> Tuple[str, str]:
     return "no_change", body
 
 
-def _drift_ack_reason(last_message: str) -> Optional[str]:
+def _drift_ack_reason(last_message: str) -> str | None:
     """Return the dev's ACK justification if `last_message` carries the
     explicit `ACK: ...` marker, or None when no marker is present.
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import contextlib
 from importlib import import_module
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Iterator
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.query.connections import AnalyticsReadError
@@ -30,7 +30,7 @@ _DB_URL_SETTING = "ANALYTICS_DB_URL"
 
 
 @contextlib.contextmanager
-def configured_db_url(url: Optional[str] = DB_URL) -> Iterator[None]:
+def configured_db_url(url: str | None = DB_URL) -> Iterator[None]:
     """Pin what an omitted `db_url=` resolves to for the body."""
     holder = import_module("orchestrator.observability.analytics.settings")
     with patch.object(holder, _DB_URL_SETTING, url):

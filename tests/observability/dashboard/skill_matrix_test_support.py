@@ -12,7 +12,6 @@ locate one row by the only cell that is unique to it.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillTriggerMatrixRow,
@@ -81,7 +80,7 @@ def cells(*cases: CellCase) -> list[SkillTriggerMatrixRow]:
 
 def rendered(
     *cases: CellCase,
-    sort_key: Optional[str] = None,
+    sort_key: str | None = None,
     descending: bool = False,
 ) -> str:
     """The matrix those cells are drawn into."""

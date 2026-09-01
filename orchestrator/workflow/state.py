@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, Mapping
 
 log = logging.getLogger("orchestrator.state_machine")
 _MISSING_LABEL = object()
@@ -101,7 +101,7 @@ _ENTER_ADJUDICATION_PUBLISHED: frozenset[WorkflowLabel] = frozenset(
 )
 
 _FORWARD: Mapping[
-    Optional[WorkflowLabel], frozenset[WorkflowLabel]
+    WorkflowLabel | None, frozenset[WorkflowLabel]
 ] = MappingProxyType({
     None: frozenset((WorkflowLabel.DECOMPOSING, WorkflowLabel.IMPLEMENTING)),
     # The published states are the size gate's way BACK. An adjudication
@@ -206,7 +206,7 @@ _INTERRUPT_SOURCES: Mapping[
 })
 
 
-def stage_name(label: Optional[str | WorkflowLabel]) -> Optional[str]:
+def stage_name(label: str | WorkflowLabel | None) -> str | None:
     """Return the bare tag a workflow label names its state by.
 
     Analytics rows, audit event payloads, and the stage an agent session is
@@ -221,7 +221,7 @@ def stage_name(label: Optional[str | WorkflowLabel]) -> Optional[str]:
 
 def legacy_label_name(
     label: str | WorkflowLabel | ControlLabel,
-) -> Optional[str]:
+) -> str | None:
     """Return the pre-namespace spelling of a label, or None if it has none.
 
     Every namespaced label has one, control labels included: the namespace is
@@ -253,7 +253,7 @@ CANONICAL_LABELS = _canonical_label_names()
 LEGACY_LABELS = _legacy_label_names()
 
 
-def label_for_name(label_name: str | WorkflowLabel) -> Optional[WorkflowLabel]:
+def label_for_name(label_name: str | WorkflowLabel) -> WorkflowLabel | None:
     """Return the workflow member a GitHub label denotes, or None if it is not one.
 
     Both spellings resolve, so an issue still carrying the pre-namespace label
@@ -266,7 +266,7 @@ def label_for_name(label_name: str | WorkflowLabel) -> Optional[WorkflowLabel]:
 
 def issue_workflow_label(
     label_names: Iterable[str],
-) -> Optional[WorkflowLabel]:
+) -> WorkflowLabel | None:
     """Return the workflow state one issue's labels put it in.
 
     A namespaced label outranks a pre-namespace one no matter which order
@@ -355,7 +355,7 @@ def coerce_workflow_label(
 
 
 def _mutable_forward_transitions(
-) -> dict[Optional[WorkflowLabel], set[WorkflowLabel]]:
+) -> dict[WorkflowLabel | None, set[WorkflowLabel]]:
     """Copy the forward graph into mutable target sets."""
     return {
         forward_source: set(forward_targets)
@@ -364,7 +364,7 @@ def _mutable_forward_transitions(
 
 
 def _add_interrupt_transitions(
-    allowed: dict[Optional[WorkflowLabel], set[WorkflowLabel]],
+    allowed: dict[WorkflowLabel | None, set[WorkflowLabel]],
 ) -> None:
     """Fold each target's exact interrupt sources into the graph."""
     for target, sources in _INTERRUPT_SOURCES.items():
@@ -373,8 +373,8 @@ def _add_interrupt_transitions(
 
 
 def _freeze_transitions(
-    allowed: dict[Optional[WorkflowLabel], set[WorkflowLabel]],
-) -> dict[Optional[WorkflowLabel], frozenset[WorkflowLabel]]:
+    allowed: dict[WorkflowLabel | None, set[WorkflowLabel]],
+) -> dict[WorkflowLabel | None, frozenset[WorkflowLabel]]:
     """Freeze target sets so the exported graph is immutable."""
     return {
         allowed_source: frozenset(edges)
@@ -383,7 +383,7 @@ def _freeze_transitions(
 
 
 def build_allowed_transitions(
-) -> dict[Optional[WorkflowLabel], frozenset[WorkflowLabel]]:
+) -> dict[WorkflowLabel | None, frozenset[WorkflowLabel]]:
     """Compose the forward spine with exact interrupt sources."""
     allowed = _mutable_forward_transitions()
     _add_interrupt_transitions(allowed)
@@ -394,7 +394,7 @@ ALLOWED_TRANSITIONS = build_allowed_transitions()
 
 
 def is_allowed_transition(
-    current: Optional[WorkflowLabel],
+    current: WorkflowLabel | None,
     new: WorkflowLabel,
 ) -> bool:
     """Return whether relabeling ``current`` to ``new`` is legal."""
@@ -403,7 +403,7 @@ def is_allowed_transition(
     return new in ALLOWED_TRANSITIONS.get(current, frozenset())
 
 
-def publishes_onto_a_pull_request(label: Optional[WorkflowLabel]) -> bool:
+def publishes_onto_a_pull_request(label: WorkflowLabel | None) -> bool:
     """Whether this stage pushes onto a pull request the remote already has.
 
     The five the size gate can take an issue out of, named off the same set
@@ -417,7 +417,7 @@ def publishes_onto_a_pull_request(label: Optional[WorkflowLabel]) -> bool:
 
 
 def guard_transition(
-    current: Optional[WorkflowLabel],
+    current: WorkflowLabel | None,
     new: WorkflowLabel,
     mode: str,
 ) -> None:

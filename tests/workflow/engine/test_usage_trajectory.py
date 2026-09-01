@@ -7,7 +7,6 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Optional
 from unittest.mock import MagicMock, patch
 
 from orchestrator.observability.analytics import settings as analytics_settings
@@ -118,8 +117,8 @@ def _run_trajectory(
     *,
     stdout: str,
     prompt: str,
-    trajectory_path: Optional[Path],
-    analytics_path: Optional[Path] = None,
+    trajectory_path: Path | None,
+    analytics_path: Path | None = None,
 ) -> AgentResult:
     gh = FakeGitHubClient()
     with patch.object(analytics_settings, _ANALYTICS_PATH_ATTR, analytics_path), \

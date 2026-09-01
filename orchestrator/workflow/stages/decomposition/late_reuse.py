@@ -120,7 +120,6 @@ from __future__ import annotations
 import logging
 from enum import Enum
 from types import MappingProxyType
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -351,7 +350,7 @@ def _unrecorded_verdict(
     spec: config.RepoSpec,
     issue: Issue,
     claimed: _lineage.LateAncestry,
-) -> tuple[_Reuse, Optional[_lineage.LateAncestry]]:
+) -> tuple[_Reuse, _lineage.LateAncestry | None]:
     """What an issue whose BODY claims a lineage may do, and on whose word.
 
     The receipt first, and on its own terms: it is a comment of ours, so it is
@@ -422,7 +421,7 @@ def _unvouched_verdict(recorded: LateGeneration) -> _Reuse:
 
 def _unrecorded_park(
     verdict: _Reuse,
-    vouched: Optional[_lineage.LateAncestry],
+    vouched: _lineage.LateAncestry | None,
     owner: int,
 ) -> tuple[str, str]:
     """What this child is told, and what the park is filed under.
@@ -547,7 +546,7 @@ def _asked_verdict(
 
 def _receipt_verdict(
     gh: GitHubClient, issue: Issue, ancestry: _lineage.LateAncestry,
-) -> Optional[_Reuse]:
+) -> _Reuse | None:
     """What this child's own thread says about its snapshot, if anything.
 
     Both halves of the marker matter and both come off the ancestry: it has to

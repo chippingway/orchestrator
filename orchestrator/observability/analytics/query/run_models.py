@@ -15,13 +15,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 
 RESULT_FIELD = "result"
 
 
-def public_event_result(event_row: IssueEventRow) -> Optional[str]:
+def public_event_result(event_row: IssueEventRow) -> str | None:
     """Return an event result through its historical public name."""
     return event_row.event_result
 
@@ -56,7 +55,7 @@ class StageBreakdown:
 
     stage: str
     count: int
-    avg_duration_s: Optional[float] = None
+    avg_duration_s: float | None = None
     total_cost_usd: float = field(default_factory=float)
     total_input_tokens: int = 0
     total_output_tokens: int = 0
@@ -86,18 +85,18 @@ class AgentExitRow:
     ts: datetime
     repo: str
     issue: int
-    stage: Optional[str]
-    agent_role: Optional[str]
-    backend: Optional[str]
-    duration_s: Optional[float]
-    exit_code: Optional[int]
-    timed_out: Optional[bool]
-    review_round: Optional[int]
-    retry_count: Optional[int]
-    input_tokens: Optional[int]
-    output_tokens: Optional[int]
-    cost_usd: Optional[float]
-    cost_source: Optional[str]
+    stage: str | None
+    agent_role: str | None
+    backend: str | None
+    duration_s: float | None
+    exit_code: int | None
+    timed_out: bool | None
+    review_round: int | None
+    retry_count: int | None
+    input_tokens: int | None
+    output_tokens: int | None
+    cost_usd: float | None
+    cost_source: str | None
 
 
 @dataclass(frozen=True)
@@ -126,14 +125,14 @@ class IssueSummaryRow:
     event_count: int
     first_seen: datetime
     last_seen: datetime
-    latest_stage: Optional[str]
+    latest_stage: str | None
     agent_exits: int
-    total_cost_usd: Optional[float]
+    total_cost_usd: float | None
     total_input_tokens: int
     total_output_tokens: int
-    max_review_round: Optional[int] = None
+    max_review_round: int | None = None
     failed_agent_runs: int = 0
-    max_retry_count: Optional[int] = None
+    max_retry_count: int | None = None
 
 
 @dataclass(frozen=True)
@@ -148,13 +147,13 @@ class IssueEventRow:
 
     ts: datetime
     event: str
-    stage: Optional[str]
-    duration_s: Optional[float]
-    event_result: Optional[str]
-    agent_role: Optional[str]
-    backend: Optional[str]
-    exit_code: Optional[int]
-    cost_usd: Optional[float]
+    stage: str | None
+    duration_s: float | None
+    event_result: str | None
+    agent_role: str | None
+    backend: str | None
+    exit_code: int | None
+    cost_usd: float | None
 
 
 setattr(IssueEventRow, RESULT_FIELD, property(public_event_result))

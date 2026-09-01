@@ -19,7 +19,7 @@ of raising.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from orchestrator.observability.analytics.query.overview_models import Summary
 
@@ -38,9 +38,9 @@ SUMMARY_TOTAL_FIELD_CASTS = (
 )
 
 
-def summary_totals_row(rows: Sequence[tuple]) -> Optional[tuple]:
+def summary_totals_row(rows: Sequence[tuple]) -> tuple | None:
     """Return the totals row emitted by the combined query, if present."""
-    totals_row: Optional[tuple] = None
+    totals_row: tuple | None = None
     for row in rows:
         if row and row[0] == "t":
             totals_row = row

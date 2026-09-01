@@ -6,7 +6,6 @@ from __future__ import annotations
 import unittest
 from datetime import date
 from types import MappingProxyType
-from typing import Optional
 
 from orchestrator.observability.dashboard import palette
 from orchestrator.observability.dashboard.charts import (
@@ -75,7 +74,7 @@ def _usage() -> usage_series.UsageChartData:
     )
 
 
-def _token_type_layout(title: Optional[str] = None) -> dict[str, object]:
+def _token_type_layout(title: str | None = None) -> dict[str, object]:
     """The layout a token-type window is drawn under."""
     return usage_axis.usage_layout(_usage(), None, _TOKEN_TYPE_MODE, title)
 

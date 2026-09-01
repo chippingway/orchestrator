@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Iterator, Optional, Tuple
+from typing import Any, Iterator, Tuple
 
 from orchestrator.agents import models as _agent_models
 
@@ -40,7 +40,7 @@ _TRANSIENT_PROVIDER_MESSAGE_MARKERS: Tuple[str, ...] = (
 )
 
 
-def _first_nested_uuid(payload_nodes: Iterator[Any]) -> Optional[str]:
+def _first_nested_uuid(payload_nodes: Iterator[Any]) -> str | None:
     for payload_node in payload_nodes:
         found_uuid = _walk_for_uuid(payload_node)
         if found_uuid is not None:
@@ -48,7 +48,7 @@ def _first_nested_uuid(payload_nodes: Iterator[Any]) -> Optional[str]:
     return None
 
 
-def _walk_mapping_for_uuid(payload_node: dict[Any, Any]) -> Optional[str]:
+def _walk_mapping_for_uuid(payload_node: dict[Any, Any]) -> str | None:
     priority_values = (
         payload_node[key]
         for key in _PRIORITY_KEYS
@@ -60,7 +60,7 @@ def _walk_mapping_for_uuid(payload_node: dict[Any, Any]) -> Optional[str]:
     return _first_nested_uuid(iter(payload_node.values()))
 
 
-def _walk_for_uuid(payload_node: Any) -> Optional[str]:
+def _walk_for_uuid(payload_node: Any) -> str | None:
     if isinstance(payload_node, str):
         return payload_node if _UUID_RE.match(payload_node) else None
     if isinstance(payload_node, dict):
@@ -70,7 +70,7 @@ def _walk_for_uuid(payload_node: Any) -> Optional[str]:
     return None
 
 
-def parse_session_id(jsonl_output: str) -> Optional[str]:
+def parse_session_id(jsonl_output: str) -> str | None:
     """Return the first UUID at a known key anywhere in JSONL events."""
     for raw_line in jsonl_output.splitlines():
         line = raw_line.strip()
@@ -86,7 +86,7 @@ def parse_session_id(jsonl_output: str) -> Optional[str]:
     return None
 
 
-def _decode_claude_event(raw_line: str) -> Optional[dict[str, Any]]:
+def _decode_claude_event(raw_line: str) -> dict[str, Any] | None:
     """Decode one stream event, ignoring blank or diagnostic output."""
     line = raw_line.strip()
     if not line:
@@ -108,7 +108,7 @@ def _iter_claude_events(jsonl_output: str) -> Iterator[dict[str, Any]]:
 
 def _collect_claude_text_blocks(
     content_blocks: list[Any],
-) -> Optional[str]:
+) -> str | None:
     """Join valid text blocks from one assistant message."""
     text_blocks: list[str] = []
     for content_block in content_blocks:
@@ -124,7 +124,7 @@ def _collect_claude_text_blocks(
 
 def _claude_result_text(
     event_payload: dict[str, Any],
-) -> Optional[str]:
+) -> str | None:
     """Return a terminal result string without filtering its subtype."""
     if event_payload.get("type") != "result":
         return None
@@ -134,7 +134,7 @@ def _claude_result_text(
 
 def _claude_assistant_text(
     event_payload: dict[str, Any],
-) -> Optional[str]:
+) -> str | None:
     """Return text from a supported assistant or message event."""
     if event_payload.get("type") not in ("assistant", "message"):
         return None
@@ -150,10 +150,10 @@ def _claude_assistant_text(
 
 def _collect_claude_message_candidates(
     events: Iterator[dict[str, Any]],
-) -> tuple[Optional[str], Optional[str]]:
+) -> tuple[str | None, str | None]:
     """Keep the latest terminal and assistant message candidates."""
-    last_result: Optional[str] = None
-    last_assistant_text: Optional[str] = None
+    last_result: str | None = None
+    last_assistant_text: str | None = None
     for event_payload in events:
         result_text = _claude_result_text(event_payload)
         if result_text is not None:
@@ -190,16 +190,16 @@ def _has_transient_provider_marker(message: Any) -> bool:
 
 def _claude_terminal_result_event(
     jsonl_output: str,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Return the LAST event carrying a terminal result string, if any."""
-    terminal_event: Optional[dict[str, Any]] = None
+    terminal_event: dict[str, Any] | None = None
     for event_payload in _iter_claude_events(jsonl_output):
         if _claude_result_text(event_payload) is not None:
             terminal_event = event_payload
     return terminal_event
 
 
-def _structured_provider_verdict(jsonl_output: str) -> Optional[bool]:
+def _structured_provider_verdict(jsonl_output: str) -> bool | None:
     """Return the backend's OWN verdict on a run, or None when it gave none.
 
     Claude's terminal result event carries `is_error`, which is the only

@@ -25,7 +25,7 @@ through the diagnostics directly.
 from __future__ import annotations
 
 import unittest
-from typing import Mapping, Optional
+from typing import Mapping
 
 from orchestrator.observability.dashboard import skill_panel
 from tests.observability.dashboard import skill_adoption_test_support as adopt
@@ -91,7 +91,7 @@ def _render_card(
     *cases: adopt.CellCase,
     skill_runs: int = 2,
     with_runs: bool = True,
-    query_params: Optional[Mapping[str, str]] = None,
+    query_params: Mapping[str, str] | None = None,
 ) -> PanelStreamlit:
     """Draw the whole card for those adoption cells onto a fake page."""
     page = PanelStreamlit(query_params)

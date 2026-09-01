@@ -27,11 +27,10 @@ condition can resolve without anyone commenting.
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Optional
 from typing import Tuple
 import re
 
-_ReviewRoundsCommand = Tuple[int, Optional[str]]
+_ReviewRoundsCommand = Tuple[int, str | None]
 
 _ADD_REVIEW_ROUNDS_RE = re.compile(
     r"^\s*/orchestrator\s+add-review-rounds\s+(\d+)\s*$",

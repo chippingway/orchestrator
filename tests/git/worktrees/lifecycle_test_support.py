@@ -8,7 +8,7 @@ import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
@@ -66,8 +66,8 @@ class _GitRecorder:
         *,
         local_branch_present: bool = True,
         remote_branch_present: bool = True,
-        commit_probe: Optional[MagicMock] = None,
-        worktree_add: Optional[MagicMock] = None,
+        commit_probe: MagicMock | None = None,
+        worktree_add: MagicMock | None = None,
     ) -> None:
         self.calls: list[_GitCall] = []
         self.local_branch_present = local_branch_present
@@ -152,7 +152,7 @@ class _WorktreeFixture:
 
 @contextmanager
 def _worktree_fixture(
-    *, remote_tip: Optional[str] = "", **recorder_options,
+    *, remote_tip: str | None = "", **recorder_options,
 ) -> Iterator[_WorktreeFixture]:
     """Point the worktrees root at a temp dir and fake the git plumbing.
 

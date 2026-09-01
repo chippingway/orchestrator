@@ -33,7 +33,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git.worktrees import paths
@@ -85,7 +84,7 @@ def _matching_owners(
 
 def _branch_attribution(
     branch: str, specs: tuple[config.RepoSpec, ...],
-) -> Optional[tuple[config.RepoSpec, int]]:
+) -> tuple[config.RepoSpec, int] | None:
     """The repository and issue one local branch belongs to, or None.
 
     None covers three different artifacts, deliberately answered the same

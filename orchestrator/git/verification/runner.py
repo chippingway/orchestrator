@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.agents import environment as _environment
 from orchestrator.agents import processes as _processes
@@ -27,7 +26,7 @@ def _run_verify_command(
     timeout: int,
     child_env: dict[str, str],
     head_before: str,
-) -> Optional[_models.VerifyResult]:
+) -> _models.VerifyResult | None:
     """Run and classify one command while registering its process group."""
     proc = _process._spawn_verify_command(worktree, command, child_env)
     with _processes.registered(proc):

@@ -20,7 +20,6 @@ same counter should not, or the cap would fire on rounds that never ran.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
@@ -43,7 +42,7 @@ def _post_conflict_resolution_result(
     before_sha: str,
     conflict_round: int,
     *,
-    force_with_lease: Optional[str] = None,
+    force_with_lease: str | None = None,
 ) -> None:
     """Common post-agent handling for both fresh conflict resolution
     and the awaiting-human resume path.
@@ -141,7 +140,7 @@ def _finalize_conflict_resolution(
     after_sha: str,
     conflict_round: int,
     *,
-    force_with_lease: Optional[str] = None,
+    force_with_lease: str | None = None,
 ) -> None:
     """Push a completed conflict resolution and flip to `validating`.
 

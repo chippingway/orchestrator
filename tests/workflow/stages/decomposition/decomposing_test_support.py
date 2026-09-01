@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator.workflow.stages.decomposition import run as _decomposing
 
@@ -109,7 +108,7 @@ class _ChildCreationSnapshotRecorder:
 
 class _ExpectedChildCountRecorder:
     def __init__(self, gh: FakeGitHubClient, parent_number: int) -> None:
-        self.expected_counts: list[Optional[int]] = []
+        self.expected_counts: list[int | None] = []
         self._gh = gh
         self._parent_number = parent_number
         self._create_child = gh.create_child_issue

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.usage import (
     event_stream,
@@ -27,7 +27,7 @@ CODEX_USAGE_PATHS: tuple[tuple[str, ...], ...] = (
 )
 
 
-def codex_usage_block(event: dict[str, Any]) -> Optional[dict[str, Any]]:
+def codex_usage_block(event: dict[str, Any]) -> dict[str, Any] | None:
     for path in CODEX_USAGE_PATHS:
         current: Any = event
         for key in path:
@@ -87,8 +87,8 @@ def codex_usage_events(
 def codex_select_model(
     events: list[dict[str, Any]],
     last_model: str,
-    fallback_model: Optional[str],
-) -> Optional[str]:
+    fallback_model: str | None,
+) -> str | None:
     chosen_model = model_names.known_model(last_model)
     if chosen_model is not None:
         return chosen_model
@@ -98,8 +98,8 @@ def codex_select_model(
     return model_names.known_model(fallback_model)
 
 
-def last_stream_model(events: list[dict[str, Any]]) -> Optional[str]:
-    last_model: Optional[str] = None
+def last_stream_model(events: list[dict[str, Any]]) -> str | None:
+    last_model: str | None = None
     for event in events:
         for payload in event_stream.walk_objects(event):
             model = model_names.known_model(payload.get(protocol.MODEL))

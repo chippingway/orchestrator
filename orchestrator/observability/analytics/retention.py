@@ -21,7 +21,6 @@ racing it hold one object.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics.sink import (
@@ -61,7 +60,7 @@ def prune_with_retention_logging() -> None:
         log.info("analytics retention prune removed %d record(s)", removed)
 
 
-def prune_old_records(*, now: Optional[datetime] = None) -> int:
+def prune_old_records(*, now: datetime | None = None) -> int:
     """Remove records whose `ts` is older than `ANALYTICS_RETENTION_DAYS`.
 
     Reads the `ANALYTICS_LOG_PATH` / `ANALYTICS_RETENTION_DAYS` bound on the
@@ -98,7 +97,7 @@ def prune_old_records(*, now: Optional[datetime] = None) -> int:
     )
 
 
-def prune_trajectory_records(*, now: Optional[datetime] = None) -> int:
+def prune_trajectory_records(*, now: datetime | None = None) -> int:
     """Remove trajectory records older than `TRAJECTORY_RETENTION_DAYS`.
 
     Reads the `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS` bound on

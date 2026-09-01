@@ -19,7 +19,7 @@ the one predicate that walks a run's whole text.
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, Unpack
+from typing import Sequence, Unpack
 
 from orchestrator.observability.trajectory_viewer import filter_models, filter_values
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
@@ -91,7 +91,7 @@ def matches_run_filters(
 
 def filter_runs(
     runs: Sequence[TrajectoryRun],
-    options: Optional[RunFilterOptions] = None,
+    options: RunFilterOptions | None = None,
     **option_fields: Unpack[filter_models.RunFilterOptionFields],
 ) -> list[TrajectoryRun]:
     """Return runs matching every supplied filter while preserving order."""

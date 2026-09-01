@@ -25,7 +25,6 @@ hop.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -194,7 +193,7 @@ def _squash_approved_work(
     issue: Issue,
     state: PinnedState,
     reviewer_run: _models._ReviewerRun,
-) -> Optional[int]:
+) -> int | None:
     if not config.SQUASH_ON_APPROVAL:
         return 0
     # The subject the size gate decides about, built here rather than in the

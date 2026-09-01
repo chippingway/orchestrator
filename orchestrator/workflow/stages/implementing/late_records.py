@@ -22,7 +22,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -113,7 +112,7 @@ class _PublicationEntry:
     a group short of any one of them is a publication nothing could name.
     """
 
-    stage: Optional[WorkflowLabel] = None
+    stage: WorkflowLabel | None = None
     pr_number: int = 0
     published_sha: str = ""
     refusal: str = ""
@@ -160,7 +159,7 @@ class _Gate:
     # else here changes when the work already has a pull request, and every
     # record the call writes carries the group rather than reading as an entry
     # taken before anything was published.
-    entry: Optional[_PublicationEntry] = None
+    entry: _PublicationEntry | None = None
     # What this call's caller owes for the candidate, whichever way it goes.
     # A hold closes it ahead of the relabel it makes, and a landed push closes
     # it in the write that carries the receipt -- one durable write either
@@ -191,7 +190,7 @@ class _Entered:
     finished, and there is no reviewer round behind the push.
     """
 
-    stage: Optional[WorkflowLabel] = None
+    stage: WorkflowLabel | None = None
     head: str = ""
     # The commit the caller means to publish, where it read one for itself.
     # This owner proves the checkout's head independently, and between the
@@ -366,7 +365,7 @@ def _lineage_of(
     return root, (recorded.lineage_depth if recorded.is_present else 0)
 
 
-def _unusable_identity(gate: _Gate, recorded: LateGeneration) -> Optional[str]:
+def _unusable_identity(gate: _Gate, recorded: LateGeneration) -> str | None:
     """Why this record is no generation of THIS issue, or None if it is.
 
     Asked through the domain's own record gate rather than by a second reading

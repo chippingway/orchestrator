@@ -17,21 +17,21 @@ interception every read of it goes through.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.trajectory_viewer import constants
 
 
-def configured_path(settings_holder: Any) -> Optional[Path]:
+def configured_path(settings_holder: Any) -> Path | None:
     """Return the trajectory log path bound on `settings_holder`."""
     return analytics_config.settings_on(settings_holder).trajectory_log_path
 
 
 def resolve_path(
     settings_holder: Any,
-    path: Optional[Path],
-) -> Optional[Path]:
+    path: Path | None,
+) -> Path | None:
     """Resolve one read's file: the caller's explicit path, else the knob.
 
     A caller pointing the reader at a file of its own is not asking about the
@@ -43,7 +43,7 @@ def resolve_path(
     return path
 
 
-def unconfigured_message(settings_holder: Any) -> Optional[str]:
+def unconfigured_message(settings_holder: Any) -> str | None:
     """Return the opt-in banner when that holder's sink is switched off."""
     if configured_path(settings_holder) is None:
         return constants.UNCONFIGURED_LOG_MESSAGE

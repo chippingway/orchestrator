@@ -22,7 +22,6 @@ walk, which is the retry.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -149,7 +148,7 @@ def _create_planned_child(
 def _create_child_issues(
     gh: GitHubClient, issue: Issue, state: PinnedState,
     children_manifest: list, is_umbrella: bool,
-) -> Optional[_SplitPlan]:
+) -> _SplitPlan | None:
     """Crash-safe child issue creation loop for a `split` manifest.
 
     Returns the populated split plan on success, or None when a create/seed

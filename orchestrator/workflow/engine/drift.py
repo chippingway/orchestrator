@@ -25,7 +25,6 @@ orchestrator stops tracking them, and which ones still apply is the operator's c
 from __future__ import annotations
 
 import hashlib
-from typing import Optional
 
 from github.Issue import Issue
 from github.IssueComment import IssueComment
@@ -64,7 +63,7 @@ def _comment_body_for_hash(
     orchestrator_ids: set[int],
     *,
     include_bare_continue: bool,
-) -> Optional[str]:
+) -> str | None:
     """Return user-authored requirements text, or None for filtered content."""
     if _is_hidden_comment(issue_comment, orchestrator_ids):
         return None
@@ -139,7 +138,7 @@ def _compute_user_content_hash(
 
 def _detect_user_content_change(
     gh: GitHubClient, issue: Issue, state: PinnedState
-) -> Optional[str]:
+) -> str | None:
     """Return the new hash if the user-visible content drifted since the
     prior stored value, or None when unchanged.
 

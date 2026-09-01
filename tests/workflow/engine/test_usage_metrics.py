@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
-from typing import Optional
 from unittest.mock import patch
 
 from orchestrator.observability.analytics import settings as analytics_settings
@@ -59,7 +58,7 @@ def _run_usage(
     stdout: str,
     backend: str = BACKEND_CLAUDE,
     track: bool = False,
-    analytics_path: Optional[Path] = None,
+    analytics_path: Path | None = None,
     extra_args: tuple[str, ...] = (),
 ) -> tuple[FakeGitHubClient, AgentResult]:
     gh = FakeGitHubClient()

@@ -14,27 +14,27 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Sequence
 
 
 @dataclass(frozen=True)
 class ReadFilters:
     """Window and domain filters shared by analytics readers."""
 
-    start: Optional[datetime] = None
-    end: Optional[datetime] = None
-    repo: Optional[str] = None
-    events: Optional[Sequence[str]] = None
-    stages: Optional[Sequence[str]] = None
-    issue: Optional[int] = None
+    start: datetime | None = None
+    end: datetime | None = None
+    repo: str | None = None
+    events: Sequence[str] | None = None
+    stages: Sequence[str] | None = None
+    issue: int | None = None
 
 
 @dataclass(frozen=True)
 class ReadConnection:
     """Connection selection for one analytics read."""
 
-    db_url: Optional[str] = None
-    connect: Optional[Callable[[str], Any]] = None
+    db_url: str | None = None
+    connect: Callable[[str], Any] | None = None
     conn: Any = None
 
 
@@ -42,8 +42,8 @@ class ReadConnection:
 class ReadOptions:
     """Reader-specific limit, ordering, and timezone controls."""
 
-    limit: Optional[int] = None
-    sort_by: Optional[str] = None
+    limit: int | None = None
+    sort_by: str | None = None
     tz_offset_hours: int = 0
 
 

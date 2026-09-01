@@ -44,7 +44,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split.models import (
@@ -154,12 +154,12 @@ class LateEvent:
     """
 
     family: LateEventFamily
-    verdict: Optional[LateVerdict] = None
-    category: Optional[LateVerdictCategory] = None
-    child_count: Optional[int] = None
-    failure: Optional[LateFailure] = None
-    resource: Optional[LateResource] = None
-    restart_step: Optional[LateRestartStep] = None
+    verdict: LateVerdict | None = None
+    category: LateVerdictCategory | None = None
+    child_count: int | None = None
+    failure: LateFailure | None = None
+    resource: LateResource | None = None
+    restart_step: LateRestartStep | None = None
 
     def __post_init__(self) -> None:
         self.check()
@@ -232,7 +232,7 @@ class LateEvent:
             raise _formats.InvalidLateValue(f"{named!s} {reason}: {listed}")
 
 
-def verdict_category(asked: Optional[str]) -> LateVerdictCategory:
+def verdict_category(asked: str | None) -> LateVerdictCategory:
     """Map a parsed adjudication category onto the closed vocabulary.
 
     Never answers None, so the emitter always has the category a `question`

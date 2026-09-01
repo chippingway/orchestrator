@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from orchestrator.observability.analytics.query.activity_models import (
     ThroughputDayRow,
@@ -66,8 +66,8 @@ def calendar_days(window_start: date, window_end: date) -> list[date]:
 
 def throughput_series(
     rows: Sequence[ThroughputDayRow],
-    window_start: Optional[date],
-    window_end: Optional[date],
+    window_start: date | None,
+    window_end: date | None,
 ) -> ThroughputSeries:
     """The rows laid over the window's calendar, zero where none landed."""
     resolved_by_day = {row.day: int(row.resolved or 0) for row in rows}
@@ -84,9 +84,9 @@ def throughput_series(
 def done_per_day_bars(
     rows: Sequence[ThroughputDayRow],
     *,
-    window_start: Optional[date] = None,
-    window_end: Optional[date] = None,
-    title: Optional[str] = None,
+    window_start: date | None = None,
+    window_end: date | None = None,
+    title: str | None = None,
 ) -> go.Figure:
     """Issues-resolved-per-day bars for the reliability panel.
 

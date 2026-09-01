@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional, Unpack
+from typing import Unpack
 
 from orchestrator.agents import models as _agent_models
 from orchestrator.agents import sessions as _agent_sessions
@@ -14,7 +14,7 @@ log = logging.getLogger("orchestrator.agents")
 
 
 def resolve_agent_run_options(
-    options: Optional[_agent_models.AgentRunOptions],
+    options: _agent_models.AgentRunOptions | None,
     option_fields: _agent_models.AgentRunOptionFields,
 ) -> _agent_models.AgentRunOptions:
     """Normalize the object and legacy keyword option forms."""
@@ -65,7 +65,7 @@ def run_agent(
     prompt: str,
     cwd: Path,
     *,
-    options: Optional[_agent_models.AgentRunOptions] = None,
+    options: _agent_models.AgentRunOptions | None = None,
     **option_fields: Unpack[_agent_models.AgentRunOptionFields],
 ) -> _agent_models.AgentResult:
     """Dispatch to Codex or Claude with normalized optional controls."""

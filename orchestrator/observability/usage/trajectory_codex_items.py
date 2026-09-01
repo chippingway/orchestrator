@@ -44,7 +44,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping
 
 from orchestrator.observability.usage import (
     protocol,
@@ -309,7 +309,7 @@ NORMALIZERS: Mapping[str, ItemNormalizer] = MappingProxyType({
 def normalize_item(
     stream_item: dict[str, Any],
     completed: bool,
-) -> Optional[CodexItemPayloads]:
+) -> CodexItemPayloads | None:
     """Normalize one item frame, or `None` for one no record carries.
 
     An unclaimed item type yields the placeholder rather than nothing, so the

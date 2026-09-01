@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from orchestrator.observability.usage import (
     protocol,
@@ -21,8 +21,8 @@ def offered_tools(events: Iterable[dict[str, Any]]) -> tuple[str, ...]:
     )
 
 
-def final_output(events: Iterable[dict[str, Any]]) -> Optional[str]:
-    final_text: Optional[str] = None
+def final_output(events: Iterable[dict[str, Any]]) -> str | None:
+    final_text: str | None = None
     for event in events:
         if event.get(protocol.TYPE) != protocol.RESULT_KEY:
             continue

@@ -25,7 +25,6 @@ re-derives the whole tick from what durable state still says.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -58,8 +57,8 @@ def _recorded_pr_is_the_plan(
     gh: GitHubClient,
     issue: Issue,
     state: PinnedState,
-    head_sha: Optional[str] = None,
-) -> Optional[bool]:
+    head_sha: str | None = None,
+) -> bool | None:
     """True while the PR this issue records still carries only the plan.
 
     The `discussion` stage publishes the agreed design as a PR and records its

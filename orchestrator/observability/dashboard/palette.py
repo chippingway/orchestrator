@@ -23,7 +23,7 @@ banner drawn before any figure exists -- must not pay for the optional
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Mapping, Optional, Sequence
+from typing import Mapping, Sequence
 
 # Page chrome, straight off the mock's `:root` block: a cool gray page with
 # white cards, and three ink tints the label, the value, and the caption on a
@@ -145,9 +145,9 @@ COST_SOURCE_COLORS: Mapping[str, str] = MappingProxyType({
 
 def color_for(
     key: str,
-    domain: Optional[Sequence[str]] = None,
+    domain: Sequence[str] | None = None,
     *,
-    explicit: Optional[Mapping[str, str]] = None,
+    explicit: Mapping[str, str] | None = None,
 ) -> str:
     """Resolve `key` to a hex color string.
 

@@ -96,7 +96,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import Optional
 
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import observations as _observations
@@ -153,7 +152,7 @@ _UNREADABLE_PARK = (
 
 def _reconcile_pending_owner_check(
     context: _LateContext,
-) -> Optional[_LateDisposition]:
+) -> _LateDisposition | None:
     """Take again the owner read an earlier tick could not, if one is owed.
 
     The first thing a tick asks, ahead of the live-generation gate and the
@@ -180,7 +179,7 @@ def _reconcile_pending_owner_check(
     return None
 
 
-def _still_wanted(context: _LateContext) -> Optional[_LateDisposition]:
+def _still_wanted(context: _LateContext) -> _LateDisposition | None:
     """Whether the split may take its next irreversible step, or why not.
 
     None is the only answer that lets one happen. Asked immediately before
@@ -340,7 +339,7 @@ def _latched_close(context: _LateContext) -> bool:
     return True
 
 
-def _latch_stops(context: _LateContext) -> Optional[_LateDisposition]:
+def _latch_stops(context: _LateContext) -> _LateDisposition | None:
     """Whether a latched close forbids the step that is about to happen.
 
     The barrier for every irreversible step whose own moment is too tight for
@@ -362,7 +361,7 @@ def _latch_stops(context: _LateContext) -> Optional[_LateDisposition]:
     return _LateDisposition.CANCELLED
 
 
-def _still_activating(context: _LateContext) -> Optional[_LateDisposition]:
+def _still_activating(context: _LateContext) -> _LateDisposition | None:
     """Whether the children this transaction made may be started.
 
     The last gap of all and the only one past the retirement, so it is asked

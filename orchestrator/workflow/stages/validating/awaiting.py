@@ -34,7 +34,6 @@ the dev.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
@@ -51,7 +50,7 @@ from orchestrator.workflow.stages.validating import state as _state
 
 def _parse_add_review_rounds(
     comments: list,
-) -> Optional[_state._ReviewRoundsCommand]:
+) -> _state._ReviewRoundsCommand | None:
     """Find the latest `/orchestrator add-review-rounds N` command across
     `comments`.
 
@@ -78,7 +77,7 @@ def _parse_add_review_rounds(
 
 def _review_cap_awaiting_action(
     context: _models._AwaitingValidation,
-) -> Optional[str]:
+) -> str | None:
     if context.park_reason != _state._REASON_REVIEW_CAP:
         return None
     if not context.comments:
@@ -114,7 +113,7 @@ def _review_cap_awaiting_action(
 
 def _transient_awaiting_action(
     context: _models._AwaitingValidation,
-) -> Optional[str]:
+) -> str | None:
     if (
         context.comments
         or context.park_reason not in _state._VALIDATING_TRANSIENT_PARK_REASONS
@@ -146,7 +145,7 @@ def _transient_awaiting_action(
 
 def _reviewer_retry_awaiting_action(
     context: _models._AwaitingValidation,
-) -> Optional[str]:
+) -> str | None:
     if not context.comments or context.park_reason not in (
         _state._REASON_REVIEWER_TIMEOUT, _state._REASON_REVIEWER_FAILED,
     ):
@@ -158,7 +157,7 @@ def _reviewer_retry_awaiting_action(
 
 def _resume_awaiting_dev_agent(
     context: _models._AwaitingValidation, continue_action: str,
-) -> Optional[tuple[Path, AgentResult, bool]]:
+) -> tuple[Path, AgentResult, bool] | None:
     if continue_action != "retry":
         return _dev_resume._resume_developer_on_human_reply(
             context.gh,
@@ -181,7 +180,7 @@ def _resume_awaiting_dev_agent(
 
 def _run_awaiting_dev(
     context: _models._AwaitingValidation, continue_action: str,
-) -> Optional[_models._AwaitingDevAttempt]:
+) -> _models._AwaitingDevAttempt | None:
     worktree = _worktree_paths._worktree_path(context.spec, context.issue.number)
     if not worktree.exists():
         worktree = _worktree_creation._ensure_worktree(

@@ -18,27 +18,27 @@ ever holds a value some run actually carries.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Sequence, TypedDict
+from typing import Sequence, TypedDict
 
 
 class RunFilterOptionFields(TypedDict, total=False):
-    repo: Optional[str]
-    backends: Optional[Sequence[str]]
-    agent_roles: Optional[Sequence[str]]
-    stages: Optional[Sequence[str]]
-    issue: Optional[int]
-    query: Optional[str]
+    repo: str | None
+    backends: Sequence[str] | None
+    agent_roles: Sequence[str] | None
+    stages: Sequence[str] | None
+    issue: int | None
+    query: str | None
     exclude_fixtures: bool
 
 
 @dataclass(frozen=True)
 class RunFilters:
-    repo: Optional[str]
-    backends: Optional[frozenset[str]]
-    agent_roles: Optional[frozenset[str]]
-    stages: Optional[frozenset[str]]
-    issue: Optional[int]
-    query: Optional[str]
+    repo: str | None
+    backends: frozenset[str] | None
+    agent_roles: frozenset[str] | None
+    stages: frozenset[str] | None
+    issue: int | None
+    query: str | None
     exclude_fixtures: bool
 
 
@@ -56,10 +56,10 @@ class FilterOptions:
 class RunFilterOptions:
     """Raw optional constraints accepted by :func:`filter_runs`."""
 
-    repo: Optional[str] = None
-    backends: Optional[Sequence[str]] = None
-    agent_roles: Optional[Sequence[str]] = None
-    stages: Optional[Sequence[str]] = None
-    issue: Optional[int] = None
-    query: Optional[str] = None
+    repo: str | None = None
+    backends: Sequence[str] | None = None
+    agent_roles: Sequence[str] | None = None
+    stages: Sequence[str] | None = None
+    issue: int | None = None
+    query: str | None = None
     exclude_fixtures: bool = False

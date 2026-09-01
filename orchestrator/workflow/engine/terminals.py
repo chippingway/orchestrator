@@ -50,7 +50,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from github.Issue import Issue
 
@@ -123,7 +123,7 @@ class _ReviewTerminalContext:
     issue: Issue
     state: PinnedState
     pr: Any
-    stage: Optional[str]
+    stage: str | None
 
     @property
     def pr_number(self) -> int:
@@ -272,7 +272,7 @@ def _drain_review_pr_terminals(
 
 @dataclass(frozen=True)
 class _ClosedIssuePR:
-    number: Optional[int]
+    number: int | None
     pr: Any = None
     defer: bool = False
 

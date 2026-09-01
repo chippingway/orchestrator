@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import NamedTuple, Optional, TypedDict
+from typing import NamedTuple, TypedDict
 
 from orchestrator import config
 from orchestrator.observability.usage.metrics import UsageMetrics
@@ -14,14 +14,14 @@ from orchestrator.observability.usage.metrics import UsageMetrics
 class AgentResult:
     """Normalized outcome returned by either supported agent backend."""
 
-    session_id: Optional[str]
+    session_id: str | None
     last_message: str
     exit_code: int
     timed_out: bool
     stdout: str
     stderr: str
     interrupted: bool = False
-    usage: Optional[UsageMetrics] = None
+    usage: UsageMetrics | None = None
 
 
 CodexResult = AgentResult
@@ -31,9 +31,9 @@ CodexResult = AgentResult
 class AgentRunOptions:
     """Optional controls shared by fresh agent runs and session resumes."""
 
-    resume_session_id: Optional[str] = None
-    extra_env: Optional[dict[str, str]] = None
-    timeout: Optional[int] = None
+    resume_session_id: str | None = None
+    extra_env: dict[str, str] | None = None
+    timeout: int | None = None
     extra_args: tuple[str, ...] = ()
 
     @property
@@ -44,9 +44,9 @@ class AgentRunOptions:
 class AgentRunOptionFields(TypedDict, total=False):
     """Legacy keyword controls accepted beside ``AgentRunOptions``."""
 
-    resume_session_id: Optional[str]
-    extra_env: Optional[dict[str, str]]
-    timeout: Optional[int]
+    resume_session_id: str | None
+    extra_env: dict[str, str] | None
+    timeout: int | None
     extra_args: tuple[str, ...]
 
 

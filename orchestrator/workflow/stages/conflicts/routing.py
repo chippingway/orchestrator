@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git.publication import probes as _publication_probes
@@ -91,7 +90,7 @@ def _drive_conflict_rebase(
 
 def _prepare_conflict_worktree(
     ctx: _models._ConflictContext, pr, pr_number, conflict_round: int,
-) -> Optional[Path]:
+) -> Path | None:
     """Restore the worktree, refresh remote refs, and reconcile a diverged or
     crash-recovered branch before the base rebase.
 

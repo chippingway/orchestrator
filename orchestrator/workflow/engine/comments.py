@@ -32,7 +32,6 @@ definition is what keeps the two reading as a single document.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -191,7 +190,7 @@ def _quote_comment_line(comment: object, label: str = "") -> str:
 
 def _prompt_comment_chunk(
     issue_comment: object, retained_ids: frozenset = _NO_RETAINED_IDS,
-) -> Optional[str]:
+) -> str | None:
     """Format one non-state issue comment for an agent prompt, or drop it.
 
     `retained_ids` are comment ids this orchestrator recorded at the moment it

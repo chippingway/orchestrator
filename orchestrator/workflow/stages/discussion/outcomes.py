@@ -44,7 +44,6 @@ touching the order the decisions are made in.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
@@ -58,7 +57,7 @@ from orchestrator.workflow.stages.discussion import state as _state
 
 def _round_committed(
     run: _models._DiscussionRun, round_result: _models._DiscussionRound,
-) -> Optional[bool]:
+) -> bool | None:
     """True when HEAD moved under this round, or None when nothing can say.
 
     Measured against the SHA the round opened on rather than against the base,

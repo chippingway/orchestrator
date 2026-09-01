@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Optional, Tuple
+from typing import Tuple
 
 from orchestrator.workflow.stages.decomposition import validation as _validation
 
@@ -42,7 +42,7 @@ def _fenced_payload(
     last_message: str,
     fence: re.Pattern,
     block_name: str,
-) -> Tuple[Optional[str], Optional[str]]:
+) -> Tuple[str | None, str | None]:
     """Extract the one final fenced payload of `block_name` from a reply.
 
     The envelope rules are the pattern's caller's, not the pattern's, so they
@@ -75,14 +75,14 @@ def _fenced_payload(
 
 def _extract_manifest_payload(
     last_message: str,
-) -> Tuple[Optional[str], Optional[str]]:
+) -> Tuple[str | None, str | None]:
     """Extract the one final fenced manifest payload from an agent reply."""
     return _fenced_payload(last_message, _MANIFEST_RE, _MANIFEST_BLOCK)
 
 
 def _decode_manifest(
     payload: str,
-) -> Tuple[Optional[dict], Optional[str]]:
+) -> Tuple[dict | None, str | None]:
     """Decode a manifest payload and require a JSON object."""
     try:
         manifest = json.loads(payload)
@@ -93,7 +93,7 @@ def _decode_manifest(
     return manifest, None
 
 
-def _manifest_validation_error(manifest: dict) -> Optional[str]:
+def _manifest_validation_error(manifest: dict) -> str | None:
     """Validate the decision and its split-only payload when applicable."""
     decision = manifest.get("decision")
     if decision not in ("single", "split"):
@@ -105,7 +105,7 @@ def _manifest_validation_error(manifest: dict) -> Optional[str]:
 
 def _parse_manifest(
     last_message: str,
-) -> Tuple[Optional[dict], Optional[str]]:
+) -> Tuple[dict | None, str | None]:
     """Parse a fenced `orchestrator-manifest` block.
 
     Returns `(manifest, error_reason)`:

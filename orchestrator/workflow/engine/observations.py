@@ -61,7 +61,6 @@ from __future__ import annotations
 import contextlib
 import threading
 from dataclasses import dataclass
-from typing import Optional
 
 # Closes observed and not yet settled; the ones whose durable receipt is on the
 # thread, against the generation it was posted for; the owners a receipt is
@@ -153,7 +152,7 @@ def settle_close(repo_slug: str, issue_number: int) -> None:
 
 def claim_receipt_post(
     repo_slug: str, issue_number: int,
-) -> Optional[ReceiptClaim]:
+) -> ReceiptClaim | None:
     """Take the one right to post this observation's receipt, or decline.
 
     The generation the claim was taken at travels back with it, and it is
@@ -293,7 +292,7 @@ def retiring(
 
 def cycle_being_retired(
     repo_slug: str, issue_number: int,
-) -> Optional[int]:
+) -> int | None:
     """The cycle a worker is retiring off this record right now, if any."""
     with _lock:
         return _retiring.get(_owner_key(repo_slug, issue_number))

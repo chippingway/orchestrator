@@ -44,7 +44,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from github.Issue import Issue
 
@@ -71,12 +71,12 @@ class _AgentRunRequest:
     backend: str
     prompt: str
     cwd: Path
-    agent_spec: Optional[str] = None
-    resume_session_id: Optional[str] = None
-    timeout: Optional[int] = None
+    agent_spec: str | None = None
+    resume_session_id: str | None = None
+    timeout: int | None = None
     extra_args: tuple[str, ...] = ()
-    review_round: Optional[int] = None
-    retry_count: Optional[int] = None
+    review_round: int | None = None
+    retry_count: int | None = None
 
 
 def _agent_run_kwargs(request: _AgentRunRequest) -> dict[str, Any]:
@@ -155,7 +155,7 @@ def _emit_triggered_skills(
 def _run_agent_tracked(
     gh: GitHubClient,
     issue_number: int,
-    request: Optional[_AgentRunRequest] = None,
+    request: _AgentRunRequest | None = None,
     **request_fields: Any,
 ) -> AgentResult:
     """Run an agent, bookending the spawn with `agent_spawn` / `agent_exit`
@@ -260,7 +260,7 @@ def _run_agent_tracked(
 
 def _configured_model(
     backend: str, extra_args: tuple[str, ...]
-) -> Optional[str]:
+) -> str | None:
     """Pull the configured model name out of a backend's `extra_args`.
 
     codex selects the model with `-m <model>` (or `-m=<model>`); claude
@@ -290,7 +290,7 @@ def _configured_model(
 
 
 def _accumulate_issue_usage(
-    state: PinnedState, usage: Optional[UsageMetrics]
+    state: PinnedState, usage: UsageMetrics | None
 ) -> None:
     """Fold one agent run's parsed usage into the per-issue running totals.
 
@@ -349,7 +349,7 @@ def _accumulate_issue_usage(
     state.set("issue_cost_sources", sorted(seen))
 
 
-def _format_issue_usage_verdict(state: PinnedState) -> Optional[str]:
+def _format_issue_usage_verdict(state: PinnedState) -> str | None:
     """Render the cumulative per-issue usage verdict for a terminal surface.
 
     Reads the counters `_accumulate_issue_usage` folds onto pinned state and

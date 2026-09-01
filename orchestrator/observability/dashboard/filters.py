@@ -15,7 +15,7 @@ itself.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, NamedTuple, Optional, Sequence
+from typing import Any, NamedTuple, Sequence
 
 from orchestrator.observability.dashboard.windows import DateWindow
 
@@ -29,10 +29,10 @@ DEFAULT_TZ_OFFSET_HOURS = 7
 class DashboardCacheKey(NamedTuple):
     start: datetime
     end: datetime
-    repo: Optional[str]
-    events: Optional[tuple[str, ...]]
-    stages: Optional[tuple[str, ...]]
-    issue: Optional[int]
+    repo: str | None
+    events: tuple[str, ...] | None
+    stages: tuple[str, ...] | None
+    issue: int | None
 
 
 def format_tz_offset(hours: int) -> str:
@@ -52,7 +52,7 @@ def shift_ts(timestamp: Any, offset: timedelta) -> Any:
     return timestamp
 
 
-def parse_issue_number(raw_issue: str) -> Optional[int]:
+def parse_issue_number(raw_issue: str) -> int | None:
     if not raw_issue:
         return None
     cleaned = raw_issue.strip().lstrip("#").strip()
@@ -68,7 +68,7 @@ def parse_issue_number(raw_issue: str) -> Optional[int]:
 def resolve_stage_filter(
     selected: Sequence[str],
     available: Sequence[str],
-) -> Optional[list[str]]:
+) -> list[str] | None:
     if not available or set(selected) == set(available):
         return None
     return list(selected)
@@ -76,10 +76,10 @@ def resolve_stage_filter(
 
 def cache_key(
     window: DateWindow,
-    repo: Optional[str],
-    events: Optional[Sequence[str]],
-    stages: Optional[Sequence[str]],
-    issue: Optional[int],
+    repo: str | None,
+    events: Sequence[str] | None,
+    stages: Sequence[str] | None,
+    issue: int | None,
 ) -> DashboardCacheKey:
     event_names = None if events is None else tuple(events)
     stage_names = None if stages is None else tuple(stages)

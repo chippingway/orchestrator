@@ -15,7 +15,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Sequence
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.query import raw_reads
@@ -112,7 +112,7 @@ class _RecordingScope:
         self,
         trace: Sequence[IssueEventRow] = (),
         *,
-        failure: Optional[Exception] = None,
+        failure: Exception | None = None,
     ) -> None:
         self.trace = list(trace)
         self.failure = failure
@@ -149,10 +149,10 @@ def _issue_event(**overrides: Any) -> IssueEventRow:
 def _render(
     scope: _RecordingScope,
     *,
-    repo: Optional[str] = _REPO,
-    issue_input: Optional[int] = _ISSUE,
-    events: Optional[Sequence[str]] = _EVENTS,
-    stages: Optional[Sequence[str]] = _STAGES,
+    repo: str | None = _REPO,
+    issue_input: int | None = _ISSUE,
+    events: Sequence[str] | None = _EVENTS,
+    stages: Sequence[str] | None = _STAGES,
 ) -> _DrilldownStreamlit:
     """Draw the section over one run's selections, on a faked page."""
     st = _DrilldownStreamlit()

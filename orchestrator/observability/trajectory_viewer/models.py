@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.trajectory_viewer import constants
 
@@ -67,7 +67,7 @@ class TrajectoryStepView:
     name: str = ""
     tool_id: str = ""
     step_content: str = ""
-    turn: Optional[int] = None
+    turn: int | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         bound = STEP_VIEW_SIGNATURE.bind(*args, **kwargs)
@@ -95,7 +95,7 @@ class TimelineEntry:
     entry_content: str = ""
     name: str = ""
     tool_id: str = ""
-    turn: Optional[int] = None
+    turn: int | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         bound = TIMELINE_ENTRY_SIGNATURE.bind(*args, **kwargs)
@@ -119,13 +119,13 @@ class TimelineEntry:
 class TurnUsageView:
     """Per-turn token usage for one Claude assistant turn."""
 
-    turn: Optional[int] = None
+    turn: int | None = None
     model: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
-    cost_usd: Optional[float] = None
+    cost_usd: float | None = None
     cost_source: str = ""
 
     @property
@@ -138,13 +138,13 @@ class RunUsageView:
     """Run-level usage summary stored on a trajectory record."""
 
     models: tuple[str, ...] = ()
-    turns: Optional[int] = None
+    turns: int | None = None
     input_tokens: int = 0
     output_tokens: int = 0
     cached_tokens: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
-    cost_usd: Optional[float] = None
+    cost_usd: float | None = None
     cost_source: str = ""
 
     @property

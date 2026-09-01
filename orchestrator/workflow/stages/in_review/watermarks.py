@@ -26,7 +26,6 @@ stamps `created_at`, and the fakes can leave either unset.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -36,7 +35,7 @@ from orchestrator.workflow.stages.in_review import models as _models
 from orchestrator.workflow.stages.in_review import state as _state
 
 
-def _comment_created_at(comment) -> Optional[datetime]:
+def _comment_created_at(comment) -> datetime | None:
     """Return a tz-aware UTC datetime for a comment, or None if unavailable.
 
     Real PyGithub `IssueComment.created_at` is always set, but the fakes used
@@ -56,7 +55,7 @@ def _comment_created_at(comment) -> Optional[datetime]:
 
 
 def _bump_in_review_watermarks(
-    ctx: _models._InReviewContext, *, issue_space_new: Optional[list] = None,
+    ctx: _models._InReviewContext, *, issue_space_new: list | None = None,
 ) -> None:
     """Push the in_review issue-side watermark (`pr_last_comment_id`) past
     everything seen so far AND past any park comment just written on the issue

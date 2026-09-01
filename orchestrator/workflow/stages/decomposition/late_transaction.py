@@ -109,7 +109,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import Optional
 
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import comments as _github_comments
@@ -494,7 +493,7 @@ def _reclaimed_or_held(context: _LateContext, branch: str) -> None:
 
 def _stopped_publishing(
     context: _LateContext,
-) -> Optional[_LateAdjudicationRun]:
+) -> _LateAdjudicationRun | None:
     """Ask the owner whether the next publication step may happen at all.
 
     None is the only answer that lets one run, and it is the same guard the
@@ -510,7 +509,7 @@ def _stopped_publishing(
 
 def _refused_split(
     context: _LateContext, children: tuple,
-) -> Optional[str]:
+) -> str | None:
     """Why this split may not run at all, or None when it may.
 
     Four refusals, and each is about state no step below could repair. A
@@ -1054,7 +1053,7 @@ def _closed_over_notice(
 
 def _handed_to_children(
     context: _LateContext, plan: _SplitPlan, branch: str,
-) -> Optional[_LateDisposition]:
+) -> _LateDisposition | None:
     """Retire the generation onto `umbrella`, then let the children run.
 
     One write for the label and the retirement, because the two are the same
@@ -1102,7 +1101,7 @@ def _handed_to_children(
 
 def _activated(
     context: _LateContext, plan: _SplitPlan,
-) -> Optional[_LateDisposition]:
+) -> _LateDisposition | None:
     """Let the children this split may still start, run.
 
     A read that failed leaves every child where it is. The umbrella's own walk

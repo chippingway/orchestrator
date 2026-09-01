@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Optional
 
 from orchestrator.scheduler import IssueScheduler
 
@@ -27,8 +26,8 @@ class RuntimeState:
     """What one polling run is stopped, drained, and exited by."""
 
     running: bool = True
-    received_signal: Optional[int] = None
-    active_scheduler: Optional[IssueScheduler] = None
+    received_signal: int | None = None
+    active_scheduler: IssueScheduler | None = None
     shutdown_complete: threading.Event = field(default_factory=threading.Event)
 
     def signal_exit_code(self) -> int:

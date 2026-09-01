@@ -13,7 +13,6 @@ head it never saw.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git import authentication, commands
@@ -75,7 +74,7 @@ def _clear_ineligible_recovery(
 
 def _fetch_recovery_snapshot(
     context: _AutoRebaseRecoveryContext,
-) -> Optional[_AutoRebaseRecoverySnapshot]:
+) -> _AutoRebaseRecoverySnapshot | None:
     """Fetch the PR branch and capture the local recovery head."""
     spec = context.spec
     branch = paths._resolve_branch_name(
@@ -130,7 +129,7 @@ def _clear_unchanged_recovery(
 def _read_remote_recovery_head(
     context: _AutoRebaseRecoveryContext,
     branch: str,
-) -> Optional[str]:
+) -> str | None:
     """Read the freshly fetched remote PR head or park fail-closed."""
     spec = context.spec
     remote_ref = f"refs/remotes/{spec.remote_name}/{branch}"
@@ -175,7 +174,7 @@ def _read_remote_recovery_head(
 def _complete_recovery_snapshot(
     context: _AutoRebaseRecoveryContext,
     snapshot: _AutoRebaseRecoverySnapshot,
-) -> Optional[_AutoRebaseRecoverySnapshot]:
+) -> _AutoRebaseRecoverySnapshot | None:
     """Add the verified remote head and divergence counts to a snapshot."""
     remote_head = _read_remote_recovery_head(context, snapshot.branch)
     if remote_head is None:

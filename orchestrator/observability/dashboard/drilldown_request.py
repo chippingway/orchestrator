@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from inspect import Parameter, Signature
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from orchestrator.observability.dashboard import drilldown, page_models
 
@@ -34,10 +34,10 @@ class DrilldownRequest:
     st: Any
     pd: Any
     window: Any
-    repo_filter: Optional[str]
-    issue_input_parsed: Optional[int]
-    event_filter: Optional[Sequence[str]]
-    stage_filter: Optional[Sequence[str]]
+    repo_filter: str | None
+    issue_input_parsed: int | None
+    event_filter: Sequence[str] | None
+    stage_filter: Sequence[str] | None
 
 
 def render_drilldown(*args: Any, **kwargs: Any) -> None:

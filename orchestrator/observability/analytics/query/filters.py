@@ -19,19 +19,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 
 @dataclass(frozen=True)
 class WindowFilters:
     """The common window and selection filters accepted by readers."""
 
-    start: Optional[datetime] = None
-    end: Optional[datetime] = None
-    repo: Optional[str] = None
-    events: Optional[Sequence[str]] = None
-    stages: Optional[Sequence[str]] = None
-    issue: Optional[int] = None
+    start: datetime | None = None
+    end: datetime | None = None
+    repo: str | None = None
+    events: Sequence[str] | None = None
+    stages: Sequence[str] | None = None
+    issue: int | None = None
 
     def without_events(self) -> WindowFilters:
         """Return filters suitable for a view with no `event` column."""
@@ -75,7 +75,7 @@ class WhereBuilder:
     def add_selection(
         self,
         column: str,
-        selection: Optional[Sequence[str]],
+        selection: Sequence[str] | None,
     ) -> None:
         if selection is None:
             return

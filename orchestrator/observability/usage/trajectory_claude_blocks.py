@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.usage import (
     protocol,
@@ -19,7 +19,7 @@ TOOL_RESULT = "tool_result"
 
 def assistant_steps(
     blocks: list[Any],
-    turn: Optional[int],
+    turn: int | None,
     seen_calls: set[str],
 ) -> list[TrajectoryStep]:
     steps: list[TrajectoryStep] = []
@@ -32,9 +32,9 @@ def assistant_steps(
 
 def assistant_step(
     block: Any,
-    turn: Optional[int],
+    turn: int | None,
     seen_calls: set[str],
-) -> Optional[TrajectoryStep]:
+) -> TrajectoryStep | None:
     if not isinstance(block, dict):
         return None
     if block.get(protocol.TYPE) == TEXT:
@@ -48,8 +48,8 @@ def message_step(
     block: dict[str, Any],
     kind: str,
     *,
-    turn: Optional[int] = None,
-) -> Optional[TrajectoryStep]:
+    turn: int | None = None,
+) -> TrajectoryStep | None:
     message = block.get(TEXT)
     if not isinstance(message, str) or not message:
         return None
@@ -58,9 +58,9 @@ def message_step(
 
 def tool_call_step(
     block: dict[str, Any],
-    turn: Optional[int],
+    turn: int | None,
     seen_calls: set[str],
-) -> Optional[TrajectoryStep]:
+) -> TrajectoryStep | None:
     name = block.get("name")
     if not isinstance(name, str) or not name:
         return None
@@ -94,7 +94,7 @@ def user_steps(
 def user_step(
     block: Any,
     seen_results: set[str],
-) -> Optional[TrajectoryStep]:
+) -> TrajectoryStep | None:
     if not isinstance(block, dict):
         return None
     if block.get(protocol.TYPE) == TEXT:
@@ -107,7 +107,7 @@ def user_step(
 def tool_result_step(
     block: dict[str, Any],
     seen_results: set[str],
-) -> Optional[TrajectoryStep]:
+) -> TrajectoryStep | None:
     result_id = block.get("tool_use_id")
     tool_id = result_id if isinstance(result_id, str) and result_id else ""
     if tool_id in seen_results:

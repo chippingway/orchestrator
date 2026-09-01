@@ -53,7 +53,6 @@ that read is reconciled or the cycle is cancelled.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -196,7 +195,7 @@ def _restore_decomposing_label(
     return True
 
 
-def _dispatch_state(gh: GitHubClient, issue: Issue) -> Optional[PinnedState]:
+def _dispatch_state(gh: GitHubClient, issue: Issue) -> PinnedState | None:
     """The pinned comment the dispatcher's guards read, or None if it could not.
 
     None is a refusal, not an absence, and every caller treats it as one. The

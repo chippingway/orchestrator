@@ -7,7 +7,7 @@ import unittest
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.sync import run
@@ -36,8 +36,8 @@ _SOURCE_PATH_CELL = -3
 
 @contextmanager
 def _configured_sink(
-    log_path: Optional[Path],
-    db_url: Optional[str],
+    log_path: Path | None,
+    db_url: str | None,
 ) -> Iterator[None]:
     """Pin what the two omitted inputs resolve to for the body."""
     holder = import_module(_SETTINGS_HOLDER)

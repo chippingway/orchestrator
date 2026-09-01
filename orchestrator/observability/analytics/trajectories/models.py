@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 TRAJECTORY_FIELD_HEAD = 2000
 TRAJECTORY_FIELD_TAIL = 2000
@@ -46,9 +46,9 @@ class TrajectoryHeadline:
     left room to name.
     """
 
-    user_input: Optional[str]
-    system_prompt: Optional[str]
-    output: Optional[str]
+    user_input: str | None
+    system_prompt: str | None
+    output: str | None
     run_usage: dict[str, Any]
     source_item_counts: dict[str, int]
 

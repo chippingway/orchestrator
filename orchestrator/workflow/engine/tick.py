@@ -48,7 +48,7 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator import config
 from orchestrator.git.base_sync import refresh as _base_refresh
@@ -84,7 +84,7 @@ def _has_contribution_label(gh: GitHubClient, pr) -> bool:
 
 def _community_contribution_for_pr(
     gh: GitHubClient, pr, allowed_lower: set[str],
-) -> Optional[_CommunityContribution]:
+) -> _CommunityContribution | None:
     user = getattr(pr, "user", None)
     if getattr(user, "type", None) == "Bot":
         return None
@@ -397,8 +397,8 @@ def tick(
     gh: GitHubClient,
     spec: config.RepoSpec,
     *,
-    global_semaphore: Optional[threading.BoundedSemaphore] = None,
-    scheduler: Optional[IssueScheduler] = None,
+    global_semaphore: threading.BoundedSemaphore | None = None,
+    scheduler: IssueScheduler | None = None,
 ) -> None:
     """Drive a single tick for one repo.
 

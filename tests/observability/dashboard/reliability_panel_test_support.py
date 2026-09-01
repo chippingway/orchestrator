@@ -29,7 +29,7 @@ which of its keywords matter.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Mapping, Sequence
 
 # The two columns the section is split across, named as the owner's own locals
 # are.
@@ -106,7 +106,7 @@ class ReliabilityStreamlit:
     """Fake `st` recording what each column of the section was drawn."""
 
     def __init__(self) -> None:
-        self.column_request: Optional[tuple] = None
+        self.column_request: tuple | None = None
         self.open_column = ""
         self.borders: list[tuple[str, Any]] = []
         self.markdowns: list[Drawn] = []

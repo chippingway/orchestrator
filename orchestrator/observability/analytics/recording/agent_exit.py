@@ -20,7 +20,7 @@ it depends back.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.analytics.recording import events
 from orchestrator.observability.analytics.recording.catalog import discover_codex_catalog
@@ -102,7 +102,7 @@ def persist_agent_exit(
     )
 
 
-def record_agent_exit(*args: Any, **kwargs: Any) -> Optional[list[str]]:
+def record_agent_exit(*args: Any, **kwargs: Any) -> list[str] | None:
     """Parse, persist, and return triggered skills for one completed run."""
     context = bind_agent_exit(args, kwargs)
     metrics = parse_agent_exit_usage(context)

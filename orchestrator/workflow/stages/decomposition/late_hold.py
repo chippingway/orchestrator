@@ -161,7 +161,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -451,7 +450,7 @@ def _stale_hold(generation: LateGeneration) -> bool:
 
 def _settled_stale_hold(
     gh: GitHubClient, issue: Issue, generation: LateGeneration,
-) -> Optional[LateGeneration]:
+) -> LateGeneration | None:
     """Release a hold this record has moved off, or refuse to move it.
 
     Returns the record with the hold's slot free where there was nothing to
@@ -489,7 +488,7 @@ def _settled_stale_hold(
 
 def _hold_subject(
     state: PinnedState, generation: LateGeneration,
-) -> Optional[int]:
+) -> int | None:
     """Which pull request this generation's hold is taken on, if any.
 
     Three sources, in the order each stops being answerable by the one after
@@ -717,7 +716,7 @@ def _report_moved_head(
 
 def _readable_held_pr(
     gh: GitHubClient, issue: Issue, pr_number: int,
-) -> Optional[_HeldPr]:
+) -> _HeldPr | None:
     """Read the pull request to hold, or None if GitHub could not be asked.
 
     The fetch and every field the hold decides on are read together, inside

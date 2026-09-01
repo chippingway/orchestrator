@@ -19,7 +19,6 @@ not need to read subprocess noise to do it.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -42,7 +41,7 @@ log = logging.getLogger("orchestrator.workflow")
 
 def _park_unparsed_manifest(
     gh: GitHubClient, issue: Issue, state: PinnedState,
-    decomposer_result: AgentResult, error: Optional[str],
+    decomposer_result: AgentResult, error: str | None,
 ) -> None:
     """Park awaiting human when the decomposer produced no usable manifest.
 

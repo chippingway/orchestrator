@@ -26,7 +26,7 @@ combined by max rather than overwritten.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Tuple
 
 from github.Issue import Issue
 
@@ -56,8 +56,8 @@ def _is_orchestrator_comment(comment, orchestrator_ids: set[int]) -> bool:
 class _WatermarkWalker:
     orchestrator_ids: set[int]
     pickup_comment_id: int
-    consumed_through: Optional[int]
-    watermark: Optional[int] = None
+    consumed_through: int | None
+    watermark: int | None = None
     seen_self: bool = False
 
     def consume(self, comment, is_issue_thread: bool) -> bool:
@@ -83,9 +83,9 @@ def _seed_watermark_past_self(
     issue_thread_comments: list,
     pr_conversation_comments: list,
     orchestrator_ids: set[int],
-    pickup_comment_id: Optional[int],
-    consumed_through: Optional[int] = None,
-) -> Optional[int]:
+    pickup_comment_id: int | None,
+    consumed_through: int | None = None,
+) -> int | None:
     """Seed the in_review handoff watermark.
 
     Walk comments oldest-to-newest across both surfaces (issue thread and
@@ -162,7 +162,7 @@ def _seed_watermark_past_self(
 
 def _latest_pr_comment_ids(
     gh: GitHubClient, issue: Issue, pr, state: PinnedState
-) -> Tuple[Optional[int], Optional[int]]:
+) -> Tuple[int | None, int | None]:
     """Return (issue-comment watermark, review-comment watermark) seeded only
     past leading orchestrator-authored comments on the issue thread + PR.
 
@@ -203,7 +203,7 @@ def _latest_pr_comment_ids(
     )
 
 
-def _state_int(state: PinnedState, key: str) -> Optional[int]:
+def _state_int(state: PinnedState, key: str) -> int | None:
     state_value = state.get(key)
     return state_value if isinstance(state_value, int) else None
 

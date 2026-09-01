@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from functools import partial
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from orchestrator.observability.analytics.query.cost_models import (
     CostCoverageRow,
@@ -95,7 +95,7 @@ def render_first_wave(
     modules: page_models.DashboardModules,
     page: page_models.DashboardPage,
     read_results: dict[str, Any],
-) -> Optional[page_models.DashboardKpis]:
+) -> page_models.DashboardKpis | None:
     """Draw the chrome and the strip, or leave through the empty window."""
     summary = read_results["summary"]
     render_topbar_and_meta(modules, page, summary)
@@ -128,7 +128,7 @@ def render_first_wave(
 def load_dashboard_data(
     modules: page_models.DashboardModules,
     page: page_models.DashboardPage,
-) -> Optional[page_models.LoadedDashboard]:
+) -> page_models.LoadedDashboard | None:
     """Run the staged load, drawing the chrome between its two waves."""
     loaded = dispatch.run_read_waves(
         page.reads,

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 from tests.support.github.model_helpers import _copy_issue_comments
 
@@ -25,7 +24,7 @@ class FakeComment:
     id: int
     body: str
     user: FakeUser = field(default_factory=FakeUser)
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
 
 @dataclass
@@ -50,7 +49,7 @@ class FakeIssue:
         """Mirror the state exposed by PyGithub issues."""
         return _STATE_CLOSED if self.closed else _STATE_OPEN
 
-    def edit(self, *, state: Optional[str] = None) -> None:
+    def edit(self, *, state: str | None = None) -> None:
         if state == _STATE_CLOSED:
             self.closed = True
 
@@ -77,7 +76,7 @@ class FakePRReview:
     body: str
     state: str = "COMMENTED"
     user: FakeUser = field(default_factory=lambda: FakeUser("alice"))
-    submitted_at: Optional[datetime] = None
+    submitted_at: datetime | None = None
     commit_id: str = ""
 
 
@@ -90,7 +89,7 @@ class FakePR:
     body: str = ""
     merged: bool = False
     state: str = _STATE_OPEN
-    mergeable: Optional[bool] = True
+    mergeable: bool | None = True
     head: FakePRRef = field(default_factory=FakePRRef)
     approved: bool = False
     check_state: str = "none"
@@ -103,6 +102,6 @@ class FakePR:
     # pushing to the branch moves the head while what was published stays in
     # the pull request, which is the whole reason the real lookup asks.
     commit_shas: tuple[str, ...] = ()
-    approval_head_sha: Optional[str] = None
+    approval_head_sha: str | None = None
     changes_requested: bool = False
-    changes_requested_head_sha: Optional[str] = None
+    changes_requested_head_sha: str | None = None

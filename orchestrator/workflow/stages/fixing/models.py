@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from github.Issue import Issue
 
@@ -47,7 +47,7 @@ class _FixingFeedback:
 @dataclass(frozen=True)
 class _ParkedFixingDecision:
     stop: bool
-    replay_batch: Optional[list] = None
+    replay_batch: list | None = None
 
 
 @dataclass(frozen=True)
@@ -89,5 +89,5 @@ class _FixingResumeRun:
     worktree: Path
     dev_result: AgentResult
     paused: bool
-    before_sha: Optional[str]
-    after_sha: Optional[str]
+    before_sha: str | None
+    after_sha: str | None

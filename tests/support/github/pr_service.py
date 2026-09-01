@@ -3,7 +3,7 @@
 """Pull-request services for the in-memory GitHub client."""
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from typing import Iterable
 
 from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER
@@ -63,7 +63,7 @@ class _PullCreationService:
             pull_request.issue_comments.append(new_comment)
         return new_comment
 
-    def find_open_pr(self, *, branch: str, base: str) -> Optional[FakePR]:
+    def find_open_pr(self, *, branch: str, base: str) -> FakePR | None:
         return self.existing_open_pr.get(branch)
 
     def iter_open_prs(self) -> Iterable[FakePR]:
@@ -93,7 +93,7 @@ class _PullStatusService:
 
     def find_pr_for_commit(
         self, *, branch: str, base: str, head_sha: str,
-    ) -> Optional[FakePR]:
+    ) -> FakePR | None:
         """The PR on this branch carrying `head_sha`, whatever state it is in.
 
         Searched over every PR the fake holds rather than over the open-PR
@@ -142,7 +142,7 @@ class _PullStatusService:
         *,
         notice: str,
         marker: str,
-        carries_marker: Optional[bool] = None,
+        carries_marker: bool | None = None,
     ) -> bool:
         """Post one marked supersession notice and close an open PR.
 
@@ -185,7 +185,7 @@ class _PullStatusService:
 
     def _pr_carries(
         self, pr: FakePR, branch: str, head_sha: str,
-    ) -> Optional[bool]:
+    ) -> bool | None:
         """Whether one PR carries the commit, or None when it cannot be read."""
         if pr.head_branch != branch:
             return False
@@ -200,7 +200,7 @@ class _PullFeedbackService:
     def pr_conversation_comments_after(
         self,
         pr: FakePR,
-        after_id: Optional[int],
+        after_id: int | None,
     ) -> list[FakeComment]:
         comments = _comments_after(pr.issue_comments, after_id)
         comments.sort(key=lambda listed_comment: listed_comment.id)
@@ -209,7 +209,7 @@ class _PullFeedbackService:
     def pr_inline_comments_after(
         self,
         pr: FakePR,
-        after_id: Optional[int],
+        after_id: int | None,
     ) -> list[FakeComment]:
         comments = _comments_after(pr.review_comments, after_id)
         comments.sort(key=lambda listed_comment: listed_comment.id)
@@ -218,7 +218,7 @@ class _PullFeedbackService:
     def pr_reviews_after(
         self,
         pr: FakePR,
-        after_id: Optional[int],
+        after_id: int | None,
     ) -> list[FakePRReview]:
         return sorted(
             (
@@ -236,7 +236,7 @@ class _PullFeedbackService:
 
 def _comments_after(
     comments: Iterable[FakeComment],
-    after_id: Optional[int],
+    after_id: int | None,
 ) -> list[FakeComment]:
     return [
         comment

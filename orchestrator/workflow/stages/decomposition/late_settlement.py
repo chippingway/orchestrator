@@ -79,7 +79,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import Optional
 
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import pull_requests as _pull_requests
@@ -298,7 +297,7 @@ def _reconcile_single(
     )
 
 
-def _handed_back(context: _LateContext) -> Optional[_LateDisposition]:
+def _handed_back(context: _LateContext) -> _LateDisposition | None:
     """Record the exemption, hand the label on, and retire the cycle.
 
     Three requests in the one order a crash in them is safe in, with the
@@ -353,7 +352,7 @@ def _recorded_debt(context: _LateContext) -> None:
     )
 
 
-def _continued(context: _LateContext) -> Optional[_LateDisposition]:
+def _continued(context: _LateContext) -> _LateDisposition | None:
     """Publish where the verdict was measured, then hand the label on.
 
     Split from the exemption above it so each half is one crash-ordered
@@ -649,7 +648,7 @@ def _reconciled_publication(context: _LateContext) -> bool:
 
 
 def _reconciled_head(
-    context: _LateContext, observed: Optional[str], number: int,
+    context: _LateContext, observed: str | None, number: int,
 ) -> bool:
     """Prove the pull request is standing somewhere this verdict may act on.
 
@@ -788,7 +787,7 @@ def _unreconciled(context: _LateContext, message: str) -> bool:
     return False
 
 
-def _published(context: _LateContext) -> Optional[_LateDisposition]:
+def _published(context: _LateContext) -> _LateDisposition | None:
     """Say what was decided, and retire the generation that decided it.
 
     The two ledgers are the only thing carried across. An obligation the
@@ -856,7 +855,7 @@ def _reinstated(
     context: _LateContext,
     live: LateGeneration,
     retiring: _observations.RetiringCycle,
-) -> Optional[_LateDisposition]:
+) -> _LateDisposition | None:
     """Put back a cycle the retirement write dropped a moment too early.
 
     That write is a request like every other, so a poll can observe the close

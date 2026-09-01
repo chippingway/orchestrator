@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import logging
 from time import perf_counter
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from orchestrator.observability.analytics.query import connections
 from orchestrator.observability.dashboard import fanout, read_plan
@@ -76,7 +76,7 @@ def run_read_waves(
     *,
     st: Any,
     render_first_wave: Callable[[ReadResults], Any],
-) -> Optional[tuple[ReadResults, Any]]:
+) -> tuple[ReadResults, Any] | None:
     """Dispatch both read waves and merge their data."""
     with st.spinner(LOADING_INDICATOR_MESSAGE):
         read_results = dispatch_reads(

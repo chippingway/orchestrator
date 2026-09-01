@@ -22,7 +22,7 @@ operator looking for a path inside a tool command finds the run that ran it.
 
 from __future__ import annotations
 
-from typing import Callable, Optional, Sequence
+from typing import Callable, Sequence
 
 from orchestrator.observability.trajectory_viewer.filter_models import FilterOptions
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
@@ -69,12 +69,12 @@ def matches_query(run: TrajectoryRun, needle: str) -> bool:
 
 
 def normalize_filter_values(
-    selected_values: Optional[Sequence[str]],
-) -> Optional[frozenset[str]]:
+    selected_values: Sequence[str] | None,
+) -> frozenset[str] | None:
     return frozenset(selected_values) if selected_values else None
 
 
-def normalize_filter_query(query: Optional[str]) -> Optional[str]:
+def normalize_filter_query(query: str | None) -> str | None:
     if query is None:
         return None
     normalized_query = query.strip().lower()

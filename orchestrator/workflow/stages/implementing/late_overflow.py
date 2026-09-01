@@ -48,7 +48,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git.verification import probes as _verification_probes
@@ -336,8 +335,8 @@ class _PublicationReading:
     """
 
     state: str = ""
-    head: Optional[str] = None
-    refusal: Optional[_records._PublicationEntry] = None
+    head: str | None = None
+    refusal: _records._PublicationEntry | None = None
 
     def standing_head(
         self,

@@ -18,7 +18,6 @@ replied, the reply is the signal and the resume path owns the tick instead.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -94,7 +93,7 @@ def _recover_quiet_implementer_timeout(
 
 def _prepare_awaiting_dev_run(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
-) -> Optional[_models._PreparedDevRun]:
+) -> _models._PreparedDevRun | None:
     if _recover_quiet_implementer_timeout(gh, spec, issue, state):
         return None
     worktree = _worktree._ensure_resume_worktree(spec, issue, state)

@@ -151,7 +151,6 @@ import importlib
 import logging
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -523,7 +522,7 @@ def _split_began(state: PinnedState, generation: LateGeneration) -> bool:
     return bool(generation.consumers or generation.split_children)
 
 
-def _accounted_at(generation: LateGeneration) -> Optional[LatePhase]:
+def _accounted_at(generation: LateGeneration) -> LatePhase | None:
     """The boundary whose account of the consumers this ref is judged by.
 
     Ordinarily the phase the record stands at. A cancelled cycle is the one
@@ -1078,7 +1077,7 @@ def _consumer_scan(
     feeds is the same rule and may not learn a second shape to ask it in.
     """
     consumer_issues: dict[int, Issue] = {}
-    consumer_labels: dict[int, Optional[str]] = {}
+    consumer_labels: dict[int, str | None] = {}
     for consumer in generation.consumers:
         number = int(consumer)
         consumer_issue = _consumer_issue(gh, issue, number)
@@ -1093,7 +1092,7 @@ def _consumer_scan(
 
 def _consumer_issue(
     gh: GitHubClient, issue: Issue, consumer: int,
-) -> Optional[Issue]:
+) -> Issue | None:
     """Fetch one recorded consumer, or None when it could not be asked for."""
     try:
         return gh.get_issue(consumer)
@@ -1250,7 +1249,7 @@ def _reclaimed_one(
     generation: LateGeneration,
     kind: LateResourceKind,
     target: str,
-) -> Optional[LateGeneration]:
+) -> LateGeneration | None:
     """Settle one obligation, or None where this pass may not touch it.
 
     The branch is the one that can be refused here, and it is refused HERE
@@ -1483,7 +1482,7 @@ def _report(
     issue: Issue,
     settled: _Reclamation,
     *,
-    stage: Optional[str],
+    stage: str | None,
 ) -> None:
     """Say on both sinks what each attempted reclamation changed.
 
@@ -1520,7 +1519,7 @@ def _emit_cleanup(
     gh: GitHubClient,
     generation: LateGeneration,
     entry: LateResource,
-    stage: Optional[str],
+    stage: str | None,
 ) -> None:
     """Report what happened to one external resource, on both sinks."""
     if entry.resource_state == LateResourceState.FAILED:

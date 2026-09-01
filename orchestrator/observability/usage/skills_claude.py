@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from orchestrator.observability.usage import protocol
 
@@ -13,7 +13,7 @@ from orchestrator.observability.usage import protocol
 CONTENT_KEY = "content"
 
 
-def claude_skill_name(block: Any) -> Optional[str]:
+def claude_skill_name(block: Any) -> str | None:
     if not isinstance(block, dict):
         return None
     is_tool_use = block.get(protocol.TYPE) == "tool_use"

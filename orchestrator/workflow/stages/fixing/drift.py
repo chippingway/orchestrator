@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
@@ -50,7 +49,7 @@ def _stale_pr_head_reason(base_ref: str, pr_head: str, local_head: str) -> str:
 
 def _fixing_drift_reason(
     ctx: _models._FixingContext, wt: Path, base_ref: str,
-) -> Optional[str]:
+) -> str | None:
     """Classify how a clean parked `fixing` worktree has drifted from its PR,
     or return ``None`` when it is in sync (the transient park is the real
     blocker, not drift).

@@ -25,7 +25,7 @@ itself is gone.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 # Pinned to the name these lines were emitted under before this owner existed,
 # rather than derived from the module path: a logger name is an operator-facing
@@ -96,7 +96,7 @@ def is_broken_connection_exc(exc: BaseException) -> bool:
     to an `isinstance` check against the real psycopg classes when the driver
     is present.
     """
-    cause: Optional[BaseException]
+    cause: BaseException | None
     if isinstance(exc, AnalyticsReadError):
         cause = exc.__cause__
     else:

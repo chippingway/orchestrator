@@ -26,7 +26,6 @@ masking it here would swallow a real body edit that landed in the same window.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -152,7 +151,7 @@ class _ParkedContinueDecision:
 
 def _parked_continue_decision(
     gh: GitHubClient, issue: Issue, state: PinnedState,
-) -> Optional[_ParkedContinueDecision]:
+) -> _ParkedContinueDecision | None:
     if not state.get(_state._AWAITING_HUMAN):
         return None
     park_reason = state.get(_state._PARK_REASON)

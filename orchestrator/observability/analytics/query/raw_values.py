@@ -17,17 +17,17 @@ database for a result it already knows is empty.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 
-def int_or_none(raw: Any) -> Optional[int]:
+def int_or_none(raw: Any) -> int | None:
     """Narrow one column to an int, keeping a NULL as `None`."""
     if raw is None:
         return None
     return int(raw)
 
 
-def float_or_none(raw: Any) -> Optional[float]:
+def float_or_none(raw: Any) -> float | None:
     """Narrow one column to a float, keeping a NULL as `None`."""
     if raw is None:
         return None
@@ -41,14 +41,14 @@ def row_int(row: Sequence[Any], index: int) -> int:
     return int(row[index] or 0)
 
 
-def bool_or_none(raw: Any) -> Optional[bool]:
+def bool_or_none(raw: Any) -> bool | None:
     """Narrow one column to a bool, keeping a NULL as `None`."""
     if raw is None:
         return None
     return bool(raw)
 
 
-def empty_filter_selected(selection: Optional[Sequence[str]]) -> bool:
+def empty_filter_selected(selection: Sequence[str] | None) -> bool:
     """True when a multiselect was cleared rather than left unfiltered."""
     if selection is None:
         return False

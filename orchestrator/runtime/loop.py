@@ -13,7 +13,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import time
-from typing import Iterator, Optional
+from typing import Iterator
 
 from orchestrator import agents, config
 from orchestrator.runtime import self_update, ticks
@@ -38,7 +38,7 @@ def run_polling_loop(
     state: RuntimeState,
     clients: RepoClients,
     scheduler: IssueScheduler,
-) -> Optional[int]:
+) -> int | None:
     """Poll until signaled or a self-modifying merge requests restart."""
     own_sha = self_update.own_head_sha()
     log.info("own HEAD=%s", own_sha)
@@ -58,7 +58,7 @@ def drive_polling(
     options: PollingOptions,
     clients: RepoClients,
     scheduler: IssueScheduler,
-) -> Optional[int]:
+) -> int | None:
     """Choose one-shot or recurring polling from parsed options."""
     if options.once:
         ticks.run_tick(state, clients, scheduler)

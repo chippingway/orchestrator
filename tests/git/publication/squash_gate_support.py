@@ -16,7 +16,7 @@ that recorded whether anything went out and under what name.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from unittest import mock
 
@@ -70,7 +70,7 @@ class SquashRun:
         return self.outcome.success
 
     @property
-    def sha(self) -> Optional[str]:
+    def sha(self) -> str | None:
         return self.outcome.sha
 
     @property
@@ -78,7 +78,7 @@ class SquashRun:
         return self.outcome.count
 
     @property
-    def error(self) -> Optional[str]:
+    def error(self) -> str | None:
         return self.outcome.error
 
     @property

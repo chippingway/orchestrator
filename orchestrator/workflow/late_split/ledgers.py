@@ -25,7 +25,7 @@ owner's, because that is where a write is composed.
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split import payloads as _payloads
@@ -45,7 +45,7 @@ STATE_KEY = "state"
 # cannot rewrite, so the whole ledger is preserved instead.
 _ENTRY_KEYS = frozenset((KIND_KEY, TARGET_KEY, STATE_KEY))
 
-_Ledger = tuple[tuple[Any, ...], Optional[str]]
+_Ledger = tuple[tuple[Any, ...], str | None]
 
 
 def read_resources(raw: Any) -> _Ledger:
@@ -84,7 +84,7 @@ def read_consumers(raw: Any) -> _Ledger:
     return (typed, _verbatim(raw))
 
 
-def _verbatim(raw: Any) -> Optional[str]:
+def _verbatim(raw: Any) -> str | None:
     """Return one ledger field as stable JSON text, or None when absent.
 
     Absent is the one value with nothing to preserve. Everything else is kept
@@ -96,7 +96,7 @@ def _verbatim(raw: Any) -> Optional[str]:
     return json.dumps(raw, sort_keys=True, default=str)
 
 
-def _as_resource(entry: Any) -> Optional[LateResource]:
+def _as_resource(entry: Any) -> LateResource | None:
     """Return one ledger entry, or None unless it is exactly one of ours.
 
     Every field this binary writes, and no other: an entry carrying a state it

@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
 from github.Issue import Issue
 
@@ -111,7 +111,7 @@ class _DevResumeContext:
         return self.worktree, agent_result, False
 
     def _run_attempt(
-        self, *, fresh: bool, session_id: Optional[str],
+        self, *, fresh: bool, session_id: str | None,
     ) -> tuple[AgentResult, bool]:
         session = self.plan.session
         agent_result = _usage._run_agent_tracked(

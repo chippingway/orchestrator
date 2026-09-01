@@ -92,7 +92,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -257,7 +256,7 @@ def _adjudicate_late_generation(
 
 def _blocked_before_running(
     context: _LateContext,
-) -> Optional[_LateDisposition]:
+) -> _LateDisposition | None:
     """What stops this tick before any agent could run, if anything does.
 
     The owner read this generation still owes is asked ahead of every other
@@ -345,7 +344,7 @@ def _holds_the_objects(context: _LateContext) -> bool:
     return False
 
 
-def _absent_object(context: _LateContext, worktree: Path) -> Optional[str]:
+def _absent_object(context: _LateContext, worktree: Path) -> str | None:
     """Which end of the frozen pair this checkout cannot show, or None.
 
     Named rather than counted, because the two are repaired differently: a
@@ -446,7 +445,7 @@ def _has_frozen_evidence(context: _LateContext) -> bool:
 
 def _incomplete_evidence(
     generation: LateGeneration, issue_number: int,
-) -> Optional[str]:
+) -> str | None:
     """Why this generation may not be adjudicated here, or None if it may.
 
     The domain's own record gate answers the first part -- the identities a
@@ -622,7 +621,7 @@ def _settle(
 
 def _declined_run(
     context: _LateContext, agent_result: AgentResult, worktree: Path,
-) -> Optional[_LateAdjudicationRun]:
+) -> _LateAdjudicationRun | None:
     """The refusals a finished run earns before its reply is read at all.
 
     The mutation check sits ahead of the interruption refusal for the reason
@@ -656,7 +655,7 @@ def _declined_run(
 
 def _candidate_mutation(
     generation: LateGeneration, worktree: Path,
-) -> Optional[str]:
+) -> str | None:
     """The park a worktree the read-only agent changed earns, or None.
 
     Both halves are proved rather than assumed. HEAD has to still BE the

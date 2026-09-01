@@ -7,7 +7,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator import config
 
@@ -37,7 +37,7 @@ def build_event_record(
     repo: str,
     issue_number: int,
     event: str,
-    stage: Optional[str] = None,
+    stage: str | None = None,
     **extras: Any,
 ) -> dict:
     """Build a second-precision UTC audit record without null extras."""

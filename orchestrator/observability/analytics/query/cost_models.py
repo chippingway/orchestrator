@@ -12,7 +12,6 @@ than re-derived by every chart that plots one.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -73,7 +72,7 @@ class BackendEfficiencyRow:
     backend: str
     runs: int
     failed: int = 0
-    avg_duration_s: Optional[float] = None
+    avg_duration_s: float | None = None
     total_cost_usd: float = field(default_factory=float)
     total_input_tokens: int = 0
     total_output_tokens: int = 0

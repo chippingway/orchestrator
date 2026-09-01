@@ -15,10 +15,10 @@ where a token count belongs is a corrupt record, not a 1.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
-def coerce_int(raw_value: Any) -> Optional[int]:
+def coerce_int(raw_value: Any) -> int | None:
     if isinstance(raw_value, bool):
         return None
     if isinstance(raw_value, int):
@@ -31,7 +31,7 @@ def coerce_int(raw_value: Any) -> Optional[int]:
     return None
 
 
-def coerce_float(raw_value: Any) -> Optional[float]:
+def coerce_float(raw_value: Any) -> float | None:
     if isinstance(raw_value, bool):
         return None
     if isinstance(raw_value, (int, float)):

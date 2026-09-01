@@ -21,7 +21,7 @@ modules they are still initializing.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from orchestrator.workflow.state import (
     ControlLabel,
@@ -52,8 +52,8 @@ def tick(
     gh: GitHubClient,
     spec: config.RepoSpec,
     *,
-    global_semaphore: Optional[threading.BoundedSemaphore] = None,
-    scheduler: Optional[IssueScheduler] = None,
+    global_semaphore: threading.BoundedSemaphore | None = None,
+    scheduler: IssueScheduler | None = None,
 ) -> None:
     """Drive a single polling tick for one repo.
 

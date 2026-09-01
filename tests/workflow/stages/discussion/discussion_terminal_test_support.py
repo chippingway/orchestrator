@@ -22,7 +22,7 @@ from __future__ import annotations
 import contextlib
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 from orchestrator.workflow.stages.discussion import handler as _discussion
@@ -124,7 +124,7 @@ class _TerminalRun:
             and body.startswith(_RECEIPT_PREFIX)
         ]
 
-    def tracked_receipt_id(self) -> Optional[int]:
+    def tracked_receipt_id(self) -> int | None:
         """The id of the receipt comment, as the thread carries it."""
         for comment in self.issue.comments:
             if comment.body.startswith(_RECEIPT_PREFIX):

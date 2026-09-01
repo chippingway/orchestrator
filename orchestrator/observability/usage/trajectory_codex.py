@@ -31,7 +31,7 @@ such frame would otherwise share one.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from orchestrator.observability.usage import (
     protocol,
@@ -57,8 +57,8 @@ EXCLUDED_CLAIM = 1
 UNTYPED_CLAIM = 0
 
 
-def final_output(events: Iterable[dict[str, Any]]) -> Optional[str]:
-    final_text: Optional[str] = None
+def final_output(events: Iterable[dict[str, Any]]) -> str | None:
+    final_text: str | None = None
     for event in events:
         stream_item = event.get(protocol.ITEM_KEY)
         if not isinstance(stream_item, dict):
@@ -105,7 +105,7 @@ class ItemClaim:
 
 def frame_claim(
     stream_item: dict[str, Any],
-    payloads: Optional[codex_items.CodexItemPayloads],
+    payloads: codex_items.CodexItemPayloads | None,
 ) -> ItemClaim:
     """Read what one frame says about the item it reports under.
 

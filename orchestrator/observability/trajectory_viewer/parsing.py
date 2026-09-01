@@ -17,7 +17,7 @@ which is what lets a record written before the usage feature parse at all.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.trajectory_viewer import coercion, constants
 from orchestrator.observability.trajectory_viewer.models import (
@@ -28,7 +28,7 @@ from orchestrator.observability.trajectory_viewer.models import (
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
 
-def parse_step(raw_step: Any) -> Optional[TrajectoryStepView]:
+def parse_step(raw_step: Any) -> TrajectoryStepView | None:
     if not isinstance(raw_step, dict):
         return None
     kind = coercion.coerce_str(raw_step.get("kind"))
@@ -43,7 +43,7 @@ def parse_step(raw_step: Any) -> Optional[TrajectoryStepView]:
     )
 
 
-def parse_run_usage(raw_usage: Any) -> Optional[RunUsageView]:
+def parse_run_usage(raw_usage: Any) -> RunUsageView | None:
     if not isinstance(raw_usage, dict):
         return None
     return RunUsageView(
@@ -59,7 +59,7 @@ def parse_run_usage(raw_usage: Any) -> Optional[RunUsageView]:
     )
 
 
-def parse_turn(raw_turn: Any) -> Optional[TurnUsageView]:
+def parse_turn(raw_turn: Any) -> TurnUsageView | None:
     if not isinstance(raw_turn, dict):
         return None
     return TurnUsageView(
@@ -74,7 +74,7 @@ def parse_turn(raw_turn: Any) -> Optional[TurnUsageView]:
     )
 
 
-def parse_record(record_object: Any, *, sequence: int) -> Optional[TrajectoryRun]:
+def parse_record(record_object: Any, *, sequence: int) -> TrajectoryRun | None:
     if not isinstance(record_object, dict):
         return None
     if record_object.get("event") != constants.TRAJECTORY_EVENT:

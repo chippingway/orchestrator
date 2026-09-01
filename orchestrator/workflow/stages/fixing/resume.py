@@ -33,7 +33,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
@@ -75,7 +74,7 @@ def _fixing_debounce_open(
     if replay_batch is not None:
         return False
     now = datetime.now(timezone.utc)
-    latest_ts: Optional[datetime] = None
+    latest_ts: datetime | None = None
     for feedback_item in feedback.all_items:
         ts = _in_review_watermarks._comment_created_at(feedback_item)
         if ts is None:
@@ -201,7 +200,7 @@ def _fixing_ack_fast_path(
     wt: Path,
     feedback: _models._FixingFeedback,
     dev_result: AgentResult,
-    after_sha: Optional[str],
+    after_sha: str | None,
 ) -> bool:
     """In_review-route ACK fast path. Returns True (and relabels to
     `in_review`) when the dev's no-commit reply carried an explicit

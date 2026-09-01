@@ -27,7 +27,6 @@ from __future__ import annotations
 
 from dataclasses import replace as _replace
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -108,7 +107,7 @@ def _park_dev_fix_timeout(
 
 def _publishable_dev_fix(
     spec: config.RepoSpec, issue: Issue, state: PinnedState, run: _models._DevFixRun,
-) -> Optional[_models._DevFixRun]:
+) -> _models._DevFixRun | None:
     """The run a fix publishes, carrying the head it was decided on, or None.
 
     The head is read ONCE and travels on the answer, because the decision and

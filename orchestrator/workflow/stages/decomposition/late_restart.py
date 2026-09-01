@@ -99,7 +99,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from typing import Any, Optional
+from typing import Any
 
 from github.Issue import Issue
 
@@ -174,7 +174,7 @@ def _restarts(
     gh: GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     state: PinnedState,
 ) -> bool:
     """Whether this dispatch is one cancelled cycle's restart and nothing else.
@@ -256,7 +256,7 @@ def _identified(
 def _restartable(
     issue: Issue,
     state: PinnedState,
-    label: Optional[str],
+    label: str | None,
     generation: LateGeneration,
 ) -> bool:
     """Whether this issue's own record authorizes a fresh cycle right now.
@@ -631,7 +631,7 @@ def _restart_marker(issue_number: int, cycle_id: Any) -> str:
 
 def _notice_on_the_thread(
     gh: GitHubClient, issue: Issue, marker: str,
-) -> Optional[Any]:
+) -> Any | None:
     """This restart's own notice where the thread already carries it.
 
     The comment rather than the fact of it, because an adopted notice owes the

@@ -18,7 +18,7 @@ derives its context from.
 from __future__ import annotations
 
 import inspect
-from typing import Any, Optional
+from typing import Any
 
 from github.PullRequest import PullRequest
 
@@ -41,7 +41,7 @@ _SYNC_PR_SIGNATURE = inspect.Signature((
 
 
 def _publish_auto_rebase_from_pr(
-    context: _AutoRebaseContext, pr: PullRequest, consumed_comment_id: Optional[int],
+    context: _AutoRebaseContext, pr: PullRequest, consumed_comment_id: int | None,
 ) -> None:
     """Complete the recovery / rebase / publish phase for an opened PR."""
     recovery = eligibility._auto_rebase_recovery_decision(
