@@ -79,6 +79,10 @@ _READ_SEAM = "_recorded_obligations"
 
 _TARGET_FETCH_SEAM = "_authed_target_fetch"
 
+# The note read a refused deletion asks a second time, for the case about
+# that reading failing too.
+_NOTE_READ_SEAM = "_note_at"
+
 # The pull request that accounts for a commit no local read can measure, and
 # the clone it was pushed from.
 PR_NUMBER = 42
@@ -612,6 +616,31 @@ class RecordedPermissionTest(_ReclaimTestCase):
 
 class LedgerOwnershipTest(_ReclaimTestCase):
     """Which records a repository may read, and which it may take away."""
+
+    def test_a_note_nobody_could_reread_is_kept(self) -> None:
+        # A leased delete is refused for a note that moved and for one that
+        # has already gone alike, so a refusal is asked about a second time --
+        # and that reading can fail as readily as the first. Spent as an
+        # absence it would report a note still standing as one this host took
+        # away, which for an anchor is a commit nothing else names reported as
+        # a surface that came back clean.
+        tip = self.published()
+        obligations._record_obligation(self.spec, self.branch, tip)
+        rewritten = self.world.commit_on(self.clone, f"{self.branch}-again")
+        obligations._record_obligation(self.spec, self.branch, rewritten)
+
+        with patch.object(
+            obligations, _NOTE_READ_SEAM, return_value=None,
+        ):
+            taken = obligations._discharge_obligation(
+                self.spec, self.branch, tip,
+            )
+
+        self.assertFalse(taken)
+        self.assertEqual(
+            obligations._recorded_obligations(self.spec),
+            (ProvenTip(self.branch, rewritten),),
+        )
 
     def test_a_record_rewritten_since_is_not_taken(self) -> None:
         # The ledger is a store the per-issue checkouts share, so a record can

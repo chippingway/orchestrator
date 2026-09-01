@@ -97,6 +97,12 @@ _NOTE_SEAM = "_written_note"
 # The local git runner every case that stands in front of one patches.
 _HARDENED_SEAM = "_git_hardened"
 
+# The cleanliness read a case stands in front of, and the ref update the
+# racers in these cases run.
+_CLEAN_SEAM = "_clean_worktree"
+
+_UPDATE_REF = "update-ref"
+
 # Where a checkout is moved to for the case about a link left in its place.
 MOVED_CHECKOUT = "moved-checkout"
 
@@ -158,6 +164,32 @@ class _RacedCommit:
             "commit", "-q", "--allow-empty", "-m", RACED_MESSAGE, cwd=worktree,
         )
         self.made = _tip(worktree, "HEAD")
+        return ProbeAnswer.CONFIRMED
+
+
+class _MovedCheckout:
+    """A checkout renamed away and replaced by a link to where it went.
+
+    What `worktree remove` follows. It resolves the path it is handed and
+    deletes the REGISTERED tree at the far end, so once the registration has
+    been repaired to the new location a link left in the checkout's place has
+    the removal take a directory outside the tree this orchestrator owns --
+    and every reading in front of it follows the link and agrees.
+
+    Installed in place of one of those readings rather than raced against a
+    real process, so the swap lands in a named window instead of a likely one.
+    """
+
+    def __init__(self, worktree: Path, elsewhere: Path, clone: Path) -> None:
+        self.worktree = worktree
+        self.elsewhere = elsewhere
+        self._clone = clone
+
+    def __call__(self, *args, **options) -> ProbeAnswer:
+        """Move the tree, point the registration at it, and link it back."""
+        self.worktree.rename(self.elsewhere)
+        _run_git("worktree", "repair", str(self.elsewhere), cwd=self._clone)
+        self.worktree.symlink_to(self.elsewhere)
         return ProbeAnswer.CONFIRMED
 
 
@@ -529,25 +561,37 @@ class DivergentWorkTest(_ReclaimTestCase):
 
 
     def racing(self, spec, worktree, issue_number: int) -> bool:
-        """Pin the checkout, then commit where a racer would.
+        """Pin the checkout, then write where a racer would.
 
         Installed in place of the anchor write, which is the one step left
-        between the readings and the removal. What the locks taken around both
-        are for is that git refuses a commit tried here at all.
+        between the readings and the removal. Both ways a commit reaches this
+        tree are tried there: one through its own HEAD, and one through the
+        branch that HEAD resolves to -- which is a ref in the store the whole
+        clone shares and answerable to neither lock the tree keeps. What the
+        locks taken around all of it are for is that git refuses each of them.
         """
         anchored = self.anchoring(spec, worktree, issue_number)
+        self.moved = _ran_git(
+            self.clone, _UPDATE_REF, f"{_BRANCH_REFS}{self.branch}",
+            self.world.commit_on(self.clone, f"{self.branch}{RACED_BRANCH}"),
+        )
         self.raced = _ran_git(worktree, "checkout", "--detach") or _ran_git(
-            worktree, "commit", "--allow-empty", "-m", "raced",
+            worktree, "commit", "--allow-empty", "-m", RACED_MESSAGE,
         )
         return anchored
 
-    def test_a_commit_raced_after_the_anchor_fails(self) -> None:
+    def test_work_raced_after_the_anchor_fails(self) -> None:
         # The window the anchor cannot cover on its own: a commit landing
         # between the note and the removal would be pinned by neither, and a
-        # detached one is clean enough for a removal that does not force. Git
-        # will not let it land -- the two locks it takes before it moves a
-        # HEAD or writes an index are this pass's for the duration.
-        self.published()
+        # detached one is clean enough for a removal that does not force.
+        #
+        # Neither way in is open. Git takes `index.lock` and `HEAD.lock`
+        # before it moves a HEAD or writes an index, and it takes the branch's
+        # own lock before it writes that ref -- a checkout's HEAD is symbolic,
+        # so what it stands on is whatever the branch under it stands on, and
+        # that ref is reachable without going near the other two. All three
+        # are this pass's for the duration.
+        tip = self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
         self.anchoring = obligations._anchor_checkout
@@ -556,10 +600,12 @@ class DivergentWorkTest(_ReclaimTestCase):
             reclaimed = self.spend(cleared)
 
         self.assertNotEqual(self.raced, 0)
+        self.assertNotEqual(self.moved, 0)
         self.assertEqual(
             self.outcomes(reclaimed), _surfaces(CLEANED, CLEANED, CLEANED),
         )
         self.assertTrue(reclaimed.settled)
+        self.assertEqual(cleared.proven[0].sha, tip)
 
     def test_a_commit_raced_into_the_window_is_kept(self) -> None:
         # The lock this teardown holds is this process's own, and the agent or
@@ -573,7 +619,7 @@ class DivergentWorkTest(_ReclaimTestCase):
         cleared = self.verdict(worktree=worktree, branches=self.branches)
         racer = _RacedCommit()
 
-        with patch.object(evidence, "_clean_worktree", racer):
+        with patch.object(evidence, _CLEAN_SEAM, racer):
             reclaimed = self.spend(cleared)
 
         self.assertEqual(
@@ -617,7 +663,8 @@ class StepFailureTest(_ReclaimTestCase):
         tip = self.published()
         cleared = self.verdict()
         _run_git(
-            "update-ref", f"refs/heads/{BASE_BRANCH}", tip, cwd=self.clone,
+            _UPDATE_REF, f"{_BRANCH_REFS}{BASE_BRANCH}", tip,
+            cwd=self.clone,
         )
         _run_git(
             "symbolic-ref",
@@ -858,6 +905,74 @@ class LateChangeTest(_ReclaimTestCase):
         )
 
 
+class MovedCheckoutTest(_ReclaimTestCase):
+    """A path that stops being the tree it named, at two different moments.
+
+    `worktree remove` takes a path and resolves it, so what the removal
+    destroys is wherever the path leads rather than the path itself. Both
+    cases below move the tree away and leave a link behind; what separates
+    them is which side of the last reading the swap lands on.
+    """
+
+    def swapping(self, worktree: Path) -> _MovedCheckout:
+        """The swap, ready to stand in for whichever reading a case names."""
+        return _MovedCheckout(
+            worktree, self.world.path(MOVED_CHECKOUT), self.clone,
+        )
+
+    def removing(self, *args: str, **options):
+        """Swap the tree away in the one window no reading can close.
+
+        Installed in place of the local git runner and acting on the removal
+        itself: what is left between the last reading and the command is the
+        command's own argument, which the command resolves for itself.
+        """
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            self.moved()
+        return self.hardened(*args, **options)
+
+    def test_a_tree_moved_before_the_read_is_kept(self) -> None:
+        # The window the early type check leaves open: everything from that
+        # check to the removal, which is where a rename, a repair, and a link
+        # fit comfortably. Retaken one process before the removal, the reading
+        # is about where the path leads rather than how it is spelled -- and a
+        # link answers a directory this pass was never asked about.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        moved = self.swapping(worktree)
+
+        with patch.object(evidence, _CLEAN_SEAM, moved):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertTrue(moved.elsewhere.is_dir())
+        self.assertTrue(worktree.is_symlink())
+
+    def test_a_tree_moved_at_the_last_moment_is_told(self) -> None:
+        # The window no reading can close, since the removal resolves its own
+        # argument. What is left is not to lie about it: a path still standing
+        # once the command came back clean is a path whose tree was not what
+        # came down, and a surface reported cleaned over one would settle the
+        # issue and leave whatever is there named by nothing.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.moved = self.swapping(worktree)
+        self.hardened = commands._git_hardened
+
+        with patch.object(commands, _HARDENED_SEAM, self.removing):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertFalse(reclaimed.settled)
+        self.assertTrue(worktree.is_symlink())
+
+
 class AnchorReconciliationTest(_ReclaimTestCase):
     """What becomes of the commit a removal pinned, on this pass and after.
 
@@ -899,7 +1014,7 @@ class AnchorReconciliationTest(_ReclaimTestCase):
             self.repointed = self.world.commit_on(
                 self.clone, f"{self.branch}{RACED_BRANCH}",
             )
-            _run_git("update-ref", ref, self.repointed, cwd=self.clone)
+            _run_git(_UPDATE_REF, ref, self.repointed, cwd=self.clone)
         return anchored
 
     def test_an_anchor_moved_since_the_read_is_kept(self) -> None:
@@ -968,7 +1083,7 @@ class AnchorReconciliationTest(_ReclaimTestCase):
         self.stuck(worktree)
         racer = _RacedCommit()
 
-        with patch.object(evidence, "_clean_worktree", racer):
+        with patch.object(evidence, _CLEAN_SEAM, racer):
             reclaimed = self.spend(cleared)
 
         self.assertEqual(
@@ -991,7 +1106,7 @@ class AnchorReconciliationTest(_ReclaimTestCase):
         cleared = self.verdict(worktree=worktree, branches=self.branches)
         racer = _RacedCommit()
 
-        with patch.object(evidence, "_clean_worktree", racer):
+        with patch.object(evidence, _CLEAN_SEAM, racer):
             self.spend(cleared)
 
         for candidate in eligibility._classified_candidates(
@@ -1071,7 +1186,7 @@ class ReconciliationTest(_ReclaimTestCase):
         )
         _ran_git(
             self.clone,
-            "update-ref",
+            _UPDATE_REF,
             obligations._anchor_ref(self.spec, ISSUE_NUMBER),
             stranded,
         )

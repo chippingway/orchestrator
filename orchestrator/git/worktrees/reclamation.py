@@ -89,6 +89,8 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
+import subprocess
 from collections.abc import Mapping
 from itertools import chain
 from pathlib import Path
@@ -163,6 +165,12 @@ _GIT_NOT_SYMBOLIC = 1
 # fails outright while they are ours, so the commit this pass measured is the
 # commit the removal takes.
 _CHECKOUT_LOCKS = ("index.lock", "HEAD.lock")
+
+# What git calls the lock file it takes before it writes one ref, appended to
+# the ref's own path under the store the clone shares. Held for the branch a
+# checkout's HEAD is on, it is what stops that branch moving under the anchor
+# -- an `update-ref` on it answers to neither of the two above.
+_REF_LOCK = ".lock"
 
 # What a branch nobody cleared a commit for is left with, in the two answers
 # the ledger gives. Said apart because an operator reading the line has to be
@@ -364,13 +372,19 @@ def _anchored_removal(
     `index.lock` and `HEAD.lock` this process holds is one no `commit`,
     `checkout`, `reset`, or `update-ref HEAD` can run in: git takes those two
     before it moves a HEAD or writes an index, and it does not queue for them.
-    So the commit the anchor pinned is the commit the removal takes.
+
+    Those two are about the tree's own HEAD, and a checkout's HEAD is a
+    symbolic ref: what it stands on is whatever the branch under it stands on,
+    and an `update-ref refs/heads/<branch>` moves that without going near
+    either lock. So the lock git takes for the branch itself is held too, and
+    it is the one that makes the sentence above true -- with it, the commit
+    the anchor pinned is the commit the removal takes.
     """
     gitdir = _checkout_gitdir(artifacts, worktree)
     if gitdir is None:
         return SurfaceOutcome.FAILED
     with contextlib.ExitStack() as holding:
-        held = _held_still(artifacts, gitdir)
+        held = _held_still(artifacts, worktree, gitdir)
         if not held:
             return SurfaceOutcome.FAILED
         holding.callback(_let_go, held)
@@ -402,7 +416,7 @@ def _checkout_gitdir(
 
 
 def _held_still(
-    artifacts: IssueArtifacts, gitdir: Path,
+    artifacts: IssueArtifacts, worktree: Path, gitdir: Path,
 ) -> tuple[Path, ...]:
     """Take git's own locks for one checkout, or come back with none.
 
@@ -414,11 +428,13 @@ def _held_still(
     Only what was actually taken is reported, so what is given back afterwards
     is only ever this process's own.
     """
+    locked = _checkout_locks(artifacts, worktree, gitdir)
+    if locked is None:
+        return ()
     taken: list[Path] = []
-    for lock_name in _CHECKOUT_LOCKS:
-        lock = gitdir / lock_name
+    for lock in locked:
         try:
-            lock.touch(exist_ok=False)
+            _taken_exclusively(lock)
         except OSError as busy:
             log.warning(
                 "issue=#%d keeping the checkout: %s is already held (%s)",
@@ -428,6 +444,62 @@ def _held_still(
             return ()
         taken.append(lock)
     return tuple(taken)
+
+
+def _taken_exclusively(lock: Path) -> None:
+    """Create one lock file for this process alone, room for it and all.
+
+    The room is made because a ref that has been packed away leaves none: the
+    loose file under `refs/heads/` is what `pack-refs` removes, and the
+    directories above it go with it. Git makes the same room when it takes
+    the same lock, and an empty one it finds instead is one it prunes.
+    """
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.touch(exist_ok=False)
+
+
+def _checkout_locks(
+    artifacts: IssueArtifacts, worktree: Path, gitdir: Path,
+) -> tuple[Path, ...] | None:
+    """Every lock file that has to be this process's for one removal.
+
+    The checkout's own two, and the one git takes for the branch its HEAD is
+    on. That third one is what the first two do not cover: they are files in
+    the tree's own git directory and they stop the commands that move a HEAD,
+    while the branch under that HEAD lives in the store the whole clone
+    shares and an `update-ref` on it is answerable to neither.
+
+    The branch is named from the tree rather than from the candidate, because
+    what has to be frozen is what this HEAD resolves through -- and the store
+    is the clone's common directory, since a linked worktree keeps only
+    `HEAD`, `refs/bisect/`, and `refs/worktree/` of its own.
+
+    A HEAD on no branch needs no third lock and gets none. What it holds is
+    the commit itself rather than a name resolving to one, and the two above
+    are exactly what a `checkout`, a `reset`, or an `update-ref HEAD` has to
+    take to move it -- so there is nothing under it left to freeze.
+
+    `None` when a HEAD that IS on something could not be read, or when the
+    store it lives in could not be named. Either way the removal stops: a pass
+    that cannot say what the tree is standing on cannot hold it still, and a
+    removal held still in part is one whose anchor promises more than it can
+    keep.
+    """
+    checkout_locks = tuple(
+        gitdir / lock_name for lock_name in _CHECKOUT_LOCKS
+    )
+    on_branch, branch = evidence._head_ref(worktree)
+    if on_branch is ProbeAnswer.REFUTED:
+        return checkout_locks
+    common = evidence._common_git_dir(artifacts.spec.target_root)
+    if on_branch is ProbeAnswer.UNREADABLE or common is None:
+        log.warning(
+            "issue=#%d keeping the checkout %s: the ref it is standing on "
+            "could not be named, so it cannot be held still",
+            artifacts.issue_number, worktree,
+        )
+        return None
+    return (*checkout_locks, common / f"{_branch_ref(branch)}{_REF_LOCK}")
 
 
 def _let_go(held: tuple[Path, ...]) -> None:
@@ -463,24 +535,145 @@ def _removal_while_held(
     spec = artifacts.spec
     if not _anchor_taken(artifacts, worktree, proven_sha):
         return SurfaceOutcome.FAILED
+    if not _ready_to_go(artifacts, worktree):
+        return _anchor_settled(artifacts, proven_sha, removed=False)
+    removed = commands._git_hardened(
+        "worktree", "remove", str(worktree), cwd=spec.target_root,
+    )
+    return _anchor_settled(
+        artifacts, proven_sha,
+        removed=_came_down(artifacts, worktree, removed),
+    )
+
+
+def _ready_to_go(artifacts: IssueArtifacts, worktree: Path) -> bool:
+    """The two readings retaken one process before the removal.
+
+    Both are ones git does not make for itself, which is the whole of why
+    they are here rather than back with the others. It refuses a tree with
+    untracked or modified files in it and takes an ignored one without a
+    word; and it resolves the path it is handed rather than insisting that
+    the path IS the tree.
+
+    Everything else behind this step is covered without being asked again.
+    Whose repository it is and which branch its HEAD is on cannot change
+    while the locks are this process's, and what that branch is standing on
+    is read back against the anchor once the removal has run.
+    """
+    if not _still_ours(artifacts, worktree):
+        return False
     if evidence._nothing_ignored(worktree) is not ProbeAnswer.CONFIRMED:
         log.warning(
             "issue=#%d keeping %s: something its own ignore rules cover "
             "arrived while it was being taken down",
             artifacts.issue_number, worktree,
         )
-        return _anchor_settled(artifacts, proven_sha, removed=False)
-    removed = commands._git_hardened(
-        "worktree", "remove", str(worktree), cwd=spec.target_root,
+        return False
+    return True
+
+
+def _still_ours(artifacts: IssueArtifacts, worktree: Path) -> bool:
+    """Whether the path about to be handed to git is still this checkout.
+
+    The type first, as the scan reads it: anything at that path which is not a
+    directory of its own is a name standing for a tree somewhere else, and
+    handing one to a command that resolves what it is given is how a directory
+    outside the tree this orchestrator owns comes down.
+
+    Then where the path actually leads, because the type alone does not say.
+    A checkout renamed away, its registration repaired to where it went, and a
+    link left in its place is a path whose every reading before this answers
+    about the tree at the far end -- and the removal would take that one.
+    """
+    if _checkout_present(worktree) is not ProbeAnswer.CONFIRMED:
+        log.warning(
+            "issue=#%d keeping %s: what is at that path is no longer a "
+            "checkout this may take down", artifacts.issue_number, worktree,
+        )
+        return False
+    return _same_place(artifacts, worktree)
+
+
+def _same_place(artifacts: IssueArtifacts, worktree: Path) -> bool:
+    """Whether the tree this path leads to is the tree this path is.
+
+    Asked of git from inside the path, since what the removal turns on is
+    where the path leads rather than how it is spelled -- and compared as
+    filesystem objects rather than as spellings, because the two differ
+    honestly all the time. An operator whose worktrees root sits under a link
+    of their own has every checkout answering a resolved path that is not the
+    one derived here, and it is the same directory; a link left in a
+    checkout's place answers a directory somewhere else entirely.
+    """
+    located = commands._git_hardened(
+        "rev-parse", "--show-toplevel", cwd=worktree,
     )
+    named = (located.stdout or "").strip()
+    if located.returncode != 0 or not named:
+        log.warning(
+            "issue=#%d keeping %s: it would not say which tree it leads to "
+            "(%s)",
+            artifacts.issue_number, worktree, (located.stderr or "").strip(),
+        )
+        return False
+    if _one_directory(worktree, Path(named)):
+        return True
+    log.warning(
+        "issue=#%d keeping %s: it leads to %s, which is not the tree this "
+        "path is", artifacts.issue_number, worktree, named,
+    )
+    return False
+
+
+def _one_directory(worktree: Path, located: Path) -> bool:
+    """Whether two paths name one and the same directory on this host.
+
+    The near one is read with `lstat` and the far one without: what is being
+    told apart is a path that IS the tree from a path that merely leads to
+    it, and following the first would answer the same for both.
+    """
+    try:
+        return _same_object(worktree.lstat(), located.stat())
+    except OSError as read_error:
+        log.warning(
+            "%s and %s could not be compared: %s",
+            worktree, located, read_error,
+        )
+        return False
+
+
+def _same_object(here: os.stat_result, there: os.stat_result) -> bool:
+    """Whether two readings landed on one object, device and all."""
+    return (here.st_dev, here.st_ino) == (there.st_dev, there.st_ino)
+
+
+def _came_down(
+    artifacts: IssueArtifacts,
+    worktree: Path,
+    removed: subprocess.CompletedProcess,
+) -> bool:
+    """Whether the path this named is gone, whatever the command answered.
+
+    The last word on a step whose one argument is a path git resolves for
+    itself. A removal reporting success over a path that is still standing
+    took something else down, and a surface reported cleaned over one would
+    have the branch beside it deleted and the issue settled -- with whatever
+    is still at that path never named by this host again.
+    """
     if removed.returncode != 0:
         log.warning(
             "issue=#%d worktree remove of %s failed: %s",
             artifacts.issue_number, worktree, (removed.stderr or "").strip(),
         )
-    return _anchor_settled(
-        artifacts, proven_sha, removed=removed.returncode == 0,
+        return False
+    if _checkout_present(worktree) is ProbeAnswer.REFUTED:
+        return True
+    log.error(
+        "issue=#%d worktree remove came back clean and %s is still there: "
+        "what came down was not what this named",
+        artifacts.issue_number, worktree,
     )
+    return False
 
 
 def _anchor_taken(

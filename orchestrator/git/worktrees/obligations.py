@@ -141,6 +141,11 @@ _REMINDER_MARK = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 # An anchor is read before it is written, so the ordinary reading is this one.
 _GIT_NO_SUCH_REF = 1
 
+# What a note read answers with for a name nothing is at, as against the
+# `None` a read that established nothing answers with. Spelled once, because
+# the whole point of the pair is that a caller can tell them apart.
+_NO_NOTE = ""
+
 # What keeps a write to a record from travelling somewhere else. The ref store
 # these live in is one the per-issue checkouts share, so a record can be made
 # a symbolic ref pointing anywhere -- and every update-ref that does not say
@@ -310,6 +315,12 @@ def _dropped_note(spec: config.RepoSpec, ref: str, expected: str) -> bool:
     for one that moved, and the first of those is this deletion having
     happened. So a refusal is asked about once more, and a name nothing
     resolves is the success it looks like from every other angle.
+
+    That second reading has to be the ref genuinely not being there, which is
+    why it is the answer rather than the value that decides. A read that
+    failed says nothing at all, and spent as an absence it would report a note
+    still standing as one this pass took away -- and an anchor still holding
+    somebody's commit as a surface that came back clean.
     """
     try:
         with locks._target_root_lock(spec.target_root):
@@ -319,7 +330,7 @@ def _dropped_note(spec: config.RepoSpec, ref: str, expected: str) -> bool:
             )
             if dropped.returncode == 0:
                 return True
-            gone = not _note_at(spec, ref)
+            gone = _note_at(spec, ref) == _NO_NOTE
     except Exception:
         log.exception("%s could not be taken away", ref)
         return False
@@ -386,22 +397,30 @@ def _anchor_checkout(
 
 
 def _anchored_commit(spec: config.RepoSpec, issue_number: int) -> str:
-    """The commit one issue's anchor pinned, or "" when nobody could say."""
-    return _note_at(spec, _anchor_ref(spec, issue_number))
+    """The commit one issue's anchor pinned, or "" when nobody could say.
+
+    The two negatives the read below keeps apart arrive here as one, because
+    this caller spends them the same way: what it has to establish is that the
+    commit taken with the checkout is the one that was cleared, and neither a
+    note that is not there nor a read that failed establishes it.
+    """
+    return _note_at(spec, _anchor_ref(spec, issue_number)) or ""
 
 
-def _note_at(spec: config.RepoSpec, ref: str) -> str:
-    """What one note in this clone stands at, or "" when nobody could say.
+def _note_at(spec: config.RepoSpec, ref: str) -> str | None:
+    """What one note in this clone stands at, in three answers.
 
-    The empty string covers both a note that is not there and a read that
-    failed, because a caller spends them the same way: what it has to
-    establish is that the note it is about to act on is the one it read, and
-    neither answer establishes it.
+    The object id when the note is there, `_NO_NOTE` when it is not, and
+    `None` when nobody could say. The last two are worth telling apart for the
+    caller that asks after a deletion it could not run: only the ref genuinely
+    being gone is that deletion having happened, and a read that failed spent
+    as an absence would report a note still standing as one this host took
+    away.
 
-    Only the second is reported. An issue with no anchor is what every removal
-    that has not started yet looks like -- the read runs before the write, so
-    the note it is looking for is the one about to be made -- and a line on
-    each of those would bury the one about a note nobody could read.
+    Only the failure is reported. An issue with no anchor is what every
+    removal that has not started yet looks like -- the read runs before the
+    write, so the note it is looking for is the one about to be made -- and a
+    line on each of those would bury the one about a note nobody could read.
 
     The lock is re-entrant, so the leased deletion that reads a ref back after
     a refusal pays nothing for asking inside the lock it already holds -- and
@@ -416,14 +435,14 @@ def _note_at(spec: config.RepoSpec, ref: str) -> str:
             )
     except Exception:
         log.exception("%s could not be read", ref)
-        return ""
+        return None
     if resolved.returncode == _GIT_NO_SUCH_REF:
-        return ""
+        return _NO_NOTE
     if resolved.returncode != 0:
         log.warning(
             "%s did not resolve: %s", ref, (resolved.stderr or "").strip(),
         )
-        return ""
+        return None
     return (resolved.stdout or "").strip()
 
 

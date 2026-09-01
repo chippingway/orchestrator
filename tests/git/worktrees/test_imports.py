@@ -153,13 +153,18 @@ _OWNER_ONLY_NAMES = (
 # carries when nothing was cleared and the reminder written at it, the
 # read-back and the parse beneath it, the discharge, and the anchor a removal
 # pins what it is about to take under -- its namespace, its ref, its write,
-# its read-back and the resolution under it, the status a read of one that is
+# its read-back and the three-answer resolution under it -- the value a name
+# nothing is at comes back as among them -- the status a read of one that is
 # not there answers with, its
 # discard, the room it opens and the segment it names an issue by, the lease
 # that only ever creates one, and the
-# git directory, locks, and held removal that keep a checkout still while it
-# comes down, with the take, the discard, and the reconciliation of a note an
-# earlier pass left standing --
+# git directory, the locks that keep a checkout still while it comes down --
+# its own two and the one git takes for the branch under its HEAD -- the
+# exclusive creation each is taken by, the held removal itself, the readings
+# retaken one process before it and the comparison telling a path that IS a
+# tree from one that merely leads to it, the last word on whether the path
+# named is gone, and the take, the discard, and the reconciliation of a note
+# an earlier pass left standing --
 # and the second reading a refused branch deletion is told apart by. Naming
 # the whole surface makes a helper added to an owner an edit here rather than
 # a definition site nothing checks.
@@ -201,6 +206,7 @@ _OWNER_DEFINED = (
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
+    ("_NO_NOTE", obligations),
     ("_NO_DEREF", obligations),
     ("_NO_DEREF", reclamation),
     ("_ON_BRANCH", reclamation),
@@ -211,6 +217,7 @@ _OWNER_DEFINED = (
     ("_RECORD_FORMAT", obligations),
     ("_REF_SEPARATOR", attribution),
     ("_REMINDER_MARK", obligations),
+    ("_REF_LOCK", reclamation),
     ("_REMOTE", reclamation),
     ("_REMOTE_STANDING", reclamation),
     ("_SAFE_CHAR", paths),
@@ -244,6 +251,7 @@ _OWNER_DEFINED = (
     ("_branch_retentions", eligibility),
     ("_branch_surfaces", reclamation),
     ("_branch_tip", eligibility),
+    ("_came_down", reclamation),
     ("_candidate_issue_branches", recovery),
     ("_carries_commit", evidence),
     ("_carrying_pull_request", claims),
@@ -251,6 +259,7 @@ _OWNER_DEFINED = (
     ("_checkout_gitdir", reclamation),
     ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
+    ("_checkout_locks", reclamation),
     ("_checkout_present", reclamation),
     ("_checkout_reason", eligibility),
     ("_checkout_retentions", eligibility),
@@ -305,6 +314,7 @@ _OWNER_DEFINED = (
     ("_nothing_ignored", evidence),
     ("_note_at", obligations),
     ("_obligation_ref", obligations),
+    ("_one_directory", reclamation),
     ("_open_pull_request_retentions", claims),
     ("_owed_issue", reclamation),
     ("_parsed_records", obligations),
@@ -315,6 +325,7 @@ _OWNER_DEFINED = (
     ("_put_back", reclamation),
     ("_read_notes", obligations),
     ("_read_state", claims),
+    ("_ready_to_go", reclamation),
     ("_reclaim_artifacts", reclamation),
     ("_reclaim_recorded_notes", reclamation),
     ("_reclaimed_anchor", reclamation),
@@ -353,6 +364,8 @@ _OWNER_DEFINED = (
     ("_run_decompose_worktree_removal", decomposition),
     ("_run_issue_worktree_removal", cleanup),
     ("_run_local_branch_deletion", cleanup),
+    ("_same_object", reclamation),
+    ("_same_place", reclamation),
     ("_sanitize_branch_segment", paths),
     ("_sanitize_slug", paths),
     ("_shared_repository", evidence),
@@ -364,7 +377,9 @@ _OWNER_DEFINED = (
     ("_standing_on", reclamation),
     ("_still_cleared", reclamation),
     ("_stranded", reclamation),
+    ("_still_ours", reclamation),
     ("_symbolic_branch", reclamation),
+    ("_taken_exclusively", reclamation),
     ("_terminal_retentions", claims),
     ("_tip_retentions", eligibility),
     ("_unmoved", reclamation),

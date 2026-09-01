@@ -360,7 +360,10 @@ orchestrator/
                         and still on the commit that was cleared before a `worktree remove` that does not force,
                         which runs with git's own `index.lock` and `HEAD.lock` for that checkout held -- no
                         `commit`, `checkout`, `reset`, or `update-ref HEAD` can run in a tree while they are
-                        this pass's, which is what makes the reading before the removal hold -- and with that
+                        this pass's, which is what makes the reading before the removal hold -- and with the
+                        lock git takes for the branch that checkout's HEAD is on held too, a HEAD being a
+                        symbolic ref and an `update-ref` on the branch under it moving what the tree stands on
+                        without going near either of the other two -- and with that
                         checkout's HEAD pinned to an anchor one process before it and read back one process
                         after: a commit made before the locks went on comes down with the checkout, and the
                         anchor is what keeps it nameable and has the surface report the removal as the failure
@@ -375,7 +378,14 @@ orchestrator/
                         between the note and the removal, last of everything: git's own locks stop a commit in
                         that tree and stop nothing from writing in it, and an ignored file is what `worktree
                         remove` takes without a word — so a reading from before the note would delete a secret
-                        that landed after it. The note is measured the same way whatever
+                        that landed after it. Where the path leads is read there too, and for the same kind of
+                        reason: the command resolves its own argument, so a checkout renamed away with its
+                        registration repaired and a link left in its place would have it take a directory
+                        outside the tree this orchestrator owns. The two are compared as filesystem objects
+                        rather than as spellings, an operator whose worktrees root sits under a link of their
+                        own having every checkout answer a resolved path that is not the derived one. And a
+                        removal that came back clean over a path still standing is reported as the failure it
+                        is, since what came down was not what this named. The note is measured the same way whatever
                         the removal answered, since `worktree remove` deletes the tree and then deletes the
                         administrative directory beside it whatever the first half did: a non-zero result is not
                         a checkout still standing, and letting the note go over one would take the last name a
@@ -465,7 +475,13 @@ orchestrator/
                         artifact scan does not read one as a candidate of its own, and outside the snapshot
                         namespace, which is published. Written and taken away without dereferencing, since a
                         record pointed at somebody's branch would otherwise have this host's note to itself land
-                        on that branch or take it away. The repository key is the branch namespace's readable
+                        on that branch or take it away — and taken away only under the value the caller read
+                        there, since each of these is read before it is acted on and a note repointed in that
+                        window is holding a commit nothing else names. A leased delete is refused for a ref
+                        that has already gone as squarely as for one that moved, so a refusal is asked about
+                        once more and a name nothing resolves is the success it looks like — the ref genuinely
+                        not being there, which is why that read answers in three and not two: one that failed
+                        spent as an absence would report a note still standing as one this host took away. The repository key is the branch namespace's readable
                         segment plus a digest of the untransformed slug, and the digest is the half that
                         matters: two entries sharing a clone derive one legacy branch name, which is why a
                         ledger keyed on the branch alone would send one entry's deletion to the other's remote
