@@ -269,8 +269,8 @@ orchestrator/
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
-                        and the branches beside them name, and the classification of which of those may be
-                        reclaimed
+                        and the branches beside them name, the classification of which of those may be
+                        reclaimed, and the teardown that takes the cleared ones down
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
                         resolution, the exact set of names one issue's branch can be published under, and the
                         `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
@@ -286,7 +286,10 @@ orchestrator/
       models.py         one issue's local artifacts and the whole answer a scan gives -- the issues it attributed
                         beside the repositories it will not answer for -- plus what a classification over them
                         says: the three answers a fail-closed read has, the ref reading that carries a commit
-                        with them, and the reasons, subjects, and verdict a retained candidate is reported as
+                        with them, the reasons, subjects, and verdict a retained candidate is reported as, and
+                        the commits an eligible one hands over as cleared. Then what the teardown answers with:
+                        the three surfaces an artifact lives on, the cleaned / absent / failed one step leaves,
+                        and the whole per-surface record a caller reads a partly-finished reclamation off
       probes.py         the two local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
                         per-issue checkout directories -- a real directory under the exact name, never a symlink
                         into a tree the creators never wrote, read through the `lstat` that reports what the
@@ -333,6 +336,17 @@ orchestrator/
                         proof the remote is asked before the base ancestry can release anything, since a merged
                         tip can still sit under a branch the remote has been pushed past. Reported as one verdict
                         per candidate carrying every reason it is kept for
+      reclamation.py    the destructive step, and the only writer in the artifact domain: an eligible verdict is
+                        spent, never re-derived, and everything it established is established again at the
+                        boundary it is about to be spent at -- the checkout still this issue's own, still clean,
+                        and still on the commit that was cleared before a `worktree remove` that does not force,
+                        the local branch deleted through an `update-ref -d` naming the old value, and the remote
+                        branch through the same lease-pinned delete the snapshot namespace is reclaimed under.
+                        Ownership is re-derived for every ref, so only the two names this issue publishes under
+                        and the one path its creators derive can be touched. Already-absent is success; the
+                        checkout comes down before the branch it is on, and the remote branch before the local
+                        one, since the local artifacts are what the scan finds a half-finished teardown back by
+                        -- which is the whole of the retry, no failure being remembered anywhere else
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends
@@ -368,6 +382,10 @@ off a facade:
   `authentication` for the one question a local ref may not answer — what the remote says a branch is at;
   `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
   disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
+  `reclamation` is where that changes: it calls `evidence` for the readings it takes again at the boundary, `paths`
+  for the two branch names and the one checkout path a teardown for an issue may touch, `commands` and `locks` for the
+  removal and the ref delete, and `authentication` for the lease-pinned delete on the remote. It reaches neither
+  `eligibility` nor GitHub -- the verdict it is handed is the whole of the permission.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,

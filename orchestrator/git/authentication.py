@@ -19,8 +19,10 @@ What differs is the lease: a branch push may look the remote up for itself,
 because a branch is a moving thing whose current tip is the honest expectation,
 while a ref update here states what the caller established was there and has
 no form that overwrites whatever it finds. What policy that serves -- which
-namespace, and what an existing ref at another commit means -- belongs to
-`git/snapshots/`, which is the only caller.
+namespace or branch, and what a ref at another commit means -- belongs to the
+callers: `git/snapshots/` for the immutable namespace a superseded candidate
+is preserved under, and `git/worktrees/reclamation.py` for the branch a
+finished issue leaves behind.
 """
 from __future__ import annotations
 

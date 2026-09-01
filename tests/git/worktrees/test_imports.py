@@ -12,9 +12,9 @@ from importlib.util import find_spec
 
 from orchestrator.git import worktrees as _worktrees_package
 
-# The artifact scan's own owners and the classification over it, named apart
-# from the lifecycle ones above because that is the split the map draws: these
-# seven are read-only.
+# Every owner the package defines: the worktree lifecycle ones, the read-only
+# scan and the classification over it, and the teardown that spends one of
+# that classification's verdicts -- which is the only one of them that writes.
 from orchestrator.git.worktrees import (
     attribution,
     claims,
@@ -27,6 +27,7 @@ from orchestrator.git.worktrees import (
     models,
     paths,
     probes,
+    reclamation,
     recovery,
     terminal,
 )
@@ -58,6 +59,7 @@ _MODULES = (
     "orchestrator.git.worktrees.models",
     "orchestrator.git.worktrees.paths",
     "orchestrator.git.worktrees.probes",
+    "orchestrator.git.worktrees.reclamation",
     "orchestrator.git.worktrees.recovery",
     "orchestrator.git.worktrees.terminal",
 )
@@ -78,6 +80,7 @@ _FLAT_MODULES = (
 # it, never on the package itself.
 _OWNER_ONLY_NAMES = (
     "ArtifactInventory",
+    "ArtifactReclamation",
     "ArtifactVerdict",
     "IssueArtifacts",
     "RetentionReason",
@@ -89,6 +92,7 @@ _OWNER_ONLY_NAMES = (
     "_ensure_worktree",
     "_decompose_worktree_path",
     "_local_issue_inventory",
+    "_reclaim_artifacts",
     "_remove_issue_worktree",
     "_resolve_branch_name",
     "_sanitize_slug",
@@ -114,11 +118,17 @@ _OWNER_ONLY_NAMES = (
 # and the two records a verdict is made of, the six fail-closed reads and the
 # two runners under them, the issue, pinned-state, and pull-request reads
 # GitHub answers with and the boundaries around each of them, and the
-# composition that turns both into one verdict per candidate. Naming the
-# whole surface makes a helper added to an owner an edit here rather than a
-# definition site nothing checks.
+# composition that turns both into one verdict per candidate. Then the
+# teardown that spends one: the surfaces a candidate is taken from and what
+# each was left in, the checkout's presence, ownership, and revalidation
+# reads, the two lease-pinned deletions and the boundaries around them, the
+# gates ordering the three, and the refusals a verdict that clears nothing
+# gets. Naming the whole surface makes a helper added to an owner an edit here
+# rather than a definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
+    ("ArtifactReclamation", models),
+    ("ArtifactSurface", models),
     ("ArtifactVerdict", models),
     ("AttributedIssues", attribution),
     ("BranchTip", models),
@@ -126,10 +136,15 @@ _OWNER_DEFINED = (
     ("IssueArtifacts", models),
     ("IssueBranches", attribution),
     ("ProbeAnswer", models),
+    ("ProvenTip", models),
     ("Retention", models),
     ("RetentionReason", models),
+    ("SurfaceOutcome", models),
+    ("SurfaceResult", models),
     ("TERMINAL_LABELS", claims),
+    ("_BRANCH_REF_PREFIX", reclamation),
     ("_CLEANLINESS_REASONS", eligibility),
+    ("_CLONE", reclamation),
     ("_GIT_NEGATIVE", evidence),
     ("_HEAD", evidence),
     ("_IDENTITY_REASONS", eligibility),
@@ -139,6 +154,7 @@ _OWNER_DEFINED = (
     ("_OPEN_PULL_REQUEST", claims),
     ("_ORCHESTRATOR_BRANCH_REFS", probes),
     ("_REF_SEPARATOR", attribution),
+    ("_REMOTE", reclamation),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
@@ -148,18 +164,24 @@ _OWNER_DEFINED = (
     ("_WORKTREE_REMOVE_FORCE", creation),
     ("_anchor_pr_worktree", creation),
     ("_anchor_target", creation),
-    ("_artifact_retentions", eligibility),
+    ("_artifact_reading", eligibility),
+    ("_artifact_verdict", eligibility),
     ("_attributed_issues", attribution),
     ("_base_contains", evidence),
     ("_branch_attribution", attribution),
     ("_branch_commit_count", recovery),
     ("_branch_has_unpushed_commits", recovery),
     ("_branch_name", paths),
+    ("_branch_reasons", eligibility),
+    ("_branch_ref", reclamation),
     ("_branch_retentions", eligibility),
+    ("_branch_surfaces", reclamation),
     ("_candidate_issue_branches", recovery),
     ("_carrying_pull_request", claims),
     ("_checkout_entries", probes),
+    ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
+    ("_checkout_present", reclamation),
     ("_checkout_retentions", eligibility),
     ("_checkout_tip", evidence),
     ("_checkout_tip_retentions", eligibility),
@@ -176,6 +198,8 @@ _OWNER_DEFINED = (
     ("_common_git_dir", evidence),
     ("_decompose_worktree_path", decomposition),
     ("_delete_local_issue_branch", cleanup),
+    ("_deleted_local_branch", reclamation),
+    ("_deleted_remote_branch", reclamation),
     ("_ended_retentions", claims),
     ("_ensure_decompose_worktree", decomposition),
     ("_ensure_pr_worktree", creation),
@@ -197,13 +221,22 @@ _OWNER_DEFINED = (
     ("_move_branch_onto", creation),
     ("_open_pull_request_retentions", claims),
     ("_pr_branch_start_point", creation),
+    ("_proven_tips", eligibility),
     ("_published_tip", evidence),
     ("_read_orchestrator_refs", probes),
     ("_read_state", claims),
+    ("_reclaim_artifacts", reclamation),
+    ("_reclaimed_branch", reclamation),
+    ("_reclaimed_checkout", reclamation),
+    ("_reclaimed_local_branch", reclamation),
+    ("_reclaimed_remote_branch", reclamation),
     ("_record_attribution", attribution),
     ("_recorded_pull_request", claims),
+    ("_removal_under_lock", reclamation),
     ("_remove_issue_worktree", cleanup),
+    ("_removed_checkout", reclamation),
     ("_repo_worktrees_root", paths),
+    ("_reported", reclamation),
     ("_resolve_branch_name", paths),
     ("_resolved_commit", creation),
     ("_resolved_root", inventory),
@@ -219,8 +252,12 @@ _OWNER_DEFINED = (
     ("_slugs_by_worktrees_root", attribution),
     ("_spec_inventory", inventory),
     ("_specs_by_clone", inventory),
+    ("_still_cleared", reclamation),
     ("_terminal_retentions", claims),
     ("_tip_retentions", eligibility),
+    ("_unmoved", reclamation),
+    ("_unresolved", reclamation),
+    ("_untouched", reclamation),
     ("_workflow_members", claims),
     ("_worktree_issue_numbers", probes),
     ("_worktree_path", paths),
@@ -230,7 +267,7 @@ _OWNER_DEFINED = (
 # handler selection is keyed on.
 _REPORTING_OWNERS = (
     attribution, claims, cleanup, creation, decomposition, evidence,
-    inventory, probes, terminal,
+    inventory, probes, reclamation, terminal,
 )
 
 
