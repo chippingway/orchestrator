@@ -24,7 +24,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 
 from github.Issue import Issue
 
@@ -81,7 +80,7 @@ class _DevResumeContext:
             stage=request.resolved_stage,
         )
 
-    def execute(self) -> Tuple[Path, AgentResult, bool]:
+    def execute(self) -> tuple[Path, AgentResult, bool]:
         agent_result, paused = self._run_attempt(
             fresh=self.plan.fresh_spawn,
             session_id=self.plan.session.session_id,

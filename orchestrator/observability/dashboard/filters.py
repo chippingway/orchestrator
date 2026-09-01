@@ -14,8 +14,9 @@ itself.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Any, NamedTuple, Sequence
+from typing import Any, NamedTuple
 
 from orchestrator.observability.dashboard.windows import DateWindow
 

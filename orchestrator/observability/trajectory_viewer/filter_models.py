@@ -17,8 +17,9 @@ ever holds a value some run actually carries.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence, TypedDict
+from typing import TypedDict
 
 
 class RunFilterOptionFields(TypedDict, total=False):

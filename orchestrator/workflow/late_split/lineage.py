@@ -132,7 +132,7 @@ class LateAncestry:
         """
         return bool(self.snapshot_ref) and bool(self.snapshot_sha)
 
-    def named_snapshot(self) -> "LateAncestry":
+    def named_snapshot(self) -> LateAncestry:
         """This lineage with the snapshot ref its own identity names.
 
         The one fact a child whose ancestry write never landed can still
@@ -162,7 +162,7 @@ class LateAncestry:
             return self
         return replace(self, snapshot_ref=derived)
 
-    def without_snapshot(self) -> "LateAncestry":
+    def without_snapshot(self) -> LateAncestry:
         """The same lineage with the pointer to the candidate dropped.
 
         What a child is left with once the ref it named is one it may not use.

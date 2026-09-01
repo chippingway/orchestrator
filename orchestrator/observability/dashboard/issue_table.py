@@ -29,8 +29,8 @@ asked to interpret.
 from __future__ import annotations
 
 import html
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from orchestrator.observability.analytics.query.run_models import (
     IssueSummaryRow,

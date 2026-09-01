@@ -24,8 +24,8 @@ would otherwise sit above nothing.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from orchestrator.observability.analytics.query.cost_models import CostCoverageRow
 from orchestrator.observability.analytics.query.overview_models import Summary

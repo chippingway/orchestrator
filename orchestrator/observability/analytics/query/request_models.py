@@ -12,9 +12,10 @@ a knob only one family accepts stays out of the shape every family shares.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Sequence
+from typing import Any
 
 
 @dataclass(frozen=True)

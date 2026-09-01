@@ -25,7 +25,7 @@ through the diagnostics directly.
 from __future__ import annotations
 
 import unittest
-from typing import Mapping
+from collections.abc import Mapping
 
 from orchestrator.observability.dashboard import skill_panel
 from tests.observability.dashboard import skill_adoption_test_support as adopt

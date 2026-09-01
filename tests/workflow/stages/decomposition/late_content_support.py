@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import unittest
 from types import MappingProxyType
+from typing import Self
 
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
@@ -175,7 +176,7 @@ class RefusedComment:
             raise RuntimeError(COMMENT_REFUSED)
         return self._taken(issue, body)
 
-    def __enter__(self) -> "RefusedComment":
+    def __enter__(self) -> Self:
         self._github.comment = self
         return self
 

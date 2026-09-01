@@ -25,7 +25,8 @@ which is what makes the ranking readable at all.
 """
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.overview_models import Summary
 from orchestrator.observability.analytics.query.run_models import IssueSummaryRow

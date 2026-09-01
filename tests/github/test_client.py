@@ -22,7 +22,7 @@ _FORBIDDEN_STATUS = 403
 _NOT_FOUND_STATUS = 404
 
 
-def _bare_client(repo: "_CountingRepo") -> GitHubClient:
+def _bare_client(repo: _CountingRepo) -> GitHubClient:
     # Bypass the networked __init__; wire only what _cached_label touches.
     gh = GitHubClient.__new__(GitHubClient)
     gh.repo = repo

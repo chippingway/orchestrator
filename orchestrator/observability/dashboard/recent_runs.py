@@ -30,8 +30,9 @@ imports neither and the row projection stays readable without either installed.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import timedelta
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.run_models import AgentExitRow
 from orchestrator.observability.dashboard import filters

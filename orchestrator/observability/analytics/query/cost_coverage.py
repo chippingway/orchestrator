@@ -15,7 +15,8 @@ covering few runs but most of the tokens is the one worth pricing first.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.cost_models import CostCoverageRow
 from orchestrator.observability.analytics.query.execution import ReadQuery

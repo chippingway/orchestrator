@@ -27,8 +27,9 @@ are told apart from two sized to their own.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Self
 
 # The two columns every section here is split across, named as the owners' own
 # locals are.
@@ -62,15 +63,15 @@ class Drawn:
 class RecordingRegion:
     """One column or card, entered for whatever is drawn inside it."""
 
-    def __init__(self, page: "CostPanelStreamlit", name: str) -> None:
+    def __init__(self, page: CostPanelStreamlit, name: str) -> None:
         self.name = name
         self._page = page
 
-    def __enter__(self) -> "RecordingRegion":
+    def __enter__(self) -> Self:
         self._page.open_column = self.name
         return self
 
-    def __exit__(self, *exception: Any) -> bool:
+    def __exit__(self, *exception: object) -> bool:
         return False
 
 

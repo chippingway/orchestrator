@@ -5,9 +5,10 @@ from __future__ import annotations
 
 import os
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Unpack
+from typing import Unpack
 
 from orchestrator import config
 from orchestrator.agents import environment as _agent_environment

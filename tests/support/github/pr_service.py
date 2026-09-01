@@ -3,7 +3,7 @@
 """Pull-request services for the in-memory GitHub client."""
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER

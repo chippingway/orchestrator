@@ -13,7 +13,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
 
 from orchestrator import config
 from orchestrator.git import commands
@@ -65,7 +64,7 @@ class _BranchDivergence:
     @classmethod
     def taken(
         cls, spec: config.RepoSpec, worktree: Path, branch: str,
-    ) -> "_BranchDivergence":
+    ) -> _BranchDivergence:
         """Resolve `<remote>/<branch>` once, then count HEAD against it.
 
         The caller must have fetched that ref immediately before calling, so
@@ -97,7 +96,7 @@ class _BranchDivergence:
     @classmethod
     def _counted_against(
         cls, worktree: Path, tip: str,
-    ) -> "_BranchDivergence":
+    ) -> _BranchDivergence:
         """HEAD's distance from one immutable commit, or an unreadable one.
 
         `ahead` is what HEAD has and the tip does not -- unpushed local work.
@@ -176,7 +175,7 @@ def _subject_prefix(subject: str) -> str | None:
 
 def _recent_base_subjects(
     spec: config.RepoSpec, worktree: Path, limit: int = 30
-) -> List[str]:
+) -> list[str]:
     """Subjects of the most recent non-merge base-branch commits (newest
     first), or `[]` on git error.
 

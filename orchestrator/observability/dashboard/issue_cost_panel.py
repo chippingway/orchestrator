@@ -28,7 +28,8 @@ what keeps a card tinted and set the way the chrome around it is.
 """
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.cost_models import (
     BackendEfficiencyRow,

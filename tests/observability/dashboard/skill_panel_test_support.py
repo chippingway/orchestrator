@@ -18,8 +18,9 @@ panel class is exactly the shape a positional read would misattribute.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any, Self
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillTriggerRateRow,
@@ -69,12 +70,12 @@ class NullContext:
         self.page = page
         self.fold = fold
 
-    def __enter__(self) -> "NullContext":
+    def __enter__(self) -> Self:
         if self.page is not None:
             self.page.open_fold = self.fold
         return self
 
-    def __exit__(self, *exc: Any) -> bool:
+    def __exit__(self, *exc: object) -> bool:
         if self.page is not None:
             self.page.open_fold = None
         return False

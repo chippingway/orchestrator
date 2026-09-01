@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config

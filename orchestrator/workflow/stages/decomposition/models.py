@@ -11,7 +11,6 @@ parent scan read once and several branches then ask about.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 from github.Issue import Issue
 
@@ -53,7 +52,7 @@ class _DecomposerSession:
 class _SplitPlan:
     children_manifest: list
     is_umbrella: bool
-    created: list[Tuple[int, dict]]
+    created: list[tuple[int, dict]]
     dep_graph: dict[str, list[int]]
 
     @classmethod

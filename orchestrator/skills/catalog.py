@@ -31,7 +31,7 @@ after `_refresh_base_and_worktrees` has refreshed `<remote_name>/<base_branch>`.
 from __future__ import annotations
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from orchestrator.config import RepoSpec
 from orchestrator.git.commands import _git

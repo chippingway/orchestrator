@@ -22,9 +22,10 @@ unanswered rather than a fifth shape of its own.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from inspect import Parameter, Signature
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.dashboard import drilldown, page_models
 

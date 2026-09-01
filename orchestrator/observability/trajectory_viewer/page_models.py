@@ -16,9 +16,9 @@ cannot be constructed claiming a total the runs it carries disagree with.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 from orchestrator.observability.trajectory_viewer.filter_models import FilterOptions
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun

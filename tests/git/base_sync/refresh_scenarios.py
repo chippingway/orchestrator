@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Mapping
 from unittest.mock import MagicMock
 
 from orchestrator.git.base_sync import refresh as _base_refresh

@@ -50,7 +50,7 @@ class FakeGit:
         return self._answers.get(command, _completed())
 
 
-def _moved_upstream(overrides: dict = None) -> FakeGit:
+def _moved_upstream(overrides: dict | None = None) -> FakeGit:
     """A checkout whose base branch fast-forwarded onto runtime sources."""
     answers = {
         _BASE_COMMAND: _completed(f"{_MOVED_SHA}\n"),

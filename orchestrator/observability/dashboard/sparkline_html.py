@@ -26,9 +26,10 @@ bound, applied, and rendered without either spelling constraining the other.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from inspect import Parameter, Signature
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.dashboard.sparkline_points import (
     sparkline_points,

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 
 from github.Issue import Issue
 
@@ -106,7 +105,7 @@ def _run_implementing_drift_resume(
 
 
 def _implementing_drift_run(
-    before_sha: str | None, resumed: Tuple[Path, _agents.AgentResult, bool],
+    before_sha: str | None, resumed: tuple[Path, _agents.AgentResult, bool],
 ) -> _ImplementingDriftRun:
     worktree, agent_result, paused = resumed
     after_sha = _verification_probes._head_sha(worktree)

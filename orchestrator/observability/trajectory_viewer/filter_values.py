@@ -22,7 +22,7 @@ operator looking for a path inside a tool command finds the run that ran it.
 
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
 
 from orchestrator.observability.trajectory_viewer.filter_models import FilterOptions
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun

@@ -19,7 +19,8 @@ the one predicate that walks a run's whole text.
 
 from __future__ import annotations
 
-from typing import Sequence, Unpack
+from collections.abc import Sequence
+from typing import Unpack
 
 from orchestrator.observability.trajectory_viewer import filter_models, filter_values
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun

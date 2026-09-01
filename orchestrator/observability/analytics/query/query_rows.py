@@ -14,7 +14,8 @@ zero- and `None`-defaulting behavior.
 """
 from __future__ import annotations
 
-from typing import Any, NamedTuple, Sequence
+from collections.abc import Sequence
+from typing import Any, NamedTuple
 
 
 AgentExitQueryRow = NamedTuple("AgentExitQueryRow", (

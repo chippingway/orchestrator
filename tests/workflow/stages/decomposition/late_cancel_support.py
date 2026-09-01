@@ -110,7 +110,7 @@ class ClosedOwnerCase(_PatchedWorkflowMixin):
         return seeded.github.label_history
 
     def _events_named(
-        self, seeded: SeededUmbrella, family: str, resource: str = None,
+        self, seeded: SeededUmbrella, family: str, resource: str | None = None,
     ) -> list:
         """Every record of one family both sinks were handed.
 

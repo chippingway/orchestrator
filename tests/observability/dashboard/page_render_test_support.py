@@ -15,10 +15,11 @@ with their own names, so a case can say which read family reached which panel.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from contextlib import ExitStack
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import Any, Callable, Sequence
+from typing import Any
 from unittest.mock import Mock, patch
 
 from orchestrator.observability.analytics.query.overview_models import DataExtent

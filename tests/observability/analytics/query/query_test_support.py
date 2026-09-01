@@ -14,8 +14,9 @@ exception.
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Callable, Iterator
 from importlib import import_module
-from typing import Any, Callable, Iterator
+from typing import Any
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.query.connections import AnalyticsReadError

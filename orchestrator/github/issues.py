@@ -10,8 +10,9 @@ writer that closes one, has to spell it the way the API does.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Iterable
+from typing import Any
 
 from github.Issue import Issue
 from github.IssueComment import IssueComment

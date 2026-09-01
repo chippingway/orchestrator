@@ -17,7 +17,8 @@ database for a result it already knows is empty.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 
 def int_or_none(raw: Any) -> int | None:

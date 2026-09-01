@@ -143,7 +143,7 @@ class LocalTeardown:
         """Whether both local surfaces were asked to come down."""
         return bool(self.issues) and self.branch_deleted.called
 
-    def _hold(self, stack, *, local_gone: bool) -> "LocalTeardown":
+    def _hold(self, stack, *, local_gone: bool) -> LocalTeardown:
         """Hold this teardown and the read that decides it happened."""
         stack.enter_context(seam_patch("_remove_issue_worktree", self))
         stack.enter_context(
@@ -281,7 +281,7 @@ class RecordedDelete:
         self,
         outcome,
         *,
-        raising: BaseException = None,
+        raising: BaseException | None = None,
         presence=SnapshotOutcome.PRESENT,
         mirror_sha: str = "",
     ) -> None:
@@ -321,7 +321,7 @@ class RecordedDelete:
         return bool(self.mirror_sha) and self.mirror_sha == sha
 
     @classmethod
-    def absent(cls) -> "RecordedDelete":
+    def absent(cls) -> RecordedDelete:
         """A remote that has already let this ref go, both ways of asking."""
         return cls(SnapshotOutcome.ABSENT, presence=SnapshotOutcome.ABSENT)
 

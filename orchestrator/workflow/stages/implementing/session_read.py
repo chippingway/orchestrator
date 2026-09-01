@@ -17,7 +17,6 @@ back to a human in the comment the park posts.
 """
 from __future__ import annotations
 
-from typing import Tuple
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
@@ -45,7 +44,7 @@ def _stored_dev_session(state: PinnedState, stored) -> tuple:
 
 def _read_dev_session(
     state: PinnedState,
-) -> Tuple[str, str, tuple[str, ...], str | None]:
+) -> tuple[str, str, tuple[str, ...], str | None]:
     """Return (spec, backend, extra_args, dev_session_id) for an issue.
 
     `spec` is the full configured agent command string the next run

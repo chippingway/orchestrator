@@ -30,7 +30,8 @@ tuple put it at.
 from __future__ import annotations
 
 import json
-from typing import Any, NamedTuple, Sequence
+from collections.abc import Sequence
+from typing import Any, NamedTuple
 
 from orchestrator.observability.analytics.query.row_cells import row_value
 

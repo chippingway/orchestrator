@@ -15,9 +15,9 @@ configuration-failure funnel.
 from __future__ import annotations
 
 import shlex
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
-from typing import Any, Callable, NoReturn
+from typing import Any, NoReturn
 
 from orchestrator.config._dotenv import _TRUE_VALUES, load_dotenv
 from orchestrator.config.credentials import resolve_github_token

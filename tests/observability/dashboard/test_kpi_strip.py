@@ -21,9 +21,9 @@ reports.
 from __future__ import annotations
 
 import unittest
+from collections.abc import Sequence
 from dataclasses import replace
 from types import SimpleNamespace
-from typing import Sequence
 
 from orchestrator.observability.analytics.query.activity_models import (
     ThroughputDayRow,

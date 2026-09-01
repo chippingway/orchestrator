@@ -21,9 +21,9 @@ would repaint the chart between two loads of the same window.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
-from typing import Sequence
 
 from orchestrator.observability.dashboard.charts.usage_bands import (
     BACKEND_MODE,

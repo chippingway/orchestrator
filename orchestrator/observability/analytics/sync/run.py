@@ -27,9 +27,10 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics.sync.database import (

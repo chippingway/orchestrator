@@ -19,8 +19,9 @@ caller that needs only the switch pays for nothing else in the package.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any
 
 
 PLOTLY_CONFIG: Mapping[str, Any] = MappingProxyType({"displayModeBar": False})

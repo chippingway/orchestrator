@@ -20,9 +20,10 @@ default install, which does not carry it.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from inspect import Parameter, Signature
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from orchestrator.observability.dashboard.charts.cost_layout import (
     HorizontalCostLayout,

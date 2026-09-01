@@ -22,7 +22,7 @@ name are all record text this viewer does not own.
 from __future__ import annotations
 
 import html
-from typing import Sequence
+from collections.abc import Sequence
 
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 

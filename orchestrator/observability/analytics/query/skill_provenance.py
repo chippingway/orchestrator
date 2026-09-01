@@ -44,8 +44,9 @@ classified none.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.conditions import (
     append_where_condition,

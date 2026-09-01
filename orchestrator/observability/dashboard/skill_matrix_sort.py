@@ -19,8 +19,9 @@ The parse takes its argument through a pinned signature so callers keep passing
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from inspect import Parameter, Signature
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillTriggerMatrixRow,

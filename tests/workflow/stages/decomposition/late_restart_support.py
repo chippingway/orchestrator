@@ -254,7 +254,7 @@ class RestartCase:
         self,
         generation: LateGeneration = CANCELLED,
         *,
-        label: str = None,
+        label: str | None = None,
         author: str = HUMAN,
         terminal: bool = True,
         **extra_state,

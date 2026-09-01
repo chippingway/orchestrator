@@ -29,8 +29,9 @@ comparable from a single grep of the Streamlit log.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 
 from orchestrator.observability.analytics.query import connections
 from orchestrator.observability.dashboard import fanout, read_plan

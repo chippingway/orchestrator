@@ -3,7 +3,8 @@
 """Issue, pinned-state, and event services for the fake GitHub client."""
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from orchestrator import config
 from orchestrator.github import events as _events

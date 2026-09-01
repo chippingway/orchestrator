@@ -25,9 +25,10 @@ owner imports neither and what it assembles stays testable without them.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import timedelta
 from functools import partial
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.cost_models import (
     CostCoverageRow,

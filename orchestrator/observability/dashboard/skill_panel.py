@@ -42,7 +42,8 @@ and a prompt to turn it on otherwise.
 """
 from __future__ import annotations
 
-from typing import Any, Iterator, NamedTuple, Sequence
+from collections.abc import Iterator, Sequence
+from typing import Any, NamedTuple
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillAdoptionRow,

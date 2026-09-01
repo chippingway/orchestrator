@@ -16,7 +16,8 @@ no-trigger apart from tracking nobody turned on.
 """
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillTriggerMatrixRow,

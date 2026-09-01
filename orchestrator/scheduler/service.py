@@ -20,8 +20,9 @@ import contextlib
 import logging
 import threading
 from collections import defaultdict
+from collections.abc import Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Any, Iterator
+from typing import Any
 
 from orchestrator.scheduler import models
 

@@ -16,9 +16,9 @@ back. The data types it produces (``RepoSpec``, ``RepoEnvEntry``) live in
 """
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Callable, NoReturn
+from typing import NoReturn
 
 from orchestrator.config.models import RepoEnvEntry, RepoSpec
 

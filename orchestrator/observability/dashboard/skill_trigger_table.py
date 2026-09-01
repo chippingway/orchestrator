@@ -27,7 +27,7 @@ interpret.
 from __future__ import annotations
 
 import html
-from typing import Sequence
+from collections.abc import Sequence
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillTriggerRateRow,

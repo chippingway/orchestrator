@@ -21,7 +21,6 @@ redaction pass as a partial value.
 from __future__ import annotations
 
 import re
-from typing import Tuple
 
 from github.Issue import Issue
 
@@ -111,7 +110,7 @@ def _stderr_log_tail(agent_result: AgentResult, max_chars: int = 400) -> str:
     return tail
 
 
-def _parse_review_verdict(last_message: str) -> Tuple[str, str]:
+def _parse_review_verdict(last_message: str) -> tuple[str, str]:
     """Find the last 'VERDICT: APPROVED|CHANGES_REQUESTED' marker.
 
     Returns (verdict, body_above_marker). verdict is one of "approved",
@@ -131,7 +130,7 @@ def _parse_review_verdict(last_message: str) -> Tuple[str, str]:
     return verdict, body
 
 
-def _parse_documentation_verdict(last_message: str) -> Tuple[str, str]:
+def _parse_documentation_verdict(last_message: str) -> tuple[str, str]:
     """Find a final 'DOCS: NO_CHANGE' marker in a documentation-stage message.
 
     Returns (verdict, body_above_marker):

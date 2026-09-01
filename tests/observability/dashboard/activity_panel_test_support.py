@@ -22,8 +22,9 @@ the request it was asked for instead of a figure.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Self
 
 from orchestrator.observability.analytics.query.activity_models import (
     HourlyHeatmapPoint,
@@ -65,10 +66,10 @@ class Drawn:
 class NullContext:
     """`with`-usable stand-in for `st.container(...)`."""
 
-    def __enter__(self) -> "NullContext":
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *exception: Any) -> bool:
+    def __exit__(self, *exception: object) -> bool:
         return False
 
 

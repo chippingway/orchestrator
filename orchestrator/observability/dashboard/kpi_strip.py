@@ -25,8 +25,9 @@ second one.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.overview_models import Summary
 from orchestrator.observability.dashboard.kpi_series import (

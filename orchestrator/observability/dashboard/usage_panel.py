@@ -33,8 +33,9 @@ call, so importing this owner costs neither.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.activity_models import (
     BackendDailyTokensRow,

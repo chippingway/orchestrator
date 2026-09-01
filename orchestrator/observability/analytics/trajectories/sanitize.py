@@ -17,7 +17,8 @@ them once per record.
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from orchestrator.observability.analytics.trajectories.models import TrajectoryLimits
 

@@ -22,8 +22,9 @@ loadable in an install carrying no viewer dependencies at all.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.trajectory_viewer.page_setup import (
     NO_TRAJECTORIES_MESSAGE,

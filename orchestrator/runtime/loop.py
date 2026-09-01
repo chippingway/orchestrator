@@ -13,7 +13,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import time
-from typing import Iterator
+from collections.abc import Iterator
 
 from orchestrator import agents, config
 from orchestrator.runtime import self_update, ticks
