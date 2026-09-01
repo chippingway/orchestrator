@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """The two linted trees keep the import order Ruff sorts them into.
 
-`I001` sits outside the set the Ruff run selects, so the audit that opts into
-it -- `ruff check orchestrator tests --select=I001` -- is the whole of what
-holds that order, and running it from here is what puts it in front of a
-change rather than behind one.
+`I001` is in the default rule set the Ruff run enables, so the pre-push check
+and CI hold that order too. What running it from here adds is the reading a
+pytest run gives: an unsorted block is reported beside the tests a change was
+written for rather than only by the lint step beside them.
 
 The order is Ruff's own answer rather than one a first-party reader could
 reproduce. Which section a module lands in is what `src` resolves it to, and

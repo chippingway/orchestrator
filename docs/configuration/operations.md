@@ -107,6 +107,17 @@ comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete 
 methods past the ceiling of 7. Splitting the merge-side mutations out would hand the composed client two mixins for
 one owner, so the method count is waived there instead.
 
+The rule set is Ruff's own. `[tool.ruff.lint]` in [`../../pyproject.toml`](../../pyproject.toml) declares no `select`,
+so what `ruff check orchestrator tests` enforces is whatever the `ruff` resolved in [`../../uv.lock`](../../uv.lock)
+ships as its defaults, plus the single `E501` opted into through `extend-select`. That pair is the whole contract.
+`[dependency-groups]` names a floor (`ruff>=`) rather than a version, and `uv sync --locked` installs the lockfile's
+resolution, so what settles the rule set is the lock and what moves it is a regenerated one — which is what the weekly
+`workflow:dependencies` PR carries when it bumps the tool. A `select` of this repo's own would be a copy of those
+defaults taken on the day it was written, and a copy buys only the drift it cannot follow: every rule the tool adds
+afterwards stays off, unreported, and unanswered. Nothing is waived tree-wide under the contract either. The only
+suppressions are the exact-path per-file entries below and the inline `# noqa: <CODE> - <reason>` directives naming
+the rule each covers and why, so a rule a new `ruff` adds reports here on the first run after the bump.
+
 Ruff and the line-length test enforce a repository-wide 120-column target set once as `line-length` under
 `[tool.ruff]` in [`../../pyproject.toml`](../../pyproject.toml). Ruff applies it to Python via the opted-in `E501`
 rule; the first-party
@@ -122,57 +133,58 @@ under one name, which is the theme object a dashboard page hands every panel. Th
 scenarios and carry the re-export beside that work — the types, the mid-run effects, and the publication heads a
 sibling test module reads a case back through, bound there and read only there. A waiver covers the whole file rather
 than the import that earned it, so what holds the rest of the file to the rule is the check below rather than the
-entry. `PLC0414` sits outside the selected set CI runs, so those entries answer the audit that opts into it
-(`ruff check orchestrator tests --select=PLC0414`) rather than the default run; a package initializer needs no entry,
-because Ruff never reports the rule there. Each key is an exact path rather than a glob, and
+entry. `PLC0414` is in the default set, so those entries are read by `ruff check orchestrator tests` itself rather
+than by an audit beside it; a package initializer needs no entry, because Ruff never reports the rule there. Each key
+is an exact path rather than a glob, and
 [`../../tests/repository/test_reexport_aliases.py`](../../tests/repository/test_reexport_aliases.py) holds the list
 against the tree: a self-alias in a module the list does not name, one on a name its own module already reads, or a
 key that globs fails there.
 
 `BLE001` is answered a line at a time instead. The rule reports a blanket `except Exception` / `except BaseException`,
-and like `PLC0414` it sits outside the selected set, so the audit that opts into it
-(`ruff check orchestrator tests --select=BLE001`) is what the answers are written for. No per-file entry would fit:
-what earns a waiver is one handler rather than the file around it, so each carries an inline
-`# noqa: BLE001 - <reason>` naming what its blanket catch protects, and every other handler beside it stays held to
-the rule. Three families earn one. The GitHub-API calls — the best-effort PR notices, the issue and pull-request
-reads, and the child-issue create under `orchestrator/git/base_sync/` and `orchestrator/workflow/` — catch blind
-because PyGithub raises its own `GithubException` and the transport errors underneath it alike, and a narrower
-handler would turn a connection reset into a stranded run. The fail-open guards under
-`orchestrator/observability/analytics/` and in `orchestrator/workflow/late_split/telemetry.py` catch blind so a parser
-bug or an unwritable sink costs the record and never the tick that produced it. And two test helpers keep whatever
-escapes a worker thread so the main thread can assert on it. Ruff exempts a blind handler that reports through a
-logger it can resolve back to `logging` itself, which is why a guard logging through an imported `log` carries a
-directive where the identical one beside its own `getLogger` call does not.
+and it is in the default set beside `PLC0414`, so those answers are what `ruff check orchestrator tests` reads and a
+handler missing one fails CI. No per-file entry would fit: what earns a waiver is one handler rather than the file
+around it, so each carries an inline `# noqa: BLE001 - <reason>` naming what its blanket catch protects, and every
+other handler beside it stays held to the rule. Three families earn one. The GitHub-API calls — the best-effort PR
+notices, the issue and pull-request reads, and the child-issue create under `orchestrator/git/base_sync/` and
+`orchestrator/workflow/` — catch blind because PyGithub raises its own `GithubException` and the transport errors
+underneath it alike, and a narrower handler would turn a connection reset into a stranded run. The fail-open guards
+under `orchestrator/observability/analytics/` and in `orchestrator/workflow/late_split/telemetry.py` catch blind so a
+parser bug or an unwritable sink costs the record and never the tick that produced it. And two test helpers keep
+whatever escapes a worker thread so the main thread can assert on it. Ruff exempts a blind handler that reports
+through a logger it can resolve back to `logging` itself, which is why a guard logging through an imported `log`
+carries a directive where the identical one beside its own `getLogger` call does not.
 
-`lint.external` in [`../../pyproject.toml`](../../pyproject.toml) is what keeps those inline answers from reading as
-dead. `RUF100` reports a `# noqa` naming a rule the run has not enabled and offers to delete it, and the default run
-selects neither `BLE001` nor `N802`, so without the entry every directive in the tree reads as exactly that. Listing
-the two codes leaves each directive in place with the rule that would strip it still on, which is what has the
-blind-handler waivers above survive to answer `ruff check orchestrator tests --select=BLE001`.
+`lint.external` in [`../../pyproject.toml`](../../pyproject.toml) is what keeps a directive from reading as dead when
+it answers a rule the run does not enable. `RUF100` — itself in the default set — reports a `# noqa` naming such a
+rule and offers to delete it. The blind-handler directives above need no entry, because `BLE001` is in the default set
+and the run reads them itself. `N802` is the one code outside it, and listing it is what leaves the single directive
+naming it in place with the rule that would strip it still on.
 
-The two entries are not the same claim, though, and only `BLE001` names an audit the tree passes: every blanket
-handler either carries a directive or is exempt, so opting into the rule reports nothing. `N802` answers for the one
-directive there is — on the `DataFrame` method of the test double standing in for the `pd` handle a dashboard page is
-handed — and for nothing wider. `ruff check orchestrator tests --select=N802` reports two deliberate names the
-convention does not reach, a test spelling codex's `-C` flag and a shouted stub that raises where a call is expected,
-so the tree is not held to that rule the way it is held to `BLE001`.
+That one entry is a narrow claim rather than a clean bill. `N802` answers for the one directive there is — on
+the `DataFrame` method of the test double standing in for the `pd` handle a dashboard page is handed — and for nothing
+wider. `ruff check orchestrator tests --select=N802` reports two deliberate names the convention does not reach, a
+test spelling codex's `-C` flag and a shouted stub that raises where a call is expected, so the tree is not held to
+that rule the way the default run holds it to `BLE001`.
 
 [`../../tests/repository/test_noqa_directives.py`](../../tests/repository/test_noqa_directives.py) holds both halves
 of the declaration. It runs Ruff itself over the two trees under the configured selectors plus `RUF100` — which rules
 a selector enables is Ruff's answer and not one a prefix test could reproduce, since `F` covers `F401` and not
 `FLY002` — so a directive naming a rule that is neither selected nor listed fails there rather than surviving until
 someone strips it. The other half is the one Ruff has no reading of: a listed code no directive carries suppresses
-nothing, and is read off the tree instead.
+nothing, and is read off the tree instead. A third check sits under both: it tokenizes every module and fails on a
+comment that opens a suppression and names no rule for it, line-level `# noqa` or file-wide `# ruff: noqa` alike. Ruff
+honours either spelling and reports neither, so a blanket waiver is the one suppression the two halves above would let
+through.
 
 Import order is Ruff's answer too, under `[tool.ruff.lint.isort]` in [`../../pyproject.toml`](../../pyproject.toml),
-and like the two rules above `I001` sits outside the selected set, so `ruff check orchestrator tests --select=I001` is
-the audit it is written for. One setting is declared there. `combine-as-imports` keeps every member a module is read
-for on the single statement that names it: Ruff's default hands an aliased member a statement of its own, and the
-modules here read most of their neighbours under an alias — a stage module and its tests name several of a package's
-owners in one `import ... as ...` — so the default would spell one read as a statement per alias and push whole files
-past the twelve-import ceiling `WPS201` holds them to.
-[`../../tests/repository/test_import_sorting.py`](../../tests/repository/test_import_sorting.py) runs that audit, so
-the order is read off a pytest run rather than off a selector CI does not enable.
+and `I001` is in the default set with the two rules above, so the run CI makes is what holds that order. One setting
+is declared there. `combine-as-imports` keeps every member a module is read for on the single statement that names it:
+Ruff's default hands an aliased member a statement of its own, and the modules here read most of their neighbours
+under an alias — a stage module and its tests name several of a package's owners in one `import ... as ...` — so the
+default would spell one read as a statement per alias and push whole files past the twelve-import ceiling `WPS201`
+holds them to. [`../../tests/repository/test_import_sorting.py`](../../tests/repository/test_import_sorting.py) runs
+the rule on its own beside that, so an unsorted block is reported next to the tests a change was written for and not
+only by the lint step beside them.
 
 Sorting is also what sets `max-import-from-members` in [`../../.flake8`](../../.flake8), raised from the default 8 to
 30. `WPS235` caps the names one `from ... import` may carry, and a module read for more than the cap can answer for

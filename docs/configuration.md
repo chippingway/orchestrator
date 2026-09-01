@@ -462,10 +462,11 @@ public viewer read and uploading the SARIF to code scanning.
 [`../.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) analyzes the Python source on pushes to `main`,
 pull requests targeting `main`, and a weekly schedule, then uploads the results to code scanning. Every `uses:` in
 every workflow names a full commit SHA with its release in a trailing comment, and Dependabot's `github-actions`
-updates rewrite that pair. The per-file lint scopes, the repository-wide 120-column target, workflow token
-permissions, the rules an inline `# noqa` may name, the order imports are sorted into, the commit-SHA pins, the job
-timeouts, the run-cancellation rule, the two interpreters, the packaging smoke check, the dependency review, and how
-the scheduled scans work are in
+updates rewrite that pair. The lint contract the Ruff run enforces — its own defaults plus `E501`, with no baseline
+of this repo's own — the per-file lint scopes, the repository-wide 120-column target, workflow token permissions, the
+rules an inline `# noqa` may name, the order imports are sorted into, the commit-SHA pins, the job timeouts, the
+run-cancellation rule, the two interpreters, the packaging smoke check, the dependency review, and how the scheduled
+scans work are in
 [`configuration/operations.md#continuous-integration`](configuration/operations.md#continuous-integration).
 
 ## Run modes
