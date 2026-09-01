@@ -85,10 +85,10 @@ from orchestrator.workflow.stages.decomposition import (
     late_cancellation as _late_cancellation,
     late_cleanup as _late_cleanup,
     late_publication as _late_publication,
+    models as _models,
     parents as _parents,
     state as _state,
 )
-from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
@@ -379,7 +379,7 @@ def _completed_or_cancelled(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    scan: _ChildScan,
+    scan: _models._ChildScan,
 ) -> None:
     """Resolve this umbrella, unless a close arrived while it was settling.
 
@@ -438,7 +438,7 @@ def _acted_on_children(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    scan: _ChildScan,
+    scan: _models._ChildScan,
 ) -> None:
     """Do what this reading of the children earns, if anything still may.
 

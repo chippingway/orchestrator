@@ -36,46 +36,32 @@ per-file-ignores =
     orchestrator/workflow/engine/tick.py:WPS201,WPS202
     orchestrator/workflow/engine/usage.py:WPS201,WPS202
     orchestrator/workflow/stages/conflicts/divergence.py:WPS202
-    orchestrator/workflow/stages/conflicts/outcomes.py:WPS201
-    orchestrator/workflow/stages/conflicts/publication.py:WPS201
-    orchestrator/workflow/stages/conflicts/resume.py:WPS201
-    orchestrator/workflow/stages/conflicts/routing.py:WPS201
-    orchestrator/workflow/stages/conflicts/transitions.py:WPS201,WPS202
-    orchestrator/workflow/stages/decomposition/activation.py:WPS201
-    orchestrator/workflow/stages/decomposition/blocked.py:WPS201
-    orchestrator/workflow/stages/decomposition/outcomes.py:WPS201
+    orchestrator/workflow/stages/conflicts/transitions.py:WPS202
     orchestrator/workflow/stages/decomposition/run.py:WPS201
-    orchestrator/workflow/stages/decomposition/session.py:WPS201
     orchestrator/workflow/stages/decomposition/late_coordinator.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_guidance.py:WPS202
-    orchestrator/workflow/stages/decomposition/late_hold.py:WPS201,WPS202,WPS204
+    orchestrator/workflow/stages/decomposition/late_hold.py:WPS202,WPS204
     orchestrator/workflow/stages/decomposition/late_models.py:WPS202
-    orchestrator/workflow/stages/decomposition/late_outcome.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_outcome.py:WPS202
     orchestrator/workflow/stages/decomposition/late_owner.py:WPS202
-    orchestrator/workflow/stages/decomposition/late_settlement.py:WPS201,WPS202
-    orchestrator/workflow/stages/decomposition/late_snapshot.py:WPS201
+    orchestrator/workflow/stages/decomposition/late_settlement.py:WPS202
     orchestrator/workflow/stages/decomposition/late_children.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_cancellation.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_restart.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_cleanup.py:WPS201,WPS202
-    orchestrator/workflow/stages/decomposition/late_transaction.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_transaction.py:WPS202
     orchestrator/workflow/stages/decomposition/late_revision.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_reuse.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_session.py:WPS201,WPS202
-    orchestrator/workflow/stages/decomposition/split.py:WPS201,WPS202
-    orchestrator/workflow/stages/decomposition/umbrella.py:WPS201,WPS202
-    orchestrator/workflow/stages/decomposition/handoff.py:WPS201
-    orchestrator/workflow/stages/decomposition/late_sweep.py:WPS201
+    orchestrator/workflow/stages/decomposition/split.py:WPS202
+    orchestrator/workflow/stages/decomposition/umbrella.py:WPS202
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
     orchestrator/workflow/stages/discussion/handler.py:WPS202
     orchestrator/workflow/stages/discussion/parks.py:WPS202
-    orchestrator/workflow/stages/discussion/publication.py:WPS201,WPS202
+    orchestrator/workflow/stages/discussion/publication.py:WPS202
     orchestrator/workflow/stages/discussion/run.py:WPS202
     orchestrator/workflow/stages/discussion/terminal.py:WPS202
-    orchestrator/workflow/stages/fixing/handler.py:WPS201
-    orchestrator/workflow/stages/fixing/parked.py:WPS201
     orchestrator/workflow/stages/fixing/resume.py:WPS201
-    orchestrator/workflow/stages/implementing/continue_command.py:WPS201
     orchestrator/workflow/stages/implementing/disposition.py:WPS202
     orchestrator/workflow/stages/implementing/late_evidence.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/late_parks.py:WPS202
@@ -85,15 +71,9 @@ per-file-ignores =
     orchestrator/workflow/stages/implementing/parks.py:WPS202
     orchestrator/workflow/stages/implementing/publication.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/read_only_relabel.py:WPS201,WPS202
-    orchestrator/workflow/stages/implementing/spawn.py:WPS201
-    orchestrator/workflow/stages/in_review/drift.py:WPS201
-    orchestrator/workflow/stages/question/outcomes.py:WPS201
     orchestrator/workflow/stages/validating/approval.py:WPS201
-    orchestrator/workflow/stages/validating/awaiting.py:WPS201
     orchestrator/workflow/stages/validating/dev_fix.py:WPS201
     orchestrator/workflow/stages/validating/drift.py:WPS201
-    orchestrator/workflow/stages/validating/requested_changes.py:WPS201
-    orchestrator/workflow/stages/validating/reviewer.py:WPS201
     orchestrator/observability/analytics/config.py:WPS202
     orchestrator/observability/analytics/query/rollup_reads.py:WPS201
     orchestrator/observability/analytics/sync/run.py:WPS201
@@ -109,10 +89,7 @@ per-file-ignores =
     orchestrator/git/worktrees/paths.py:WPS202
     orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
-    tests/workflow/fixtures.py:WPS201
     tests/workflow/patch_models.py:WPS202
     tests/workflow/stages/conflicts/test_settled_round.py:WPS202
-    tests/workflow/stages/decomposition/late_content_support.py:WPS201
     tests/workflow/stages/decomposition/test_late_cleanup_publication.py:WPS201
-    tests/workflow/stages/decomposition/test_late_transaction_published.py:WPS201
     tests/workflow/stages/implementing/test_late_gate_retry.py:WPS202
