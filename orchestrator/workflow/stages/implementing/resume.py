@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 from github.Issue import Issue
 
@@ -58,7 +58,7 @@ _DEV_RESUME_SIGNATURE = inspect.Signature((
 def _resume_dev_with_text(
     *args: Any,
     **kwargs: Any,
-) -> Tuple[Path, AgentResult, bool]:
+) -> tuple[Path, AgentResult, bool]:
     """Resume the dev's locked-backend session with the given prompt text.
 
     `stage` overrides the recorded stage for every audit / analytics /
@@ -139,7 +139,7 @@ def _resume_developer_on_human_reply(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
     *,
     pause_guard: bool = False,
-) -> Tuple[Path, AgentResult, bool] | None:
+) -> tuple[Path, AgentResult, bool] | None:
     """Resume the developer's agent session with new issue-level comments.
 
     Returns (worktree, agent_result, paused) on resume, or None if there are no

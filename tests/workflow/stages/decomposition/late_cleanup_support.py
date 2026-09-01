@@ -360,7 +360,7 @@ def walk_owner(
 
 
 def resource_states(
-    github: FakeGitHubClient, kind: str = None,
+    github: FakeGitHubClient, kind: str | None = None,
 ) -> dict:
     """What the parent's ledger records, by target, for one kind of entry.
 

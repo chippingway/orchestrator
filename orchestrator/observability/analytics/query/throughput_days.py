@@ -18,8 +18,9 @@ because a throughput chart is read left to right.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import replace
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.activity_models import ThroughputDayRow
 from orchestrator.observability.analytics.query.conditions import prepend_where_condition

@@ -4,11 +4,12 @@
 from __future__ import annotations
 
 import unittest
+from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from datetime import datetime, timezone
 from importlib.util import find_spec
 from types import SimpleNamespace
-from typing import Any, Iterator
+from typing import Any
 from unittest.mock import Mock, patch
 
 from orchestrator.apps import analytics_dashboard

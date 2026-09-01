@@ -9,9 +9,8 @@ can read this file.
 """
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
-from typing import Callable
 
 _SECRET_KEYS = frozenset((
     "GITHUB_TOKEN",

@@ -24,8 +24,9 @@ regardless of which step broke.
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.config import resolve_db_url
 from orchestrator.observability.analytics.query.connections import (

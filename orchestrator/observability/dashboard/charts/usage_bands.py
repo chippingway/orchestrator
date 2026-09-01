@@ -22,8 +22,8 @@ axis by a number drawn in dollars.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
-from typing import Sequence
 
 from orchestrator.observability.analytics.query.overview_models import (
     TimeSeriesPoint,

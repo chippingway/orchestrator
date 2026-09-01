@@ -19,7 +19,8 @@ is decided here is only that a read is issued inside a scope at all.
 """
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from orchestrator.observability.analytics.query import connection_cache
 

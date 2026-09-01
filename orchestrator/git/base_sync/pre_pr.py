@@ -14,7 +14,6 @@ whether a worktree still sits mid-rebase before it parks one.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Tuple
 
 from orchestrator import config
 from orchestrator.git import commands as _commands
@@ -25,7 +24,7 @@ log = _state.log
 
 def _rebase_base_into_worktree(
     spec: config.RepoSpec, worktree: Path
-) -> Tuple[bool, list[str]]:
+) -> tuple[bool, list[str]]:
     """Run `git rebase origin/<base>` in the worktree.
 
     Returns `(succeeded, conflicted_files)`. On success, `conflicted_files`
@@ -59,7 +58,7 @@ def _rebase_base_into_worktree(
 
 def _merge_base_into_worktree(
     spec: config.RepoSpec, worktree: Path
-) -> Tuple[bool, list[str]]:
+) -> tuple[bool, list[str]]:
     """Compatibility alias for older patches/imports.
 
     TODO(remove after 2026-08-24): drop once out-of-repo patches have moved

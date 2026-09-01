@@ -17,8 +17,9 @@ the same reason.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
-from typing import Any, Sequence
+from typing import Any, Self
 
 
 # The region the bar's own card opens, and the five slots inside it, named as
@@ -45,11 +46,11 @@ class RecordingRegion:
         self.name = name
         self._page = page
 
-    def __enter__(self) -> RecordingRegion:
+    def __enter__(self) -> Self:
         self._page.open_region = self.name
         return self
 
-    def __exit__(self, *exception: Any) -> bool:
+    def __exit__(self, *exception: object) -> bool:
         self._page.open_region = ""
         return False
 

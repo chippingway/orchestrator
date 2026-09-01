@@ -28,7 +28,7 @@ renders one still loads cleanly.
 from __future__ import annotations
 
 import html
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def table_css(table_class: str, *, extra_rules: str = "") -> str:

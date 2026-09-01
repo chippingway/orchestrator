@@ -15,7 +15,7 @@ field for.
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from orchestrator.observability.analytics.query.overview_models import FilterOptions
 

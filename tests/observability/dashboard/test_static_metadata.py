@@ -11,9 +11,10 @@ Streamlit for.
 from __future__ import annotations
 
 import unittest
+from collections.abc import Callable
 from inspect import signature
 from types import MappingProxyType
-from typing import Any, Callable
+from typing import Any
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.query import raw_reads

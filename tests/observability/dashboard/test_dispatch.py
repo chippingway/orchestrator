@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 import unittest
 from functools import partial
-from typing import Any
+from typing import Any, Self
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.query.connections import (
@@ -91,11 +91,11 @@ class _FakeStreamlit:
     def stop(self) -> None:
         raise _PageStopped(self.errors[-1])
 
-    def __enter__(self) -> _FakeStreamlit:
+    def __enter__(self) -> Self:
         self.events.append(_SPINNER_OPEN)
         return self
 
-    def __exit__(self, *exception: Any) -> bool:
+    def __exit__(self, *exception: object) -> bool:
         self.events.append(_SPINNER_CLOSE)
         return False
 

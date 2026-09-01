@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import contextlib
 import json
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from orchestrator.observability.usage import protocol
 

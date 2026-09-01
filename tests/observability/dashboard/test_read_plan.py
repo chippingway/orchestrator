@@ -18,8 +18,9 @@ here, because what a wave owes a page is its own keys passed through untouched
 from __future__ import annotations
 
 import unittest
+from collections.abc import Callable
 from types import MappingProxyType
-from typing import Any, Callable
+from typing import Any
 
 from orchestrator.observability.dashboard import (
     breakdowns,

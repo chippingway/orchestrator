@@ -40,8 +40,9 @@ an offer nobody took up next to a load nobody was offered.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.conditions import (
     AGENT_EXIT_CONDITION,

@@ -21,7 +21,7 @@ scan that would have matched.
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 AGENT_EXIT_CONDITION = "event = 'agent_exit'"
 

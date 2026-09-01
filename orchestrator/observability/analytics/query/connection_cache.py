@@ -26,8 +26,9 @@ gets a "no data" page rather than a crash.
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from orchestrator.observability.analytics.config import resolve_db_url
 from orchestrator.observability.analytics.query.connections import (

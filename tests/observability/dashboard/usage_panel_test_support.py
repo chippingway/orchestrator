@@ -13,7 +13,7 @@ before the render rather than by driving two.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Self
 
 from orchestrator.observability.analytics.query.activity_models import (
     BackendDailyTokensRow,
@@ -40,10 +40,10 @@ FIGURE = object()
 class NullContext:
     """`with`-usable stand-in for `st.container(...)`."""
 
-    def __enter__(self) -> "NullContext":
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *exception: Any) -> bool:
+    def __exit__(self, *exception: object) -> bool:
         return False
 
 

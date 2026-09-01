@@ -29,7 +29,8 @@ work in the default install, which does not carry it.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from orchestrator.observability.dashboard.formatting import fmt_money
 from orchestrator.observability.dashboard.layout import base_layout

@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import unittest
+from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
-from typing import Iterator
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.sync import run

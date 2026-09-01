@@ -16,24 +16,23 @@ question) rather than by the backend that emits it.
 """
 from __future__ import annotations
 
-from typing import Tuple
 
 _SILENT_PARKS_BEFORE_FRESH_SESSION = 2
 
-_CLAUDE_STALE_SESSION_STDERR_MARKERS: Tuple[str, ...] = (
+_CLAUDE_STALE_SESSION_STDERR_MARKERS: tuple[str, ...] = (
     "no conversation found with session id",
     "no conversation found with id",
     "no conversation with session id",
     "conversation not found",
 )
 
-_CLAUDE_CONTEXT_OVERFLOW_MARKERS: Tuple[str, ...] = (
+_CLAUDE_CONTEXT_OVERFLOW_MARKERS: tuple[str, ...] = (
     "prompt is too long",
     "input is too long",
     "input length and `max_tokens` exceed context limit",
 )
 
-_CLAUDE_SESSION_LIMIT_MESSAGE_MARKERS: Tuple[str, ...] = (
+_CLAUDE_SESSION_LIMIT_MESSAGE_MARKERS: tuple[str, ...] = (
     "you've hit your session limit",
     "you've hit your usage limit",
     "you've reached your session limit",

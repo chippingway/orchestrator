@@ -29,7 +29,8 @@ undecorated reader is what makes that key readable.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any, Self
 
 
 # The one region the filter widgets are drawn inside, and what a widget drawn
@@ -61,11 +62,11 @@ class SidebarRegion:
     def __init__(self, page: FakeStreamlit) -> None:
         self._page = page
 
-    def __enter__(self) -> SidebarRegion:
+    def __enter__(self) -> Self:
         self._page.open_region = SIDEBAR
         return self
 
-    def __exit__(self, *exception: Any) -> bool:
+    def __exit__(self, *exception: object) -> bool:
         self._page.open_region = PAGE
         return False
 

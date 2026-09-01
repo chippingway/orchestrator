@@ -102,9 +102,9 @@ import functools
 import importlib
 import logging
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Callable, Mapping
 
 from github.Issue import Issue
 

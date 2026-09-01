@@ -22,8 +22,8 @@ banner drawn before any figure exists -- must not pay for the optional
 """
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
-from typing import Mapping, Sequence
 
 # Page chrome, straight off the mock's `:root` block: a cool gray page with
 # white cards, and three ink tints the label, the value, and the caption on a

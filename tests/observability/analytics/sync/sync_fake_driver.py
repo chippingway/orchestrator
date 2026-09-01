@@ -13,7 +13,7 @@ landed rows *after* the scan.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Self
 
 from orchestrator.observability.analytics.sync.records import content_hash
 
@@ -27,7 +27,7 @@ def keep_payload(payload: Any) -> Any:
     return payload
 
 
-def seed_stored_records(connection: "FakeConnection", stored: list[dict]) -> None:
+def seed_stored_records(connection: FakeConnection, stored: list[dict]) -> None:
     """Tell the double which records the database already holds."""
     connection.seen_hashes.update(content_hash(record) for record in stored)
 
@@ -35,12 +35,12 @@ def seed_stored_records(connection: "FakeConnection", stored: list[dict]) -> Non
 class FakeCursor:
     """Record startup reads, refreshes, and batched inserts."""
 
-    def __init__(self, store: "FakeConnection") -> None:
+    def __init__(self, store: FakeConnection) -> None:
         self._store = store
         self.rowcount = 0
         self._select_rows: list[tuple] = []
 
-    def __enter__(self) -> "FakeCursor":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc, traceback) -> None:
@@ -107,7 +107,7 @@ class FakeConnection:
     def close(self) -> None:
         self.close_called += 1
 
-    def as_connect(self, _url: str) -> "FakeConnection":
+    def as_connect(self, _url: str) -> FakeConnection:
         """Serve as the sync's connection factory."""
         return self
 

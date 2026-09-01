@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Iterator, Tuple
+from collections.abc import Iterator
+from typing import Any
 
 from orchestrator.agents import models as _agent_models
 
@@ -30,7 +31,7 @@ _PRIORITY_KEYS = ("session_id", "conversation_id", "thread_id", "session", "id")
 # not make (auth, permission, a payload the model refused) and retrying it
 # changes nothing, and a 429 is quota, whose CLI-level phrasings the
 # session-limit classifier already routes to "wait for the reset".
-_TRANSIENT_PROVIDER_MESSAGE_MARKERS: Tuple[str, ...] = (
+_TRANSIENT_PROVIDER_MESSAGE_MARKERS: tuple[str, ...] = (
     "api error: 500",
     "api error: 502",
     "api error: 503",

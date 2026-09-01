@@ -87,6 +87,8 @@ per-file-ignores =
     orchestrator/workflow/stages/validating/reviewer.py:WPS201
     orchestrator/observability/analytics/config.py:WPS202
     orchestrator/observability/analytics/query/rollup_reads.py:WPS201
+    orchestrator/observability/analytics/sync/run.py:WPS201
+    orchestrator/observability/dashboard/charts/cost_review.py:WPS201
     orchestrator/observability/usage/trajectory_codex_items.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
@@ -99,6 +101,7 @@ per-file-ignores =
     tests/workflow/fixtures.py:WPS201
     tests/workflow/patch_models.py:WPS202
     tests/workflow/stages/conflicts/test_settled_round.py:WPS202
+    tests/workflow/stages/decomposition/late_content_support.py:WPS201
     tests/workflow/stages/decomposition/test_late_cleanup_publication.py:WPS201
     tests/workflow/stages/decomposition/test_late_transaction_published.py:WPS201
     tests/workflow/stages/implementing/test_late_gate_retry.py:WPS202

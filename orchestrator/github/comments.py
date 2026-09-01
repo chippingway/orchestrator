@@ -39,11 +39,10 @@ the marker alone, which is the same fallback the pinned-state read takes.
 """
 from __future__ import annotations
 
-from typing import Any, Iterable, List, TypeVar
+from collections.abc import Iterable
+from typing import Any
 
 from orchestrator import config
-
-_CommentT = TypeVar("_CommentT")
 
 # What every hidden receipt this orchestrator writes begins with -- the pinned
 # state comment, the split's forward link and supersession notices, and the
@@ -85,9 +84,9 @@ def is_trusted_author(
     return login.lower() in allowed_lower
 
 
-def filter_trusted(
+def filter_trusted[_CommentT](
     comments: Iterable[_CommentT], *, allowed: Iterable[str] | None = None
-) -> List[_CommentT]:
+) -> list[_CommentT]:
     """Keep only comments whose author is trusted (see `is_trusted_author`).
 
     Each item is any object exposing a `.user` attribute. Input order is

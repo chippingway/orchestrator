@@ -37,9 +37,10 @@ differently.
 """
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from orchestrator.observability.dashboard import (
     breakdowns,

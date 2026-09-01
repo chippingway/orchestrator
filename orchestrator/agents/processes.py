@@ -16,9 +16,9 @@ import signal
 import subprocess
 import threading
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
-from typing import Iterator
 
 from orchestrator.agents import models as _agent_models
 

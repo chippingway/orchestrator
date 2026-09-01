@@ -28,12 +28,10 @@ unreadable value is to preserve it rather than to default it.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, TypeVar
+from typing import Any
 
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split.models import MAX_LINEAGE_DEPTH
-
-_Member = TypeVar("_Member", bound=StrEnum)
 
 
 def as_count(raw: Any) -> int | None:
@@ -98,7 +96,7 @@ def as_text(raw: Any) -> str | None:
     return raw if isinstance(raw, str) else None
 
 
-def as_member(members: type[_Member], raw: Any) -> _Member | None:
+def as_member[_Member: StrEnum](members: type[_Member], raw: Any) -> _Member | None:
     """Return the vocabulary member a wire string names, or None.
 
     An unknown spelling is a field this binary cannot act on, and answering

@@ -22,7 +22,8 @@ loadable in an install carrying no viewer dependencies at all.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.dashboard.filters import parse_issue_number
 from orchestrator.observability.trajectory_viewer import filtering, page_models

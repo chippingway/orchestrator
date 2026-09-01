@@ -20,9 +20,9 @@ import os
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping, Union
 from unittest.mock import patch
 
 from orchestrator import config
@@ -233,7 +233,7 @@ class CandidateRepo:
 
     def commit(
         self,
-        written: Mapping[str, Union[str, bytes]],
+        written: Mapping[str, str | bytes],
         message: str = "work",
     ) -> str:
         """Write paths into the candidate checkout, commit, and return its SHA.

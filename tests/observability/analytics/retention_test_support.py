@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import contextlib
 import tempfile
+from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
 
 from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 

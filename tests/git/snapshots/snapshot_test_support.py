@@ -168,7 +168,7 @@ _SESSIONS = _LocalAuthSession()
 
 @contextlib.contextmanager
 def real_remote(
-    *, reachable: bool = True, clone: Path = None, slug: str = None,
+    *, reachable: bool = True, clone: Path | None = None, slug: str | None = None,
 ):
     """Yield a bare remote, a clone carrying two commits, and its spec.
 
@@ -186,7 +186,7 @@ def real_remote(
 
 
 def _prepared_pair(
-    root: Path, shared: Path = None, slug: str = None,
+    root: Path, shared: Path | None = None, slug: str | None = None,
 ) -> RealRemote:
     """Build the bare repository and the clone that has pushed to it."""
     remote = root / "remote.git"

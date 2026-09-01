@@ -26,7 +26,7 @@ combined by max rather than overwritten.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Tuple
+from typing import Any
 
 from github.Issue import Issue
 
@@ -37,7 +37,7 @@ from orchestrator.workflow.engine import comments as _comments
 
 def _watermark_comment_pairs(
     issue_comments: list, pr_comments: list,
-) -> list[Tuple[Any, bool]]:
+) -> list[tuple[Any, bool]]:
     return sorted(
         [(comment, True) for comment in issue_comments]
         + [(comment, False) for comment in pr_comments],
@@ -162,7 +162,7 @@ def _seed_watermark_past_self(
 
 def _latest_pr_comment_ids(
     gh: GitHubClient, issue: Issue, pr, state: PinnedState
-) -> Tuple[int | None, int | None]:
+) -> tuple[int | None, int | None]:
     """Return (issue-comment watermark, review-comment watermark) seeded only
     past leading orchestrator-authored comments on the issue thread + PR.
 

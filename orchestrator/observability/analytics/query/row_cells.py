@@ -14,8 +14,9 @@ page keying its series on days is not comparing a date against midnight.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any
 
 
 def row_value(row: Sequence[Any], index: int, default: Any = 0) -> Any:

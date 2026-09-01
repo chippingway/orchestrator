@@ -17,9 +17,10 @@ the driver -- the two cannot drift apart because neither is built separately.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any
 
 
 @dataclass(frozen=True)

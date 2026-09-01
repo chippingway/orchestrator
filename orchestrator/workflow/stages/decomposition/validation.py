@@ -16,14 +16,13 @@ the agent is told and the number it is judged against cannot drift apart.
 """
 from __future__ import annotations
 
-from typing import Tuple
 
 _MAX_CHILDREN = 10
 
 
 def _split_manifest_children(
     manifest: dict,
-) -> Tuple[list | None, str | None]:
+) -> tuple[list | None, str | None]:
     """Return the bounded, non-empty children list for a split decision."""
     children = manifest.get("children")
     if not isinstance(children, list) or not children:
@@ -60,7 +59,7 @@ def _manifest_child_text_error(
 
 def _manifest_child_dependencies(
     child: dict, child_index: int,
-) -> Tuple[list | None, str | None]:
+) -> tuple[list | None, str | None]:
     """Normalize null dependencies and reject every other non-list shape."""
     dependencies = child.get("depends_on")
     if dependencies is None:

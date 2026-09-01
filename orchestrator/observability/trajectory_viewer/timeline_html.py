@@ -31,8 +31,8 @@ kind are all record text this viewer does not own.
 from __future__ import annotations
 
 import html
+from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Mapping
 
 from orchestrator.observability.trajectory_viewer import constants
 from orchestrator.observability.trajectory_viewer.models import (

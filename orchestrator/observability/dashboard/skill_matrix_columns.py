@@ -28,9 +28,9 @@ without either table reordering the other.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Callable
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillTriggerMatrixRow,

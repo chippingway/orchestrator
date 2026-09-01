@@ -18,7 +18,8 @@ backend label so redrawing the same window returns the same order.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.conditions import (
     AGENT_EXIT_CONDITION,

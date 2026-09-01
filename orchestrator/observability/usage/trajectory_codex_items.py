@@ -42,9 +42,10 @@ carries either way, so the terminal status is what ends it.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Callable, Mapping
+from typing import Any
 
 from orchestrator.observability.usage import (
     protocol,

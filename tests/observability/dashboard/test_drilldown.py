@@ -13,9 +13,10 @@ issued inside it and under which filters without standing a database up.
 from __future__ import annotations
 
 import unittest
+from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import Any, Callable, Sequence
+from typing import Any
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.query import raw_reads

@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from github import GithubException
 from github.IssueComment import IssueComment

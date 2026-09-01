@@ -87,7 +87,7 @@ class GitHubClient(
         self._pollable_calls = 0
         self._closed_sweeps = 0
 
-    def _for_worker_thread(self) -> "GitHubClient":
+    def _for_worker_thread(self) -> GitHubClient:
         """Build a fresh requester/repository pair for one worker thread."""
         return GitHubClient(
             token=self._token,

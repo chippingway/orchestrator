@@ -10,9 +10,10 @@ what that scope opens, caches, and evicts is settled a package away.
 from __future__ import annotations
 
 import unittest
+from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import partial
-from typing import Any, Iterator
+from typing import Any
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.query import connection_cache

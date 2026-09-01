@@ -37,7 +37,7 @@ it was taken over.
 from __future__ import annotations
 
 import hashlib
-from typing import Iterable
+from collections.abc import Iterable
 
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split.models import (

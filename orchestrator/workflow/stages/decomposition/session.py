@@ -21,7 +21,6 @@ the edited body is the operator's call, not ours.
 """
 from __future__ import annotations
 
-from typing import Tuple
 
 from github.Issue import Issue
 
@@ -42,7 +41,7 @@ from orchestrator.workflow.stages.implementing import session as _dev_session
 
 def _read_decomposer_session(
     state: PinnedState,
-) -> Tuple[str, str, tuple[str, ...], str | None]:
+) -> tuple[str, str, tuple[str, ...], str | None]:
     """Return (spec, backend, extra_args, decomposer_session_id) for an issue.
 
     Mirrors `_read_dev_session`: `spec` is the full configured agent

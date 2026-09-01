@@ -20,7 +20,8 @@ file under and would land in a bucket the chart has no bar for.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.cache_shares import (
     AGENT_CACHE_FRACTION_SQL,

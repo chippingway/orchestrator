@@ -27,7 +27,8 @@ loadable in an install carrying no viewer dependencies at all.
 from __future__ import annotations
 
 import html
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.dashboard import formatting
 from orchestrator.observability.trajectory_viewer import (

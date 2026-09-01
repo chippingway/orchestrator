@@ -22,10 +22,10 @@ one spelling.
 from __future__ import annotations
 
 import unittest
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Iterator
 
 from tests.repository.binding_test_support import module_level_names
 from tests.repository.import_test_support import (

@@ -7,9 +7,9 @@ import io
 import logging
 import re
 import unittest
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 from orchestrator.observability.analytics.sync import cli

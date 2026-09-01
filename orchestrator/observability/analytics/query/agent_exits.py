@@ -15,7 +15,8 @@ read already pins the event itself; keeping it would add a redundant
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from orchestrator.observability.analytics.query.conditions import (
     agent_event_excluded,

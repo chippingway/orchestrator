@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import contextlib
 import sys
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
-from typing import Any, Callable, Iterator
+from typing import Any, Self
 from unittest.mock import patch
 
 _DRIVER = "psycopg"
@@ -53,7 +54,7 @@ class FakeCursor:
         self._conn = conn
         self._rows: _Rows = ()
 
-    def __enter__(self) -> FakeCursor:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc, traceback) -> None:

@@ -21,7 +21,7 @@ import logging
 import os
 import signal
 import threading
-from typing import Any
+from typing import Self
 
 from orchestrator import agents, config
 from orchestrator.runtime.state import SIGNAL_EXIT_BASE, RuntimeState
@@ -40,10 +40,10 @@ class ForcedExit:
     def __init__(self, exit_code: int) -> None:
         self._exit_code = exit_code
 
-    def __enter__(self) -> "ForcedExit":
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *error_details: Any) -> bool:
+    def __exit__(self, *error_details: object) -> bool:
         os._exit(self._exit_code)
         return False
 

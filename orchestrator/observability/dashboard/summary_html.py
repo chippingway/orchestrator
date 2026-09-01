@@ -36,10 +36,11 @@ spells it.
 from __future__ import annotations
 
 import html
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from inspect import Parameter, Signature
-from typing import Any, Sequence
+from typing import Any
 
 from orchestrator.observability.dashboard import sparkline_html
 

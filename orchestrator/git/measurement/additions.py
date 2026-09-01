@@ -57,9 +57,9 @@ from __future__ import annotations
 import logging
 import os
 import stat
+from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping
 
 from orchestrator import config
 from orchestrator.git import commands

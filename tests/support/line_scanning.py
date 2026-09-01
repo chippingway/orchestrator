@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import subprocess
 import tomllib
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 
 # The scan walks every tracked file, so it resolves the repository root off

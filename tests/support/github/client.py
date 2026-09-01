@@ -3,8 +3,8 @@
 """Composition root for the in-memory GitHub client."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from itertools import count
-from typing import Iterable
 
 from tests.support.github import issues as issue_service
 from tests.support.github import pr_service as pull_service

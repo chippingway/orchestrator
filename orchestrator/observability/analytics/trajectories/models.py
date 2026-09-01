@@ -17,8 +17,9 @@ is built, so a value patched between two records bounds the second one.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 TRAJECTORY_FIELD_HEAD = 2000
 TRAJECTORY_FIELD_TAIL = 2000
