@@ -94,7 +94,7 @@ import subprocess
 from collections.abc import Mapping
 from itertools import chain
 from pathlib import Path
-from stat import S_ISDIR
+from stat import S_ISDIR, S_ISREG
 from types import MappingProxyType
 
 from orchestrator import config
@@ -184,6 +184,16 @@ _REF_LOCK = ".lock"
 _REGISTRATION = "gitdir"
 
 _WRITABLE = 0o222
+
+# How that file is opened: read-only and refusing to follow, so a link left
+# at the name fails the open outright rather than handing this pass somebody
+# else's file to read, to hold, and to change the mode of.
+_UNFOLLOWED = os.O_RDONLY | os.O_NOFOLLOW
+
+# How much of it is read. A registration is one path and a newline, so
+# anything past this is not one -- and the read is bounded because the file is
+# one an agent can write.
+_REGISTRATION_LIMIT = 4096
 
 # What a branch nobody cleared a commit for is left with, in the two answers
 # the ledger gives. Said apart because an operator reading the line has to be
@@ -397,72 +407,155 @@ def _anchored_removal(
     if gitdir is None:
         return SurfaceOutcome.FAILED
     with contextlib.ExitStack() as holding:
-        held = _held_still(artifacts, worktree, gitdir)
-        if not held:
+        pinned = _everything_held(artifacts, worktree, gitdir, holding)
+        if pinned is None:
             return SurfaceOutcome.FAILED
-        holding.callback(_let_go, held)
-        was = _registration_frozen(artifacts, gitdir)
-        if was is None:
-            return SurfaceOutcome.FAILED
-        holding.callback(_thawed, gitdir / _REGISTRATION, was)
-        return _removal_while_held(artifacts, worktree, proven_sha)
+        return _removal_while_held(
+            artifacts, worktree, proven_sha, gitdir, pinned,
+        )
 
 
-def _registration_frozen(
-    artifacts: IssueArtifacts, gitdir: Path,
+def _everything_held(
+    artifacts: IssueArtifacts,
+    worktree: Path,
+    gitdir: Path,
+    holding: contextlib.ExitStack,
 ) -> int | None:
-    """Hold the registration still, and answer with the mode it had.
+    """Take every hold one removal runs under, or come back with none.
+
+    Git's own locks for the tree and the branch under its HEAD, and then the
+    registration the removal will be aimed by. Each is given back through the
+    stack the caller opened, so a hold taken is a hold released however this
+    ends -- and the one thing handed back is the descriptor the last of them
+    is pinned by, since the readings before the removal have to be able to ask
+    whether the name still means it.
+    """
+    held = _held_still(artifacts, worktree, gitdir)
+    if not held:
+        return None
+    holding.callback(_let_go, held)
+    registration = _registration_held(artifacts, gitdir, worktree)
+    if registration is None:
+        return None
+    pinned, was = registration
+    holding.callback(_thawed, pinned, was)
+    return pinned
+
+
+def _registration_held(
+    artifacts: IssueArtifacts, gitdir: Path, worktree: Path,
+) -> tuple[int, int] | None:
+    """Take hold of the file this removal will be aimed by, or refuse.
 
     What `worktree remove` deletes is not the path it is handed. That path
     only selects a registration, and what comes down is the path the
-    registration names -- so the one thing that decides where the destruction
+    registration names -- so the one thing deciding where the destruction
     lands is a file in the administrative directory, and `worktree repair` is
     a single command that rewrites it.
 
-    Held by taking its write bits away, which is the only hold there is:
-    nothing locks that file, and a `repair` that cannot open it for writing
-    fails outright and leaves the registration naming what it named. Every
-    reading in front of the removal is then about the tree the removal will
-    actually take.
+    Opened without following, which is the first of the two things this is
+    for. A link left at that name would have every reading here answer about
+    somebody else's file and every write land on it, so a link is not read
+    around -- it is refused, and the removal with it.
 
-    `None` when the mode could not be read or could not be changed, which
-    stops the removal. A registration nobody can hold still is one that can be
-    pointed anywhere between here and the command, and a removal aimed by a
-    file somebody else is free to rewrite is aimed at nothing in particular.
+    Held by a descriptor rather than by a name, which is the second. What the
+    write bits come off is the object opened here and never whatever the name
+    means by then, and what they go back onto is that same object however the
+    name has been rearranged since.
+
+    `None` for anything that is not this checkout's own registration, and for
+    every reading that could not be taken: a removal aimed by a file this pass
+    cannot account for is aimed at nothing in particular.
     """
     registration = gitdir / _REGISTRATION
     try:
-        was = _made_read_only(registration)
+        opened = os.open(registration, _UNFOLLOWED)
     except OSError as refused:
         log.warning(
-            "issue=#%d keeping the checkout: %s could not be held still (%s)",
-            artifacts.issue_number, registration, refused,
+            "issue=#%d keeping the checkout: %s would not open as a file of "
+            "its own (%s)", artifacts.issue_number, registration, refused,
+        )
+        return None
+    was = _registration_pinned(artifacts, opened, worktree)
+    if was is None:
+        os.close(opened)
+        return None
+    return opened, was
+
+
+def _registration_pinned(
+    artifacts: IssueArtifacts, pinned: int, worktree: Path,
+) -> int | None:
+    """Whether what was opened aims at this checkout, and its mode if it does.
+
+    A regular file -- a fifo or a directory at that name is not a registration
+    and not something to take the write bits off -- naming this checkout's own
+    `.git`, which is what says the removal about to run is aimed here rather
+    than at a tree somebody repaired it onto. Compared as filesystem objects
+    for the reason every path comparison here is: the spellings differ
+    honestly under a worktrees root that sits below a link of its own.
+
+    Then the write bits come off, which is what a `repair` fails on: it
+    rewrites this file in place, and a file it cannot open for writing leaves
+    the registration naming what it named.
+    """
+    try:
+        held, named = _registration_read(pinned)
+    except (OSError, ValueError) as unread:
+        log.warning(
+            "issue=#%d keeping the checkout %s: its registration could not be "
+            "read (%s)", artifacts.issue_number, worktree, unread,
+        )
+        return None
+    if not S_ISREG(held.st_mode) or not _aims_here(worktree, named):
+        log.warning(
+            "issue=#%d keeping the checkout %s: what is registered for it "
+            "names %r", artifacts.issue_number, worktree, named.strip(),
+        )
+        return None
+    return _mode_taken_off(artifacts, pinned, held.st_mode)
+
+
+def _registration_read(pinned: int) -> tuple[os.stat_result, str]:
+    """What was opened, and what it says, in one reading of the descriptor."""
+    return os.fstat(pinned), os.read(pinned, _REGISTRATION_LIMIT).decode()
+
+
+def _aims_here(worktree: Path, named: str) -> bool:
+    """Whether one registration's contents name this checkout's own tree."""
+    inside = named.strip()
+    return bool(inside) and _one_directory(worktree, Path(inside).parent)
+
+
+def _mode_taken_off(
+    artifacts: IssueArtifacts, pinned: int, was: int,
+) -> int | None:
+    """Take the write bits off the object held open, and answer its mode."""
+    try:
+        os.fchmod(pinned, was & ~_WRITABLE)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: its registration could not be "
+            "held still (%s)", artifacts.issue_number, refused,
         )
         return None
     return was
 
 
-def _made_read_only(registration: Path) -> int:
-    """Take the write bits off one file, and answer with the mode it had."""
-    was = registration.stat().st_mode
-    registration.chmod(was & ~_WRITABLE)
-    return was
+def _thawed(pinned: int, was: int) -> None:
+    """Give the registration the mode it had back, and let the handle go.
 
-
-def _thawed(registration: Path, was: int) -> None:
-    """Give the registration the mode it had back, if it is still there.
-
-    A removal that succeeded took the whole administrative directory with it,
-    which is the ordinary way this ends.
+    On the object rather than on the name, so a removal that took the whole
+    administrative directory with it -- the ordinary way this ends -- is one
+    where the mode goes back onto something nothing names any more, which
+    costs nothing and cannot reach anybody else's file.
     """
     try:
-        registration.chmod(was)
-    except FileNotFoundError:
-        return
+        os.fchmod(pinned, was)
     except OSError as refused:
-        log.warning(
-            "%s could not be given its mode back: %s", registration, refused,
-        )
+        log.warning("a registration's mode could not go back: %s", refused)
+    finally:
+        os.close(pinned)
 
 
 def _checkout_gitdir(
@@ -590,7 +683,11 @@ def _let_go(held: tuple[Path, ...]) -> None:
 
 
 def _removal_while_held(
-    artifacts: IssueArtifacts, worktree: Path, proven_sha: str | None,
+    artifacts: IssueArtifacts,
+    worktree: Path,
+    proven_sha: str | None,
+    gitdir: Path,
+    pinned: int,
 ) -> SurfaceOutcome:
     """Pin what the checkout holds, take it down, and say what came with it.
 
@@ -609,7 +706,7 @@ def _removal_while_held(
     spec = artifacts.spec
     if not _anchor_taken(artifacts, worktree, proven_sha):
         return SurfaceOutcome.FAILED
-    if not _ready_to_go(artifacts, worktree):
+    if not _ready_to_go(artifacts, worktree, proven_sha, gitdir, pinned):
         return _anchor_settled(artifacts, proven_sha, removed=False)
     removed = commands._git_hardened(
         "worktree", "remove", str(worktree), cwd=spec.target_root,
@@ -620,30 +717,61 @@ def _removal_while_held(
     )
 
 
-def _ready_to_go(artifacts: IssueArtifacts, worktree: Path) -> bool:
-    """The two readings retaken one process before the removal.
+def _ready_to_go(
+    artifacts: IssueArtifacts,
+    worktree: Path,
+    proven_sha: str | None,
+    gitdir: Path,
+    pinned: int,
+) -> bool:
+    """Everything this removal turns on, asked again with the locks held.
 
-    Both are ones git does not make for itself, which is the whole of why
-    they are here rather than back with the others. It refuses a tree with
-    untracked or modified files in it and takes an ignored one without a
-    word; and it resolves the path it is handed rather than insisting that
-    the path IS the tree.
+    The whole reading rather than the part git does not make for itself,
+    because the locks go on after the first one and the window before them is
+    one anybody can reach into. A checkout put on somebody else's branch there
+    is one whose every later step reads as ours -- the branch this pass froze
+    is the one it moved ONTO, the anchor pins whatever that branch stands on,
+    and a tree that is clean on it is clean -- so the identity has to be
+    established again where it cannot change afterwards, and that is here.
 
-    Everything else behind this step is covered without being asked again.
-    Whose repository it is and which branch its HEAD is on cannot change
-    while the locks are this process's, and what that branch is standing on
-    is read back against the anchor once the removal has run.
+    What is asked is what the verdict was taken on: the path is this issue's
+    own, the tree is a worktree of the configured clone standing on one of
+    this issue's branches, its HEAD is on the commit that was cleared, and it
+    is carrying and hiding nothing. Then the path is asked where it leads, and
+    the registration is asked whether it is still the one this pass is holding
+    -- neither of which is about the tree, and both of which decide what a
+    command that resolves its own argument would take.
     """
     if not _still_ours(artifacts, worktree):
         return False
-    if evidence._nothing_ignored(worktree) is not ProbeAnswer.CONFIRMED:
+    if not _still_cleared(artifacts, worktree, proven_sha):
+        return False
+    return _registration_unchanged(artifacts, gitdir, pinned)
+
+
+def _registration_unchanged(
+    artifacts: IssueArtifacts, gitdir: Path, pinned: int,
+) -> bool:
+    """Whether the name the removal is aimed by still means what this holds.
+
+    Taking the write bits off stops the command that rewrites that file in
+    place. It stops nothing from replacing the NAME with a rename, which the
+    directory above it permits and which leaves this pass holding an object
+    the removal will never read.
+
+    So the name is read once more and compared against what is held open: a
+    file swapped underneath answers a different object, and the removal that
+    would have been aimed by it does not run.
+    """
+    registration = gitdir / _REGISTRATION
+    try:
+        return _same_object(registration.lstat(), os.fstat(pinned))
+    except OSError as read_error:
         log.warning(
-            "issue=#%d keeping %s: something its own ignore rules cover "
-            "arrived while it was being taken down",
-            artifacts.issue_number, worktree,
+            "issue=#%d keeping the checkout: %s could not be read back (%s)",
+            artifacts.issue_number, registration, read_error,
         )
         return False
-    return True
 
 
 def _still_ours(artifacts: IssueArtifacts, worktree: Path) -> bool:

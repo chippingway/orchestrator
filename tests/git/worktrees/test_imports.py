@@ -161,10 +161,14 @@ _OWNER_ONLY_NAMES = (
 # git directory, the locks that keep a checkout still while it comes down --
 # its own two and the one git takes for the branch under its HEAD -- the
 # exclusive creation each is taken by, the held removal itself, the readings
-# retaken one process before it and the comparison telling a path that IS a
-# tree from one that merely leads to it, the registration held still while the
-# removal aims by it and the mode change either side of that, the last word on
-# whether the path named is gone, the reading that tells a prunable
+# retaken one process before it -- the whole verdict's worth of them, since
+# the window in front of the locks is one an ownership change fits in -- and
+# the comparison telling a path that IS a tree from one that merely leads to
+# it, the registration the removal aims by: opened without following, read for
+# what it says, told whether it says this checkout, held by the mode taken off
+# the object rather than the name, put back the same way, and asked once more
+# whether the name still means it, the last word on whether the path named is
+# gone, the reading that tells a prunable
 # registration naming nothing from one naming a tree still there, the branch
 # written back where the scan reads its candidates from and the two callers
 # that reach for it, and the take, the discard, and the reconciliation of a
@@ -222,18 +226,21 @@ _OWNER_DEFINED = (
     ("_REF_SEPARATOR", attribution),
     ("_REGISTRATION", reclamation),
     ("_REMINDER_MARK", obligations),
+    ("_REGISTRATION_LIMIT", reclamation),
     ("_REF_LOCK", reclamation),
     ("_REMOTE", reclamation),
     ("_REMOTE_STANDING", reclamation),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
+    ("_UNFOLLOWED", reclamation),
     ("_VERIFY_QUIETLY", evidence),
     ("_VERIFY_REF", creation),
     ("_WORKTREE_ADD", creation),
     ("_WORKTREE_ENTRY", reclamation),
     ("_WORKTREE_REMOVE_FORCE", creation),
     ("_WRITABLE", reclamation),
+    ("_aims_here", reclamation),
     ("_anchor_accounted", reclamation),
     ("_anchor_checkout", obligations),
     ("_anchor_let_go", reclamation),
@@ -299,6 +306,7 @@ _OWNER_DEFINED = (
     ("_ensure_decompose_worktree", decomposition),
     ("_ensure_pr_worktree", creation),
     ("_ensure_worktree", creation),
+    ("_everything_held", reclamation),
     ("_fetch_for_restore", creation),
     ("_fetched_issue", claims),
     ("_hardened_read", evidence),
@@ -315,11 +323,11 @@ _OWNER_DEFINED = (
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
-    ("_made_read_only", reclamation),
     ("_marked_again", reclamation),
     ("_marked_at", reclamation),
     ("_matching_owners", attribution),
     ("_merged", inventory),
+    ("_mode_taken_off", reclamation),
     ("_move_branch_onto", creation),
     ("_nothing_ignored", evidence),
     ("_note_at", obligations),
@@ -358,7 +366,10 @@ _OWNER_DEFINED = (
     ("_refused_delete", reclamation),
     ("_refused_push", reclamation),
     ("_remind", obligations),
-    ("_registration_frozen", reclamation),
+    ("_registration_held", reclamation),
+    ("_registration_pinned", reclamation),
+    ("_registration_read", reclamation),
+    ("_registration_unchanged", reclamation),
     ("_reminded", reclamation),
     ("_removal_under_lock", reclamation),
     ("_removal_while_held", reclamation),

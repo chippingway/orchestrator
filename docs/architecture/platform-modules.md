@@ -378,17 +378,26 @@ orchestrator/
                         between the note and the removal, last of everything: git's own locks stop a commit in
                         that tree and stop nothing from writing in it, and an ignored file is what `worktree
                         remove` takes without a word — so a reading from before the note would delete a secret
-                        that landed after it. Where the path leads is read there too, and for the same kind of
+                        that landed after it. The rest of the verdict's reading is retaken there too, and not
+                        only the parts git leaves out: the locks go on after the reading that cleared the tree,
+                        and a checkout put on somebody else's branch in that window is one every step after
+                        would take for ours — the branch this pass freezes being the one it moved onto — so
+                        whose repository it is and which branch its HEAD is on are established again where
+                        nothing can move. Where the path leads is read there too, and for the same kind of
                         reason: the command resolves its own argument, so a checkout renamed away with its
                         registration repaired and a link left in its place would have it take a directory
                         outside the tree this orchestrator owns. The two are compared as filesystem objects
                         rather than as spellings, an operator whose worktrees root sits under a link of their
                         own having every checkout answer a resolved path that is not the derived one. What the
                         command actually deletes is not the path it is handed, though — that path only selects
-                        a registration, and the registration names the tree that comes down — so the file
-                        holding that name is held still for the length of a removal by having its write bits
-                        taken off: nothing locks it, and the `worktree repair` a swap needs to aim the removal
-                        elsewhere cannot open it. And a removal that came back clean over a path still standing
+                        a registration, and the registration names the tree that comes down — so that file is
+                        opened without following, refused unless it is a regular one naming this checkout's
+                        own tree, and held by taking the write bits off the OBJECT rather than the name: a link
+                        left there would otherwise have every read and every mode change land on somebody
+                        else's file. Nothing locks it, and what the mode buys is that the `worktree repair` a
+                        swap needs to aim the removal elsewhere cannot open it; what the mode cannot buy is a
+                        rename through the directory above, so the name is read once more against the object
+                        held open before the command runs. And a removal that came back clean over a path still standing
                         is reported as the failure it is, since what came down was not what this named. The note is measured the same way whatever
                         the removal answered, since `worktree remove` deletes the tree and then deletes the
                         administrative directory beside it whatever the first half did: a non-zero result is not

@@ -19,6 +19,7 @@ from __future__ import annotations
 import contextlib
 import unittest
 from pathlib import Path
+from stat import S_IMODE
 from unittest.mock import patch
 
 from orchestrator.git import authentication, commands
@@ -45,6 +46,7 @@ from tests.git.worktrees.artifact_test_support import (
 )
 from tests.git.worktrees.candidate_host_test_support import (
     _branch_at,
+    _index_path,
     _track_file,
 )
 from tests.git.worktrees.eligibility_test_support import (
@@ -105,6 +107,14 @@ _HARDENED_SEAM = "_git_hardened"
 # racers in these cases run.
 _CLEAN_SEAM = "_clean_worktree"
 
+# The anchor read a removal is settled by, which the cases about a note left
+# holding somebody's commit stand in front of.
+_ANCHOR_READ_SEAM = "_anchored_commit"
+
+# The read that opens a removal, which the case about ownership changing
+# before the locks stands in front of.
+_GITDIR_SEAM = "_checkout_gitdir"
+
 _UPDATE_REF = "update-ref"
 
 # Where a checkout is moved to for the cases about a link left in its place,
@@ -118,6 +128,21 @@ MOVED_CONTENT = "a tree nobody adjudicated\n"
 # What a linked checkout keeps at its root, and what a case removes to leave
 # a registration git calls prunable over a tree that is still there.
 GIT_FILE = ".git"
+
+# The file in a checkout's administrative directory that says where that
+# checkout is, and what the cases about it put in its place: a file of
+# somebody else's, and a decoy renamed over the name.
+REGISTRATION = "gitdir"
+
+FOREIGN_FILE = "somebody-else-s.txt"
+
+FOREIGN_MODE = 0o640
+
+DECOY_FILE = "decoy-gitdir"
+
+# The branch a checkout is put on where a racer would, so nothing about it is
+# this issue's any more while everything else still reads as clean.
+OTHER_BRANCH = "somebody-else-s-branch"
 
 # The rule file, the path it hides, and what is in it, for the cases about a
 # tree carrying something no status reports.
@@ -145,6 +170,16 @@ RACED_MESSAGE = "raced"
 RACED_BRANCH = "-raced"
 
 PR_NUMBER = 42
+
+
+def _registration_of(worktree: Path) -> Path:
+    """The file in this checkout's git directory that says where it is."""
+    return _index_path(worktree).parent / REGISTRATION
+
+
+def _mode(named: Path) -> int:
+    """The permission bits one path carries, links not followed."""
+    return S_IMODE(named.lstat().st_mode)
 
 
 def _read(moved: Path) -> str:
@@ -505,6 +540,39 @@ class ArtifactOwnershipTest(_ReclaimTestCase):
         )
         self.assertTrue(stranger.exists())
 
+    def locating(self, artifacts, worktree: Path) -> Path | None:
+        """Put the checkout on somebody else's branch, then answer as before.
+
+        Installed in place of the read that opens the removal, which is the
+        last step before the locks go on: everything the verdict was taken on
+        has been read by then, and nothing is holding the tree yet.
+        """
+        _run_git("checkout", "-q", OTHER_BRANCH, cwd=worktree)
+        return self.located(artifacts, worktree)
+
+    def test_a_checkout_switched_away_is_kept(self) -> None:
+        # The window between the reading that cleared the tree and the locks
+        # that hold it still. A checkout put on somebody else's branch there
+        # is one every step after would take for ours -- the branch this pass
+        # freezes is the one it moved onto, the anchor pins what that branch
+        # stands on, and a clean tree on it reads clean -- so the whole
+        # reading is taken again where nothing can move, and the identity is
+        # what refuses.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        _run_git("branch", OTHER_BRANCH, cwd=worktree)
+        self.located = reclamation._checkout_gitdir
+
+        with patch.object(reclamation, _GITDIR_SEAM, self.locating):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
+        )
+        self.assertTrue(worktree.is_dir())
+        self.assertTrue(_holds(self.spec, self.branch))
+
     def test_a_link_where_a_checkout_belongs_is_kept(self) -> None:
         # `worktree remove` resolves the path it is handed and deletes the
         # registered tree at the far end, so a link left where this issue's
@@ -661,12 +729,17 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.assertTrue(worktree.is_dir())
 
     def test_a_commit_raced_into_the_window_is_kept(self) -> None:
-        # The lock this teardown holds is this process's own, and the agent or
-        # human writing in a checkout is neither. A commit made after every
-        # reading and left on no branch is clean, so the removal that follows
-        # takes it without complaint -- and the anchor written one process
-        # before that removal is what keeps it, and what tells this pass that
-        # what came down was not what anybody cleared.
+        # The locks this teardown holds go on after the reading that cleared
+        # the tree, and the window in front of them is one anybody can reach
+        # into: a commit made there and left on no branch is clean, and every
+        # step after it would read a tree that is no longer this issue's as
+        # though it were. So the whole reading is taken again once the locks
+        # are on, where nothing can move -- the tree is on no branch of this
+        # issue's, and the removal does not run.
+        #
+        # The anchor is written before that recheck and holds what it found,
+        # so what the raced commit ends up named by is the tree it is still
+        # standing in and the note beside it both.
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
@@ -678,7 +751,7 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.assertEqual(
             self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
         )
-        self.assertFalse(worktree.exists())
+        self.assertTrue(worktree.is_dir())
         self.assertTrue(_holds(self.spec, self.branch))
         self.assertEqual(
             _tip(
@@ -984,6 +1057,71 @@ class MovedCheckoutTest(_ReclaimTestCase):
             self.moved()
         return self.hardened(*args, **options)
 
+    def replacing(self, worktree: Path) -> ProbeAnswer:
+        """Rename a file of somebody's over the registration, and answer clean.
+
+        Where taking the write bits off reaches its limit: the file itself
+        cannot be rewritten, and the NAME can be replaced through the
+        directory above it, which leaves this pass holding an object the
+        removal will never read -- and a writable one at that name for the
+        next command to rewrite. What is written says exactly what the file
+        it replaces says, so nothing but the object itself gives it away.
+        """
+        registration = _registration_of(worktree)
+        decoy = self.world.path(DECOY_FILE)
+        decoy.write_text(registration.read_text())
+        decoy.rename(registration)
+        return ProbeAnswer.CONFIRMED
+
+    def test_a_linked_registration_is_refused(self) -> None:
+        # The file that aims the removal is one an agent can replace with a
+        # link, and every read and write through that name would then be about
+        # whatever it points at -- including the one taking the write bits
+        # off, which is a mode this pass could never give back once the
+        # removal had deleted the link. The far end says exactly what a
+        # registration for this checkout says, so nothing about its contents
+        # gives it away: what refuses is opening the name without following
+        # it, and nobody else's file is touched.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        foreign = self.world.path(FOREIGN_FILE)
+        foreign.write_text(f"{worktree}/{GIT_FILE}\n")
+        foreign.chmod(FOREIGN_MODE)
+        registration = _registration_of(worktree)
+        registration.unlink()
+        registration.symlink_to(foreign)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertEqual(_mode(foreign), FOREIGN_MODE)
+        self.assertTrue(worktree.is_dir())
+
+    def test_a_registration_replaced_is_refused(self) -> None:
+        # The half a mode cannot hold. A rename through the writable
+        # directory above puts a new file at the name while the object this
+        # pass holds open goes on being the old one -- so the name is read
+        # once more and compared against what is held, and the destructive
+        # call is never made at all rather than made and refused by git.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        watched = _DestructiveCalls()
+
+        with patch.object(
+            evidence, _CLEAN_SEAM, self.replacing,
+        ), watched.recording():
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertNotIn(_WORKTREE_REMOVE, watched.taken)
+        self.assertTrue(worktree.is_dir())
+
     def test_a_tree_moved_before_the_read_is_kept(self) -> None:
         # The window the early type check leaves open: everything from that
         # check to the removal, which is where a rename, a repair, and a link
@@ -1087,7 +1225,7 @@ class AnchorReconciliationTest(_ReclaimTestCase):
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
 
-        with patch.object(obligations, "_anchored_commit", self.repointing):
+        with patch.object(obligations, _ANCHOR_READ_SEAM, self.repointing):
             reclaimed = self.spend(cleared)
 
         self.assertEqual(
@@ -1163,11 +1301,11 @@ class AnchorReconciliationTest(_ReclaimTestCase):
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
-        racer = _RacedCommit()
 
-        with patch.object(evidence, _CLEAN_SEAM, racer):
+        with patch.object(obligations, _ANCHOR_READ_SEAM, self.repointing):
             self.spend(cleared)
 
+        self.assertFalse(worktree.exists())
         for candidate in eligibility._classified_candidates(
             _github(), inventory._local_issue_inventory((self.spec,)).issues,
         ):
@@ -1188,7 +1326,7 @@ class AnchorReconciliationTest(_ReclaimTestCase):
         )
         self.assertEqual(
             _tip(self.clone, obligations._anchor_ref(self.spec, ISSUE_NUMBER)),
-            racer.made,
+            self.repointed,
         )
 
     def test_a_note_that_would_not_go_is_not_settled(self) -> None:
