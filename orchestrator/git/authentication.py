@@ -1,14 +1,16 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Token-bearing git fetches and pushes plus the askpass session they run under.
+"""Token-bearing git fetches and pushes, run under a credential session.
 
-Token resolution, the askpass session, the two fetches, the branch push, and
-the fully-qualified ref plumbing beside it share this module because the token
-only ever travels through the session: the session writes the askpass script
-that prints it and builds the environment that carries it, and each transport
-call passes that environment along with an argv that names nothing but the
-`x-access-token` username. Splitting them would put a raw token on a
-module boundary.
+The two fetches, the branch push, and the fully-qualified ref plumbing beside
+it share this module because they are one transport: each resolves a token
+through `credentials`, opens a session around it, and spawns git with the
+environment that session built and an argv naming nothing but the
+`x-access-token` URL. What the token stays out of is that argv -- git reads it
+from `$GIT_TOKEN` through the askpass script instead, so it never reaches the
+world-readable `/proc/<pid>/cmdline`. The session carries it here because this
+module needs it for the one thing the environment cannot do: scrubbing it back
+out of the stderr a failed call is logged with.
 
 The ref plumbing is the branch push read one level down -- a remote read, a
 write, and a delete against a whole refname rather than a branch -- and it
@@ -23,16 +25,12 @@ namespace, and what an existing ref at another commit means -- belongs to
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
-import tempfile
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import commands, locks
+from orchestrator.git import commands, credentials, locks
 
 # The channel is named for the git-plumbing domain rather than for this
 # module's path: operators filter the rendered `orchestrator.git_plumbing`
@@ -48,71 +46,6 @@ _PUSH = "push"
 # the worktree is on now, which is right for every caller that just made the
 # work it is publishing.
 _HEAD = "HEAD"
-
-_ASKPASS_MODE = 0o700
-
-
-@dataclass(frozen=True)
-class _GitAuthSession:
-    """Token-bearing subprocess inputs scoped to one askpass directory."""
-
-    token: str
-    auth_url: str
-    env: dict[str, str]
-
-
-def _resolved_git_token(spec: config.RepoSpec, operation: str) -> str | None:
-    """Resolve a per-repository token and log an operation-specific error."""
-    token = config._resolve_github_token(spec.slug)
-    if token:
-        return token
-    log.error(
-        "GITHUB_TOKEN missing for %s; cannot %s", spec.slug, operation,
-    )
-    return None
-
-
-def _git_auth_env(
-    askpass: Path, token: str, *, include_identity: bool,
-) -> dict[str, str]:
-    """Build the detached environment for one token-bearing git command."""
-    auth_env = {
-        **os.environ,
-        **commands._GIT_NO_PROMPT_ENV,
-        "GIT_ASKPASS": str(askpass),
-        "GIT_TOKEN": token,
-        "GIT_CONFIG_GLOBAL": os.devnull,
-        "GIT_CONFIG_SYSTEM": os.devnull,
-        "GIT_CONFIG_NOSYSTEM": "1",
-    }
-    if include_identity:
-        auth_env.update(
-            {
-                "GIT_AUTHOR_NAME": config.AGENT_GIT_NAME,
-                "GIT_AUTHOR_EMAIL": config.AGENT_GIT_EMAIL,
-                "GIT_COMMITTER_NAME": config.AGENT_GIT_NAME,
-                "GIT_COMMITTER_EMAIL": config.AGENT_GIT_EMAIL,
-            },
-        )
-    return auth_env
-
-
-@contextmanager
-def _git_auth_session(
-    spec: config.RepoSpec, token: str, *, include_identity: bool = False,
-) -> Iterator[_GitAuthSession]:
-    """Keep a hardened askpass script alive for one authenticated operation."""
-    with tempfile.TemporaryDirectory(prefix="orch-askpass-") as temp_dir:
-        askpass = Path(temp_dir) / "askpass.sh"
-        askpass.write_text('#!/bin/sh\nprintf %s "$GIT_TOKEN"\n')
-        askpass.chmod(_ASKPASS_MODE)
-        yield _GitAuthSession(
-            token=token,
-            auth_url=f"https://x-access-token@github.com/{spec.slug}.git",
-            env=_git_auth_env(
-                askpass, token, include_identity=include_identity,
-            ),
-        )
 
 
 def _failed_fetch(stderr: str) -> subprocess.CompletedProcess:
@@ -175,7 +108,7 @@ def _authed_fetch(
     # Mirrors `_push_branch`'s per-spec token resolution; without this,
     # `_handle_resolving_conflict` would fail conflict resolution for any
     # repo other than the legacy `REPO` (or use the wrong token).
-    token = _resolved_git_token(spec, _FETCH)
+    token = credentials._resolved_git_token(spec, _FETCH)
     if not token:
         return _failed_fetch("GITHUB_TOKEN missing")
     unsafe = commands._unsafe_local_transport_config(cwd)
@@ -187,7 +120,7 @@ def _authed_fetch(
         return _failed_fetch(
             "unsafe transport config in worktree .git/config",
         )
-    with _git_auth_session(
+    with credentials._git_auth_session(
         spec, token, include_identity=True,
     ) as auth_session, locks._target_root_lock(spec.target_root):
         return subprocess.run(
@@ -253,7 +186,7 @@ def _authed_target_fetch(
     holding it -- the worktree creators -- re-enters cleanly) for the
     same `.git/config.lock` reason described on `_ensure_worktree`.
     """
-    token = _resolved_git_token(spec, _FETCH)
+    token = credentials._resolved_git_token(spec, _FETCH)
     if not token:
         return _failed_fetch("GITHUB_TOKEN missing")
     unsafe = commands._unsafe_local_transport_config(spec.target_root)
@@ -268,7 +201,7 @@ def _authed_target_fetch(
     refspec = (
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}"
     )
-    with _git_auth_session(spec, token) as auth_session, locks._target_root_lock(spec.target_root):
+    with credentials._git_auth_session(spec, token) as auth_session, locks._target_root_lock(spec.target_root):
         return subprocess.run(
             [
                 *commands._AUTHED_GIT_PREFIX,
@@ -307,7 +240,7 @@ def _remote_branch_tip(
     Collapsing the two would drop the record of a plan on every reading that
     failed.
     """
-    token = _resolved_git_token(spec, "read the remote branch tip")
+    token = credentials._resolved_git_token(spec, "read the remote branch tip")
     if not token:
         return None
     unsafe = commands._unsafe_local_transport_config(worktree)
@@ -317,14 +250,14 @@ def _remote_branch_tip(
             "transport-hijacking config: %s", branch, unsafe,
         )
         return None
-    with _git_auth_session(spec, token) as auth_session:
+    with credentials._git_auth_session(spec, token) as auth_session:
         return _remote_branch_sha(
             auth_session, worktree, branch, f"refs/heads/{branch}", None,
         )
 
 
 def _remote_branch_sha(
-    auth_session: _GitAuthSession,
+    auth_session: credentials._GitAuthSession,
     worktree: Path,
     branch: str,
     ref: str,
@@ -355,7 +288,7 @@ def _remote_branch_sha(
 
 
 def _push_with_auth(
-    auth_session: _GitAuthSession,
+    auth_session: credentials._GitAuthSession,
     worktree: Path,
     branch: str,
     force_with_lease: str | None,
@@ -510,7 +443,7 @@ def _push_branch(
     # `~/.config/<owner>/<repo>/token` pushes with the right repo's token.
     # Single-repo deployments see identical behavior because
     # `_resolve_github_token(REPO)` returns the same value.
-    token = _resolved_git_token(spec, _PUSH)
+    token = credentials._resolved_git_token(spec, _PUSH)
     if not token:
         return False
     unsafe = commands._unsafe_local_transport_config(worktree)
@@ -520,7 +453,7 @@ def _push_branch(
             "transport-hijacking config: %s", branch, unsafe,
         )
         return False
-    with _git_auth_session(spec, token) as auth_session:
+    with credentials._git_auth_session(spec, token) as auth_session:
         # An empty expected SHA means the remote ref must not exist, which
         # preserves the create-branch lease behavior.
         return _push_with_auth(
@@ -565,7 +498,7 @@ def _remote_ref_sha(
     and a caller that created or deleted on the strength of it would be acting
     on a reading nobody gave.
     """
-    token = _resolved_git_token(spec, "read the remote ref")
+    token = credentials._resolved_git_token(spec, "read the remote ref")
     if not token:
         return None
     unsafe = commands._unsafe_local_transport_config(worktree)
@@ -575,7 +508,7 @@ def _remote_ref_sha(
             "transport-hijacking config: %s", ref, unsafe,
         )
         return None
-    with _git_auth_session(spec, token) as auth_session:
+    with credentials._git_auth_session(spec, token) as auth_session:
         return _remote_branch_sha(auth_session, worktree, ref, ref, None)
 
 
@@ -644,7 +577,7 @@ def _authed_ref_update(
     into the shared clone, so a concurrent fetch of the same namespace from
     another worktree of this target root would race the update it is proving.
     """
-    token = _resolved_git_token(spec, f"{update.operation} {update.ref}")
+    token = credentials._resolved_git_token(spec, f"{update.operation} {update.ref}")
     if not token:
         return False
     unsafe = commands._unsafe_local_transport_config(worktree)
@@ -655,7 +588,7 @@ def _authed_ref_update(
             update.operation, update.ref, unsafe,
         )
         return False
-    with _git_auth_session(spec, token) as auth_session:
+    with credentials._git_auth_session(spec, token) as auth_session:
         with locks._target_root_lock(spec.target_root):
             updated = subprocess.run(
                 [

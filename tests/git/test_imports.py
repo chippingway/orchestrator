@@ -11,7 +11,7 @@ from importlib import import_module
 from importlib.util import find_spec
 
 from orchestrator import git as _git_package
-from orchestrator.git import commands, locks
+from orchestrator.git import authentication, commands, credentials, locks
 from tests.git.inventory_test_support import inventory_modules
 
 _PACKAGE = "orchestrator"
@@ -29,6 +29,7 @@ _MODULES = (
     "orchestrator.git",
     "orchestrator.git.authentication",
     "orchestrator.git.commands",
+    "orchestrator.git.credentials",
     "orchestrator.git.locks",
 )
 
@@ -44,9 +45,11 @@ _FLAT_MODULES = (
     _PLUMBING_FACADE,
 )
 
-# The per-root lock, named once because it recurs in the owner surface and in
-# the definition table below.
+# The per-root lock and the askpass session, named once each because both
+# recur in the owner surface and in the tables below.
 _ROOT_LOCK = "_target_root_lock"
+
+_AUTH_SESSION = "_git_auth_session"
 
 # The initializer binds nothing, so each name answers on the owner that defines
 # it, never on the package itself.
@@ -56,7 +59,7 @@ _OWNER_ONLY_NAMES = (
     "_authed_fetch",
     "_delete_remote_ref",
     "_git",
-    "_git_auth_session",
+    _AUTH_SESSION,
     "_git_hardened",
     "_push_branch",
     "_push_ref",
@@ -75,6 +78,11 @@ _OWNER_DEFINED = (
     ("_TARGET_ROOT_LOCKS_LOCK", locks),
     (_ROOT_LOCK, locks),
 )
+
+# What the credential owner defines and the transport only spends: the record
+# a token-bearing call is built from, the session that yields one, and the
+# per-repository lookup behind it.
+_CREDENTIAL_NAMES = ("_GitAuthSession", _AUTH_SESSION, "_resolved_git_token")
 
 
 class CleanProcessImportTest(unittest.TestCase):
@@ -120,6 +128,16 @@ class PackageSurfaceTest(unittest.TestCase):
 
 class OwnerImportSiteTest(unittest.TestCase):
     """No surface over these owners sits beside them."""
+
+    def test_credential_names_have_one_binding(self) -> None:
+        # The transport reaches these through the module rather than importing
+        # them by name. A second binding in `authentication` would be a patch
+        # target that reads as the right one and intercepts nothing, since the
+        # session a call actually opens would still be the owner's.
+        for credential_name in _CREDENTIAL_NAMES:
+            with self.subTest(name=credential_name):
+                self.assertIn(credential_name, credentials.__dict__)
+                self.assertNotIn(credential_name, authentication.__dict__)
 
     def test_no_flat_module_exists(self) -> None:
         # Anything importable at these paths would be a second identity for the

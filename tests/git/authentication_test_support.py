@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Repo specs and hardening assertions shared by the authentication tests."""
+"""Repo specs and hardening assertions shared by the token-bearing git tests."""
 
 from __future__ import annotations
 
