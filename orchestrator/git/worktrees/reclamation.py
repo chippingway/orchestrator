@@ -22,7 +22,12 @@ the same commit.
 
 Nothing is forced. The removal runs without `--force` and both deletions state
 what they expect, so the worst this can do to work nobody adjudicated is fail
-to delete something. The one protection a stated expectation does not carry is
+to delete something. A reading is not enough on its own for the checkout,
+whose tree anybody may write in: the removal runs with git's own `index.lock`
+and `HEAD.lock` for that checkout held, so no commit can land between the
+reading and the removal, and with what the tree is standing on pinned to an
+anchor that is created and never overwritten, so anything that landed before
+them is kept rather than taken. The one protection a stated expectation does not carry is
 git's own refusal to delete a branch some checkout is on -- `update-ref` has
 no such refusal where `branch -D` does -- so the worktrees of the clone are
 asked, under the lock and immediately before the deletion, whether any of them
@@ -62,6 +67,7 @@ exactly as within one process.
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import Mapping
 from itertools import chain
@@ -127,6 +133,14 @@ _NO_DEREF = "--no-deref"
 # asked about is a plain one, or is not there at all. Every other status is a
 # reading that established nothing.
 _GIT_NOT_SYMBOLIC = 1
+
+# The two lock files git itself takes before it moves a checkout's HEAD or
+# writes its index, in the git directory that checkout keeps. Held here for
+# the length of a removal, they are what makes the reading before it hold: a
+# `commit`, a `checkout`, a `reset`, or an `update-ref HEAD` in that tree
+# fails outright while they are ours, so the commit this pass measured is the
+# commit the removal takes.
+_CHECKOUT_LOCKS = ("index.lock", "HEAD.lock")
 
 
 def _branch_ref(branch: str) -> str:
@@ -307,7 +321,95 @@ def _anchored_removal(
     An anchor that could not be written stops the removal. What it covers is
     exactly the thing a caller cannot check for afterwards, so a removal that
     ran without one would be a removal nobody could say the cost of.
+
+    The anchor alone would still leave the step between it and the removal,
+    which is why git's own locks are held around both. A checkout whose
+    `index.lock` and `HEAD.lock` this process holds is one no `commit`,
+    `checkout`, `reset`, or `update-ref HEAD` can run in: git takes those two
+    before it moves a HEAD or writes an index, and it does not queue for them.
+    So the commit the anchor pinned is the commit the removal takes.
     """
+    gitdir = _checkout_gitdir(artifacts, worktree)
+    if gitdir is None:
+        return SurfaceOutcome.FAILED
+    with contextlib.ExitStack() as holding:
+        held = _held_still(artifacts, gitdir)
+        if not held:
+            return SurfaceOutcome.FAILED
+        holding.callback(_let_go, held)
+        return _removal_while_held(artifacts, worktree, proven_sha)
+
+
+def _checkout_gitdir(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> Path | None:
+    """The git directory this checkout keeps, where its own locks are taken.
+
+    Asked of git rather than assembled, because a linked worktree's is under
+    the parent's store and the `.git` at the checkout's root is a file naming
+    it. `None` is a reading that established nothing, and a removal that
+    cannot find where to hold the tree still does not run.
+    """
+    located = commands._git_hardened(
+        "rev-parse", "--absolute-git-dir", cwd=worktree,
+    )
+    named = (located.stdout or "").strip()
+    if located.returncode != 0 or not named:
+        log.warning(
+            "issue=#%d keeping the checkout %s: its git directory could not "
+            "be named (%s)",
+            artifacts.issue_number, worktree, (located.stderr or "").strip(),
+        )
+        return None
+    return Path(named)
+
+
+def _held_still(
+    artifacts: IssueArtifacts, gitdir: Path,
+) -> tuple[Path, ...]:
+    """Take git's own locks for one checkout, or come back with none.
+
+    Created exclusively, so a lock somebody else is already holding is one
+    this refuses rather than steals: a git command running in that tree at
+    this moment is exactly the thing the locks are meant to exclude, and
+    taking it from under them would corrupt what it is doing.
+
+    Only what was actually taken is reported, so what is given back afterwards
+    is only ever this process's own.
+    """
+    taken: list[Path] = []
+    for lock_name in _CHECKOUT_LOCKS:
+        lock = gitdir / lock_name
+        try:
+            lock.touch(exist_ok=False)
+        except OSError as busy:
+            log.warning(
+                "issue=#%d keeping the checkout: %s is already held (%s)",
+                artifacts.issue_number, lock, busy,
+            )
+            _let_go(tuple(taken))
+            return ()
+        taken.append(lock)
+    return tuple(taken)
+
+
+def _let_go(held: tuple[Path, ...]) -> None:
+    """Give back the locks this took, whichever of them are still there.
+
+    A removal that succeeded took the git directory and both locks with it,
+    which is the ordinary way they go.
+    """
+    for lock in held:
+        try:
+            lock.unlink(missing_ok=True)
+        except OSError as refused:
+            log.warning("the lock %s could not be given back: %s", lock, refused)
+
+
+def _removal_while_held(
+    artifacts: IssueArtifacts, worktree: Path, proven_sha: str | None,
+) -> SurfaceOutcome:
+    """Pin what the checkout holds, take it down, and say what came with it."""
     spec = artifacts.spec
     if not obligations._anchor_checkout(
         spec, worktree, artifacts.issue_number,
@@ -339,8 +441,11 @@ def _anchor_settled(
     the one the classification proved survives its artifact, so nothing here
     is the only thing holding it.
 
-    Anything else is work made in the window no reading covers, and it is kept
-    under the anchor and reported at error. The checkout is gone by then --
+    Anything else is work made before the locks went on, and it is kept under
+    the anchor and reported at error. It also stands in the way of every later
+    removal for this issue, since an anchor is created and never overwritten:
+    what is pinned there is a commit nothing else names, and an operator is
+    the one who decides what becomes of it. The checkout is gone by then --
     that is what the anchor exists for -- but the commit is not, and the
     surface coming back failed is what keeps the branch beside it standing, so
     the issue is still one a later pass finds. A commit nobody can name is

@@ -18,6 +18,7 @@ this issue, which is the one shape the classifier never produces.
 
 from __future__ import annotations
 
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -75,9 +76,17 @@ def _dirty(worktree: Path) -> Path:
     return loose
 
 
-def _lock_checkout(clone: Path, worktree: Path) -> None:
-    """Lock one worktree, which is a removal git refuses without `--force`."""
-    _run_git("worktree", "lock", str(worktree), cwd=clone)
+def _ran_git(root: Path, *args: str) -> int:
+    """Run one git command that is allowed to fail, and answer with its status.
+
+    What a fixture uses where the point of the call is whether git accepted
+    it: a racer's commit the locks are meant to refuse, a worktree lock a
+    removal is meant to trip over.
+    """
+    try:
+        return _run_git(*args, cwd=root).returncode
+    except subprocess.CalledProcessError as refused:
+        return refused.returncode
 
 
 def _surfaces(

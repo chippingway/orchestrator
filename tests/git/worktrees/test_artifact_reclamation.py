@@ -53,7 +53,7 @@ from tests.git.worktrees.reclamation_test_support import (
     OTHER_ISSUE_NUMBER,
     _dirty,
     _holds,
-    _lock_checkout,
+    _ran_git,
     _ReaddedCheckout,
     _ReclaimTestCase,
     _surfaces,
@@ -403,22 +403,6 @@ class DivergentWorkTest(_ReclaimTestCase):
         )
         self.assertEqual(self.standing(worktree)[:2], (True, True))
 
-    def test_a_remote_pushed_past_keeps_the_branch(self) -> None:
-        # What the remote carries now is not the commit anybody cleared, and
-        # the lease behind the deletion would refuse it even if this did not.
-        self.published()
-        cleared = self.verdict()
-        ahead = f"{self.branch}-ahead"
-        self.world.commit_on(self.clone, ahead, start=self.branch)
-        self.world.publish(self.clone, self.branch, ahead)
-
-        reclaimed = self.spend(cleared)
-
-        self.assertEqual(
-            self.outcomes(reclaimed), _surfaces(None, FAILED, FAILED),
-        )
-        self.assertEqual(self.standing()[1:], (True, True))
-
     def test_a_branch_that_moved_is_refused_by_git(self) -> None:
         # The reading is stale by the time the deletion runs, which is the
         # window every check-then-act leaves open. Naming the old value makes
@@ -452,6 +436,39 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.raced_at = _tip(worktree, "HEAD")
         return ProbeAnswer.CONFIRMED
 
+    def racing(self, spec, worktree, issue_number: int) -> bool:
+        """Pin the checkout, then commit where a racer would.
+
+        Installed in place of the anchor write, which is the one step left
+        between the readings and the removal. What the locks taken around both
+        are for is that git refuses a commit tried here at all.
+        """
+        anchored = self.anchoring(spec, worktree, issue_number)
+        self.raced = _ran_git(worktree, "checkout", "--detach") or _ran_git(
+            worktree, "commit", "--allow-empty", "-m", "raced",
+        )
+        return anchored
+
+    def test_a_commit_raced_after_the_anchor_fails(self) -> None:
+        # The window the anchor cannot cover on its own: a commit landing
+        # between the note and the removal would be pinned by neither, and a
+        # detached one is clean enough for a removal that does not force. Git
+        # will not let it land -- the two locks it takes before it moves a
+        # HEAD or writes an index are this pass's for the duration.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.anchoring = obligations._anchor_checkout
+
+        with patch.object(obligations, "_anchor_checkout", self.racing):
+            reclaimed = self.spend(cleared)
+
+        self.assertNotEqual(self.raced, 0)
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(CLEANED, CLEANED, CLEANED),
+        )
+        self.assertTrue(reclaimed.settled)
+
     def test_a_commit_raced_into_the_window_is_kept(self) -> None:
         # The lock this teardown holds is this process's own, and the agent or
         # human writing in a checkout is neither. A commit made after every
@@ -479,27 +496,6 @@ class DivergentWorkTest(_ReclaimTestCase):
             self.raced_at,
         )
 
-    def test_a_checkout_added_mid_teardown_keeps_it(self) -> None:
-        # The tree this issue's checkout was removed from is a tree anything
-        # may be added back into, and `update-ref` deletes a branch out from
-        # under a live checkout where `branch -D` refuses. So the worktrees
-        # are asked again with the deletion: what the pass opened by reading
-        # is not what is standing on the branch by the time it gets here.
-        self.published()
-        worktree = self.checkout()
-        cleared = self.verdict(worktree=worktree, branches=self.branches)
-
-        readded = _ReaddedCheckout(self.checkout)
-
-        with patch.object(authentication, _REMOTE_DELETE_SEAM, readded):
-            reclaimed = self.spend(cleared)
-
-        self.assertEqual(
-            self.outcomes(reclaimed), _surfaces(CLEANED, CLEANED, FAILED),
-        )
-        self.assertTrue(_holds(self.spec, self.branch))
-        self.assertTrue(readded.loose.exists())
-
 
 class StepFailureTest(_ReclaimTestCase):
     """A step that could not finish leaves everything behind it standing."""
@@ -510,7 +506,7 @@ class StepFailureTest(_ReclaimTestCase):
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
-        _lock_checkout(self.clone, worktree)
+        _ran_git(self.clone, "worktree", "lock", str(worktree))
 
         reclaimed = self.spend(cleared)
 
@@ -569,6 +565,43 @@ class StepFailureTest(_ReclaimTestCase):
             any(self.branch in line for line in reported), msg=reported,
         )
 
+    def test_a_remote_pushed_past_keeps_the_branch(self) -> None:
+        # What the remote carries now is not the commit anybody cleared, and
+        # the lease behind the deletion would refuse it even if this did not.
+        self.published()
+        cleared = self.verdict()
+        ahead = f"{self.branch}-ahead"
+        self.world.commit_on(self.clone, ahead, start=self.branch)
+        self.world.publish(self.clone, self.branch, ahead)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, FAILED, FAILED),
+        )
+        self.assertEqual(self.standing()[1:], (True, True))
+
+    def test_a_checkout_added_mid_teardown_keeps_it(self) -> None:
+        # The tree this issue's checkout was removed from is a tree anything
+        # may be added back into, and `update-ref` deletes a branch out from
+        # under a live checkout where `branch -D` refuses. So the worktrees
+        # are asked again with the deletion: what the pass opened by reading
+        # is not what is standing on the branch by the time it gets here.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        readded = _ReaddedCheckout(self.checkout)
+
+        with patch.object(authentication, _REMOTE_DELETE_SEAM, readded):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(CLEANED, CLEANED, FAILED),
+        )
+        self.assertTrue(_holds(self.spec, self.branch))
+        self.assertTrue(readded.loose.exists())
+
     def test_a_remote_that_will_not_answer_keeps_it(self) -> None:
         # An unasked question is not a branch the remote does not carry, and
         # only the second of those lets a deletion through.
@@ -600,7 +633,45 @@ class StepFailureTest(_ReclaimTestCase):
 
 
 class ReconciliationTest(_ReclaimTestCase):
-    """A teardown that stopped halfway is finished by the pass after it."""
+    """A teardown that stopped halfway is finished by the pass after it.
+
+    Or refused by it, where finishing would take what the earlier one kept.
+    """
+
+    def test_an_anchor_from_an_earlier_pass_is_kept(self) -> None:
+        # An earlier teardown left an anchor standing because what it pinned
+        # was not what anybody had cleared, and the checkout has since been
+        # made again. That ref is the only thing naming its commit, so a pass
+        # that wrote over it would take it -- and the pass after that would
+        # discharge whatever it found. The removal is refused instead, on this
+        # pass and on every one after it.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        stranded = self.world.commit_on(
+            self.clone, f"{self.branch}-stranded",
+        )
+        _ran_git(
+            self.clone,
+            "update-ref",
+            obligations._anchor_ref(self.spec, ISSUE_NUMBER),
+            stranded,
+        )
+
+        kept = self.spend(cleared)
+        again = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(kept)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertEqual(
+            self.outcomes(again)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertTrue(worktree.exists())
+        self.assertEqual(
+            _tip(self.clone, obligations._anchor_ref(self.spec, ISSUE_NUMBER)),
+            stranded,
+        )
 
     def test_a_half_finished_teardown_is_found_again(self) -> None:
         # Nothing is carried between the two passes. The second rebuilds the

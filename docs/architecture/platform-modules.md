@@ -345,10 +345,15 @@ orchestrator/
                         spent, never re-derived, and everything it established is established again at the
                         boundary it is about to be spent at -- the checkout still this issue's own, still clean,
                         and still on the commit that was cleared before a `worktree remove` that does not force,
-                        which runs with that checkout's HEAD pinned to an anchor one process before it and read
-                        back one process after, since no reading covers what a tree does next: a commit somebody
-                        raced into that window comes down with the checkout, and the anchor is what keeps it
-                        nameable and has the surface report the removal as the failure it was. Then
+                        which runs with git's own `index.lock` and `HEAD.lock` for that checkout held -- no
+                        `commit`, `checkout`, `reset`, or `update-ref HEAD` can run in a tree while they are
+                        this pass's, which is what makes the reading before the removal hold -- and with that
+                        checkout's HEAD pinned to an anchor one process before it and read back one process
+                        after: a commit made before the locks went on comes down with the checkout, and the
+                        anchor is what keeps it nameable and has the surface report the removal as the failure
+                        it was. An anchor is created and never overwritten, so one an earlier pass left standing
+                        refuses every later removal for that issue rather than being replaced and then
+                        discharged. Then
                         the local branch deleted through an `update-ref -d` naming the old value and refused
                         while any live worktree of the clone is still standing on it, since that one protection
                         `branch -D` has and the ref update does not -- and refused again when the name is a
@@ -404,7 +409,9 @@ orchestrator/
                         -- and the segment alone is no better, since `acme/wid:get` and `acme/wid_get` sanitize
                         to one segment, the very collision the attribution refuses to resolve. Beside the
                         records, one anchor per issue holds what a checkout was standing on while it came down,
-                        written from inside that checkout so git resolves and records its HEAD in one command.
+                        written from inside that checkout so git resolves and records its HEAD in one command,
+                        and written under the lease that says the ref must not exist: what an anchor already
+                        there is holding is a commit nothing else names.
                         The read-back answers "could not read" apart from "nothing owed" -- a listing that
                         warned, a line that did not parse, and a ref
                         outside the repository's own namespace all refuse the whole answer, since a ledger short

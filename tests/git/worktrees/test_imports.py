@@ -139,7 +139,9 @@ _OWNER_ONLY_NAMES = (
 # carries when nothing was cleared and the reminder written at it, the
 # read-back and the parse beneath it, the discharge, and the anchor a removal
 # pins what it is about to take under -- its namespace, its ref, its write,
-# its read-back, and its discard --
+# its read-back, its discard, the lease that only ever creates one, and the
+# git directory, locks, and held removal that keep a checkout still while it
+# comes down --
 # and the second reading a refused branch deletion is told apart by. Naming
 # the whole surface makes a helper added to an owner an edit here rather than
 # a definition site nothing checks.
@@ -162,7 +164,9 @@ _OWNER_DEFINED = (
     ("SurfaceOutcome", models),
     ("SurfaceResult", models),
     ("TERMINAL_LABELS", claims),
+    ("_ABSENT_LEASE", obligations),
     ("_BRANCH_REF_PREFIX", reclamation),
+    ("_CHECKOUT_LOCKS", reclamation),
     ("_CLEANLINESS_REASONS", eligibility),
     ("_CLONE", reclamation),
     ("_DIGEST_MARK", obligations),
@@ -215,6 +219,7 @@ _OWNER_DEFINED = (
     ("_candidate_issue_branches", recovery),
     ("_carrying_pull_request", claims),
     ("_checkout_entries", probes),
+    ("_checkout_gitdir", reclamation),
     ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
     ("_checkout_present", reclamation),
@@ -252,9 +257,11 @@ _OWNER_DEFINED = (
     ("_has_new_commits", creation),
     ("_head_is_own_branch", evidence),
     ("_head_ref", evidence),
+    ("_held_still", reclamation),
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
+    ("_let_go", reclamation),
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
@@ -289,6 +296,7 @@ _OWNER_DEFINED = (
     ("_remind", obligations),
     ("_reminded", reclamation),
     ("_removal_under_lock", reclamation),
+    ("_removal_while_held", reclamation),
     ("_remove_issue_worktree", cleanup),
     ("_removed_checkout", reclamation),
     ("_repo_worktrees_root", paths),

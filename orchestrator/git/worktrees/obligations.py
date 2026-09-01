@@ -98,6 +98,12 @@ _DIGEST_MARK = "__h"
 # lands between the reading and the note.
 _HEAD = "HEAD"
 
+# The lease that says the ref must not exist yet, which is the only lease an
+# anchor may be written under: one already there is holding a commit an
+# earlier pass could not account for, and a write that replaced it would be
+# the one thing this whole note exists to prevent.
+_ABSENT_LEASE = ""
+
 # What one record answers with: the ref, and the commit it was written at.
 _RECORD_FORMAT = "--format=%(refname) %(objectname)"
 
@@ -188,11 +194,7 @@ def _record_obligation(
     edit to somebody's branch.
     """
     return _written_note(
-        spec.target_root,
-        spec,
-        _obligation_ref(spec, branch),
-        sha,
-        f"the remote deletion of {branch!r}",
+        spec.target_root, spec, _obligation_ref(spec, branch), sha,
     )
 
 
@@ -201,7 +203,7 @@ def _written_note(
     spec: config.RepoSpec,
     ref: str,
     written_at: str,
-    subject: str,
+    lease: str | None = None,
 ) -> bool:
     """Put one note where this host will find it again, or say it is not there.
 
@@ -214,20 +216,27 @@ def _written_note(
     checkout for an anchor, since only from inside one does `HEAD` mean that
     checkout's own. The lock is the clone's either way: what is being written
     is the ref store the clone keeps.
+
+    `lease` is the value the ref has to be at for the write to land, and the
+    empty string is git's spelling for "not there at all". A record is written
+    without one -- what it carries is this host's own note about a branch, and
+    the last pass to write it is the one that knows -- while an anchor may
+    only ever be created.
     """
+    argv = ("update-ref", _NO_DEREF, ref, written_at)
+    if lease is not None:
+        argv += (lease,)
     try:
         with locks._target_root_lock(spec.target_root):
-            written = commands._git_hardened(
-                "update-ref", _NO_DEREF, ref, written_at, cwd=root,
-            )
+            written = commands._git_hardened(*argv, cwd=root)
     except Exception:
-        log.exception("%s could not be written down", subject)
+        log.exception("%s could not be written down", ref)
         return False
     if written.returncode == 0:
         return True
     log.warning(
         "%s could not be written down: %s",
-        subject, (written.stderr or "").strip(),
+        ref, (written.stderr or "").strip(),
     )
     return False
 
@@ -258,14 +267,10 @@ def _discharge_obligation(spec: config.RepoSpec, branch: str) -> bool:
     symbolic ref would otherwise have this take away the branch it names
     rather than the record.
     """
-    return _dropped_note(
-        spec,
-        _obligation_ref(spec, branch),
-        f"the record of the remote deletion of {branch!r}",
-    )
+    return _dropped_note(spec, _obligation_ref(spec, branch))
 
 
-def _dropped_note(spec: config.RepoSpec, ref: str, subject: str) -> bool:
+def _dropped_note(spec: config.RepoSpec, ref: str) -> bool:
     """Take one note away, whether or not it was there to take."""
     try:
         with locks._target_root_lock(spec.target_root):
@@ -273,13 +278,13 @@ def _dropped_note(spec: config.RepoSpec, ref: str, subject: str) -> bool:
                 "update-ref", "-d", _NO_DEREF, ref, cwd=spec.target_root,
             )
     except Exception:
-        log.exception("%s could not be taken away", subject)
+        log.exception("%s could not be taken away", ref)
         return False
     if dropped.returncode == 0:
         return True
     log.warning(
         "%s could not be taken away: %s",
-        subject, (dropped.stderr or "").strip(),
+        ref, (dropped.stderr or "").strip(),
     )
     return False
 
@@ -306,6 +311,14 @@ def _anchor_checkout(
     the clone keeps, and only `HEAD`, `refs/bisect/`, and `refs/worktree/` are
     a worktree's own.
 
+    Created, never overwritten. An anchor already at this name is one an
+    earlier pass left standing because what it pinned was not what anybody had
+    cleared, so a write that replaced it would take the only reference that
+    commit has -- the very loss the note exists to prevent -- and the pass
+    after it would discharge what it found. The lease saying the ref must not
+    exist is what makes the two cases one answer: this fails, and the caller
+    leaves the checkout where it is.
+
     Answered as whether the note IS there, because a caller that could not
     take it has to leave the checkout alone: removing it is what would strand
     whatever it turns out to have been holding.
@@ -315,7 +328,7 @@ def _anchor_checkout(
         spec,
         _anchor_ref(spec, issue_number),
         _HEAD,
-        f"the checkout of #{issue_number}",
+        lease=_ABSENT_LEASE,
     )
 
 
@@ -348,9 +361,7 @@ def _anchored_commit(spec: config.RepoSpec, issue_number: int) -> str:
 
 def _discard_anchor(spec: config.RepoSpec, issue_number: int) -> bool:
     """Let go of an anchor that pinned nothing anybody has to keep."""
-    return _dropped_note(
-        spec, _anchor_ref(spec, issue_number), f"the anchor of #{issue_number}",
-    )
+    return _dropped_note(spec, _anchor_ref(spec, issue_number))
 
 
 def _read_records(spec: config.RepoSpec) -> subprocess.CompletedProcess | None:
