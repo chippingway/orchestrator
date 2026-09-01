@@ -30,7 +30,6 @@ from orchestrator.git.worktrees.models import (
     ProbeAnswer,
     SurfaceOutcome,
 )
-
 from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,
     WIDGET_SLUG,

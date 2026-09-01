@@ -34,7 +34,6 @@ from orchestrator.git.worktrees.models import (
     ProvenTip,
     SurfaceOutcome,
 )
-
 from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,
     GADGET_SLUG,

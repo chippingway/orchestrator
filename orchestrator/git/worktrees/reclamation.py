@@ -76,20 +76,19 @@ from orchestrator.git.worktrees import (
     obligations,
     paths,
 )
-# What a teardown is handed: the candidate, the permission over it, the
+
+# What a teardown is handed -- the candidate, the permission over it, the
 # commits that permission cleared, and the answers the reads it retakes come
-# back in.
+# back in -- and what it answers with: one entry per place an artifact had to
+# be taken from.
 from orchestrator.git.worktrees.models import (
+    ArtifactReclamation,
+    ArtifactSurface,
     ArtifactVerdict,
     BranchTip,
     IssueArtifacts,
     ProbeAnswer,
     ProvenTip,
-)
-# What it answers with, one entry per place an artifact had to be taken from.
-from orchestrator.git.worktrees.models import (
-    ArtifactReclamation,
-    ArtifactSurface,
     SurfaceOutcome,
     SurfaceResult,
 )

@@ -36,7 +36,6 @@ from orchestrator.git.worktrees.models import (
     ProvenTip,
     SurfaceOutcome,
 )
-
 from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,
     LIFECYCLE_LOGGER,
@@ -50,9 +49,6 @@ from tests.git.worktrees.eligibility_test_support import (
     _github,
     _terminal_issue,
 )
-from tests.workflow.stages.question.question_real_git_test_support import (
-    _run_git,
-)
 from tests.git.worktrees.reclamation_test_support import (
     OTHER_ISSUE_NUMBER,
     _dirty,
@@ -62,6 +58,9 @@ from tests.git.worktrees.reclamation_test_support import (
     _ReclaimTestCase,
     _surfaces,
     _tip,
+)
+from tests.workflow.stages.question.question_real_git_test_support import (
+    _run_git,
 )
 
 CLEANED = SurfaceOutcome.CLEANED
