@@ -169,6 +169,14 @@ _CHECKOUT_LOCKS = ("index.lock", "HEAD.lock")
 # able to tell a leftover something is carrying from one nothing is.
 _REMINDED = "written down to be asked about again"
 
+# Why each of the two gates in front of a local branch deletion keeps it.
+_REMOTE_STANDING = (
+    "its copy on the remote is still standing, and this branch is what leads "
+    "back to it"
+)
+
+_CHECKOUT_STANDING = "the checkout that stood on it is still there"
+
 _UNREMINDED = "and nothing written down for it yet"
 
 
@@ -438,10 +446,30 @@ def _let_go(held: tuple[Path, ...]) -> None:
 def _removal_while_held(
     artifacts: IssueArtifacts, worktree: Path, proven_sha: str | None,
 ) -> SurfaceOutcome:
-    """Pin what the checkout holds, take it down, and say what came with it."""
+    """Pin what the checkout holds, take it down, and say what came with it.
+
+    The hidden read is taken again here, last of everything and one process
+    before the removal, because it is the only one of the readings behind this
+    step that git does not make for itself. The locks stop a `commit` and a
+    `checkout` in that tree; they stop nothing from WRITING in it, and a file
+    the repository's rules cover is one `worktree remove` takes without a word
+    -- so a reading from before the anchor would have this pass delete a
+    secret that landed after it and report the surface cleaned.
+
+    What is not retaken is what git refuses for itself. A tree that has gone
+    dirty since is one the removal stops over, and a HEAD that has moved is
+    what the anchor is read back against afterwards.
+    """
     spec = artifacts.spec
     if not _anchor_taken(artifacts, worktree, proven_sha):
         return SurfaceOutcome.FAILED
+    if evidence._nothing_ignored(worktree) is not ProbeAnswer.CONFIRMED:
+        log.warning(
+            "issue=#%d keeping %s: something its own ignore rules cover "
+            "arrived while it was being taken down",
+            artifacts.issue_number, worktree,
+        )
+        return _anchor_settled(artifacts, proven_sha, removed=False)
     removed = commands._git_hardened(
         "worktree", "remove", str(worktree), cwd=spec.target_root,
     )
@@ -1484,19 +1512,33 @@ def _reclaimed_local_branch(
     if tip.answer is ProbeAnswer.REFUTED:
         return SurfaceOutcome.ABSENT
     if remote is SurfaceOutcome.FAILED:
-        log.warning(
-            "issue=#%d keeping the local branch %r: its copy on the remote is "
-            "still standing, and this branch is what leads back to it",
-            artifacts.issue_number, branch,
-        )
-        return SurfaceOutcome.FAILED
+        return _kept_local(artifacts, branch, _REMOTE_STANDING)
     if not freed:
-        log.warning(
-            "issue=#%d keeping the local branch %r: the checkout that stood "
-            "on it is still there", artifacts.issue_number, branch,
-        )
-        return SurfaceOutcome.FAILED
+        return _kept_local(artifacts, branch, _CHECKOUT_STANDING)
     return _deleted_local_branch(artifacts, branch, tip.sha)
+
+
+def _kept_local(
+    artifacts: IssueArtifacts, branch: str, standing: str,
+) -> SurfaceOutcome:
+    """What is left of a branch one of the two gates would not release.
+
+    The reading is taken again rather than carried down from the one this pass
+    opened with, because both gates sit behind steps that take time somewhere
+    else: the remote is asked over the network, and the checkout comes down in
+    a tree an agent owns. A branch somebody deleted while either was running
+    is one this surface has to report as gone rather than as one it refused --
+    absent is success everywhere in this domain, and a failure reported over
+    an artifact nobody can find is one no later pass can ever settle.
+    """
+    tip = evidence._local_branch_tip(artifacts.spec, branch)
+    if tip.answer is ProbeAnswer.REFUTED:
+        return SurfaceOutcome.ABSENT
+    log.warning(
+        "issue=#%d keeping the local branch %r: %s",
+        artifacts.issue_number, branch, standing,
+    )
+    return SurfaceOutcome.FAILED
 
 
 def _deleted_local_branch(
@@ -1523,13 +1565,18 @@ def _deleted_local_branch(
     that other ref's commit and the deletion, left to follow it, would take
     that other ref: `refs/heads/main` deleted while this issue's name is left
     dangling. Both halves are answered here -- the ref is refused when it is
-    symbolic, and the update says so as well, so a ref made symbolic between
-    the two cannot travel either.
+    symbolic, and the update says so as well, so what a name made symbolic
+    after the check can cost is that name and never what it points at.
 
-    Lock-held for that and for the reason every ref this clone holds is
-    written under that lock: a concurrent `worktree add` on another thread is
-    writing the same store, and the two racing leave one of them reporting a
-    failure that is nothing but the collision.
+    The lock this runs under is this process's own, which is what the reading
+    after the deletion is for. `update-ref` has no refusal for a branch some
+    checkout is on, so the one asked for here is a reading, and a reading
+    another git can invalidate: a `worktree add` from outside this process
+    lands between the two and leaves a tree whose HEAD names a ref nothing
+    resolves. Git reports that tree on the branch it was put on whether or not
+    the ref survived, so the same question put again afterwards is what finds
+    it -- and the branch goes back where it was, at the commit it was deleted
+    from, which is what the checkout's HEAD is looking for.
     """
     try:
         with locks._target_root_lock(artifacts.spec.target_root):
@@ -1542,7 +1589,7 @@ def _deleted_local_branch(
                 cwd=artifacts.spec.target_root,
             )
             if deleted.returncode == 0:
-                return SurfaceOutcome.CLEANED
+                return _deletion_stood(artifacts, branch, expected)
             return _refused_delete(
                 artifacts, branch, (deleted.stderr or "").strip(),
             )
@@ -1552,6 +1599,61 @@ def _deleted_local_branch(
             artifacts.issue_number, branch,
         )
         return SurfaceOutcome.FAILED
+
+
+def _deletion_stood(
+    artifacts: IssueArtifacts, branch: str, expected: str,
+) -> SurfaceOutcome:
+    """Whether the branch that went was still nobody's when it went.
+
+    The other half of a check that could not be one step with the deletion.
+    Nothing outside this process queues for the lock it holds, so a checkout
+    added between the reading and the update is one no reading before the
+    update could have seen -- and git deletes the branch under it without
+    complaint, leaving a tree whose HEAD names a ref nothing resolves.
+
+    Asked afterwards it is still visible: a worktree is reported on the branch
+    its HEAD names whatever became of that ref, so the same listing answers
+    the question a second time. What is done about it is the deletion undone
+    -- the branch back at the commit it was taken from, which is what that
+    HEAD was standing on and what the tree beside it expects.
+    """
+    if not _checkouts_holding(artifacts, branch):
+        return SurfaceOutcome.CLEANED
+    return _put_back(artifacts, branch, expected)
+
+
+def _put_back(
+    artifacts: IssueArtifacts, branch: str, expected: str,
+) -> SurfaceOutcome:
+    """Restore a branch a checkout arrived on while it was being deleted.
+
+    Written at the commit the deletion named, which is the commit the tree
+    that arrived is standing on: what a `worktree add` leaves is a HEAD
+    pointing at this ref, so putting the ref back where it was is what makes
+    that tree whole again.
+
+    Created and never overwritten, so a name something has since put back
+    itself is one this leaves alone -- and reported as a failure either way,
+    the branch being one this pass has not settled and the issue one a later
+    pass has to come back to.
+    """
+    spec = artifacts.spec
+    if obligations._written_note(
+        spec.target_root, spec, _branch_ref(branch), expected,
+        lease=obligations._ABSENT_LEASE,
+    ):
+        log.warning(
+            "issue=#%d put %r back at %r: a checkout arrived on it while it "
+            "was being deleted", artifacts.issue_number, branch, expected,
+        )
+        return SurfaceOutcome.FAILED
+    log.error(
+        "issue=#%d %r was deleted with a checkout of %s standing on it and "
+        "could not be put back at %r; that tree's HEAD names nothing",
+        artifacts.issue_number, branch, spec.target_root, expected,
+    )
+    return SurfaceOutcome.FAILED
 
 
 def _refused_delete(

@@ -33,8 +33,8 @@ reports. `_commit_contains` is the same pair of ids asked a different question,
 and the one a caller about to overwrite a ref needs: whether what is on that
 ref survives being replaced by this commit.
 
-`_ignored_paths` is the same tree read for the one thing `status` leaves out of
-every answer above. Untracked and modified are what git itself calls dirty, and
+`_ignored_paths` is the same tree read, bounded and collapsed, for the one
+thing `status` leaves out of every answer above. Untracked and modified are what git itself calls dirty, and
 they are what `worktree remove` refuses over; an ignored path is neither, so a
 tree carrying nothing but those reports clean and a removal that does not force
 takes them with it. A caller about to publish has no use for that -- ignored
@@ -66,6 +66,7 @@ cannot.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 
 from orchestrator.git import commands as _commands
@@ -79,15 +80,28 @@ _UNTRACKED_ALL = "--untracked-files=all"
 
 _IGNORE_SUBMODULES_NONE = "--ignore-submodules=none"
 
-# What has `status` report the paths its ignore rules hide, and how each of
-# those is spelled in the report. Directories come back collapsed under this
-# mode, so a tree holding a large build root answers with the root rather than
-# with everything under it. It reports what the untracked walk classified, so
-# it is only ever asked beside `_UNTRACKED_ALL`: local config can stop that
-# walk, and a stopped walk empties this half of the report too.
+# What has `status` report the paths its ignore rules hide, how each of those
+# is spelled in the report, and the untracked mode they are asked for beside.
+#
+# The mode is stated for two reasons at once. `status.showUntrackedFiles=no`
+# in the repository the checkouts share stops the untracked walk, and this
+# half of the report is what that walk turned up and then classified -- so
+# asked for defaults it comes back empty over any number of hidden files. And
+# `all` is what expands an ignored DIRECTORY into every file beneath it, so a
+# tree carrying a dependency root would answer with a hundred thousand paths
+# where `normal` answers with the root. Stating `normal` overrides the knob
+# and keeps the collapse.
 _IGNORED_ENTRIES = "--ignored"
 
 _IGNORED_STATUS = "!! "
+
+_UNTRACKED_NORMAL = "--untracked-files=normal"
+
+# How many hidden paths are carried back. The caller's question is whether the
+# tree is holding anything at all, and its answer is a refusal naming what an
+# operator has to go and look at -- so what is past a handful is weight in a
+# log line rather than information, however the collapse above went.
+_IGNORED_LIMIT = 10
 
 # What keeps a READ from writing. `git status` refreshes the index as it goes
 # and writes the refreshed stat data back, which is a change to the repository
@@ -271,7 +285,13 @@ def _worktree_status(worktree: Path) -> _WorktreeStatus:
 
 
 def _ignored_paths(worktree: Path) -> tuple[str, ...] | None:
-    """Every path this tree carries that its ignore rules hide, or None.
+    """What this tree carries that its own ignore rules hide, or None.
+
+    Bounded and collapsed rather than exhaustive: a whole directory the rules
+    cover comes back as the directory, and no more than a handful of entries
+    come back at all. A caller deciding whether to delete a tree asks whether
+    there is anything there and wants to be able to say what -- neither of
+    which a hundred thousand paths answers better than ten.
 
     The one thing `_worktree_status` cannot report, and it is left out of that
     answer rather than folded into it because the two are spent differently: a
@@ -295,29 +315,37 @@ def _ignored_paths(worktree: Path) -> tuple[str, ...] | None:
     is not hidden from the untracked read beside this one, so between the two
     of them nothing on disk goes unreported.
 
-    `--untracked-files=all` is stated here even though nothing untracked is
-    read off the answer, and it is the load-bearing flag. `--ignored` reports
-    what the untracked walk turned up and then classified, so the local
+    The untracked mode is stated here even though nothing untracked is read
+    off the answer, and it is the load-bearing flag: `--ignored` reports what
+    that walk turned up and then classified, so the local
     `status.showUntrackedFiles=no` an agent can write into the repository the
-    checkouts share stops that walk and empties this report -- the ignored
-    entries with it. Asked for defaults, a tree holding an ignored secret
-    answers that it holds nothing, which is the one answer that gets it
-    deleted.
+    checkouts share empties this report along with the other half. Asked for
+    defaults, a tree holding an ignored secret answers that it holds nothing,
+    which is the one answer that gets it deleted.
+
+    `normal` rather than `all`, because `all` is what stops the collapse: a
+    dependency root or a build tree would come back as every file beneath it,
+    which is a report nobody reads and a walk this probe should never make.
+    What comes back is bounded on top of that, since the answer is spent on a
+    yes-or-no and a line naming what to look at.
     """
     listed = _commands._git_hardened(
         _commands._work_tree_arg(worktree),
         _NO_OPTIONAL_LOCKS,
         "status", "--porcelain", _NUL_DELIMITED,
-        _IGNORED_ENTRIES, _UNTRACKED_ALL, _IGNORE_SUBMODULES_NONE,
+        _IGNORED_ENTRIES, _UNTRACKED_NORMAL, _IGNORE_SUBMODULES_NONE,
         cwd=worktree,
     )
     if listed.returncode != 0:
         return None
-    return tuple(
-        record[len(_IGNORED_STATUS):]
-        for record in (listed.stdout or "").split(_NUL_SEPARATOR)
-        if record.startswith(_IGNORED_STATUS)
-    )
+    return tuple(islice(
+        (
+            record[len(_IGNORED_STATUS):]
+            for record in (listed.stdout or "").split(_NUL_SEPARATOR)
+            if record.startswith(_IGNORED_STATUS)
+        ),
+        _IGNORED_LIMIT,
+    ))
 
 
 def _reported_paths(status_stdout: str) -> list[str]:

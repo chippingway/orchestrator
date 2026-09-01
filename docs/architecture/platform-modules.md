@@ -371,7 +371,11 @@ orchestrator/
                         reusing a ref an agent could have planted would make it the pinning the removal is
                         measured against; a note nobody could take away refuses the removal too, the write after
                         it being refused by the same ref, and one that would not go after the removal leaves the
-                        surface unsettled rather than reported clear. The note is measured the same way whatever
+                        surface unsettled rather than reported clear. What the tree hides is read once more
+                        between the note and the removal, last of everything: git's own locks stop a commit in
+                        that tree and stop nothing from writing in it, and an ignored file is what `worktree
+                        remove` takes without a word — so a reading from before the note would delete a secret
+                        that landed after it. The note is measured the same way whatever
                         the removal answered, since `worktree remove` deletes the tree and then deletes the
                         administrative directory beside it whatever the first half did: a non-zero result is not
                         a checkout still standing, and letting the note go over one would take the last name a
@@ -386,7 +390,11 @@ orchestrator/
                         inside. Then
                         the local branch deleted through an `update-ref -d` naming the old value and refused
                         while any live worktree of the clone is still standing on it, since that one protection
-                        `branch -D` has and the ref update does not -- and refused again when the name is a
+                        `branch -D` has and the ref update does not — and asked again once the deletion has
+                        landed, the lock being this process's own and a `worktree add` from outside it needing
+                        no permission: a tree is reported on the branch its HEAD names whatever became of that
+                        ref, so the branch goes back at the commit it was taken from and the tree that arrived
+                        is whole again -- and refused again when the name is a
                         symbolic ref, which every reading behind the proof resolves through and an update would
                         follow, and undereferenced besides, so neither can take the ref it names -- and a
                         refusal read a second time on both hosts, because a stated value and a lease are refused
@@ -394,7 +402,10 @@ orchestrator/
                         failure -- and the remote branch through the same lease-pinned delete the snapshot
                         namespace is reclaimed under. Ownership is re-derived
                         for every ref, so only the two names this issue publishes under and the one path its
-                        creators derive can be touched. Already-absent is success; the checkout comes down
+                        creators derive can be touched. Each gate that keeps a local branch asks about it once
+                        more before saying so, both of them sitting behind steps that take time somewhere else:
+                        a branch deleted while the remote was being asked, or while the checkout was coming
+                        down, is reported as gone rather than as one this pass refused. Already-absent is success; the checkout comes down
                         before the branch it is on, and the remote branch before the local one, since the local
                         artifacts are what the scan finds a half-finished teardown back by. What that ordering
                         cannot cover -- a local artifact somebody took before the teardown reached it, leaving

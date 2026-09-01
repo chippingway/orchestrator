@@ -134,9 +134,12 @@ _OWNER_ONLY_NAMES = (
 # reads, the two lease-pinned deletions and the boundaries around them, the
 # live-checkout and symbolic-ref reads the local one is refused by, the
 # `worktree list` spellings and the undereferenced argv they are written in,
-# the second readings a refused deletion is told apart by on either host, the
-# gates ordering the three, what a verdict clearing no commit for a branch
-# leaves, the line an unfindable leftover is reported on, and the pass that
+# the second readings a refused deletion is told apart by on either host and
+# the one taken after a deletion that landed, with the restore it leads to,
+# the gates ordering the three and what each of them is kept for once the
+# branch has been asked about again, what a verdict clearing no commit for a
+# branch leaves, the line an unfindable leftover is reported on, and the pass
+# that
 # finishes what an earlier one wrote down, over both kinds of note -- the
 # records with their classification, the fetch that puts a commit only the
 # remote has within reach of one, and the commit it clears now; then the
@@ -182,6 +185,7 @@ _OWNER_DEFINED = (
     ("_ABSENT_LEASE", obligations),
     ("_BRANCH_REF_PREFIX", reclamation),
     ("_CHECKOUT_LOCKS", reclamation),
+    ("_CHECKOUT_STANDING", reclamation),
     ("_CLEANLINESS_REASONS", eligibility),
     ("_CLONE", reclamation),
     ("_COMMIT_PEEL", evidence),
@@ -208,6 +212,7 @@ _OWNER_DEFINED = (
     ("_REF_SEPARATOR", attribution),
     ("_REMINDER_MARK", obligations),
     ("_REMOTE", reclamation),
+    ("_REMOTE_STANDING", reclamation),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
@@ -268,6 +273,7 @@ _OWNER_DEFINED = (
     ("_delete_local_issue_branch", cleanup),
     ("_deleted_local_branch", reclamation),
     ("_deleted_remote_branch", reclamation),
+    ("_deletion_stood", reclamation),
     ("_discard_anchor", obligations),
     ("_discharge_obligation", obligations),
     ("_discharged", reclamation),
@@ -287,6 +293,7 @@ _OWNER_DEFINED = (
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
+    ("_kept_local", reclamation),
     ("_let_go", reclamation),
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
@@ -305,6 +312,7 @@ _OWNER_DEFINED = (
     ("_proven_tips", eligibility),
     ("_published_tip", evidence),
     ("_read_orchestrator_refs", probes),
+    ("_put_back", reclamation),
     ("_read_notes", obligations),
     ("_read_state", claims),
     ("_reclaim_artifacts", reclamation),

@@ -94,6 +94,9 @@ _RECORD_SEAM = "_record_obligation"
 # host whose ref store takes nothing.
 _NOTE_SEAM = "_written_note"
 
+# The local git runner every case that stands in front of one patches.
+_HARDENED_SEAM = "_git_hardened"
+
 # Where a checkout is moved to for the case about a link left in its place.
 MOVED_CHECKOUT = "moved-checkout"
 
@@ -180,7 +183,7 @@ class _DestructiveCalls:
     def recording(self):
         """Watch both hosts for the duration of one teardown."""
         with patch.object(
-            commands, "_git_hardened", self.hardened,
+            commands, _HARDENED_SEAM, self.hardened,
         ), patch.object(
             authentication, "_delete_remote_ref", self.remote_delete,
         ):
@@ -586,27 +589,6 @@ class DivergentWorkTest(_ReclaimTestCase):
             racer.made,
         )
 
-    def test_an_ignored_file_written_since_keeps_it(self) -> None:
-        # The one thing git does not refuse for itself. `worktree remove`
-        # stops over an untracked or modified file and takes an ignored one
-        # without a word, so a checkout carrying nothing else passes every
-        # other reading here -- and what a repository calls derived is still
-        # somebody's `.env` when an unattended pass is the one deleting it.
-        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
-        self.published()
-        worktree = self.checkout()
-        cleared = self.verdict(worktree=worktree, branches=self.branches)
-        hidden = worktree / HIDDEN_FILE
-        hidden.write_text(HIDDEN_CONTENT)
-
-        reclaimed = self.spend(cleared)
-
-        self.assertEqual(
-            self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
-        )
-        self.assertEqual(hidden.read_text(), HIDDEN_CONTENT)
-        self.assertTrue(_holds(self.spec, self.branch))
-
 
 class StepFailureTest(_ReclaimTestCase):
     """A step that could not finish leaves everything behind it standing."""
@@ -742,6 +724,138 @@ class StepFailureTest(_ReclaimTestCase):
             self.outcomes(reclaimed), _surfaces(None, FAILED, FAILED),
         )
         self.assertEqual(self.standing()[1:], (True, True))
+
+
+class LateChangeTest(_ReclaimTestCase):
+    """What arrives, or goes, after the reading the step ahead of it ran on.
+
+    Every case here is one window: between a probe and the destructive step it
+    gates. The lock this pass holds is its own, git's own locks stop commits
+    rather than writes, and the remote is asked over a network -- so each of
+    those windows is one another hand can reach into, and what is under test
+    is what this pass does when one of them did.
+    """
+
+    def hiding(self, spec, worktree: Path, issue_number: int) -> bool:
+        """Pin the checkout, then leave a hidden file where a writer would.
+
+        Installed in place of the anchor write, which is the last step before
+        the removal: git's own locks stop a `commit` in that tree and stop
+        nothing at all from writing in it, and what the rules cover is what
+        `worktree remove` takes without a word.
+        """
+        anchored = self.anchoring(spec, worktree, issue_number)
+        (worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
+        return anchored
+
+    def arriving(self, *args: str, **options):
+        """Add a checkout on the branch just before the update that deletes it.
+
+        The window the lock cannot cover, since it is this process's own and
+        the `worktree add` a human or another process runs does not queue for
+        it. Only the branch deletion is stood in front of: the notes this pass
+        writes go through the same command under the same first two words.
+        """
+        head = " ".join(args[:2])
+        if head == _LOCAL_DELETE and any(
+            named.startswith(_BRANCH_REFS) for named in args
+        ):
+            self.arrived = self.world.attached_checkout(
+                self.spec, ISSUE_NUMBER, self.branch,
+            )
+        return self.hardened(*args, **options)
+
+    def losing(self, *args, **options) -> bool:
+        """Take the local branch away while the remote is being asked."""
+        _branch_at(self.clone, self.branch)
+        return False
+
+    def test_an_ignored_file_written_since_keeps_it(self) -> None:
+        # The one thing git does not refuse for itself. `worktree remove`
+        # stops over an untracked or modified file and takes an ignored one
+        # without a word, so a checkout carrying nothing else passes every
+        # other reading here -- and what a repository calls derived is still
+        # somebody's `.env` when an unattended pass is the one deleting it.
+        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        hidden = worktree / HIDDEN_FILE
+        hidden.write_text(HIDDEN_CONTENT)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
+        )
+        self.assertEqual(hidden.read_text(), HIDDEN_CONTENT)
+        self.assertTrue(_holds(self.spec, self.branch))
+
+    def test_a_file_hidden_while_held_keeps_it(self) -> None:
+        # The same file, arriving in the window the locks were supposed to
+        # close. They close what git takes them for -- a commit, a checkout, a
+        # reset -- and a write is none of those, so the reading that cleared
+        # the tree is stale by the time the removal runs. Retaken one process
+        # before it, the file is found; the other probe goes on reporting the
+        # tree clean, which is what the retaken one is there for.
+        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.anchoring = obligations._anchor_checkout
+
+        with patch.object(obligations, "_anchor_checkout", self.hiding):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
+        )
+        self.assertIs(
+            evidence._clean_worktree(worktree), ProbeAnswer.CONFIRMED,
+        )
+        self.assertEqual(
+            (worktree / HIDDEN_FILE).read_text(), HIDDEN_CONTENT,
+        )
+
+    def test_a_checkout_arriving_mid_delete_stays(self) -> None:
+        # `update-ref` has no refusal for a branch some checkout is on, so the
+        # one in front of it is a reading -- and a `worktree add` from outside
+        # this process lands after it and leaves a tree whose HEAD names a ref
+        # nothing resolves. Git reports that tree on the branch whatever
+        # became of the ref, so the same question put again afterwards finds
+        # it, and the deletion is undone.
+        tip = self.published()
+        cleared = self.verdict()
+        self.hardened = commands._git_hardened
+
+        with patch.object(commands, _HARDENED_SEAM, self.arriving):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, CLEANED, FAILED),
+        )
+        self.assertEqual(_tip(self.clone, self.branch), tip)
+        self.assertEqual(_tip(self.arrived, "HEAD"), tip)
+
+    def test_a_branch_taken_mid_push_is_absent(self) -> None:
+        # The gate in front of the local deletion runs after the remote has
+        # been asked, which takes as long as a network does. A branch somebody
+        # deleted in that window is one this surface has to report as gone:
+        # reported as one it refused, the issue would be kept in a report
+        # forever over an artifact nobody can find. What carries the leftover
+        # on the remote is the record the remote step wrote first.
+        self.published()
+        cleared = self.verdict()
+
+        with patch.object(authentication, _REMOTE_DELETE_SEAM, self.losing):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertNotEqual(
+            obligations._recorded_obligations(self.spec), (),
+        )
 
 
 class AnchorReconciliationTest(_ReclaimTestCase):
@@ -1002,7 +1116,7 @@ class ReconciliationTest(_ReclaimTestCase):
         anchor = obligations._anchor_ref(self.spec, ISSUE_NUMBER)
         self.hardened = commands._git_hardened
 
-        with patch.object(commands, "_git_hardened", self.stopping):
+        with patch.object(commands, _HARDENED_SEAM, self.stopping):
             stopped = self.spend(cleared)
 
         self.assertEqual(
@@ -1030,7 +1144,7 @@ class ReconciliationTest(_ReclaimTestCase):
         cleared = self.verdict(worktree=worktree, branches=self.branches)
         self.hardened = commands._git_hardened
 
-        with patch.object(commands, "_git_hardened", self.stopping):
+        with patch.object(commands, _HARDENED_SEAM, self.stopping):
             self.spend(cleared)
 
         with patch.object(
