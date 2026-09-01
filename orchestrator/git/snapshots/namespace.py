@@ -98,6 +98,15 @@ MAX_LOCAL_SNAPSHOT_REF = (
 )
 
 
+# What a numeric component of a ref may be, in the two shapes this namespace
+# has: the floor a value sits at, and the noun a refusal names it as. An
+# identity floors at 1, because `issue-0` names no issue and `cycle-0` no
+# cycle; the generation counter floors at 0, because a cycle that froze a
+# candidate before adjudicating it is generation zero.
+_IDENTITY = (1, "an identity")
+_COUNTER = (0, "a counter")
+
+
 class InvalidSnapshotRef(Exception):
     """A value is not a ref this domain may create, prove, or reclaim."""
 
@@ -114,12 +123,10 @@ def snapshot_ref(*, issue_number: int, cycle_id: int, generation: int) -> str:
     pinned comment, so a damaged one would otherwise be interpolated into a ref
     this domain then pushed and could not recognize again.
     """
-    built = (
-        f"{SNAPSHOT_NAMESPACE}"
-        f"/issue-{_identity(issue_number, 'issue_number')}"
-        f"/cycle-{_identity(cycle_id, 'cycle_id')}"
-        f"/gen-{_counter(generation)}"
-    )
+    issue = _number(issue_number, name="issue_number", kind=_IDENTITY)
+    cycle = _number(cycle_id, name="cycle_id", kind=_IDENTITY)
+    gen = _number(generation, name="generation", kind=_COUNTER)
+    built = f"{SNAPSHOT_NAMESPACE}/issue-{issue}/cycle-{cycle}/gen-{gen}"
     if not is_snapshot_ref(built):
         raise InvalidSnapshotRef("the assembled ref is not in the namespace")
     return built
@@ -180,26 +187,22 @@ def is_snapshot_ref(ref: object) -> bool:
     return _SNAPSHOT_REF_RE.match(ref) is not None
 
 
-def _identity(given: object, name: str) -> int:
-    """Return a positive whole identity, or refuse the ref built from it."""
-    if not _whole_number(given) or given <= 0:
-        raise InvalidSnapshotRef(f"{name} is not an identity")
-    return given
+def _number(given: object, *, name: str, kind: tuple[int, str]) -> int:
+    """Return the number a ref component is built from, or refuse the ref.
 
-
-def _counter(given: object) -> int:
-    """Return a non-negative whole counter, or refuse the ref built from it."""
-    if not _whole_number(given) or given < 0:
-        raise InvalidSnapshotRef("generation is not a counter")
-    return given
-
-
-def _whole_number(given: object) -> bool:
-    """Whether a value is a real integer -- not a bool, float, or string.
+    The one place the numeric policy is spelled, and it is spelled as a check
+    rather than a conversion on purpose: `int(...)` accepts `True`, `2.9`, and
+    `"41"`, and these fields are read back out of a pinned comment a human can
+    edit -- so a converting builder would push a ref derived from whatever was
+    typed. `bool` is a subclass of `int`, so it is refused ahead of the class
+    check it would otherwise pass on its way to formatting as `issue-True`.
 
     Spelled here rather than borrowed from the late domain because this
     package is below the workflow and must not import it: a git owner that
     reached up into `workflow/` for a predicate would make the transport
     depend on the mode that happens to use it today.
     """
-    return isinstance(given, int) and not isinstance(given, bool)
+    least, noun = kind
+    if isinstance(given, bool) or not isinstance(given, int) or given < least:
+        raise InvalidSnapshotRef(f"{name} is not {noun}")
+    return given

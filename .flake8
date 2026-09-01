@@ -20,7 +20,6 @@ per-file-ignores =
     orchestrator/observability/usage/__init__.py:WPS412,WPS410
     orchestrator/observability/analytics/recording/__init__.py:WPS412,WPS410
     orchestrator/git/base_sync/refresh.py:WPS202
-    orchestrator/git/snapshots/namespace.py:WPS202
     orchestrator/git/snapshots/refs.py:WPS202
     orchestrator/workflow/state.py:WPS202
     orchestrator/workflow/late_split/models.py:WPS214
