@@ -11,6 +11,14 @@ def jsonl(*events: dict) -> str:
     return "\n".join(json.dumps(event) for event in events)
 
 
+def stdout_lines(*emitted: str) -> str:
+    """Splice lines a run already emitted as text -- a banner, a truncated
+    frame, blank padding -- around a serialized event. `jsonl` cannot carry
+    them, because not one of them is a JSON object.
+    """
+    return "\n".join(emitted)
+
+
 def text(text_value: object) -> dict:
     return {_usage_cases.TYPE_FIELD: _usage_cases.TEXT_FIELD, _usage_cases.TEXT_FIELD: text_value}
 

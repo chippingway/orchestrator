@@ -194,8 +194,7 @@ class LayeringTest(unittest.TestCase):
             for imported in planted:
                 with self.subTest(owner=owner, imported=imported):
                     self.assertTrue(
-                        imported.startswith("orchestrator.observability")
-                        or imported.startswith("orchestrator._package")
+                        imported.startswith(("orchestrator.observability", "orchestrator._package"))
                         or imported == "orchestrator",
                         f"{owner} reaches {imported}",
                     )

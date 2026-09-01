@@ -60,6 +60,13 @@ select = ["E4", "E7", "E9", "F"]
 # E501 (line too long) is not in the selected baseline; opt into it so
 # the line-length target above is actually enforced.
 extend-select = ["E501"]
+# The two rules a `# noqa` in this tree names but the selected set does not
+# enable: BLE001 on the blind handlers that must stay blind, N802 on the one
+# test double that mimics a third-party method name. Naming them keeps RUF100
+# from reading those directives as dead, and leaves each live for the audit it
+# was written for -- `ruff check orchestrator tests --select=BLE001` still
+# honours every one of them.
+external = ["BLE001", "N802"]
 
 # PLC0414 (`import X as X`) sits outside the baseline above, and the audit
 # that runs it -- `ruff check orchestrator tests --select=PLC0414` -- reads

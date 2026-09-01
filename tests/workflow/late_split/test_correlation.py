@@ -170,7 +170,7 @@ class PublicationCorrelationTest(unittest.TestCase):
         # a difference in which publication the step was taken on.
         entered = _keyed(_MEASUREMENT, _support.ENTERED_ON_PUBLICATION)
         for apart in _ENTERED_APART:
-            with self.subTest(field=sorted(apart)[0]):
+            with self.subTest(field=min(apart)):
                 elsewhere = {**_support.ENTERED_ON_PUBLICATION, **apart}
 
                 self.assertNotEqual(_keyed(_MEASUREMENT, elsewhere), entered)
@@ -193,7 +193,7 @@ class OutcomeFieldTest(unittest.TestCase):
         # said, are what a threshold study reads the record for.
         measured = _keyed(_MEASUREMENT)
         for apart in _MEASURED_APART:
-            with self.subTest(field=sorted(apart)[0]):
+            with self.subTest(field=min(apart)):
                 self.assertNotEqual(_keyed(_MEASUREMENT, apart), measured)
 
     def test_the_key_is_the_record_but_its_timestamp(self) -> None:

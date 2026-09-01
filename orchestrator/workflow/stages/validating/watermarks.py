@@ -70,9 +70,7 @@ class _WatermarkWalker:
         if is_self:
             self.watermark = comment.id
             self.seen_self = True
-        elif not self.seen_self and comment.id < self.pickup_comment_id:
-            self.watermark = comment.id
-        elif already_consumed:
+        elif (not self.seen_self and comment.id < self.pickup_comment_id) or already_consumed:
             self.watermark = comment.id
         else:
             return False

@@ -42,14 +42,12 @@ class ClaudeSkillErrorTest(unittest.TestCase):
             content_blocks=[_claude.skill_use(_usage_cases.DEVELOP)],
         )
         good = json.dumps(good_event)
-        stdout = "\n".join(
-            [
-                "starting claude...",
-                '{"type":"assistant","message"',
-                good,
-                "",
-                "not json either",
-            ]
+        stdout = _jsonl.stdout_lines(
+            "starting claude...",
+            '{"type":"assistant","message"',
+            good,
+            "",
+            "not json either",
         )
         skills = _skills.parse_claude_skills(stdout)
         self.assertEqual(skills.triggered, _usage_cases.DEVELOP_ONLY)

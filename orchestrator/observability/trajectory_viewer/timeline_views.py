@@ -74,9 +74,7 @@ def is_fixture(run: TrajectoryRun) -> bool:
         step.is_call and step.name == constants.FIXTURE_SKILL_TOOL
         for step in run.steps
     )
-    if run.steps and skill_only:
-        return True
-    return False
+    return bool(run.steps and skill_only)
 
 
 def detail_label(run: TrajectoryRun) -> str:
