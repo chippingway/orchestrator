@@ -85,6 +85,9 @@ _REMOTE_DELETE_SEAM = "_delete_remote_ref"
 
 _RECORD_SEAM = "_record_obligation"
 
+# Where a checkout is moved to for the case about a link left in its place.
+MOVED_CHECKOUT = "moved-checkout"
+
 
 class _DestructiveCalls:
     """The destructive calls a teardown makes, in the order it makes them.
@@ -364,6 +367,35 @@ class ArtifactOwnershipTest(_ReclaimTestCase):
             self.outcomes(reclaimed), ((ArtifactSurface.WORKTREE, FAILED),),
         )
         self.assertTrue(stranger.exists())
+
+    def test_a_link_where_a_checkout_belongs_is_kept(self) -> None:
+        # `worktree remove` resolves the path it is handed and deletes the
+        # registered tree at the far end, so a link left where this issue's
+        # checkout belongs has it take a directory outside the tree this
+        # orchestrator owns. Every reading in front of the removal follows the
+        # link and agrees -- the repository, the branch its HEAD is on, the
+        # tree carrying nothing loose -- which is why the mode of the path
+        # itself is what refuses.
+        self.published()
+        worktree = self.checkout()
+        elsewhere = self.world.path(MOVED_CHECKOUT)
+        worktree.rename(elsewhere)
+        _run_git("worktree", "repair", str(elsewhere), cwd=self.clone)
+        worktree.symlink_to(elsewhere)
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        self.assertIs(
+            evidence._checkout_identity(self.spec, ISSUE_NUMBER, worktree),
+            ProbeAnswer.CONFIRMED,
+        )
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(FAILED, CLEANED, FAILED),
+        )
+        self.assertTrue(elsewhere.is_dir())
+        self.assertTrue(worktree.is_symlink())
 
 
 class DivergentWorkTest(_ReclaimTestCase):
@@ -672,6 +704,72 @@ class ReconciliationTest(_ReclaimTestCase):
             _tip(self.clone, obligations._anchor_ref(self.spec, ISSUE_NUMBER)),
             stranded,
         )
+
+    def stopping(self, *args: str, **options):
+        """Run every git call but the removal, which stops the pass dead.
+
+        Stands in for the process that did not come back: the note is written,
+        the removal never happens, and what is on disk afterwards is what a
+        crash between the two leaves.
+        """
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            raise RuntimeError("the pass stopped here")
+        return self.hardened(*args, **options)
+
+    def test_an_anchor_a_stopped_pass_left_is_spent(self) -> None:
+        # A note is created and never overwritten, which is what keeps a
+        # commit an earlier pass could not account for -- and what a pass that
+        # stopped between the note and the removal leaves behind over a
+        # checkout that is still standing. The pass after it reads what the
+        # note pins: the commit its own verdict clears is one nothing else has
+        # to hold, so the note is spent and taken again rather than refusing
+        # this issue forever.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        anchor = obligations._anchor_ref(self.spec, ISSUE_NUMBER)
+        self.hardened = commands._git_hardened
+
+        with patch.object(commands, "_git_hardened", self.stopping):
+            stopped = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(stopped)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertTrue(worktree.exists())
+        self.assertEqual(_tip(self.clone, anchor), cleared.proven[0].sha)
+
+        finished = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(finished), _surfaces(CLEANED, ABSENT, CLEANED),
+        )
+        self.assertFalse(worktree.exists())
+        self.assertEqual(
+            obligations._anchored_commit(self.spec, ISSUE_NUMBER), "",
+        )
+
+    def test_an_anchor_that_will_not_go_stops_it(self) -> None:
+        # A note nobody could take away is one the write after it would be
+        # refused by, so the removal does not run under it. The checkout stays
+        # where it is and the pass after this one settles the note first.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.hardened = commands._git_hardened
+
+        with patch.object(commands, "_git_hardened", self.stopping):
+            self.spend(cleared)
+
+        with patch.object(
+            obligations, "_discard_anchor", return_value=False,
+        ):
+            kept = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(kept)[0], (ArtifactSurface.WORKTREE, FAILED),
+        )
+        self.assertTrue(worktree.exists())
 
     def test_a_half_finished_teardown_is_found_again(self) -> None:
         # Nothing is carried between the two passes. The second rebuilds the

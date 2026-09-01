@@ -27,7 +27,12 @@ whose tree anybody may write in: the removal runs with git's own `index.lock`
 and `HEAD.lock` for that checkout held, so no commit can land between the
 reading and the removal, and with what the tree is standing on pinned to an
 anchor that is created and never overwritten, so anything that landed before
-them is kept rather than taken. The one protection a stated expectation does not carry is
+them is kept rather than taken. What an anchor of that kind cannot say for
+itself is whether it is holding work or is merely the note a stopped pass left
+behind, so the pass after one reads it: pinning the commit that pass's own
+verdict cleared, it is spent and taken again, and pinning anything else it
+goes on refusing every removal for that issue. The one protection a stated
+expectation does not carry is
 git's own refusal to delete a branch some checkout is on -- `update-ref` has
 no such refusal where `branch -D` does -- so the worktrees of the clone are
 asked, under the lock and immediately before the deletion, whether any of them
@@ -82,6 +87,7 @@ import logging
 from collections.abc import Mapping
 from itertools import chain
 from pathlib import Path
+from stat import S_ISDIR
 from types import MappingProxyType
 
 from orchestrator import config
@@ -421,13 +427,7 @@ def _removal_while_held(
 ) -> SurfaceOutcome:
     """Pin what the checkout holds, take it down, and say what came with it."""
     spec = artifacts.spec
-    if not obligations._anchor_checkout(
-        spec, worktree, artifacts.issue_number,
-    ):
-        log.warning(
-            "issue=#%d keeping the checkout %s: what it is standing on could "
-            "not be pinned first", artifacts.issue_number, worktree,
-        )
+    if not _anchor_taken(artifacts, worktree, proven_sha):
         return SurfaceOutcome.FAILED
     removed = commands._git_hardened(
         "worktree", "remove", str(worktree), cwd=spec.target_root,
@@ -437,9 +437,94 @@ def _removal_while_held(
             "issue=#%d worktree remove of %s failed: %s",
             artifacts.issue_number, worktree, (removed.stderr or "").strip(),
         )
-        obligations._discard_anchor(spec, artifacts.issue_number)
+        _anchor_let_go(spec, artifacts.issue_number)
         return SurfaceOutcome.FAILED
     return _anchor_settled(artifacts, proven_sha)
+
+
+def _anchor_taken(
+    artifacts: IssueArtifacts, worktree: Path, proven_sha: str | None,
+) -> bool:
+    """Pin this checkout, once whatever an earlier pass pinned is settled.
+
+    An anchor is created and never overwritten, and the pass that leaves one
+    behind is not only the pass that meant to. A removal that raised, and a
+    process that stopped between the note and the `worktree remove` it was
+    for, both leave the note on disk with the checkout still standing -- and
+    without this every later removal for that issue would be refused by a ref
+    holding nothing anybody has to keep, forever.
+
+    What the note pins is what tells that leftover from the thing the lease
+    exists for. A commit this verdict has just cleared is one the
+    classification proved outlives its artifact, so the ref is not the only
+    name it has and nothing is lost by letting it go; anything else is work
+    made in the window an earlier pass could not account for, and it goes on
+    refusing.
+
+    Cleared and taken again rather than reused, because the note lives in a
+    ref store the agents this orchestrator runs can write. Reused, a note
+    somebody planted at the cleared commit would BE the pinning the removal is
+    measured against; taken again, what it is measured against is what git
+    resolves from inside the checkout one process before the removal.
+    """
+    if not _spent_anchor_cleared(artifacts, proven_sha):
+        return False
+    if obligations._anchor_checkout(
+        artifacts.spec, worktree, artifacts.issue_number,
+    ):
+        return True
+    log.warning(
+        "issue=#%d keeping the checkout %s: what it is standing on could "
+        "not be pinned first", artifacts.issue_number, worktree,
+    )
+    return False
+
+
+def _spent_anchor_cleared(
+    artifacts: IssueArtifacts, proven_sha: str | None,
+) -> bool:
+    """Whether nothing an earlier pass pinned is standing in the way.
+
+    Nothing at that name is the ordinary answer, and so is a read that
+    established nothing: both go on to the write, which is leased against the
+    ref existing and refuses for itself if there is one there after all. Only
+    a note this pass can positively account for is taken away, and a note that
+    would not go is one the removal does not run under -- the write after it
+    would be refused by the same ref.
+    """
+    spec = artifacts.spec
+    anchored = obligations._anchored_commit(spec, artifacts.issue_number)
+    if not anchored:
+        return True
+    if anchored != proven_sha:
+        log.error(
+            "issue=#%d keeping the checkout: %s pins %r, which is not the %r "
+            "this verdict cleared",
+            artifacts.issue_number,
+            obligations._anchor_ref(spec, artifacts.issue_number),
+            anchored,
+            proven_sha,
+        )
+        return False
+    return _anchor_let_go(spec, artifacts.issue_number)
+
+
+def _anchor_let_go(spec: config.RepoSpec, issue_number: int) -> bool:
+    """Take one issue's anchor away, and say so when it would not go.
+
+    Answered rather than dropped at every call, because of what a note left
+    standing costs the pass after this one: it is created and never
+    overwritten, so one nobody could take away is one that has to be
+    reconciled before anything else can be pinned for this issue.
+    """
+    if obligations._discard_anchor(spec, issue_number):
+        return True
+    log.warning(
+        "issue=#%d %s would not go; the pass after this one settles it before "
+        "it can pin anything of its own",
+        issue_number, obligations._anchor_ref(spec, issue_number),
+    )
+    return False
 
 
 def _anchor_settled(
@@ -452,9 +537,9 @@ def _anchor_settled(
     is the only thing holding it.
 
     Anything else is work made before the locks went on, and it is kept under
-    the anchor and reported at error. It also stands in the way of every later
-    removal for this issue, since an anchor is created and never overwritten:
-    what is pinned there is a commit nothing else names, and an operator is
+    the anchor and reported at error. It also stands in the way of the
+    removals after it, for as long as what it pins is a commit no verdict has
+    cleared: what is there is a commit nothing else names, and an operator is
     the one who decides what becomes of it. The checkout is gone by then --
     that is what the anchor exists for -- but the commit is not, and the
     surface coming back failed is what keeps the branch beside it standing, so
@@ -465,7 +550,7 @@ def _anchor_settled(
     spec = artifacts.spec
     anchored = obligations._anchored_commit(spec, artifacts.issue_number)
     if anchored and anchored == proven_sha:
-        obligations._discard_anchor(spec, artifacts.issue_number)
+        _anchor_let_go(spec, artifacts.issue_number)
         return SurfaceOutcome.CLEANED
     log.error(
         "issue=#%d the checkout was on %r rather than the %r this verdict "
@@ -479,7 +564,7 @@ def _anchor_settled(
 
 
 def _checkout_present(worktree: Path) -> ProbeAnswer:
-    """Whether there is anything at this path to remove.
+    """Whether what is at this path is a checkout a removal may take.
 
     `REFUTED` is the path being gone, which is a removal that already
     happened. `UNREADABLE` is the host refusing to say -- a directory this
@@ -488,17 +573,36 @@ def _checkout_present(worktree: Path) -> ProbeAnswer:
     checkout is standing on, so "nothing here" spent on a checkout nobody
     could see is how a live tree loses the ref under it.
 
+    A path that is not a directory in its own right is `UNREADABLE` too, and
+    the link is the one that matters. `worktree remove` resolves the path it
+    is handed and deletes the REGISTERED tree it finds there, so a symlink
+    left where this issue's checkout belongs, pointing at a worktree of this
+    same clone somewhere else, has the removal succeed against a directory
+    outside the tree this orchestrator owns -- and report it reclaimed. Every
+    reading in front of it agrees, because every one of them follows the link
+    and answers about the tree at the far end: it is a worktree of the
+    configured clone, its HEAD is on this issue's branch, and it is carrying
+    nothing loose. Only the mode of the path itself tells the two apart, which
+    is why it is read here as the scan reads it.
+
     Read through `lstat` rather than `Path.exists`, which answers False for
     every `OSError` it meets and would hand exactly that reading over as an
-    absence.
+    absence -- and which resolves what it is given, so a link would be
+    answered for by whatever it points at.
     """
     try:
-        worktree.lstat()
+        node = worktree.lstat()
     except FileNotFoundError:
         return ProbeAnswer.REFUTED
     except OSError as read_error:
         log.warning(
             "the checkout %s could not be read: %s", worktree, read_error,
+        )
+        return ProbeAnswer.UNREADABLE
+    if not S_ISDIR(node.st_mode):
+        log.warning(
+            "keeping %s: what is at this path is not a directory of its own, "
+            "so removing it would take whatever it stands for", worktree,
         )
         return ProbeAnswer.UNREADABLE
     return ProbeAnswer.CONFIRMED
@@ -603,24 +707,42 @@ def _reclaimed_branch(
 
 
 def _stranded(artifacts: IssueArtifacts, branch: str) -> None:
-    """Say so when nothing is left to find a branch this could not settle by.
+    """Leave something behind for a branch this could not settle by, or say so.
 
-    The one shape this domain cannot make discoverable on its own. The local
+    The shape with nothing on this host left to find the issue by. The local
     copy went before the teardown reached it, so there is no artifact to keep
-    back, and if the record that would have carried it could not be written --
-    a ref store refusing a write is one nothing durable can be put in -- then
-    nothing here names that branch any more.
+    back, and the write-ahead that was to carry the branch did not land -- so
+    unless something else names it, the leftover on the remote is one no later
+    pass of this host reaches.
 
-    Reported at error rather than warning for exactly that reason: every other
-    failure in this pass is one a later pass picks up, and this is the one
-    only an operator can. A record that IS there says the opposite, and the
-    ledger is asked rather than assumed, since the write and this line are two
-    steps and only the first of them knows whether it landed.
+    The ledger is asked rather than assumed, since the write and this are two
+    steps and only the first of them knows whether it landed. A record that IS
+    there is the answer already.
+
+    What is tried next is the reminder, which is the same note without the
+    commit: written at git's empty tree, an object every repository knows
+    without being told, so a ledger that refused the deletion's own commit --
+    an object this clone cannot name, a value it would not take -- still takes
+    this. It carries no permission and needs none: what it says is which
+    branch to go and ask about, and the pass that reads it back asks the
+    classification for everything else.
+
+    Only a ledger that will take nothing at all reaches the last line, and it
+    is reported at error for what it costs: every other failure in this pass
+    is one a later pass picks up, and this is the one only an operator can.
     """
-    owed = obligations._recorded_obligations(artifacts.spec)
+    spec = artifacts.spec
+    owed = obligations._recorded_obligations(spec)
     if owed is not None and any(
         record.subject == branch for record in owed
     ):
+        return
+    if obligations._remind(spec, branch):
+        log.warning(
+            "issue=#%d %r is gone from this clone and was not settled on the "
+            "remote; written down to be asked about again, since nothing else "
+            "here names it", artifacts.issue_number, branch,
+        )
         return
     log.error(
         "issue=#%d %r is gone from this clone and was not settled on the "

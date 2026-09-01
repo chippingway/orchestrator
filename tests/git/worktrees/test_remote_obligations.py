@@ -32,6 +32,7 @@ from orchestrator.git.worktrees import (
 )
 from orchestrator.git.worktrees.models import (
     ArtifactSurface,
+    ArtifactVerdict,
     BranchTip,
     ProbeAnswer,
     ProvenTip,
@@ -51,6 +52,7 @@ from tests.git.worktrees.candidate_host_test_support import (
 )
 from tests.git.worktrees.eligibility_test_support import (
     ISSUE_NUMBER,
+    _candidate,
     _github,
     _pull_request,
     _terminal_issue,
@@ -82,6 +84,11 @@ _TARGET_FETCH_SEAM = "_authed_target_fetch"
 PR_NUMBER = 42
 
 PUBLISHER_NAME = "publisher"
+
+# A well-formed object id this clone has never had. `update-ref` refuses to
+# write a ref at an object it cannot find, which is the ledger declining one
+# note without declining every note.
+UNKNOWN_COMMIT = "1111111111111111111111111111111111111111"
 
 
 def _swept(gh, spec) -> tuple:
@@ -230,6 +237,38 @@ class RecordedRemoteTest(_ReclaimTestCase):
             ((ArtifactSurface.REMOTE_BRANCH, self.branch, ABSENT),),
         )
         self.assertEqual(obligations._recorded_obligations(self.spec), ())
+
+    def test_a_branch_no_record_took_is_reminded(self) -> None:
+        # The local copy went before the teardown reached it, so nothing on
+        # this host names the issue any more, and the ledger would not take a
+        # note at the commit this verdict cleared. What is left to try is the
+        # reminder, written at an object every repository knows -- and it is
+        # the only thing that has the pass after this one find the branch.
+        self.published()
+        cleared = ArtifactVerdict(
+            _candidate(self.spec, ISSUE_NUMBER, branches=self.branches),
+            proven=(ProvenTip(self.branch, UNKNOWN_COMMIT),),
+        )
+        _branch_at(self.clone, self.branch)
+
+        stopped = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(stopped), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertEqual(
+            inventory._local_issue_inventory((self.spec,)).issues, (),
+        )
+        self.assertEqual(
+            obligations._recorded_obligations(self.spec),
+            (ProvenTip(self.branch, obligations._REMINDER_MARK),),
+        )
+
+        self.assertEqual(
+            _settled(_swept(self.gh, self.spec)),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, CLEANED),),
+        )
+        self.assertFalse(self.standing()[2])
 
     def test_a_record_that_will_not_write_stops_it(self) -> None:
         # A deletion nothing could write down first is one whose failure

@@ -142,9 +142,11 @@ _OWNER_ONLY_NAMES = (
 # carries when nothing was cleared and the reminder written at it, the
 # read-back and the parse beneath it, the discharge, and the anchor a removal
 # pins what it is about to take under -- its namespace, its ref, its write,
-# its read-back, its discard, the lease that only ever creates one, and the
+# its read-back, the status a read of one that is not there answers with, its
+# discard, the lease that only ever creates one, and the
 # git directory, locks, and held removal that keep a checkout still while it
-# comes down --
+# comes down, with the take, the discard, and the reconciliation of a note an
+# earlier pass left standing --
 # and the second reading a refused branch deletion is told apart by. Naming
 # the whole surface makes a helper added to an owner an edit here rather than
 # a definition site nothing checks.
@@ -175,6 +177,7 @@ _OWNER_DEFINED = (
     ("_COMMIT_PEEL", evidence),
     ("_DIGEST_MARK", obligations),
     ("_GIT_NEGATIVE", evidence),
+    ("_GIT_NO_SUCH_REF", obligations),
     ("_GIT_NOT_SYMBOLIC", reclamation),
     ("_HEAD", evidence),
     ("_HEAD", obligations),
@@ -201,10 +204,12 @@ _OWNER_DEFINED = (
     ("_WORKTREE_ADD", creation),
     ("_WORKTREE_REMOVE_FORCE", creation),
     ("_anchor_checkout", obligations),
+    ("_anchor_let_go", reclamation),
     ("_anchor_pr_worktree", creation),
     ("_anchor_ref", obligations),
     ("_anchor_settled", reclamation),
     ("_anchor_target", creation),
+    ("_anchor_taken", reclamation),
     ("_anchored_commit", obligations),
     ("_anchored_removal", reclamation),
     ("_artifact_reading", eligibility),
@@ -323,6 +328,7 @@ _OWNER_DEFINED = (
     ("_slugs_by_worktrees_root", attribution),
     ("_spec_inventory", inventory),
     ("_specs_by_clone", inventory),
+    ("_spent_anchor_cleared", reclamation),
     ("_standing_on", reclamation),
     ("_still_cleared", reclamation),
     ("_stranded", reclamation),

@@ -357,8 +357,16 @@ orchestrator/
                         after: a commit made before the locks went on comes down with the checkout, and the
                         anchor is what keeps it nameable and has the surface report the removal as the failure
                         it was. An anchor is created and never overwritten, so one an earlier pass left standing
-                        refuses every later removal for that issue rather than being replaced and then
-                        discharged. Then
+                        refuses the removal rather than being replaced and then discharged — unless what it pins
+                        is the very commit this verdict clears, which is the note a pass that stopped between
+                        writing it and removing anything leaves behind. That one is spent and taken again, since
+                        reusing a ref an agent could have planted would make it the pinning the removal is
+                        measured against; a note nobody could take away refuses the removal too, the write after
+                        it being refused by the same ref. The path itself is read before any of that, and
+                        anything at it that is not a directory of its own is refused: `worktree remove` resolves
+                        what it is handed and deletes the registered tree at the far end, so a symlink left where
+                        the checkout belongs would have it take a directory outside the tree this orchestrator
+                        owns — and every reading in front of the removal follows the link and agrees. Then
                         the local branch deleted through an `update-ref -d` naming the old value and refused
                         while any live worktree of the clone is still standing on it, since that one protection
                         `branch -D` has and the ref update does not -- and refused again when the name is a
@@ -401,9 +409,11 @@ orchestrator/
                         delete needs no permission and no local state may hold it back. A remote that moved
                         past what was cleared deletes nothing and keeps its record: the branch is still standing
                         there, and the record is the only thing that would lead anybody back to it. The one
-                        leftover no record can carry -- a local copy taken before the teardown reached it, on a
-                        host whose ref store then refuses the note -- is reported at error level instead, being
-                        the only failure here that no later pass can reach
+                        leftover a commit-valued record cannot carry -- a local copy taken before the teardown
+                        reached it, and a ledger that would not take a note at the commit that was cleared -- is
+                        written down as the reminder instead, whose value is an object every repository knows
+                        without being told. Only a ledger that will take nothing at all is reported at error
+                        level, being the one failure here that no later pass can reach
       obligations.py    the ledger those records live in: one ref per branch under
                         `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
                         classification cleared -- or, for a branch it cleared none for, at git's empty tree, an

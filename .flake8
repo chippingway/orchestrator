@@ -90,7 +90,7 @@ per-file-ignores =
     orchestrator/git/worktrees/models.py:WPS202
     orchestrator/git/worktrees/obligations.py:WPS202
     orchestrator/git/worktrees/paths.py:WPS202
-    orchestrator/git/worktrees/reclamation.py:WPS202
+    orchestrator/git/worktrees/reclamation.py:WPS201,WPS202
     orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
     tests/git/worktrees/test_remote_obligations.py:WPS204

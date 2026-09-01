@@ -118,6 +118,11 @@ _RECORD_FIELDS = 2
 # handles: the reminder is not there, and the pass says so.
 _REMINDER_MARK = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
+# The exit status `rev-parse --verify --quiet` answers with for a ref that is
+# not there, as against the ones that mean the repository would not answer.
+# An anchor is read before it is written, so the ordinary reading is this one.
+_GIT_NO_SUCH_REF = 1
+
 # What keeps a write to a record from travelling somewhere else. The ref store
 # these live in is one the per-issue checkouts share, so a record can be made
 # a symbolic ref pointing anywhere -- and every update-ref that does not say
@@ -339,6 +344,11 @@ def _anchored_commit(spec: config.RepoSpec, issue_number: int) -> str:
     failed, because a caller spends them the same way: what it has to
     establish is that the commit taken with the checkout is the one that was
     cleared, and neither answer establishes it.
+
+    Only the second is reported. An issue with no anchor is what every removal
+    that has not started yet looks like -- the read runs before the write, so
+    the note it is looking for is the one about to be made -- and a line on
+    each of those would bury the one about a note nobody could read.
     """
     try:
         with locks._target_root_lock(spec.target_root):
@@ -349,6 +359,8 @@ def _anchored_commit(spec: config.RepoSpec, issue_number: int) -> str:
             )
     except Exception:
         log.exception("the anchor of #%d could not be read", issue_number)
+        return ""
+    if resolved.returncode == _GIT_NO_SUCH_REF:
         return ""
     if resolved.returncode != 0:
         log.warning(
