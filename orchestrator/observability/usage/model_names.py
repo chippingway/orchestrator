@@ -8,7 +8,6 @@ from typing import Any
 
 from orchestrator.observability.usage import protocol
 
-
 CLAUDE_MODEL_PATHS: tuple[protocol.ModelPath, ...] = (
     (protocol.MESSAGE, protocol.MODEL),
     ("event", protocol.MESSAGE, protocol.MODEL),

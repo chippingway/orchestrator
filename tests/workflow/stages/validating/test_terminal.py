@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.verification.models import VerifyResult
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -17,10 +16,10 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    REVIEW_APPROVED_MESSAGE,
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
+    REVIEW_APPROVED_MESSAGE,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 MERGED_ISSUE = 120

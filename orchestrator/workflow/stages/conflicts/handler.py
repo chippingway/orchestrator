@@ -31,9 +31,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.engine import terminals as _terminals
-from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import routing as _routing
-from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.stages.conflicts import models as _models, routing as _routing, transitions as _transitions
 from orchestrator.workflow.state import WorkflowLabel
 
 

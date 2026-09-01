@@ -6,16 +6,12 @@ import unittest
 from pathlib import Path
 
 from orchestrator import config
-
 from tests.support.fakes import FakeComment, FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
     BACKEND_CODEX,
-)
-from tests.workflow.fixtures import (
     LABEL_QUESTION,
     _agent,
 )
-
 from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
 )

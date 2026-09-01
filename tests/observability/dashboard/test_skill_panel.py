@@ -28,8 +28,7 @@ import unittest
 from collections.abc import Mapping
 
 from orchestrator.observability.dashboard import skill_panel
-from tests.observability.dashboard import skill_adoption_test_support as adopt
-from tests.observability.dashboard import skill_matrix_test_support as matrix
+from tests.observability.dashboard import skill_adoption_test_support as adopt, skill_matrix_test_support as matrix
 from tests.observability.dashboard.skill_panel_test_support import (
     PanelStreamlit,
     all_markup,

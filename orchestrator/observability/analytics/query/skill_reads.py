@@ -49,7 +49,6 @@ from orchestrator.observability.analytics.query.skill_trigger_rates import (
     skill_trigger_rate_rows,
 )
 
-
 _SKILL_TRIGGER_RATE_SIGNATURE = FILTERED_READ_SIGNATURE.replace(
     return_annotation="list[SkillTriggerRateRow]",
 )

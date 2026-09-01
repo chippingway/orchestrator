@@ -16,7 +16,6 @@ from unittest.mock import patch
 from orchestrator.git import authentication
 from orchestrator.git.measurement import commits
 from orchestrator.git.measurement.models import MeasurementFailure
-
 from tests.git.measurement import measurement_test_support as _support
 
 _REMOTE_TIP_READ = "_remote_branch_tip"

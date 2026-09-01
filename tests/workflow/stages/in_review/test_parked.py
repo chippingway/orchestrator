@@ -11,7 +11,6 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -21,9 +20,9 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
 
 PARKED_ISSUE = 170

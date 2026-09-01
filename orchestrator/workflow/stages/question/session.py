@@ -20,10 +20,8 @@ from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.stages.question import models as _models
-from orchestrator.workflow.stages.question import state as _state
+from orchestrator.workflow.engine import comments as _comments, prompts as _prompts
+from orchestrator.workflow.stages.question import models as _models, state as _state
 
 
 def _read_question_session(

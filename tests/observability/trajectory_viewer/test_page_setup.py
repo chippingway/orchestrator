@@ -10,14 +10,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from orchestrator.observability.trajectory_viewer import constants, css, page_setup
 from orchestrator.observability.dashboard.css import PAGE_CSS
+from orchestrator.observability.trajectory_viewer import constants, css, page_setup
 from tests.observability.trajectory_viewer.trajectory_viewer_test_support import (
     BACKEND_CLAUDE,
     REPO,
     record,
 )
-
 
 _FIXTURE_SESSION = "sess-abc"
 

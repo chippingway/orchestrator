@@ -86,3 +86,14 @@ external = ["BLE001", "N802"]
 "tests/workflow/stages/decomposition/late_run_support.py" = ["PLC0414"]
 "tests/workflow/stages/fixing/published_gate_support.py" = ["PLC0414"]
 "tests/workflow/stages/validating/recovered_gate_support.py" = ["PLC0414"]
+
+# I001 (unsorted imports) sits outside the baseline above too, so the audit
+# that opts into it -- `ruff check orchestrator tests --select=I001` -- is what
+# this setting is read by. Ruff's default splits an aliased member onto an
+# import statement of its own, which turns the one statement a module is read
+# through into as many statements as it has aliases; the tree's modules read
+# most of their neighbours under an alias, so the default would push whole
+# files past the ceiling WPS201 holds them to. Combining keeps every member a
+# module is read for on the single statement that names it.
+[tool.ruff.lint.isort]
+combine-as-imports = true

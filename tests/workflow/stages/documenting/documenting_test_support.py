@@ -2,21 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-
 from orchestrator.workflow.stages.documenting import handler as _documenting
-
 from tests.support.fakes import (
     DEFAULT_PR_HEAD_SHA,
     FakeGitHubClient,
     make_issue,
 )
 from tests.workflow.fixtures import (
-    MEASURED_CANDIDATE_SHA,
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
+    MEASURED_CANDIDATE_SHA,
     _open_pr_for,
+    _PatchedWorkflowMixin,
 )
-
 
 # --- Workflow labels this stage routes between --------------------------
 DOCUMENTING = "workflow:documenting"

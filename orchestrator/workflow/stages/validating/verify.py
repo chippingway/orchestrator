@@ -22,8 +22,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import guards as _guards, messages as _messages
 from orchestrator.workflow.stages.validating import state as _state
 
 

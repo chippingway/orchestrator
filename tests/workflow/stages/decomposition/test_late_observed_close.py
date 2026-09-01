@@ -25,19 +25,18 @@ import unittest
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.observation_support import ObservedCloseCase
-from tests.workflow.stages.decomposition.late_run_support import (
-    LateCase,
-    agent_reply,
-)
 from tests.workflow.stages.decomposition.late_observation_seams import (
     ISSUE_COMMENT,
     PR_SEARCH,
     latches_on_call,
     latches_on_retirement,
     latches_on_write,
+)
+from tests.workflow.stages.decomposition.late_run_support import (
+    LateCase,
+    agent_reply,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,

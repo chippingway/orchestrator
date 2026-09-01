@@ -3,28 +3,16 @@
 """Codex skill discovery recording tests."""
 
 import os
-
-
 import tempfile
-
-
 import unittest
-
-
 from dataclasses import dataclass
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
-
 
 from orchestrator.observability.analytics import (
     recording,
     settings as analytics_settings,
 )
-
 from tests.observability.analytics.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
@@ -32,7 +20,6 @@ from tests.observability.analytics.analytics_recording_cases import (
     agent_exit_result as _agent_exit_result,
     claude_stdout_with_skills as _claude_stdout_with_skills,
 )
-
 from tests.observability.analytics.analytics_trajectory_cases import (
     codex_trajectory_stdout as _codex_trajectory_stdout,
 )

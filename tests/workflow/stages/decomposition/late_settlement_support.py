@@ -23,14 +23,11 @@ import contextlib
 from types import MappingProxyType
 from unittest.mock import MagicMock, patch
 
-from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
-from orchestrator.workflow.stages.decomposition import late_owner as _late_owner
-
-from tests.support.fakes import FakeGitHubClient
+from orchestrator.workflow.stages.decomposition import late_hold as _late_hold, late_owner as _late_owner
 from orchestrator.workflow.stages.decomposition.late_session import (
     MAX_RECORDED_BODY,
 )
-
+from tests.support.fakes import FakeGitHubClient
 from tests.workflow.stages.decomposition.late_run_support import (
     LateCase,
     WorktreeSeed,
@@ -38,25 +35,21 @@ from tests.workflow.stages.decomposition.late_run_support import (
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
-    KEYS,
     KEY_PLAN_PATH,
+    KEYS,
+    NO_BLOCK_REPLY,
+    OTHER_SHA,
     PLAN_PATH,
     PLAN_PR_BODY,
     PLAN_PR_NUMBER,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
-    generation_state,
-    late_generation,
-    seed_late_issue,
-    seed_plan_pr,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
-    NO_BLOCK_REPLY,
-    OTHER_SHA,
     QUESTION_REPLY,
     SINGLE_REPLY,
     SPLIT_REPLY,
+    generation_state,
     late_block,
+    late_generation,
+    seed_late_issue,
+    seed_plan_pr,
 )
 
 WORKFLOW_LOG = "orchestrator.workflow"

@@ -51,10 +51,12 @@ from types import MappingProxyType
 from typing import Any
 
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import ledgers as _ledgers
-from orchestrator.workflow.late_split import payloads as _payloads
-from orchestrator.workflow.late_split import restart as _restart
+from orchestrator.workflow.late_split import (
+    formats as _formats,
+    ledgers as _ledgers,
+    payloads as _payloads,
+    restart as _restart,
+)
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from orchestrator.workflow.state import WorkflowLabel
 

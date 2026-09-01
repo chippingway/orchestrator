@@ -17,7 +17,6 @@ import unittest
 from orchestrator.observability.dashboard import date_controls, windows
 from tests.observability.dashboard import date_test_support as fakes
 
-
 # The widths and alignment the five slots are laid out at. The bar sits under
 # the topbar with each picker's own caption above it, so the row is aligned to
 # its bottom edge, and the widest slot is the trailing one the filter line is

@@ -3,42 +3,23 @@
 """What the per-tick wrapper swallows, and what the sink lock protects."""
 
 import contextlib
-
-
 import os
-
-
 import tempfile
-
-
 import threading
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
 
-
-from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
-
-
-from tests.observability.analytics.analytics_jsonl_helpers import (
-    read_records as _read_records,
-    write_json_lines as _write_json_lines,
-    timestamp_days_ago as _ts_days_ago,
-)
-
-
 from orchestrator.observability.analytics import recording, retention
-
 from tests.observability.analytics import (
     retention_test_support as _support,
 )
-
+from tests.observability.analytics.analytics_jsonl_helpers import (
+    read_records as _read_records,
+    timestamp_days_ago as _ts_days_ago,
+    write_json_lines as _write_json_lines,
+)
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 # The rewrite step's own `os`, named rather than imported: this module wants
 # the owner only as a patch target, and naming it keeps the import list under

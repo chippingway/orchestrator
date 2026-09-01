@@ -19,16 +19,15 @@ from orchestrator.workflow.late_split.models import (
     LatePhase,
     LateResourceState,
 )
-from orchestrator.workflow.state import WorkflowLabel
 from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
-
+from orchestrator.workflow.state import WorkflowLabel
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     DECOMPOSING,
     LABEL_BLOCKED,
     LABEL_DONE,
-    OwnerSeed,
     PARENT_NUMBER,
+    OwnerSeed,
     SeededUmbrella,
     resource_states,
     split_umbrella,
@@ -38,7 +37,6 @@ from tests.workflow.stages.decomposition.late_test_support import (
     PLAN_PR_NUMBER,
     seed_plan_pr,
 )
-
 
 # An obligation the branch-and-ref reading walks straight past: a plan-PR
 # entry under a number the hold's own record no longer names.

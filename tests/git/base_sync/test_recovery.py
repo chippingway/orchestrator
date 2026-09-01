@@ -18,7 +18,6 @@ from orchestrator.git.base_sync import (
     snapshot,
 )
 from orchestrator.git.verification import probes as verification_probes
-
 from tests.git.base_sync import base_sync_helpers as fixtures
 from tests.git.base_sync.gate_reads_support import _gate_candidates, _gate_reads
 from tests.git.base_sync.refresh_test_support import MOVED_CHECKOUT_SHA

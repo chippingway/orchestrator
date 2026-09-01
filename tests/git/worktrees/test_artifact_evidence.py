@@ -22,7 +22,6 @@ from unittest.mock import patch
 from orchestrator.git import authentication, commands
 from orchestrator.git.worktrees import evidence
 from orchestrator.git.worktrees.models import BranchTip, ProbeAnswer
-
 from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,
     WIDGET_SLUG,

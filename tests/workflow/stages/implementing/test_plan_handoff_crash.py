@@ -31,7 +31,6 @@ import unittest
 from unittest.mock import patch
 
 from tests.workflow.fixtures import BASE_TIP_SHA, LABEL_DONE, _agent
-
 from tests.workflow.stages.implementing.plan_handoff_test_support import (
     AMENDED_PLAN_COMMIT,
     PLAN_COMMIT,

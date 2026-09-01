@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 from tests.support.fakes import FakeComment, FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
     BACKEND_CLAUDE,
@@ -13,12 +12,9 @@ from tests.workflow.fixtures import (
     KEY_ISSUE_AGENT_RUNS,
     KEY_ISSUE_TOTAL_TOKENS,
     KEY_PARK_REASON,
-)
-from tests.workflow.fixtures import (
     LABEL_QUESTION,
     _agent,
 )
-
 from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
 )

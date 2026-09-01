@@ -8,6 +8,7 @@ from typing import Any
 
 from orchestrator import config
 from orchestrator.github import events as _events
+from orchestrator.github.comments import carries_own_marker
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER, PinnedState
 from orchestrator.observability.analytics import recording
 from orchestrator.workflow.state import (
@@ -18,18 +19,14 @@ from orchestrator.workflow.state import (
     replaced_label_names,
     stage_name,
 )
-
-from orchestrator.github.comments import carries_own_marker
-
 from tests.support.github.model_helpers import _has_closed_sweep_label
-from tests.support.github.state import _CommentHistory, _LabelHistory
 from tests.support.github.models import (
     FakeComment,
     FakeIssue,
     FakeLabel,
     FakeUser,
 )
-
+from tests.support.github.state import _CommentHistory, _LabelHistory
 
 _STATE_CLOSED = "closed"
 

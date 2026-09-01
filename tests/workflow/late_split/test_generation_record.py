@@ -16,7 +16,6 @@ from orchestrator.workflow.late_split.models import (
     LateResourceKind,
     LateResourceState,
 )
-
 from tests.workflow.late_split import generation_test_support as _support
 
 _BRANCH = "orchestrator/issue-1"

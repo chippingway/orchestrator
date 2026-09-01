@@ -19,11 +19,9 @@ from orchestrator.observability.analytics.query.requests import (
     ISSUE_EVENTS_SIGNATURE,
     ISSUES_SIGNATURE,
     LIMITED_READ_SIGNATURE,
+    RECENT_EXIT_LIMIT,
     RECENT_EXITS_SIGNATURE,
     SOURCE_READ_SIGNATURE,
-)
-from orchestrator.observability.analytics.query.requests import (
-    RECENT_EXIT_LIMIT,
     bind_read_request,
     resolve_read_query,
     window_filters,

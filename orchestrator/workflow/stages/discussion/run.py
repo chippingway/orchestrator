@@ -68,9 +68,7 @@ from orchestrator.git.worktrees import (
     recovery as _worktree_recovery,
 )
 from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.discussion import models as _models
-from orchestrator.workflow.stages.discussion import session as _session
-from orchestrator.workflow.stages.discussion import state as _state
+from orchestrator.workflow.stages.discussion import models as _models, session as _session, state as _state
 
 log = logging.getLogger("orchestrator.workflow")
 

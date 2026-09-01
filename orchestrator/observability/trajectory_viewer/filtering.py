@@ -25,7 +25,6 @@ from typing import Unpack
 from orchestrator.observability.trajectory_viewer import filter_models, filter_values
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
-
 # `filter_runs` names the options object bare and the keyword fields through
 # their module, and that pair is its published call shape: `inspect.signature`
 # reports an annotation verbatim, and `get_type_hints` resolves it against this

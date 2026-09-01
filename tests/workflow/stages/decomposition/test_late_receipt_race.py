@@ -25,7 +25,6 @@ from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.stages.decomposition import (
     late_cancellation as _late_cancellation,
 )
-
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.observation_support import ObservedCloseCase, receipt_for

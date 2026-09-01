@@ -15,8 +15,7 @@ from __future__ import annotations
 from types import MappingProxyType
 
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import events as _events, state as _late_state
 from orchestrator.workflow.late_split.identity import RESOURCE_FINGERPRINT_LENGTH
 from orchestrator.workflow.late_split.models import (
     LateFailure,

@@ -6,22 +6,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.git.worktrees import recovery as _worktree_recovery
+from orchestrator.git.worktrees import paths as _worktree_paths, recovery as _worktree_recovery
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.question import handler as _question
-
 from tests.support.fakes import FakeComment, FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
     KEY_PARK_REASON,
-)
-from tests.workflow.fixtures import (
     LABEL_QUESTION,
-    _PatchedWorkflowMixin,
-    _TEST_SPEC,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 KEY_QUESTION_SESSION_ID = "question_session_id"

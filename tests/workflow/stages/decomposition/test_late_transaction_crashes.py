@@ -22,7 +22,6 @@ from orchestrator.git.snapshots.refs import SnapshotOutcome
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.stages.decomposition.late_crash_support import (
     killed_after,
@@ -33,13 +32,9 @@ from tests.workflow.stages.decomposition.late_seam_support import (
 )
 from tests.workflow.stages.decomposition.late_transaction_support import (
     FORWARD_LINK_MARKER,
-    SNAPSHOT_REF,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
     KEY_DECOMPOSED_AT,
     KEY_LINKS_ANNOUNCED,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
+    SNAPSHOT_REF,
     LateSplitCase,
 )
 

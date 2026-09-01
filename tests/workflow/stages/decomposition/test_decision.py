@@ -7,34 +7,28 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.workflow.engine import pickup as _pickup
-
-from tests.workflow.stages.decomposition.decomposition_test_support import (
-    _comment_with_marker,
-    _comments_for_issue,
-    _labels_for_issue,
-)
 from tests.support.fakes import (
     FakeGitHubClient,
     make_issue,
 )
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     KEY_PARENT_NUMBER,
-)
-from tests.workflow.fixtures import (
     LABEL_BLOCKED,
     LABEL_DECOMPOSING,
     LABEL_READY,
     LABEL_UMBRELLA,
     STAGE_DECOMPOSING,
-    _TEST_SPEC,
-)
-from tests.workflow.fixtures import (
     _agent,
     _manifest,
 )
-
 from tests.workflow.stages.decomposition.decomposing_test_support import (
     _DecomposingWorkflowMixin,
+)
+from tests.workflow.stages.decomposition.decomposition_test_support import (
+    _comment_with_marker,
+    _comments_for_issue,
+    _labels_for_issue,
 )
 
 KEY_DECOMPOSER_AGENT = "decomposer_agent"

@@ -10,9 +10,7 @@ from unittest.mock import MagicMock, patch
 from orchestrator import config
 from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
 from orchestrator.workflow.engine import tick
-
 from tests.support.fakes import FakeGitHubClient
-from tests.workflow.git_owners import seam_patch
 from tests.workflow.engine.tick_community_test_support import (
     ALLOWED_LOGIN,
     ALLOWLIST_CONFIG,
@@ -22,7 +20,7 @@ from tests.workflow.engine.tick_community_test_support import (
     fail_first_label_write,
     make_pr,
 )
-
+from tests.workflow.git_owners import seam_patch
 
 _ALLOWED_LOGIN = ALLOWED_LOGIN
 _ALLOWLIST_CONFIG = ALLOWLIST_CONFIG

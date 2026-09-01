@@ -15,7 +15,6 @@ import threading
 import unittest
 
 from orchestrator.scheduler import IssueScheduler
-
 from tests.scheduler.log_helpers import _contains_log
 from tests.scheduler.worker_helpers import (
     _release_on_exit,

@@ -39,20 +39,18 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
-from orchestrator.git.worktrees import creation as _worktree_creation
-from orchestrator.git.worktrees import decomposition as _worktree_decomposition
+from orchestrator.git.worktrees import creation as _worktree_creation, decomposition as _worktree_decomposition
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import guards as _guards, usage as _usage
 from orchestrator.workflow.stages.decomposition import (
+    handoff as _handoff,
     late_coordinator as _late_coordinator,
+    outcomes as _outcomes,
+    recovery as _recovery,
+    session as _session,
+    state as _state,
 )
-from orchestrator.workflow.stages.decomposition import handoff as _handoff
-from orchestrator.workflow.stages.decomposition import outcomes as _outcomes
-from orchestrator.workflow.stages.decomposition import recovery as _recovery
-from orchestrator.workflow.stages.decomposition import session as _session
-from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )

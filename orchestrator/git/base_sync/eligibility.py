@@ -17,7 +17,6 @@ base earns a rebase of its own.
 """
 from __future__ import annotations
 
-
 from github.PullRequest import PullRequest
 
 from orchestrator.git.base_sync import recovery

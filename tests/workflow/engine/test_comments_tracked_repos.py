@@ -17,7 +17,6 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.workflow.engine import comments
 
-
 _LANCE_SLUG = "owner/lance"
 _LANCE_ROOT = "/srv/lance"
 _RAY_SLUG = "owner/ray"

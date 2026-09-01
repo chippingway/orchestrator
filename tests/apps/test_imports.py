@@ -9,7 +9,6 @@ import unittest
 from importlib import import_module
 from pathlib import Path
 
-
 _ORCHESTRATOR = "orchestrator"
 
 _PACKAGE = f"{_ORCHESTRATOR}.apps"

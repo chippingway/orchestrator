@@ -21,7 +21,6 @@ from orchestrator.workflow.stages.decomposition import (
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_crash_support import (
     killed_after,

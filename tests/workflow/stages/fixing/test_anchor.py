@@ -7,7 +7,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import prompts as _prompts
-
 from tests.workflow.stages.fixing import fixing_test_support as support
 
 ADVANCED_PR_COMMENT_WATERMARK = support.ADVANCED_PR_COMMENT_WATERMARK

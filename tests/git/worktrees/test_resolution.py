@@ -7,7 +7,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.git.worktrees import paths
-
 from tests.git.worktrees.path_test_support import (
     BRANCH_KEY,
     LEGACY_BRANCH,

@@ -11,7 +11,6 @@ from unittest.mock import patch
 from orchestrator.observability.dashboard import windows
 from tests.observability.dashboard import dashboard_test_support as fixtures
 
-
 _WINDOW_DAYS = 7
 
 

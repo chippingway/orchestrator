@@ -8,7 +8,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator.git import authentication
-
+from tests.git.base_sync.real_git_test_support import (
+    _LocalBranchPusher,
+    _RefreshBaseRealGitFixture,
+)
 from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
@@ -20,11 +23,6 @@ from tests.workflow.fixtures import (
     LABEL_RESOLVING_CONFLICT,
     LABEL_VALIDATING,
     STATE_OPEN,
-)
-
-from tests.git.base_sync.real_git_test_support import (
-    _LocalBranchPusher,
-    _RefreshBaseRealGitFixture,
 )
 
 PR_BRANCH = "orchestrator/acme__widget/issue-7"

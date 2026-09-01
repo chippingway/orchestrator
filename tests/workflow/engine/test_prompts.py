@@ -14,10 +14,8 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import drift, prompts
-
 from tests.support.fakes import FakeComment, FakeUser, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
-
 
 _PROMPT_ISSUE_NUMBER = 67200
 _ISSUE_TITLE = "add a foo flag"

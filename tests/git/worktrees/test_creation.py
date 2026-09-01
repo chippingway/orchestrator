@@ -10,17 +10,14 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.git import authentication, commands
 from orchestrator.git.worktrees import creation
-
 from tests.git.worktrees.lifecycle_test_support import (
     BASE_BRANCH,
     ISSUE_BRANCH,
     ISSUE_NUMBER,
     LEGACY_BRANCH,
     ORIGIN_REMOTE,
-)
-from tests.git.worktrees.lifecycle_test_support import (
-    _GitRecorder,
     _git_result,
+    _GitRecorder,
     _spec,
     _worktree_fixture,
 )

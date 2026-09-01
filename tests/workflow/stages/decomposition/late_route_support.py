@@ -14,7 +14,6 @@ import importlib
 from unittest.mock import Mock, patch
 
 from orchestrator.workflow.engine import dispatch as _dispatch
-
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     RecordedDelete,
     SeededUmbrella,

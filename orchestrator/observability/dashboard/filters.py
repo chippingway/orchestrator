@@ -20,7 +20,6 @@ from typing import Any, NamedTuple
 
 from orchestrator.observability.dashboard.windows import DateWindow
 
-
 MIN_UTC_OFFSET = -12
 MAX_UTC_OFFSET = 14
 TZ_OFFSET_OPTIONS = tuple(range(MIN_UTC_OFFSET, MAX_UTC_OFFSET + 1))

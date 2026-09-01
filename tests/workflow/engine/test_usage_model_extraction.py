@@ -10,7 +10,6 @@ import unittest
 
 from orchestrator.workflow.engine import usage as engine_usage
 
-
 _CODEX_BACKEND = "codex"
 _CODEX_MODEL = "gpt-5-codex"
 

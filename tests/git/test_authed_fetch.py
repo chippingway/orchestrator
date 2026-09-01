@@ -11,7 +11,6 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.git import authentication
-
 from tests.git.authentication_test_support import (
     FAKE_TOKEN,
     REPOSITORY_SLUG,
@@ -29,8 +28,8 @@ from tests.git.concurrency_test_support import (
 )
 from tests.git.transport_helpers import (
     _GitRunRecorder,
-    _TokenResolver,
     _temp_git_repo_with_local_config,
+    _TokenResolver,
 )
 
 FORCED_MAIN_REFSPEC = "+refs/heads/main:refs/remotes/origin/main"

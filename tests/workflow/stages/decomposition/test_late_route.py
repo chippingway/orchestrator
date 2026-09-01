@@ -13,6 +13,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
+from orchestrator import config
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.decomposition import (
     late_coordinator as _late_coordinator,
@@ -25,11 +26,8 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateRun,
 )
 from orchestrator.workflow.stages.implementing import handler as _implementing
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-from orchestrator import config
-
-from tests.workflow.fixtures import LABEL_IMPLEMENTING, _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC, LABEL_IMPLEMENTING
 from tests.workflow.stages.decomposition import (
     late_test_support as late_support,
 )

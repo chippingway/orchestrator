@@ -7,7 +7,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-
 SHELL_WRAPPER_RE = re.compile(r"^\s*(?:\S*/)?(?:ba)?sh\s+-[a-z]*c\s+")
 
 

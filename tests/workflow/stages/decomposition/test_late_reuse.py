@@ -20,23 +20,22 @@ import unittest
 from unittest.mock import Mock
 
 from orchestrator.git.snapshots.refs import SnapshotOutcome
+from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.late_split import lineage as _lineage
 from orchestrator.workflow.late_split.models import LateResourceState
-from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages.decomposition import (
     late_reuse as _late_reuse,
 )
-
 from tests.support.fakes import FakeComment, FakeUser, make_issue
-from tests.workflow.fixtures import _PatchedWorkflowMixin, _TEST_SPEC, _agent
+from tests.workflow.fixtures import _TEST_SPEC, _agent, _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     CHILD_NUMBER,
     LABEL_DONE,
     LABEL_REJECTED,
-    OwnerSeed,
     PARENT_NUMBER,
-    RecordedDelete,
     SNAPSHOT_REF,
+    OwnerSeed,
+    RecordedDelete,
     split_umbrella,
 )
 from tests.workflow.stages.decomposition.late_test_support import (

@@ -23,5 +23,4 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
 
-
 PLOTLY_CONFIG: Mapping[str, Any] = MappingProxyType({"displayModeBar": False})

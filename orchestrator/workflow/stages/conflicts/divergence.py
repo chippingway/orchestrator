@@ -24,10 +24,12 @@ from pathlib import Path
 from orchestrator import config
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
-from orchestrator.workflow.stages.conflicts import guards as _guards
-from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import state as _state
-from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.stages.conflicts import (
+    guards as _guards,
+    models as _models,
+    state as _state,
+    transitions as _transitions,
+)
 from orchestrator.workflow.stages.implementing import (
     late_push as _late_push,
     late_records as _late_records,

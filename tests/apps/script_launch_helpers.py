@@ -11,7 +11,6 @@ from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from types import ModuleType
 
-
 ModulePredicate = Callable[[str], bool]
 
 

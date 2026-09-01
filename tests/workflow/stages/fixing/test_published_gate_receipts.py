@@ -15,9 +15,8 @@ from __future__ import annotations
 
 import unittest
 
-
-from tests.workflow.stages.fixing import fixing_test_support as fixing
 from tests.workflow.stages.fixing import (
+    fixing_test_support as fixing,
     published_gate_support as support,
 )
 

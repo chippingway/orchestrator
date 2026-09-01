@@ -15,17 +15,15 @@ from unittest.mock import patch
 
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import lineage as _lineage
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import lineage as _lineage, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
-
 from tests.support.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
 from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     MEASURED_BASE_SHA,
     MEASURED_CANDIDATE_SHA,
-    _PatchedWorkflowMixin,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 GATE_ISSUE_NUMBER = 300

@@ -18,30 +18,25 @@ import unittest
 
 from orchestrator.git.snapshots.refs import SnapshotOutcome
 from orchestrator.workflow.late_split.models import LateResourceState
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     CHILD_NUMBER,
     EVENT_LATE_CLEANUP,
     LABEL_DONE,
-    PARENT_NUMBER,
-    RESOLVED_STAMP,
-    STATE_FAILED,
-    STATE_RECONCILED,
-)
-from tests.workflow.stages.decomposition.late_cleanup_support import (
     LABEL_READY,
     LABEL_REJECTED,
-    OwnerSeed,
-    RecordedDelete,
+    PARENT_NUMBER,
+    RESOLVED_STAMP,
     SNAPSHOT_REF,
-)
-from tests.workflow.stages.decomposition.late_cleanup_support import (
+    STATE_FAILED,
+    STATE_RECONCILED,
     SUPERSEDED_BRANCH,
-    SeededUmbrella,
     UMBRELLA,
     WORKFLOW_LOG,
+    OwnerSeed,
+    RecordedDelete,
+    SeededUmbrella,
     resource_states,
     split_umbrella,
     walk_owner,

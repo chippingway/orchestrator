@@ -14,7 +14,6 @@ from tests.observability.observability_test_support import (
     _under,
 )
 
-
 _PACKAGE = "orchestrator.observability.analytics.trajectories"
 
 _CONFIG = "orchestrator.observability.analytics.config"

@@ -24,7 +24,6 @@ from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
     parents as _parents,
 )
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.observation_support import ObservedCloseCase

@@ -10,8 +10,7 @@ publication group, and the pull request it names.
 from __future__ import annotations
 
 from orchestrator.workflow.late_split.models import LateGeneration
-
-from tests.support.fakes import FakePR, FakePRRef, FakeGitHubClient
+from tests.support.fakes import FakeGitHubClient, FakePR, FakePRRef
 from tests.workflow.stages.decomposition.late_test_support import (
     PUBLISHED_BRANCH,
     PUBLISHED_HEAD_SHA,

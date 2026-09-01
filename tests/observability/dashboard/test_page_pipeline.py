@@ -36,7 +36,6 @@ from tests.observability.dashboard.page_render_test_support import (
     page,
 )
 
-
 _TOTAL_EVENTS = 412
 
 _AGENT_RUNS = 57

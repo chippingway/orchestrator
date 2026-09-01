@@ -52,8 +52,8 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.stages.decomposition import (
     late_publication as _late_publication,
+    state as _state,
 )
-from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import WorkflowLabel
 

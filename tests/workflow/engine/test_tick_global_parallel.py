@@ -3,18 +3,14 @@
 """Global workflow tick concurrency tests."""
 from __future__ import annotations
 
-import unittest
-
 import threading
+import unittest
 from functools import partial
 from unittest.mock import MagicMock, patch
 
 from orchestrator.workflow.engine import dispatch, tick
-
+from tests.workflow.engine import tick_parallel_test_support as support, tick_probe_test_support as probes
 from tests.workflow.git_owners import seam_patch
-
-from tests.workflow.engine import tick_parallel_test_support as support
-from tests.workflow.engine import tick_probe_test_support as probes
 
 
 class TickGlobalSchedulingTest(unittest.TestCase):

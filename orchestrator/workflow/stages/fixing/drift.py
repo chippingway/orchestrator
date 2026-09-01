@@ -30,8 +30,7 @@ from orchestrator.git import commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.stages.fixing import models as _models
-from orchestrator.workflow.stages.fixing import state as _state
+from orchestrator.workflow.stages.fixing import models as _models, state as _state
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")

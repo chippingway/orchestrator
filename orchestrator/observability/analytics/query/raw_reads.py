@@ -41,8 +41,8 @@ from orchestrator.observability.analytics.query.overview_models import (
 from orchestrator.observability.analytics.query.raw_values import empty_filter_selected
 from orchestrator.observability.analytics.query.requests import (
     FILTERED_READ_SIGNATURE,
-    ISSUES_SIGNATURE,
     ISSUE_EVENTS_SIGNATURE,
+    ISSUES_SIGNATURE,
     RECENT_EXITS_SIGNATURE,
     SOURCE_READ_SIGNATURE,
     bind_read_request,
@@ -55,7 +55,6 @@ from orchestrator.observability.analytics.query.run_models import (
     IssueEventRow,
     IssueSummaryRow,
 )
-
 
 _FILTER_OPTIONS_SIGNATURE = SOURCE_READ_SIGNATURE.replace(
     return_annotation="FilterOptions",

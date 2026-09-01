@@ -5,13 +5,12 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from orchestrator.workflow.engine import drift as _drift
-
+from tests.support.fakes import make_issue
 from tests.workflow.stages.documenting.documenting_drift_test_support import (
     DriftRunCapture,
     _run_with_git,
 )
 from tests.workflow.stages.documenting.documenting_test_support import _branch
-from tests.support.fakes import make_issue
 
 DOCUMENTING = "workflow:documenting"
 VALIDATING = "workflow:validating"

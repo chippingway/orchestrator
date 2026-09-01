@@ -29,17 +29,16 @@ from __future__ import annotations
 from github.Issue import Issue
 
 from orchestrator.git.verification import probes as _verification_probes
-from orchestrator.git.worktrees import creation as _worktree_creation
-from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
 from orchestrator.github.comments import filter_trusted
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _engine_drift
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    drift as _engine_drift,
+    guards as _guards,
+    usage as _usage,
+)
 from orchestrator.workflow.stages.implementing import resume as _dev_resume
-from orchestrator.workflow.stages.in_review import feedback as _feedback
-from orchestrator.workflow.stages.in_review import models as _models
-from orchestrator.workflow.stages.in_review import watermarks as _watermarks
+from orchestrator.workflow.stages.in_review import feedback as _feedback, models as _models, watermarks as _watermarks
 from orchestrator.workflow.stages.validating import drift_outcomes as _drift_outcomes
 from orchestrator.workflow.state import WorkflowLabel
 

@@ -5,8 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import formats as _formats
+from orchestrator.workflow.late_split import events as _events, formats as _formats
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateResource,
@@ -14,7 +13,6 @@ from orchestrator.workflow.late_split.models import (
     LateResourceState,
     LateVerdict,
 )
-
 from tests.workflow.late_split import generation_test_support as _support
 
 _FAMILY = _events.LateEventFamily

@@ -25,8 +25,7 @@ import logging
 from contextlib import suppress
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
-from orchestrator.git import commands as _git_commands
+from orchestrator.git import authentication as _authentication, commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.documenting import models as _models, parks as _parks
 from orchestrator.workflow.state import WorkflowLabel

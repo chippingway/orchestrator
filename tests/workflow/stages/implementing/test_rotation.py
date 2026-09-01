@@ -7,7 +7,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import prompts as _prompts
-
 from tests.workflow.stages.implementing import retry_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE

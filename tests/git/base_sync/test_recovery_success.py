@@ -13,12 +13,12 @@ from tests.git.base_sync.refresh_scenarios import (
     _scenario,
 )
 from tests.git.base_sync.refresh_test_support import (
-    _diverged,
     AFTER_SHA,
     REBASED_SHA,
+    _diverged,
+    _git_result,
     _RemoteHeadGit,
     _SyncWorktreeWithBaseFixture,
-    _git_result,
 )
 
 ISSUE = 7

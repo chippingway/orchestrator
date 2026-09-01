@@ -51,7 +51,6 @@ from orchestrator.observability.dashboard import (
     windows,
 )
 
-
 WIDGET_CACHE_TTL_SECONDS = 60
 
 

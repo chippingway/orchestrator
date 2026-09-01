@@ -6,16 +6,15 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-
+from tests.workflow.fixtures import (
+    _FAKE_WT,
+    _TEST_SPEC,
+    MEASURED_CANDIDATE_SHA,
+    _agent,
+)
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
-)
-from tests.workflow.fixtures import (
-    MEASURED_CANDIDATE_SHA,
-    _FAKE_WT,
-    _TEST_SPEC,
-    _agent,
 )
 
 CONFLICT_ISSUE = 200

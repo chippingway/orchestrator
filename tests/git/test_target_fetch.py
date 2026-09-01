@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.git import authentication
-
 from tests.git.authentication_test_support import (
     CACHE_BRANCH,
     MAIN_BRANCH,
@@ -23,8 +22,8 @@ from tests.git.authentication_test_support import (
 )
 from tests.git.transport_helpers import (
     _GitRunRecorder,
-    _TokenResolver,
     _temp_git_repo_with_local_config,
+    _TokenResolver,
 )
 
 PRIVATE_REMOTE = "private"

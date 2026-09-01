@@ -16,13 +16,13 @@ from __future__ import annotations
 import unittest
 
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
-    _TEST_SPEC,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
+    BRANCH_TIP_SHA,
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
     HEAD_AFTER_COMMIT,
@@ -31,9 +31,6 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_ROUND_OPEN,
     KEY_ROUND_SHA,
     PARK_DISCUSSION_PLAN_INVALID,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    BRANCH_TIP_SHA,
     RUN_AGENT,
     _DiscussionWorkflowMixin,
     _issue_branch,

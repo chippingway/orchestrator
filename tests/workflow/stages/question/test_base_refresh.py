@@ -7,12 +7,11 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from orchestrator.git.base_sync import refresh
-
-from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.git.base_sync.sync_test_support import _patch_base_sync
+from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
-    LABEL_QUESTION,
     _TEST_SPEC,
+    LABEL_QUESTION,
 )
 
 KEY_QUESTION_SESSION_ID = "question_session_id"

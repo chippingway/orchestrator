@@ -24,7 +24,6 @@ from orchestrator.workflow.late_split.models import LatePhase
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.stages.decomposition.late_close_race_support import (
     closes_when_children_exist,
 )
@@ -44,8 +43,6 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     KEY_SPLIT_CHILDREN,
     KEY_UMBRELLA,
     SNAPSHOT_REF,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
     HeldPlanPrSplitCase,
     LateSplitCase,
     label_of,

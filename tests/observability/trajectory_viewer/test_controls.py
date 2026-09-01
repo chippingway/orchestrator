@@ -16,7 +16,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     run,
 )
 
-
 _ALL = "All"
 
 _OTHER_REPO = "acme/gadgets"

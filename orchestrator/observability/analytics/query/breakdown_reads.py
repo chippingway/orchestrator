@@ -53,7 +53,6 @@ from orchestrator.observability.analytics.query.requests import (
 )
 from orchestrator.observability.analytics.query.review_rounds import review_round_rows
 
-
 _REVIEW_ROUND_SIGNATURE = FILTERED_READ_SIGNATURE.replace(
     return_annotation="list[ReviewRoundBucketRow]",
 )

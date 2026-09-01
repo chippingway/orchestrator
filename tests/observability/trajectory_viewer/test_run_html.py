@@ -15,7 +15,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     step,
 )
 
-
 _UNSAFE_REPO = "o/<r&>"
 
 _ESCAPED_REPO = "o/&lt;r&amp;&gt;"

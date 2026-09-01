@@ -10,16 +10,15 @@ from orchestrator.workflow.stages.decomposition import (
     late_transaction as _late_transaction,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
-    _LateDisposition,
     _HeldPrHold,
+    _LateDisposition,
 )
 from orchestrator.workflow.state import WorkflowLabel
-
+from tests.workflow.stages.decomposition.late_crash_support import refusing
 from tests.workflow.stages.decomposition.late_run_support import (
     adjudicate,
     agent_reply,
 )
-from tests.workflow.stages.decomposition.late_crash_support import refusing
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     CYCLE_ID,
@@ -29,25 +28,21 @@ from tests.workflow.stages.decomposition.late_test_support import (
     QUESTION_REPLY,
     ROOT_ISSUE,
     SPLIT_REPLY,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     seeded_late_issue,
 )
 from tests.workflow.stages.decomposition.late_transaction_support import (
-    SUPERSESSION_MARKER,
     CHILDREN,
+    ERROR,
     EVENT_LATE_CLEANUP,
     KEY_CHILDREN,
     KEY_CONSUMERS,
     KEY_LINKS_ANNOUNCED,
     KEY_PR_NUMBER,
     SNAPSHOT_REF,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
-    ERROR,
+    SUPERSESSION_MARKER,
     HeldPlanPrSplitCase,
-    SnapshotSeed,
     LateSplitCase,
+    SnapshotSeed,
     first_child,
     label_of,
 )

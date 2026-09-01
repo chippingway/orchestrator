@@ -14,7 +14,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     record,
 )
 
-
 _READER_LOGGER = "orchestrator.trajectory_reader"
 
 _NEWEST_TS = "2026-06-22T10:00:00+00:00"

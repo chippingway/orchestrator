@@ -9,7 +9,6 @@ from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import MAX_LINEAGE_DEPTH
 from orchestrator.workflow.stages.decomposition import late_prompt as _prompt
 from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
-
 from tests.support.fakes import make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_test_support import (
@@ -21,8 +20,6 @@ from tests.workflow.stages.decomposition.late_test_support import (
     ROOT_ISSUE,
     SCOPE,
     THRESHOLD,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     late_generation,
 )
 

@@ -59,8 +59,7 @@ from orchestrator.github.labels import (
 )
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.skills import catalog as _catalog
-from orchestrator.workflow.engine import dispatch as _dispatch
-from orchestrator.workflow.engine import observations as _observations
+from orchestrator.workflow.engine import dispatch as _dispatch, observations as _observations
 
 log = logging.getLogger("orchestrator.workflow")
 

@@ -22,7 +22,6 @@ import unittest
 from orchestrator.observability.dashboard import card_html
 from orchestrator.observability.dashboard.insights import InsightBanner
 
-
 _WARNING = "warning"
 
 # A title and a message carrying markup, so what a browser is asked to

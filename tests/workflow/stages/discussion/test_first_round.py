@@ -15,40 +15,32 @@ import unittest
 
 from orchestrator import config
 from orchestrator.workflow.engine import prompts as _prompts
-
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     EVENT_AGENT_EXIT,
     EVENT_AGENT_SPAWN,
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
-    _TEST_SPEC,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
     ENSURE_DECOMPOSE_WORKTREE,
     ENSURE_WORKTREE,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
+    KEY_DISCUSSION_AGENT,
+    KEY_DISCUSSION_SESSION_ID,
+    KEY_LAST_DISCUSSION_AT,
     PARK_DISCUSSION_COMMITS,
     PARK_DISCUSSION_DIRTY,
     PARK_DISCUSSION_PLAN_INVALID,
     PARK_DISCUSSION_PUSH_FAILED,
     PARK_DISCUSSION_RESPONSE,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     PARK_DISCUSSION_SILENT,
     PARK_DISCUSSION_STRANDED,
     PARK_DISCUSSION_TIMEOUT,
     PARK_FOREIGN_QUESTION,
     RUN_AGENT,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    KEY_DISCUSSION_AGENT,
-    KEY_DISCUSSION_SESSION_ID,
-    KEY_LAST_DISCUSSION_AT,
     _DiscussionWorkflowMixin,
     _issue_branch,
     _seed_discussion,

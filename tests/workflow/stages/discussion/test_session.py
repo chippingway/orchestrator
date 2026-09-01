@@ -20,7 +20,11 @@ import unittest
 from unittest.mock import patch
 
 from tests.workflow.fixtures import _agent
-
+from tests.workflow.stages.discussion.discussion_resume_test_support import (
+    DISCUSSION_REPLY,
+    _reply,
+    _seed_parked_discussion,
+)
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
@@ -30,20 +34,13 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_DISCUSSION_AGENT,
     RESUME_SESSION_ID,
     RUN_AGENT,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     SPEC_ARGS,
     SPEC_BACKEND,
     SPEC_WITH_ARGS,
-    _DiscussionWorkflowMixin,
     _configured_spec,
+    _DiscussionWorkflowMixin,
     _paused_view,
     _seed_discussion,
-)
-from tests.workflow.stages.discussion.discussion_resume_test_support import (
-    DISCUSSION_REPLY,
-    _reply,
-    _seed_parked_discussion,
 )
 
 _REPLAY_ISSUE_NUMBER = 1000

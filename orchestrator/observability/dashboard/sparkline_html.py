@@ -35,7 +35,6 @@ from orchestrator.observability.dashboard.sparkline_points import (
     sparkline_points,
 )
 
-
 DEFAULT_SPARKLINE_WIDTH = 96
 DEFAULT_SPARKLINE_HEIGHT = 26
 

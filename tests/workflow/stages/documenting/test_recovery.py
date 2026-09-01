@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.stages.documenting.documenting_assertion_test_support import _pr_comment_text
 from tests.workflow.fixtures import (
     MEASURED_CANDIDATE_SHA,
     _agent,
 )
 
-
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting import (
     documenting_test_support as documenting_support,
 )
+from tests.workflow.stages.documenting.documenting_assertion_test_support import _pr_comment_text
 from tests.workflow.stages.documenting.documenting_test_support import (
     _BasicDocumentingFixture,
 )

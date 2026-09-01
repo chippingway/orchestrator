@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.stages.decomposition import blocked as _blocked
-from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
-
+from orchestrator.workflow.stages.decomposition import blocked as _blocked, umbrella as _umbrella
 from tests.support.fakes import (
     FakeGitHubClient,
     FakeIssue,
@@ -15,9 +13,9 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 LABEL_DONE = "done"

@@ -22,16 +22,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import dispatch as _dispatch
-
-from tests.workflow.fixtures import (
-    LABEL_BLOCKED,
-    LABEL_DECOMPOSING,
-    LABEL_DONE,
-    LABEL_IN_REVIEW,
-    LABEL_READY,
-    LABEL_REJECTED,
-    LABEL_UMBRELLA,
-)
 from tests.workflow.engine.cleanup_deferral_support import (
     OWNER_NUMBER,
     REPO_SLUG,
@@ -41,6 +31,15 @@ from tests.workflow.engine.cleanup_deferral_support import (
 )
 from tests.workflow.engine.unfinished_cleanup_support import (
     UnfinishedCleanupCase,
+)
+from tests.workflow.fixtures import (
+    LABEL_BLOCKED,
+    LABEL_DECOMPOSING,
+    LABEL_DONE,
+    LABEL_IN_REVIEW,
+    LABEL_READY,
+    LABEL_REJECTED,
+    LABEL_UMBRELLA,
 )
 
 _OWED = frozenset((OWNER_NUMBER,))

@@ -10,7 +10,6 @@ one predicate both paths gate on.
 from __future__ import annotations
 
 from orchestrator.workflow.late_split.models import LateGeneration
-
 from tests.support.fakes import FakeLabel
 from tests.workflow.stages.decomposition.late_test_support import (
     UNDERSIZED_ADDITIONS,

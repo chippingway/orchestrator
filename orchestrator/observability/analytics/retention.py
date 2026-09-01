@@ -23,13 +23,13 @@ from __future__ import annotations
 from datetime import datetime
 
 from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics.retention_rewrite import (
+    prune_jsonl_records,
+)
 from orchestrator.observability.analytics.sink import (
     ANALYTICS_FILE_LOCK,
     TRAJECTORY_FILE_LOCK,
     log,
-)
-from orchestrator.observability.analytics.retention_rewrite import (
-    prune_jsonl_records,
 )
 
 

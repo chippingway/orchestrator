@@ -17,7 +17,6 @@ from typing import Any
 
 from orchestrator.observability.usage.skills import SkillTriggers
 
-
 KIND_FIELD = "kind"
 NAME_FIELD = "name"
 TOOL_ID_FIELD = "tool_id"

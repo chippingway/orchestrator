@@ -23,7 +23,6 @@ from orchestrator.observability.dashboard import (
     windows,
 )
 
-
 _REPO = "owner/repo"
 
 _ISSUE = 1181

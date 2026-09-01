@@ -45,7 +45,6 @@ from orchestrator.observability.dashboard.skill_adoption_sort import (
 )
 from orchestrator.observability.dashboard.tables import table_css, table_html
 
-
 SKILL_ADOPTION_EMPTY_MESSAGE = (
     "No per-session skill adoption for this window. The table counts, per "
     "logical agent session, how many had each skill available and how many "

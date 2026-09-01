@@ -100,11 +100,9 @@ from orchestrator.workflow.stages.implementing import (
     late_freeze as _freeze,
     late_parks as _parks,
     late_reading as _reading,
+    late_records as _records,
     late_verdict as _verdict_owner,
     models as _models,
-)
-from orchestrator.workflow.stages.implementing import (
-    late_records as _records,
 )
 
 log = logging.getLogger("orchestrator.workflow")

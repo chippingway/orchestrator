@@ -1,4 +1,13 @@
 [flake8]
+# WPS235's ceiling on the names one `from ... import` may carry, raised from
+# the default 8. Sorted imports (`ruff check orchestrator tests --select=I001`)
+# merge every statement reading from the same module into one, so a module read
+# for more names than the ceiling can no longer answer for them a chunk at a
+# time -- what the count measures is what a module is read for, not how the
+# read is spelled. 30 clears the widest read in the tree, a stage's test module
+# against the support module that seeds its scenarios, with room for the next
+# name it grows.
+max-import-from-members = 30
 # Exact paths keep deliberate package APIs and cohesive domain owners exempt
 # without weakening WPS checks for neighboring or future files.
 per-file-ignores =

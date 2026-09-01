@@ -4,26 +4,21 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.stages.decomposition.decomposition_test_support import _run_with_logs
 from tests.support.fakes import (
     FakeGitHubClient,
     make_issue,
 )
 from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
-)
-from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_READY,
-)
-from tests.workflow.fixtures import (
     _agent,
     _manifest,
 )
-
 from tests.workflow.stages.decomposition.decomposing_test_support import (
     _DecomposingWorkflowMixin,
 )
+from tests.workflow.stages.decomposition.decomposition_test_support import _run_with_logs
 
 KEY_DECOMPOSER_AGENT = "decomposer_agent"
 KEY_DECOMPOSER_SESSION_ID = "decomposer_session_id"

@@ -12,7 +12,6 @@ from orchestrator.observability.usage import (
     skill_commands,
 )
 
-
 COMMAND_EXECUTION = "command_execution"
 CommandSkillNames = tuple[list[str], list[str]]
 

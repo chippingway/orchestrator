@@ -57,7 +57,6 @@ from orchestrator.observability.analytics.query.summary_results import summary_f
 from orchestrator.observability.analytics.query.throughput_days import throughput_rows
 from orchestrator.observability.analytics.query.time_series import time_series_rows
 
-
 _SUMMARY_SIGNATURE = FILTERED_READ_SIGNATURE.replace(
     return_annotation="Summary",
 )

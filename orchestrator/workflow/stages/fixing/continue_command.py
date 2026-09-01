@@ -27,12 +27,13 @@ import logging
 
 from orchestrator import config
 from orchestrator.github.comments import filter_trusted
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
-from orchestrator.workflow.stages.fixing import feedback as _feedback
-from orchestrator.workflow.stages.fixing import models as _models
-from orchestrator.workflow.stages.fixing import state as _state
+from orchestrator.workflow.engine import comments as _comments, messages as _messages
+from orchestrator.workflow.stages.fixing import (
+    bookmarks as _bookmarks,
+    feedback as _feedback,
+    models as _models,
+    state as _state,
+)
 from orchestrator.workflow.stages.implementing import session as _dev_session
 
 log = logging.getLogger("orchestrator.workflow")

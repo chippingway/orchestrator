@@ -6,11 +6,6 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-
-from tests.workflow.stages.decomposition.decomposition_test_support import (
-    DecomposerResumeCase,
-    _seed_decomposer_resume,
-)
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -22,19 +17,18 @@ from tests.workflow.fixtures import (
     BACKEND_CODEX,
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
-)
-from tests.workflow.fixtures import (
     LABEL_BLOCKED,
     LABEL_DECOMPOSING,
-)
-from tests.workflow.fixtures import (
     _agent,
     _iso_hours_ago,
     _manifest,
 )
-
 from tests.workflow.stages.decomposition.decomposing_test_support import (
     _DecomposingWorkflowMixin,
+)
+from tests.workflow.stages.decomposition.decomposition_test_support import (
+    DecomposerResumeCase,
+    _seed_decomposer_resume,
 )
 
 KEY_DECOMPOSER_AGENT = "decomposer_agent"

@@ -37,7 +37,6 @@ from orchestrator.observability.dashboard import (
     scoped_reads,
 )
 
-
 MISSING_REPO_MESSAGE = (
     "Pick a specific repo in the sidebar before drilling "
     "into an issue number -- GitHub issue numbers repeat across repos."

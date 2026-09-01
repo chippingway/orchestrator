@@ -10,7 +10,6 @@ import unittest
 from unittest.mock import MagicMock
 
 from orchestrator.git.verification import process, runner
-
 from tests.git.verification import command_helpers
 
 VERIFY_TIMEOUT = "timeout"

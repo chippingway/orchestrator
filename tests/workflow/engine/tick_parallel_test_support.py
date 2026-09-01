@@ -9,10 +9,8 @@ import unittest
 from pathlib import Path
 
 from orchestrator import config
-
 from tests.support import fakes as _fakes
 from tests.workflow import fixtures as _helpers
-
 
 KEY_AWAITING_HUMAN = _helpers.KEY_AWAITING_HUMAN
 KEY_PARENT_NUMBER = _helpers.KEY_PARENT_NUMBER

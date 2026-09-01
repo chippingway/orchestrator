@@ -11,15 +11,14 @@ from unittest.mock import patch
 
 from orchestrator.git import commands, locks
 from orchestrator.git.worktrees import cleanup
-
 from tests.git.worktrees.lifecycle_test_support import (
     ISSUE_BRANCH,
     ISSUE_NUMBER,
     REV_PARSE,
     WORKTREE_REMOVE_FORCE,
+    _git_result,
     _GitArgs,
     _GitRecorder,
-    _git_result,
     _worktree_fixture,
 )
 

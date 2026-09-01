@@ -6,10 +6,8 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import exemption as _exemption
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import exemption as _exemption, state as _late_state
 from orchestrator.workflow.late_split.formats import InvalidLateValue
-
 from tests.workflow.late_split.generation_test_support import (
     BASE_SHA,
     CANDIDATE_SHA,

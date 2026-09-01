@@ -32,7 +32,6 @@ from orchestrator.workflow.late_split.models import LateGeneration, LateVerdict
 from orchestrator.workflow.stages.decomposition import (
     late_content as _late_content,
 )
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -47,15 +46,13 @@ from tests.workflow.stages.decomposition.late_run_support import (
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
-    KEYS,
     KEY_PLAN_PATH,
+    KEYS,
     LATE_ISSUE_NUMBER,
     PLAN_PATH,
     PLAN_PR_NUMBER,
     QUESTION_ASKED,
     SHA_LENGTH,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     SPLIT_REPLY,
     late_generation,
     seed_plan_pr,

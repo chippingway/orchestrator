@@ -24,9 +24,9 @@ from tests.workflow.stages.decomposition.late_cancel_support import (
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     LABEL_REJECTED,
     PARENT_NUMBER,
-    RecordedDelete,
     SNAPSHOT_REF,
     STATE_FAILED,
+    RecordedDelete,
     SnapshotOutcome,
 )
 from tests.workflow.stages.decomposition.late_test_support import (

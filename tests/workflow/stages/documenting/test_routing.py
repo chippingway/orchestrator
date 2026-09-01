@@ -16,7 +16,6 @@ from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _picku
 from orchestrator.workflow.stages.documenting import handler as _documenting
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.validating import handler as _validating
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 

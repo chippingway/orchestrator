@@ -11,7 +11,6 @@ per-issue meter fold the same object the record was built from.
 
 from __future__ import annotations
 
-
 from orchestrator.observability.analytics import sink
 from orchestrator.observability.analytics.recording.models import AgentExitContext
 from orchestrator.observability.usage import metrics as usage_metrics

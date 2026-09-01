@@ -10,10 +10,8 @@ from unittest.mock import MagicMock, call
 
 from orchestrator import config
 from orchestrator.git.base_sync import refresh
-
-from tests.support.fakes import FakeGitHubClient, make_issue
-
 from tests.git.base_sync.sync_test_support import _git_result, _patch_base_sync
+from tests.support.fakes import FakeGitHubClient, make_issue
 
 ISSUE = 7
 SLUG = "acme/widget"

@@ -48,11 +48,9 @@ import re
 from dataclasses import dataclass, replace
 from typing import Any
 
-
 from orchestrator.git.snapshots import namespace as _namespace
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import payloads as _payloads
+from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads
 from orchestrator.workflow.late_split.models import LateGeneration
 
 _ROOT_ISSUE = "late_ancestry_root_issue"

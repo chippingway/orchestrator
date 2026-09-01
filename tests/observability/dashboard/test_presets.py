@@ -18,7 +18,6 @@ from orchestrator.observability.analytics.query.overview_models import DataExten
 from orchestrator.observability.dashboard import windows
 from tests.observability.dashboard import dashboard_test_support as fixtures
 
-
 _UNKNOWN_PRESET = "not-a-preset"
 
 

@@ -23,9 +23,7 @@ from orchestrator.github.pinned_state import (
     PinnedState,
     pinned_state_from_comment,
 )
-
 from tests.git.worktrees.artifact_test_support import WIDGET_SLUG, _spec
-from tests.support.fakes import FakeComment, FakeUser
 from tests.git.worktrees.eligibility_test_support import (
     BACKLOG_LABEL,
     DONE_LABEL,
@@ -34,15 +32,13 @@ from tests.git.worktrees.eligibility_test_support import (
     OPEN_PR_STATE,
     OTHER_BASE_BRANCH,
     REJECTED_LABEL,
-)
-# The builders a case is set up with, named apart from what it is named by.
-from tests.git.worktrees.eligibility_test_support import (
     _github,
     _pull_request,
     _RaisingIssue,
     _reasons,
     _terminal_issue,
 )
+from tests.support.fakes import FakeComment, FakeUser
 
 BRANCH = "orchestrator/acme__widget/issue-314"
 OTHER_BRANCH = "orchestrator/issue-314"

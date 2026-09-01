@@ -32,9 +32,7 @@ from github.IssueComment import IssueComment
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import is_trusted_author
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER, PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
+from orchestrator.workflow.engine import comments as _comments, messages as _messages, prompts as _prompts
 from orchestrator.workflow.state import WorkflowLabel
 
 _USER_CONTENT_HASH = "user_content_hash"

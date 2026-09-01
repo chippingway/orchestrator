@@ -5,9 +5,9 @@ from __future__ import annotations
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
     LABEL_VALIDATING,
-    _PatchedWorkflowMixin,
     _issue_branch,
     _open_pr_for,
+    _PatchedWorkflowMixin,
 )
 
 ISSUE = 7

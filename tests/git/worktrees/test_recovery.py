@@ -9,13 +9,12 @@ import unittest
 from pathlib import Path
 
 from orchestrator.git.worktrees import recovery
-
 from tests.git.worktrees.recovery_test_support import (
     GIT_BRANCH,
     GIT_REV_PARSE,
     GIT_UPDATE_REF,
-    GitBranchFixture,
     REAL_GIT_SLUG,
+    GitBranchFixture,
     _seed_branch_fixture,
     _temp_root,
 )

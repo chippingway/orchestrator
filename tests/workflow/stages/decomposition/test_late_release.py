@@ -30,26 +30,23 @@ from orchestrator.workflow.late_split.models import LateResourceState
 from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
 )
-
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     CHILD_NUMBER,
-    OwnerSeed,
     PARENT_NUMBER,
-    RecordedDelete,
     SNAPSHOT_REF,
+    STATE_FAILED,
+    STATE_RECLAIMING,
+    STATE_RECONCILED,
+    OwnerSeed,
+    RecordedDelete,
+    resource_states,
+    split_umbrella,
+    walk_owner,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CYCLE_ID,
     GENERATION_NUMBER,
-)
-from tests.workflow.stages.decomposition.late_cleanup_support import (
-    STATE_FAILED,
-    STATE_RECLAIMING,
-    STATE_RECONCILED,
-    resource_states,
-    split_umbrella,
-    walk_owner,
 )
 
 _DELETED = _snapshot_refs.SnapshotOutcome.DELETED

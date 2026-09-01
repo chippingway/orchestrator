@@ -9,11 +9,9 @@ from dataclasses import replace
 from types import MappingProxyType
 
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import formats as _formats, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.late_split import generation_test_support as _support
 
 _LEGACY_STATE = MappingProxyType({

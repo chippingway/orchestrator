@@ -19,9 +19,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator.agents import AgentResult
-from orchestrator.observability.analytics import recording
-from orchestrator.observability.analytics import settings as analytics_settings
-
+from orchestrator.observability.analytics import recording, settings as analytics_settings
 from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 ANALYTICS_LOG_PATH = "ANALYTICS_LOG_PATH"

@@ -7,8 +7,7 @@ import logging
 from pathlib import Path
 from typing import Unpack
 
-from orchestrator.agents import models as _agent_models
-from orchestrator.agents import sessions as _agent_sessions
+from orchestrator.agents import models as _agent_models, sessions as _agent_sessions
 
 log = logging.getLogger("orchestrator.agents")
 

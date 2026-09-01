@@ -10,7 +10,6 @@ from typing import Any
 
 from orchestrator.observability.usage import protocol
 
-
 CONTENT_KEY = "content"
 
 

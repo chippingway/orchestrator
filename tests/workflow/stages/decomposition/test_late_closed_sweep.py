@@ -16,8 +16,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from orchestrator.git.snapshots import refs as _snapshot_refs
-from orchestrator.workflow.late_split import restart as _restart
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import restart as _restart, state as _late_state
 from orchestrator.workflow.late_split.models import (
     LatePhase,
     LateResource,
@@ -30,26 +29,22 @@ from tests.workflow.stages.decomposition.late_cleanup_support import (
     CHILD_NUMBER,
     DECOMPOSING,
     EVENT_LATE_CLEANUP,
-    OwnerSeed,
-    PARENT_NUMBER,
-    RecordedDelete,
-    SNAPSHOT_REF,
-)
-from tests.workflow.stages.decomposition.late_cleanup_support import (
     EXPECTED_CHILDREN,
     LABEL_BLOCKED,
     LABEL_DONE,
     LABEL_IN_REVIEW,
     LABEL_READY,
+    LABEL_REJECTED,
+    PARENT_NUMBER,
+    SNAPSHOT_REF,
     STATE_FAILED,
     STATE_RECONCILED,
     STATE_RETAINED,
-)
-from tests.workflow.stages.decomposition.late_cleanup_support import (
-    LABEL_REJECTED,
     SUPERSEDED_BRANCH,
     UNRECORDED_CHILD,
     WORKFLOW_LOG,
+    OwnerSeed,
+    RecordedDelete,
     resource_states,
     seed_unrecorded_child,
     split_umbrella,

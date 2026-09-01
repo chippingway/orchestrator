@@ -16,7 +16,6 @@ from datetime import UTC, date, datetime
 
 from orchestrator.observability.analytics.query.overview_models import DataExtent
 
-
 _YEAR = 2026
 
 _APRIL = 4

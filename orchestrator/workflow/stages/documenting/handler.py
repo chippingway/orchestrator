@@ -19,8 +19,7 @@ from __future__ import annotations
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git.worktrees import creation as _worktree_creation
-from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.engine import guards as _guards, usage as _usage
 from orchestrator.workflow.stages.documenting import (

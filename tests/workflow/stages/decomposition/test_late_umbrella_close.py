@@ -18,8 +18,7 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.state import WorkflowLabel
-
-from tests.workflow.fixtures import _PatchedWorkflowMixin, _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC, _PatchedWorkflowMixin
 from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.stages.decomposition.late_cancel_support import (
     settled_umbrella as _settled_umbrella,

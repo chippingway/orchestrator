@@ -18,7 +18,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.workflow.engine import dispatch as _dispatch
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -29,11 +28,11 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    LABEL_FIXING,
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
+    LABEL_FIXING,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
 
 FRESH_FEEDBACK_ISSUE = 880

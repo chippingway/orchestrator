@@ -23,7 +23,6 @@ from orchestrator.observability.analytics.query.connections import (
 )
 from orchestrator.observability.dashboard import scoped_reads, static_metadata
 
-
 _TTL_FIVE_MINUTES = 300
 
 _EXTENT = "extent"

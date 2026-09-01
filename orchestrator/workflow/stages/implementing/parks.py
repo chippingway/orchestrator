@@ -36,8 +36,7 @@ import logging
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.agents import AgentResult
-from orchestrator.agents import sessions as _agent_sessions
+from orchestrator.agents import AgentResult, sessions as _agent_sessions
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState

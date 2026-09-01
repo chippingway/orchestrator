@@ -163,6 +163,23 @@ a selector enables is Ruff's answer and not one a prefix test could reproduce, s
 someone strips it. The other half is the one Ruff has no reading of: a listed code no directive carries suppresses
 nothing, and is read off the tree instead.
 
+Import order is Ruff's answer too, under `[tool.ruff.lint.isort]` in [`../../pyproject.toml`](../../pyproject.toml),
+and like the two rules above `I001` sits outside the selected set, so `ruff check orchestrator tests --select=I001` is
+the audit it is written for. One setting is declared there. `combine-as-imports` keeps every member a module is read
+for on the single statement that names it: Ruff's default hands an aliased member a statement of its own, and the
+modules here read most of their neighbours under an alias — a stage module and its tests name several of a package's
+owners in one `import ... as ...` — so the default would spell one read as a statement per alias and push whole files
+past the twelve-import ceiling `WPS201` holds them to.
+[`../../tests/repository/test_import_sorting.py`](../../tests/repository/test_import_sorting.py) runs that audit, so
+the order is read off a pytest run rather than off a selector CI does not enable.
+
+Sorting is also what sets `max-import-from-members` in [`../../.flake8`](../../.flake8), raised from the default 8 to
+30. `WPS235` caps the names one `from ... import` may carry, and a module read for more than the cap can answer for
+them a chunk at a time only while several statements may name it. A sorted tree has no such spelling — every statement
+reading from one module merges into one — so what the count measures is what a module is read for rather than how the
+read is spelled. 30 clears the widest read in the tree, a stage's test module against the support module that seeds
+its scenarios at 27 names, with room for the next name it grows.
+
 The CI workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
 scope.

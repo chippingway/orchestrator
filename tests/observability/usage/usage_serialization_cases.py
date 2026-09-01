@@ -4,9 +4,7 @@
 
 import json
 
-from orchestrator.observability.usage import metrics as _metrics
-from orchestrator.observability.usage import trajectory_models as _records
-from orchestrator.observability.usage import skills as _skills
+from orchestrator.observability.usage import metrics as _metrics, skills as _skills, trajectory_models as _records
 from tests.observability.usage import usage_test_values as _usage_cases
 
 

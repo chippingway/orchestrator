@@ -17,14 +17,12 @@ from __future__ import annotations
 import unittest
 
 from orchestrator import config
-
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
-
 from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     DEV_SESSION,
     HEAD_AFTER_COMMIT,
@@ -32,8 +30,6 @@ from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     KEY_PLAN_SHA,
     KEY_PR_NUMBER,
     KEY_ROUND_SHA,
-)
-from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     PARK_DISCUSSION_PLAN_PUBLISHED,
     _ReadOnlyRelabelMixin,
     _seed_relabeled_discussion,

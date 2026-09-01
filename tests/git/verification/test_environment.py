@@ -10,7 +10,6 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.git.verification import runner
-
 from tests.git.verification import command_helpers
 
 VERIFY_FAILED = "failed"

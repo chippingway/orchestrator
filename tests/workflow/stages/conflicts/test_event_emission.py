@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.stages.conflicts.conflicts_test_support import (
-    RESOLVED_HEAD_SHA,
-    CONFLICT_PR_HEAD_SHA,
-    _ResolvingConflictMixin,
-)
 from tests.workflow.fixtures import (
     EVENT_PR_CLOSED_WITHOUT_MERGE,
     EVENT_PR_MERGED,
+)
+from tests.workflow.stages.conflicts.conflicts_test_support import (
+    CONFLICT_PR_HEAD_SHA,
+    RESOLVED_HEAD_SHA,
+    _ResolvingConflictMixin,
 )
 
 # The head this stage reads before the rebase and leases its push against,

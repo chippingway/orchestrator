@@ -26,19 +26,27 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
-from orchestrator.workflow.stages.decomposition import parents as _parents
 from orchestrator.workflow.stages.decomposition import (
+    late_hold as _late_hold,
     late_transaction as _late_transaction,
+    parents as _parents,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.stages.decomposition.late_crash_support import (
     killed_after,
     refusing,
+)
+from tests.workflow.stages.decomposition.late_published_split_support import (
+    MOVED_PUBLISHED_HEAD,
+    PUBLISHED_BODY,
+    PUBLISHED_ISSUE_BRANCH,
+    STATE_CLOSED,
+    STATE_OPEN,
+    PublishedSplitCase,
+    seeded_published_split,
 )
 from tests.workflow.stages.decomposition.late_race_support import (
     RecordedLookups,
@@ -54,15 +62,6 @@ from tests.workflow.stages.decomposition.late_test_support import (
     LATE_ISSUE_NUMBER,
     PUBLISHED_PR_NUMBER,
     SPLIT_REPLY,
-)
-from tests.workflow.stages.decomposition.late_published_split_support import (
-    MOVED_PUBLISHED_HEAD,
-    PUBLISHED_BODY,
-    PUBLISHED_ISSUE_BRANCH,
-    STATE_CLOSED,
-    STATE_OPEN,
-    PublishedSplitCase,
-    seeded_published_split,
 )
 from tests.workflow.stages.decomposition.late_transaction_support import (
     CHILDREN,

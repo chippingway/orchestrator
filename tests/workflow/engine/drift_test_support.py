@@ -6,10 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from orchestrator.workflow.engine import drift
-
 from tests.support import fakes as _fakes
 from tests.workflow import fixtures as _helpers
-
 
 BACKEND_CLAUDE = _helpers.BACKEND_CLAUDE
 KEY_AWAITING_HUMAN = _helpers.KEY_AWAITING_HUMAN

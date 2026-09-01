@@ -25,10 +25,8 @@ from __future__ import annotations
 
 from orchestrator import config
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.stages.in_review import models as _models
-from orchestrator.workflow.stages.in_review import watermarks as _watermarks
+from orchestrator.workflow.engine import comments as _comments, guards as _guards
+from orchestrator.workflow.stages.in_review import models as _models, watermarks as _watermarks
 
 
 def _final_docs_handoff_completed_for_head(

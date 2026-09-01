@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 from orchestrator import config
 from orchestrator.git import commands as _git_commands
 from orchestrator.workflow.stages.conflicts import guards as _guards
-
 from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
@@ -16,12 +15,12 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    _FAKE_WT,
+    _TEST_SPEC,
     LABEL_DECOMPOSING,
     MEASURED_CANDIDATE_SHA,
-    _FAKE_WT,
-    _PatchedWorkflowMixin,
-    _TEST_SPEC,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 PUBLISH_ISSUE = 310

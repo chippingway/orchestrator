@@ -19,9 +19,7 @@ from contextlib import suppress
 from pathlib import Path
 
 from orchestrator.agents import processes as _processes
-from orchestrator.git.verification import models as _models
-from orchestrator.git.verification import output as _output
-from orchestrator.git.verification import probes as _probes
+from orchestrator.git.verification import models as _models, output as _output, probes as _probes
 
 _DRAIN_BUDGET_SECONDS = 5
 

@@ -10,23 +10,22 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-
 from tests.support.fakes import (
+    DEFAULT_PR_HEAD_SHA,
     FakeComment,
     FakeGitHubClient,
     FakePR,
     FakeUser,
     make_issue,
 )
-from tests.support.fakes import DEFAULT_PR_HEAD_SHA
 from tests.workflow.fixtures import (
     LABEL_DOCUMENTING,
     LABEL_IN_REVIEW,
     LABEL_VALIDATING,
     MEASURED_CANDIDATE_SHA,
-    _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
 
 PUSHED_DRIFT_ISSUE = 80

@@ -10,8 +10,7 @@ from unittest.mock import patch
 
 from orchestrator.agents import models as _models
 from orchestrator.agents.backends import claude as _claude
-from tests.agents import agent_test_support as _support
-from tests.agents import agent_test_values as _agent_cases
+from tests.agents import agent_test_support as _support, agent_test_values as _agent_cases
 
 _RESUME_SESSION_ID = "deadbeef-1234-1234-1234-1234deadbeef"
 

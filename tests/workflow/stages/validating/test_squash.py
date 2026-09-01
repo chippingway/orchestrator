@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.publication.models import _SquashOutcome
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -20,8 +19,8 @@ from tests.support.fakes import (
 )
 from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
-    _PatchedWorkflowMixin,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 APPROVAL_ISSUE = 5

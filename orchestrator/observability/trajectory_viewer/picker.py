@@ -37,7 +37,6 @@ from orchestrator.observability.trajectory_viewer.run_html import (
 from orchestrator.observability.trajectory_viewer.run_render import render_run
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
-
 RUN_TABLE_LIMIT = 200
 
 

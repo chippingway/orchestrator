@@ -8,7 +8,6 @@ from __future__ import annotations
 import unittest
 from datetime import UTC, datetime, timedelta
 
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -18,8 +17,8 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 PARK_ISSUE = 60

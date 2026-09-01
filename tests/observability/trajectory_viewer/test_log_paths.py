@@ -17,7 +17,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     record,
 )
 
-
 _LOG_PATH_ATTR = "TRAJECTORY_LOG_PATH"
 
 _CONFIGURED = Path("/var/log/traj.jsonl")

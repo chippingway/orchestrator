@@ -22,11 +22,10 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.workflow.engine import observations as _observations
-
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     LABEL_VALIDATING,
     MEASURED_CANDIDATE_SHA,
-    _TEST_SPEC,
 )
 from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.stages.implementing import late_gate_test_support as support

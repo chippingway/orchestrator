@@ -20,8 +20,7 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.stages.fixing import bounce_gate_support as support
-from tests.workflow.stages.fixing import fixing_test_support as fixing
+from tests.workflow.stages.fixing import bounce_gate_support as support, fixing_test_support as fixing
 
 ADDED_LINES = support.ADDED_LINES
 AHEAD_BEHIND = support.AHEAD_BEHIND

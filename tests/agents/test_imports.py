@@ -10,12 +10,8 @@ import typing
 import unittest
 
 from orchestrator import agents as _agents
-from orchestrator.agents import models as _agent_models
-from orchestrator.agents import processes as _agent_processes
-from orchestrator.agents import runner as _agent_runner
-from orchestrator.agents.backends import claude as _agent_claude
-from orchestrator.agents.backends import codex as _agent_codex
-
+from orchestrator.agents import models as _agent_models, processes as _agent_processes, runner as _agent_runner
+from orchestrator.agents.backends import claude as _agent_claude, codex as _agent_codex
 
 _MODULES = (
     "orchestrator.agents",

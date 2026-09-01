@@ -30,7 +30,6 @@ from dataclasses import dataclass
 from orchestrator.observability.analytics.query.cost_models import CostCoverageRow
 from orchestrator.observability.analytics.query.overview_models import Summary
 
-
 FAILURE_RATE_BANNER_THRESHOLD = 0.1
 UNPRICED_COVERAGE_THRESHOLD = 0.1
 # The two spellings a run the parser could not price arrives under: what it

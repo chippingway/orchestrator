@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 from orchestrator import config
 from orchestrator.git.base_sync import eligibility, recovery
 from orchestrator.git.verification import probes as verification_probes
-
 from tests.git.base_sync import base_sync_helpers as fixtures
 
 RECOVER = "_recover_pending_auto_base_rebase"

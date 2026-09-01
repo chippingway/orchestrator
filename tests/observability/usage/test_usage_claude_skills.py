@@ -5,9 +5,11 @@
 import unittest
 
 from orchestrator.observability.usage import skills as _skills
-from tests.observability.usage import usage_test_values as _usage_cases
-from tests.observability.usage import usage_jsonl_helpers as _jsonl
-from tests.observability.usage import usage_claude_events as _claude
+from tests.observability.usage import (
+    usage_claude_events as _claude,
+    usage_jsonl_helpers as _jsonl,
+    usage_test_values as _usage_cases,
+)
 
 
 class ClaudeSkillEventTest(unittest.TestCase):

@@ -33,16 +33,16 @@ from __future__ import annotations
 import unittest
 from types import MappingProxyType
 
+from tests.repository.import_test_support import (
+    every_import,
+    module_scope_imports,
+)
 from tests.repository.layout_test_support import (
     PACKAGE,
     PACKAGE_ROOT,
     dotted_name,
     module_path,
     python_files,
-)
-from tests.repository.import_test_support import (
-    every_import,
-    module_scope_imports,
 )
 
 # Bottom to top. A module may name its own layer and any layer below it.

@@ -62,7 +62,6 @@ from orchestrator.observability.dashboard import (
     windows,
 )
 
-
 SIDEBAR_HEADER = "Filters"
 
 # The repository box's first option, and the one value it answers with that

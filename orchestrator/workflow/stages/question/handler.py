@@ -24,13 +24,10 @@ import contextlib
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.git.worktrees import terminal as _worktree_terminal
+from orchestrator.git.worktrees import paths as _worktree_paths, terminal as _worktree_terminal
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.question import models as _models
-from orchestrator.workflow.stages.question import outcomes as _outcomes
-from orchestrator.workflow.stages.question import run as _run
+from orchestrator.workflow.stages.question import models as _models, outcomes as _outcomes, run as _run
 from orchestrator.workflow.state import WorkflowLabel
 
 

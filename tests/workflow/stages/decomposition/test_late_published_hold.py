@@ -18,7 +18,6 @@ from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.stages.decomposition.late_published_support import (
     published_generation,
@@ -38,8 +37,6 @@ from tests.workflow.stages.decomposition.late_test_support import (
     OTHER_SHA,
     PLAN_PR_BODY,
     PLAN_PR_NUMBER,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     PUBLISHED_HEAD_SHA,
     PUBLISHED_PR_NUMBER,
     SPLIT_REPLY,

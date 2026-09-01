@@ -7,11 +7,8 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.fixing import handler as _fixing
-
 from tests.workflow.stages.fixing import (
     fixing_drift_test_support as drift_support,
-)
-from tests.workflow.stages.fixing import (
     fixing_routing_test_support as support,
 )
 

@@ -11,17 +11,19 @@ span several of those leaves reach them through.
 """
 from __future__ import annotations
 
-from tests.workflow import agent_failure_values as _agent_failure_values
-from tests.workflow import other_labels as _other_labels
-from tests.workflow import patch_models as _patch_models
-from tests.workflow import patch_runner as _patch_runner
-from tests.workflow import recovery_followup as _recovery_followup
-from tests.workflow import repo_values as _repo_values
-from tests.workflow import stage_labels as _stage_labels
-from tests.workflow import stage_names as _stage_names
-from tests.workflow import state_values as _state_values
-from tests.workflow import value_helpers as _value_helpers
-from tests.workflow import verdict_values as _verdict_values
+from tests.workflow import (
+    agent_failure_values as _agent_failure_values,
+    other_labels as _other_labels,
+    patch_models as _patch_models,
+    patch_runner as _patch_runner,
+    recovery_followup as _recovery_followup,
+    repo_values as _repo_values,
+    stage_labels as _stage_labels,
+    stage_names as _stage_names,
+    state_values as _state_values,
+    value_helpers as _value_helpers,
+    verdict_values as _verdict_values,
+)
 from tests.workflow.engine import event_values as _event_values
 
 EVENT_AGENT_EXIT = _event_values.EVENT_AGENT_EXIT

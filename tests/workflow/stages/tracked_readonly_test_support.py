@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 from orchestrator.workflow.stages.validating import handler as _validating
-
 from tests.workflow.stages import tracked_repos_test_support as support
 
 

@@ -21,18 +21,14 @@ from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
 )
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
-
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     CANDIDATE_SHA,
     CHILD_NUMBER,
-    RecordedDelete,
     LABEL_DONE,
     LABEL_IN_REVIEW,
     LABEL_REJECTED,
     PARENT_NUMBER,
-)
-from tests.workflow.stages.decomposition.late_cleanup_support import (
     SNAPSHOT_REF,
     STATE_FAILED,
     STATE_RECLAIMING,
@@ -40,8 +36,7 @@ from tests.workflow.stages.decomposition.late_cleanup_support import (
     STATE_RETAINED,
     SUPERSEDED_BRANCH,
     WORKFLOW_LOG,
-)
-from tests.workflow.stages.decomposition.late_cleanup_support import (
+    RecordedDelete,
     late_generation,
     resource_states,
     scan_of,

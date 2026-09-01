@@ -7,9 +7,7 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
-from orchestrator.workflow.stages.validating import drift_outcomes as _drift_outcomes
-
+from orchestrator.workflow.stages.validating import dev_fix as _dev_fix, drift_outcomes as _drift_outcomes
 from tests.workflow.stages.validating import (
     validating_review_test_support as review_support,
 )

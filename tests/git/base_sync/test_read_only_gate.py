@@ -25,17 +25,16 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from orchestrator.git.base_sync import refresh
-
 from tests.git.base_sync.sync_test_support import _patch_base_sync
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     LABEL_DISCUSSION,
     LABEL_IMPLEMENTING,
     LABEL_QUESTION,
     LABEL_VALIDATING,
     MEASURED_CANDIDATE_SHA,
     SHA_LENGTH,
-    _TEST_SPEC,
 )
 
 _BASE_REFRESH_ISSUE_NUMBER = 980

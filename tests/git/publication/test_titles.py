@@ -9,8 +9,6 @@ from unittest.mock import patch
 
 from orchestrator.git import commands
 from orchestrator.git.publication import titles
-
-from tests.support.fakes import FakeLabel, make_issue
 from tests.git.publication.publication_helpers import (
     FEATURE_PREFIX,
     GIT_HELPER,
@@ -18,6 +16,7 @@ from tests.git.publication.publication_helpers import (
     _GitRecorder,
     _spec,
 )
+from tests.support.fakes import FakeLabel, make_issue
 
 PREFIX_HELPER_ISSUE = 50
 GIT_ERROR_ISSUE = 51

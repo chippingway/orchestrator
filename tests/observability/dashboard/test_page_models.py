@@ -10,7 +10,6 @@ from typing import Any, get_type_hints
 
 from orchestrator.observability.dashboard import page_models, windows
 
-
 _REPO = "chippingway/orchestrator"
 
 _ISSUE = 1174

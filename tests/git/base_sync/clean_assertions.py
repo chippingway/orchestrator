@@ -4,9 +4,8 @@
 
 from __future__ import annotations
 
-from tests.git.base_sync.refresh_scenarios import PUSH_PATCH, REBASE_PATCH
-
 from tests.git.base_sync import refresh_test_support as support
+from tests.git.base_sync.refresh_scenarios import PUSH_PATCH, REBASE_PATCH
 
 
 def _assert_clean_publication(test_case, fixture, scenario) -> None:

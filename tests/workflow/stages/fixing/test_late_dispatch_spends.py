@@ -25,13 +25,12 @@ from orchestrator.git.measurement.models import (
 )
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
-from orchestrator.workflow.stages.implementing import late_push as _late_push
 from orchestrator.workflow.stages.fixing.bookmarks import (
     _cleared_pending_fix_bookmarks,
 )
-
-from tests.workflow.stages.fixing import fixing_test_support as fixing
+from orchestrator.workflow.stages.implementing import late_push as _late_push
 from tests.workflow.stages.fixing import (
+    fixing_test_support as fixing,
     published_gate_support as support,
 )
 from tests.workflow.stages.fixing.test_late_dispatch import (

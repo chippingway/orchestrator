@@ -36,7 +36,6 @@ from tests.observability.dashboard.page_render_test_support import (
     section_reads,
 )
 
-
 _HERO_CARD = "render_hero_usage"
 
 _LIFECYCLE_BARS = "render_stage_review_bars"

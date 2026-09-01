@@ -39,18 +39,18 @@ from orchestrator.agents import sessions as _agent_sessions
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    guards as _guards,
+    messages as _messages,
+    prompts as _prompts,
+    usage as _usage,
+)
 from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
+    resume as _dev_resume,
 )
-from orchestrator.workflow.stages.implementing import resume as _dev_resume
-from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
-from orchestrator.workflow.stages.validating import models as _models
-from orchestrator.workflow.stages.validating import state as _state
+from orchestrator.workflow.stages.validating import dev_fix as _dev_fix, models as _models, state as _state
 from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 log = logging.getLogger("orchestrator.workflow")

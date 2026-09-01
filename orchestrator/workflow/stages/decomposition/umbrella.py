@@ -72,24 +72,22 @@ from orchestrator import config
 from orchestrator.github import comments as _github_comments
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import observations as _observations
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    guards as _guards,
+    observations as _observations,
+    usage as _usage,
+)
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
-from orchestrator.workflow.stages.decomposition import activation as _activation
 from orchestrator.workflow.stages.decomposition import (
+    activation as _activation,
     late_cancellation as _late_cancellation,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_publication as _late_publication,
+    parents as _parents,
+    state as _state,
 )
-from orchestrator.workflow.stages.decomposition import parents as _parents
-from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import WorkflowLabel
 

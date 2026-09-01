@@ -23,7 +23,6 @@ from typing import Any
 
 from orchestrator.observability.trajectory_viewer import constants
 
-
 KIND_FIELD = "kind"
 NAME_FIELD = "name"
 TOOL_ID_FIELD = "tool_id"

@@ -5,13 +5,13 @@
 import json
 import unittest
 
-from orchestrator.observability.usage import trajectory_models as _records
-from orchestrator.observability.usage import skills as _skills
-from orchestrator.observability.usage import trajectory as _trajectory
-from tests.observability.usage import usage_test_values as _usage_cases
-from tests.observability.usage import usage_jsonl_helpers as _jsonl
-from tests.observability.usage import usage_claude_events as _claude
-from tests.observability.usage import usage_trajectory_projections as _projections
+from orchestrator.observability.usage import skills as _skills, trajectory as _trajectory, trajectory_models as _records
+from tests.observability.usage import (
+    usage_claude_events as _claude,
+    usage_jsonl_helpers as _jsonl,
+    usage_test_values as _usage_cases,
+    usage_trajectory_projections as _projections,
+)
 
 
 class ClaudeTrajectoryTest(unittest.TestCase):

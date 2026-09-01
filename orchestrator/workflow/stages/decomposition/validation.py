@@ -16,7 +16,6 @@ the agent is told and the number it is judged against cannot drift apart.
 """
 from __future__ import annotations
 
-
 _MAX_CHILDREN = 10
 
 

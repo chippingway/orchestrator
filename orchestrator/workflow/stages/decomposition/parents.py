@@ -31,9 +31,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import terminals as _terminals
+from orchestrator.workflow.engine import drift as _drift, guards as _guards, terminals as _terminals
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 

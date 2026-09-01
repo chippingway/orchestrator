@@ -17,7 +17,6 @@ commit the push was named against.
 from __future__ import annotations
 
 
-
 class LandingPush:
     """A `_push_branch` that lands and advances its pull request's head."""
 

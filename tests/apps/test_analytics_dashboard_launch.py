@@ -13,15 +13,14 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from tests.observability.dashboard.reload_helpers import (
-    hermetic_environment as _hermetic_env,
-)
 from tests.apps.script_launch_helpers import (
     clear_modules as _drop_modules,
     drop_repo_root as _strip_repo_root,
     script_launch_sandbox as _launch_sandbox,
 )
-
+from tests.observability.dashboard.reload_helpers import (
+    hermetic_environment as _hermetic_env,
+)
 
 _ORCH = "orchestrator"
 

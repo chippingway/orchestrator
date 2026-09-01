@@ -4,35 +4,18 @@
 intercepts it."""
 
 import contextlib
-
-
 import json
-
-
 import tempfile
-
-
 import unittest
-
-
 from datetime import datetime
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
 
-
 from orchestrator.observability.analytics.recording import events
-
-from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
-
-
 from tests.observability.analytics.analytics_jsonl_helpers import (
     read_lines as _read_lines,
 )
-
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 _STAGE_KEY = 'stage'
 

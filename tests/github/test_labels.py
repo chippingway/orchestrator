@@ -16,7 +16,6 @@ from orchestrator.workflow.state import (
     WorkflowLabel,
     legacy_label_name as _legacy_label_name,
 )
-
 from tests.support.fakes import FakeIssue, FakeLabel
 
 _HTTP_FORBIDDEN = 403

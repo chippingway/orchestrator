@@ -10,13 +10,11 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator.workflow.engine import dispatch as _dispatch
-from orchestrator.workflow.engine import pickup as _pickup
+from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.question import handler as _question
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-from tests.workflow.fixtures import LABEL_QUESTION, _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC, LABEL_QUESTION
 
 QUESTION_ISSUE_NUMBER = 801
 

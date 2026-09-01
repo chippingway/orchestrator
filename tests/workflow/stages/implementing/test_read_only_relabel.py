@@ -25,24 +25,21 @@ from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
-    _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
-
 from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     DEV_SESSION,
     HEAD_AFTER_COMMIT,
     HEAD_BEFORE_ROUND,
+    KEY_PUBLISHING_SHA,
+    KEY_READ_ONLY_BASELINE,
+    KEY_ROUND_OPEN,
     KEY_ROUND_SHA,
     PARK_DISCUSSION_COMMITS,
     PARK_DISCUSSION_RESPONSE,
     PARK_DISCUSSION_UNSAFE_RELABEL,
-)
-from tests.workflow.stages.implementing.read_only_relabel_test_support import (
-    KEY_PUBLISHING_SHA,
-    KEY_READ_ONLY_BASELINE,
-    KEY_ROUND_OPEN,
     PUSH_BRANCH,
     RUN_AGENT,
     UNEXPECTED_AGENT_MESSAGE,

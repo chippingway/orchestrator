@@ -3,38 +3,20 @@
 """Analytics agent-exit skill-evidence tests."""
 
 import contextlib
-
-
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
 
-
+from orchestrator.observability.analytics import recording, settings as analytics_settings
 from orchestrator.observability.usage import skills as _usage_skills
-
-
-
-
-from orchestrator.observability.analytics import recording
-from orchestrator.observability.analytics import settings as analytics_settings
-
 from tests.observability.analytics.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
-
-
 from tests.observability.analytics.analytics_recording_cases import (
     agent_exit_result as _agent_exit_result,
     codex_stdout_with_skills as _codex_stdout_with_skills,
 )
-
 
 _ANALYTICS_FILENAME = 'a.jsonl'
 

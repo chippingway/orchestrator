@@ -24,12 +24,10 @@ from orchestrator.github.labels import (
     PAUSED_LABEL,
     hard_skip_control_label,
 )
-from orchestrator.workflow.stages.implementing import handler as implementing
 from orchestrator.workflow.engine import dispatch, pickup
-
+from orchestrator.workflow.stages.implementing import handler as implementing
 from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
-
 
 _IMPLEMENTING_LABEL = "workflow:implementing"
 _PAUSED_IN_FLIGHT_ISSUE = 752

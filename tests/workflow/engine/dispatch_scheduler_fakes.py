@@ -5,7 +5,6 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,

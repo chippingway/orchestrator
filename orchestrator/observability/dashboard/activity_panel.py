@@ -52,7 +52,6 @@ from orchestrator.observability.dashboard.filters import (
     format_tz_offset,
 )
 
-
 CARD_TITLE = "When agents run"
 
 TZ_SELECT_LABEL = "Timezone"

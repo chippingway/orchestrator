@@ -20,20 +20,19 @@ from orchestrator.git.measurement.models import FrozenCommit
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow import state as _workflow_state
 from orchestrator.workflow.engine import dispatch as _dispatch
-
 from tests.support.fakes import FakeGitHubClient, FakePRRef, make_issue
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     LABEL_DECOMPOSING,
     MEASURED_CANDIDATE_SHA,
     SHA_LENGTH,
-    _PatchedWorkflowMixin,
-    _TEST_SPEC,
     _agent,
     _issue_branch,
     _open_pr_for,
+    _PatchedWorkflowMixin,
 )
-from tests.workflow.stages.fixing import fixing_test_support as fixing
 from tests.workflow.stages.fixing import (
+    fixing_test_support as fixing,
     published_gate_support as support,
 )
 

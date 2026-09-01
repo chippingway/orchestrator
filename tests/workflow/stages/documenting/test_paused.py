@@ -12,10 +12,6 @@ and the awaiting-human follow-up."""
 
 from __future__ import annotations
 
-from tests.workflow.stages.documenting import (
-    documenting_test_support as documenting_support,
-)
-
 import unittest
 from unittest.mock import patch
 
@@ -23,7 +19,6 @@ from orchestrator import config
 from orchestrator.github.labels import PAUSED_LABEL
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.stages.documenting import handler as _documenting
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -33,10 +28,13 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    MEASURED_CANDIDATE_SHA,
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
+    MEASURED_CANDIDATE_SHA,
     _agent,
+    _PatchedWorkflowMixin,
+)
+from tests.workflow.stages.documenting import (
+    documenting_test_support as documenting_support,
 )
 
 LABEL_DOCUMENTING = "workflow:documenting"

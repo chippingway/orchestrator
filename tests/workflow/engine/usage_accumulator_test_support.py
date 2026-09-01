@@ -3,7 +3,6 @@
 """Fixtures and the callable agent the usage-accumulator tests run on."""
 from __future__ import annotations
 
-
 from tests.support import fakes
 from tests.workflow import fixtures
 

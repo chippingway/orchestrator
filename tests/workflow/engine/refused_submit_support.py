@@ -15,7 +15,6 @@ from types import SimpleNamespace
 from orchestrator.workflow.engine import dispatch, observations
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import LABEL_IMPLEMENTING
 

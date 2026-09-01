@@ -7,7 +7,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.validating import handler as _validating
-
 from tests.workflow.stages.implementing import retry_test_support as support
 
 ACTION_COMMENT_ID = support.ACTION_COMMENT_ID

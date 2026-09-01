@@ -7,7 +7,6 @@ import unittest
 
 from orchestrator.observability.trajectory_viewer import coercion
 
-
 _SKILL_DEVELOP = "develop"
 
 

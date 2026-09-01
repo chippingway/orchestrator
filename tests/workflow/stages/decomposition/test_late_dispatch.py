@@ -12,7 +12,6 @@ from orchestrator.workflow.stages.decomposition import (
     late_reuse as _late_reuse,
 )
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_content_support import late_issue
 from tests.workflow.stages.decomposition.late_published_support import (

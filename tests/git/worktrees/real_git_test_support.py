@@ -23,7 +23,6 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git import authentication, locks
 from orchestrator.git.worktrees import creation, paths
-
 from tests.git.concurrency_test_support import _start_and_join
 
 GIT_COMMAND = "git"

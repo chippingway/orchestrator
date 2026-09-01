@@ -30,8 +30,7 @@ from orchestrator.workflow.stages.decomposition import (
     parents as _parents,
 )
 from orchestrator.workflow.state import WorkflowLabel
-
-from tests.workflow.fixtures import _PatchedWorkflowMixin, _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC, _PatchedWorkflowMixin
 from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.stages.decomposition.late_cleanup_support import (
     CHILD_NUMBER,
@@ -42,8 +41,6 @@ from tests.workflow.stages.decomposition.late_cleanup_support import (
     RecordedDelete,
     SeededUmbrella,
     SnapshotOutcome,
-)
-from tests.workflow.stages.decomposition.late_cleanup_support import (
     split_umbrella,
     walk_owner,
 )

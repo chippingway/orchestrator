@@ -57,10 +57,12 @@ from dataclasses import replace
 from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import state as _late_state
-from orchestrator.workflow.late_split import telemetry as _telemetry
+from orchestrator.workflow.late_split import (
+    events as _events,
+    formats as _formats,
+    state as _late_state,
+    telemetry as _telemetry,
+)
 from orchestrator.workflow.late_split.models import (
     IN_FLIGHT_PHASES,
     LateFailure,
@@ -69,11 +71,7 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_notice as _late_notice,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_reply as _late_reply,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_session as _late_session,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (

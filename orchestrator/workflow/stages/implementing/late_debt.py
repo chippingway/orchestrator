@@ -23,6 +23,7 @@ from orchestrator import config
 from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow import state as _workflow_state
 from orchestrator.workflow.late_split import (
     payloads as _payloads,
     state as _late_state,
@@ -33,7 +34,6 @@ from orchestrator.workflow.stages.implementing import (
     late_records as _records,
     state as _state,
 )
-from orchestrator.workflow import state as _workflow_state
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")

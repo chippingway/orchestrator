@@ -12,15 +12,13 @@ from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.github import labels as _labels
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.state import (
+    _DETOUR_TO_RESOLVING,
     ALLOWED_TRANSITIONS,
     ControlLabel,
     WorkflowLabel,
-    _DETOUR_TO_RESOLVING,
     coerce_workflow_label,
 )
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-
 
 _VALIDATING_LABEL = "workflow:validating"
 # The states an operator applies by hand. Each is entered from outside the

@@ -27,24 +27,20 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
-
 from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
+    ENSURE_WORKTREE,
     HEAD_AFTER_COMMIT,
     HEAD_BEFORE_ROUND,
     KEY_DISCUSSION_AGENT,
     KEY_DISCUSSION_SESSION_ID,
     KEY_ROUND_SHA,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    ENSURE_WORKTREE,
     PARK_DISCUSSION_PLAN_INVALID,
     RUN_AGENT,
     _DiscussionWorkflowMixin,

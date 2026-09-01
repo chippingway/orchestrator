@@ -58,11 +58,8 @@ from dataclasses import replace
 from github.Issue import Issue
 
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _engine_drift
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import identity as _identity
+from orchestrator.workflow.engine import comments as _comments, drift as _engine_drift, messages as _messages
+from orchestrator.workflow.late_split import formats as _formats, identity as _identity
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateContentSignal,

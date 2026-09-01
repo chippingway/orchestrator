@@ -7,9 +7,8 @@ import contextlib
 from types import MappingProxyType
 from unittest.mock import patch
 
-from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.agents import runner as _agent_runner
-
+from orchestrator.observability.analytics import settings as analytics_settings
 from tests.workflow.git_owners import GIT_SEAM_OWNERS
 from tests.workflow.patch_builders import _build_workflow_mocks
 from tests.workflow.patch_models import _WorkflowRunContext

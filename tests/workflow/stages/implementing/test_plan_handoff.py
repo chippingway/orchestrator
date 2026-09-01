@@ -36,33 +36,27 @@ from tests.workflow.fixtures import (
     _agent,
     _issue_branch,
 )
-
 from tests.workflow.stages.implementing.plan_handoff_test_support import (
     AMENDED_PLAN_COMMIT as _AMENDED_PLAN_COMMIT,
     HANDOFF_PR_NUMBER as _HANDOFF_PR_NUMBER,
     PLAN_COMMIT as _PLAN_COMMIT,
     PLAN_ISSUE_NUMBER as _PLAN_HANDOFF_ISSUE_NUMBER,
     PLAN_PATH as _PLAN_PATH,
-)
-from tests.workflow.stages.implementing.plan_handoff_test_support import (
-    _HandoffTickMixin,
     _add_plan_pr,
+    _HandoffTickMixin,
     _seed_accepted_handoff,
     _seed_published_plan,
 )
-
 from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     ANCHOR_PR_WORKTREE,
     HEAD_AFTER_COMMIT,
     HEAD_BEFORE_ROUND,
     KEY_PLAN_PATH,
     KEY_PLAN_SHA,
-    KEY_READ_ONLY_BASELINE,
-    KEY_ROUND_OPEN,
-)
-from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     KEY_PR_NUMBER,
     KEY_PUBLISHING_SHA,
+    KEY_READ_ONLY_BASELINE,
+    KEY_ROUND_OPEN,
     PARK_DISCUSSION_PLAN_PUBLISHED,
     PARK_DISCUSSION_UNSAFE_RELABEL,
     RUN_AGENT,

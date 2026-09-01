@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import unittest
 
-
 from tests.support.fakes import (
     DEFAULT_PR_HEAD_SHA,
     FakeGitHubClient,
@@ -13,9 +12,9 @@ from tests.support.fakes import (
 )
 from tests.workflow.fixtures import (
     MEASURED_CANDIDATE_SHA,
-    _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
 
 # The head this stage reads before the resume and the one it leaves the

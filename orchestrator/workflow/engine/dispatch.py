@@ -115,9 +115,9 @@ from orchestrator.github.issues import (
     CLEANUP_SWEEP_LABELS,
     issue_is_closed,
 )
-from orchestrator.observability.analytics import recording
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.observability.analytics import recording
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.workflow.engine import observations
 from orchestrator.workflow.state import WorkflowLabel, stage_name

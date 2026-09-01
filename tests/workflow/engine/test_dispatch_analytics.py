@@ -13,22 +13,20 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
+from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.workflow.engine import dispatch, pickup
 from orchestrator.workflow.stages.implementing import handler as implementing
-
 from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     EVENT_STAGE_ENTER,
     EVENT_STAGE_EVALUATION,
     LABEL_IMPLEMENTING,
     LABEL_VALIDATING,
     TEST_REPO_SLUG,
-    _TEST_SPEC,
     _analytics_records,
 )
-
 
 # The tag each label reports itself as: what the analytics row records.
 _IMPLEMENTING_STAGE = "implementing"

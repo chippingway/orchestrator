@@ -9,9 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from orchestrator.workflow.stages.implementing import execution as _execution
-from orchestrator.workflow.stages.implementing import resume as _resume
-
+from orchestrator.workflow.stages.implementing import execution as _execution, resume as _resume
 
 _SPEC = "spec"
 _ISSUE = "issue"

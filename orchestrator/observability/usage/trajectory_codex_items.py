@@ -53,7 +53,6 @@ from orchestrator.observability.usage import (
 )
 from orchestrator.observability.usage.trajectory_models import TrajectoryStep
 
-
 AGENT_MESSAGE = "agent_message"
 COMMAND_EXECUTION = skills_codex.COMMAND_EXECUTION
 FILE_CHANGE = "file_change"

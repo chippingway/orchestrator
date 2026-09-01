@@ -16,7 +16,6 @@ question) rather than by the backend that emits it.
 """
 from __future__ import annotations
 
-
 _SILENT_PARKS_BEFORE_FRESH_SESSION = 2
 
 _CLAUDE_STALE_SESSION_STDERR_MARKERS: tuple[str, ...] = (

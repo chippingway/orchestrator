@@ -8,7 +8,6 @@ from dataclasses import replace
 
 from orchestrator.workflow.late_split.formats import InvalidLateValue
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.late_split import generation_test_support as _support
 
 _STAGE = "stage"

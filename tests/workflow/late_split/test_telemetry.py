@@ -6,11 +6,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import records as _records
-from orchestrator.workflow.late_split import telemetry as _telemetry
+from orchestrator.workflow.late_split import events as _events, records as _records, telemetry as _telemetry
 from orchestrator.workflow.late_split.models import LateVerdict
-
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.late_split import generation_test_support as _support
 

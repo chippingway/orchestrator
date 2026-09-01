@@ -9,7 +9,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from orchestrator.workflow.engine import dispatch
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 
 _ISSUE_NUMBER = 17

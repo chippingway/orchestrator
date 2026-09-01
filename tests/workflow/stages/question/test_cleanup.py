@@ -5,24 +5,20 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     BACKEND_CLAUDE,
     KEY_PARK_REASON,
-)
-from tests.workflow.fixtures import (
     LABEL_QUESTION,
-    _TEST_SPEC,
     _agent,
-)
-
-from tests.workflow.stages.question.question_test_support import (
-    _issue_branch,
-    _seed_question,
 )
 from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
+)
+from tests.workflow.stages.question.question_test_support import (
+    _issue_branch,
+    _seed_question,
 )
 
 KEY_QUESTION_SESSION_ID = "question_session_id"

@@ -26,7 +26,6 @@ from typing import Any
 
 from orchestrator.observability.dashboard import windows
 
-
 # The presets the bar exposes inline, widest last, since an unoffered one opens
 # the radio on the final button. `Custom` is deliberately not among them: it
 # names no window of its own, so it stays the sidebar fallback rather than one

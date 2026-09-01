@@ -2,16 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-
 from orchestrator.workflow.engine import drift as _drift
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
-
 
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.fixtures import (

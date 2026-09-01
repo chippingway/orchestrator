@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.git import authentication
-
 from tests.git.authentication_test_support import (
     FAKE_TOKEN,
     REPOSITORY_SLUG,
@@ -20,8 +19,8 @@ from tests.git.authentication_test_support import (
     _spec,
 )
 from tests.git.transport_helpers import (
-    _TokenResolver,
     _temp_git_repo_with_local_config,
+    _TokenResolver,
 )
 
 ISSUE_BRANCH = "orchestrator/issue-5"

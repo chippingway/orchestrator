@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import unittest
 
-
 from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
@@ -12,11 +11,10 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    MEASURED_CANDIDATE_SHA,
     _TEST_SPEC,
+    MEASURED_CANDIDATE_SHA,
     _agent,
 )
-
 
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting import (

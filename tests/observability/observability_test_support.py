@@ -10,7 +10,6 @@ from importlib import import_module
 from pathlib import Path
 from types import MappingProxyType
 
-
 _ROOT = "orchestrator.observability"
 _ANALYTICS = f"{_ROOT}.analytics"
 

@@ -15,9 +15,7 @@ from orchestrator.workflow.state import (
     guard_transition,
     is_allowed_transition,
 )
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-
 
 _VALIDATING_LABEL = "workflow:validating"
 _GUARD_ENFORCE = "enforce"

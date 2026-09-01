@@ -6,19 +6,17 @@ import unittest
 from pathlib import Path
 
 from orchestrator import config
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
-    LABEL_QUESTION,
     _TEST_SPEC,
+    LABEL_QUESTION,
     _agent,
-)
-
-from tests.workflow.stages.question.question_test_support import (
-    _issue_branch,
 )
 from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
+)
+from tests.workflow.stages.question.question_test_support import (
+    _issue_branch,
 )
 
 KEY_QUESTION_SESSION_ID = "question_session_id"

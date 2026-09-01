@@ -13,7 +13,6 @@ from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.stages.decomposition import (
     late_content as _late_content,
 )
-
 from tests.support.fakes import make_issue
 from tests.workflow.stages.decomposition.late_content_support import (
     BARE_CONTINUE,
@@ -21,14 +20,12 @@ from tests.workflow.stages.decomposition.late_content_support import (
     CONTINUE_WITH_GUIDANCE,
     GUIDANCE_BODY,
     GUIDANCE_ID,
-    OTHER_GUIDANCE,
-    SECOND_ID,
-)
-from tests.workflow.stages.decomposition.late_content_support import (
     HUMAN,
     ISSUE_BODY,
     ISSUE_TITLE,
+    OTHER_GUIDANCE,
     OUTSIDER,
+    SECOND_ID,
     baselined,
     guidance_comment,
     human_comment,

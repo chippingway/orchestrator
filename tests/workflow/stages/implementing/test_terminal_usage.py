@@ -7,7 +7,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import terminals as _terminals
-
 from tests.workflow.stages.implementing import terminal_test_support as support
 
 FakeGitHubClient = support.FakeGitHubClient

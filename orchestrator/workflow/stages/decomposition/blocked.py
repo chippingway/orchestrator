@@ -24,12 +24,8 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.decomposition import activation as _activation
-from orchestrator.workflow.stages.decomposition import parents as _parents
-from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.engine import comments as _comments, guards as _guards, usage as _usage
+from orchestrator.workflow.stages.decomposition import activation as _activation, parents as _parents, state as _state
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.state import WorkflowLabel
 

@@ -7,11 +7,10 @@ import unittest
 from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
-from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
 from orchestrator.workflow.stages.decomposition import (
+    late_hold as _late_hold,
     late_session as _late_session,
 )
-
 from tests.support.fakes import FakeGitHubClient, FakePRRef
 from tests.workflow.stages.decomposition.late_run_support import HoldSnapshot
 from tests.workflow.stages.decomposition.late_test_support import (
@@ -19,19 +18,15 @@ from tests.workflow.stages.decomposition.late_test_support import (
     BASE_SHA,
     CANDIDATE_SHA,
     CYCLE_ID,
-    HOLD_MARKER_PREFIX,
-    KEYS,
-    KEY_PLAN_PATH,
-    PLAN_PATH,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     GENERATION_NUMBER,
+    HOLD_MARKER_PREFIX,
+    KEY_PLAN_PATH,
+    KEYS,
     LATE_ISSUE_NUMBER,
+    PLAN_PATH,
     PLAN_PR_BODY,
     PLAN_PR_NUMBER,
     THRESHOLD,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     late_generation,
     seed_late_issue,
     seed_plan_pr,

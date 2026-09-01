@@ -14,7 +14,6 @@ from __future__ import annotations
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.stages.decomposition.late_content_support import (
     ASKED_STATE,
     BARE_CONTINUE,

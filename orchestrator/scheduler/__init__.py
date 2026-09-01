@@ -17,8 +17,7 @@ either owner first never needs a name this module has not bound yet.
 """
 from __future__ import annotations
 
-from orchestrator.scheduler import models as _models
-from orchestrator.scheduler import service as _service
+from orchestrator.scheduler import models as _models, service as _service
 
 __all__ = (
     "IssueScheduler",

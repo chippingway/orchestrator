@@ -35,11 +35,10 @@ from orchestrator.git.measurement.models import MeasurementFailure
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow import state as _workflow_state
 from orchestrator.workflow.engine import dispatch as _dispatch
-
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     MEASURED_BASE_SHA,
     MEASURED_CANDIDATE_SHA,
-    _TEST_SPEC,
     _agent,
 )
 from tests.workflow.stages.conflicts.content_update_support import (

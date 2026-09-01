@@ -16,7 +16,6 @@ from orchestrator.git.measurement.models import (
     FrozenCommit,
     MeasurementFailure,
 )
-
 from tests.workflow.patch_models import _WorkflowRunContext
 from tests.workflow.repo_values import (
     MEASURED_BASE_SHA,

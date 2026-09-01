@@ -6,9 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.stages.implementing import resume as _implementing_resume
-from orchestrator.workflow.stages.implementing import session_read as _session_read
-
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume, session_read as _session_read
 from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.stages.implementing import retry_test_support as support
 

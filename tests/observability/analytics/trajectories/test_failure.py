@@ -3,40 +3,22 @@
 """Analytics trajectory failure-isolation tests."""
 
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
-
-
-from orchestrator.observability.usage import trajectory as _usage_trajectory
-
 
 from orchestrator.observability.analytics import sink as analytics_sink
 from orchestrator.observability.analytics.trajectories import api as trajectory_api
-
-
-
+from orchestrator.observability.usage import trajectory as _usage_trajectory
 from tests.observability.analytics.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
-
-
 from tests.observability.analytics.analytics_recording_cases import (
     claude_stdout_with_skills as _claude_stdout_with_skills,
 )
-
-
 from tests.observability.analytics.analytics_trajectory_cases import (
     claude_trajectory_stdout as _claude_trajectory_stdout,
 )
-
-
 from tests.observability.analytics.trajectories import (
     trajectories_test_support as _support,
 )

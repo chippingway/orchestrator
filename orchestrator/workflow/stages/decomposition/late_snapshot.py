@@ -48,11 +48,8 @@ import logging
 from dataclasses import replace
 from types import MappingProxyType
 
-from orchestrator.git.snapshots import namespace as _namespace
-from orchestrator.git.snapshots import refs as _snapshot_refs
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import telemetry as _telemetry
+from orchestrator.git.snapshots import namespace as _namespace, refs as _snapshot_refs
+from orchestrator.workflow.late_split import events as _events, formats as _formats, telemetry as _telemetry
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LatePhase,

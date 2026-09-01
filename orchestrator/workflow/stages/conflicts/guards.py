@@ -17,10 +17,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
-from orchestrator.git import commands as _git_commands
-from orchestrator.git.worktrees import creation as _worktree_creation
-from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.git import authentication as _authentication, commands as _git_commands
+from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.conflicts import models as _models
 

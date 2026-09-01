@@ -43,11 +43,11 @@ import logging
 from orchestrator import config
 from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import comments as _comments, messages as _messages
 from orchestrator.workflow.late_split import (
     formats as _formats,
     payloads as _payloads,
 )
-from orchestrator.workflow.engine import comments as _comments, messages as _messages
 from orchestrator.workflow.stages.documenting import (
     handoff as _handoff,
     models as _models,

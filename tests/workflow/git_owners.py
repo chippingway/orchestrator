@@ -14,8 +14,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from unittest.mock import DEFAULT, patch
 
-from orchestrator.git import authentication as _authentication
-from orchestrator.git import commands as _commands
+from orchestrator.git import authentication as _authentication, commands as _commands
 from orchestrator.git.base_sync import (
     pre_pr as _base_sync_pre_pr,
     refresh as _base_sync_refresh,

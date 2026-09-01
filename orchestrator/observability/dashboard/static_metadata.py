@@ -23,7 +23,6 @@ from typing import Any
 from orchestrator.observability.analytics.query import connections, raw_reads
 from orchestrator.observability.dashboard import scoped_reads
 
-
 STATIC_METADATA_TTL_SECONDS = 300
 
 

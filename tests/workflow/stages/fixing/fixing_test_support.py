@@ -16,7 +16,6 @@ from orchestrator.workflow.stages.fixing import (
     continue_command as _continue_command,
 )
 from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
-
 from tests.support import fakes
 from tests.workflow import fixtures
 from tests.workflow.stages import implementing_fixing_test_cases

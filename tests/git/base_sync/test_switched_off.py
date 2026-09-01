@@ -23,7 +23,6 @@ from unittest.mock import MagicMock, patch
 from orchestrator.git import authentication
 from orchestrator.git.base_sync import persistence, recovery
 from orchestrator.git.verification import probes as verification_probes
-
 from tests.git.base_sync import (
     base_sync_helpers as fixtures,
     refresh_test_support as support,

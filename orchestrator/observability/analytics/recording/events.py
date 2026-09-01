@@ -32,8 +32,7 @@ from __future__ import annotations
 
 import typing
 
-from orchestrator.observability.analytics import config as analytics_config
-from orchestrator.observability.analytics import sink
+from orchestrator.observability.analytics import config as analytics_config, sink
 from orchestrator.observability.analytics.recording.models import (
     REPO_SKILL_CATALOG_SIGNATURE,
     STAGE_EVALUATION_SIGNATURE,

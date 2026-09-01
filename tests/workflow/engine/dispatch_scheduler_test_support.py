@@ -11,17 +11,15 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.workflow.engine import dispatch, tick as _tick
-
 from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
+from tests.workflow.engine.dispatch_scheduler_workers import (
+    _IssueProcessor,
+    _SequentialIssueProcessor,
+    patch_base_refresh,
+)
 from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     TEST_BASE_BRANCH,
-)
-
-from tests.workflow.engine.dispatch_scheduler_workers import (
-    patch_base_refresh,
-    _IssueProcessor,
-    _SequentialIssueProcessor,
 )
 
 REPO_SLUG = "acme/widget"

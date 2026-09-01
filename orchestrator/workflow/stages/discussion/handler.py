@@ -87,14 +87,16 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
-from orchestrator.workflow.stages.discussion import models as _models
-from orchestrator.workflow.stages.discussion import outcomes as _outcomes
-from orchestrator.workflow.stages.discussion import parks as _parks
-from orchestrator.workflow.stages.discussion import publication as _publication
-from orchestrator.workflow.stages.discussion import run as _run
-from orchestrator.workflow.stages.discussion import session as _session
-from orchestrator.workflow.stages.discussion import state as _state
-from orchestrator.workflow.stages.discussion import terminal as _terminal
+from orchestrator.workflow.stages.discussion import (
+    models as _models,
+    outcomes as _outcomes,
+    parks as _parks,
+    publication as _publication,
+    run as _run,
+    session as _session,
+    state as _state,
+    terminal as _terminal,
+)
 
 
 def _run_discussion_round(

@@ -8,24 +8,23 @@ from unittest.mock import MagicMock, patch
 from orchestrator import config
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
-
 from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
     FakePRRef,
     make_issue,
 )
+from tests.workflow.fixtures import (
+    _FAKE_WT,
+    _TEST_SPEC,
+    MEASURED_CANDIDATE_SHA,
+    _agent,
+    _issue_branch,
+    _PatchedWorkflowMixin,
+)
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
-)
-from tests.workflow.fixtures import (
-    MEASURED_CANDIDATE_SHA,
-    _FAKE_WT,
-    _PatchedWorkflowMixin,
-    _TEST_SPEC,
-    _agent,
-    _issue_branch,
 )
 
 # The pre-rebase head this stage reads for itself and pins its push to. A

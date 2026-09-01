@@ -15,7 +15,6 @@ from orchestrator.workflow.stages.decomposition import (
     late_models as _models,
     late_session as _session,
 )
-
 from tests.workflow.fixtures import BACKEND_CODEX
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
@@ -26,8 +25,6 @@ from tests.workflow.stages.decomposition.late_test_support import (
     LATE_BACKEND,
     LATE_SPEC,
     OTHER_SHA,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     ROLE_DECOMPOSER,
     late_generation,
 )

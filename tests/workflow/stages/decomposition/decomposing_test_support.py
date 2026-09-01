@@ -2,18 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-
 from orchestrator.workflow.stages.decomposition import run as _decomposing
-
 from tests.support.fakes import (
     FakeGitHubClient,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
-)
-from tests.workflow.fixtures import (
     _manifest,
+    _PatchedWorkflowMixin,
 )
 
 KEY_DECOMPOSER_AGENT = "decomposer_agent"

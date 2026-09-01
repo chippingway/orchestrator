@@ -8,7 +8,6 @@ import threading
 import time
 from contextlib import contextmanager
 
-
 _ALPHA_REPO = "alpha/one"
 _BETA_REPO = "beta/two"
 _WORKER_WAIT_SECONDS = 5.0

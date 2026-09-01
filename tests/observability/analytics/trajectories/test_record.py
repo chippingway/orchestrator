@@ -3,32 +3,16 @@
 """Analytics trajectory core recording tests."""
 
 import json
-
-
 import os
-
-
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
 
-
 from orchestrator.observability.analytics.trajectories import models as trajectory_models
-
-
-
 from tests.observability.analytics.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
-
-
 from tests.observability.analytics.analytics_trajectory_cases import (
     CLAUDE_TRAJECTORY_INPUT_TOKENS,
     CLAUDE_TRAJECTORY_OUTPUT_TOKENS,
@@ -37,8 +21,6 @@ from tests.observability.analytics.analytics_trajectory_cases import (
     claude_trajectory_stdout as _claude_trajectory_stdout,
     codex_trajectory_stdout as _codex_trajectory_stdout,
 )
-
-
 from tests.observability.analytics.trajectories import (
     trajectories_test_support as _support,
 )

@@ -41,21 +41,19 @@ then.
 from __future__ import annotations
 
 import unittest
-
 from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit
-
 from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.fixtures import MEASURED_CANDIDATE_SHA, _agent
 from tests.workflow.stages.conflicts.conflict_resume_test_support import (
     _MovesThePullRequest,
 )
 from tests.workflow.stages.conflicts.conflicts_test_support import (
-    RESOLVED_HEAD_SHA,
     CONFLICT_PR_HEAD_SHA,
     MOVED_PR_HEAD_SHA,
+    RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
 )
 

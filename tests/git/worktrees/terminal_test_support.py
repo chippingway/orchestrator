@@ -10,7 +10,6 @@ from pathlib import Path
 
 from orchestrator import config
 from orchestrator.git.worktrees import paths
-
 from tests.workflow.stages.question.question_real_git_test_support import (
     _git_env,
     _run_git,

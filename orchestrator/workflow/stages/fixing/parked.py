@@ -30,17 +30,16 @@ answer for the human.
 """
 from __future__ import annotations
 
-
 from orchestrator.git.base_sync import state as _base_sync_state
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
-from orchestrator.workflow.stages.fixing import continue_command as _continue_command
-from orchestrator.workflow.stages.fixing import drift as _drift
-from orchestrator.workflow.stages.fixing import models as _models
-from orchestrator.workflow.stages.fixing import state as _state
-from orchestrator.workflow.stages.validating import recovery as _validating_recovery
-from orchestrator.workflow.stages.validating import state as _validating_state
+from orchestrator.workflow.engine import comments as _comments, messages as _messages
+from orchestrator.workflow.stages.fixing import (
+    bookmarks as _bookmarks,
+    continue_command as _continue_command,
+    drift as _drift,
+    models as _models,
+    state as _state,
+)
+from orchestrator.workflow.stages.validating import recovery as _validating_recovery, state as _validating_state
 from orchestrator.workflow.state import WorkflowLabel
 
 

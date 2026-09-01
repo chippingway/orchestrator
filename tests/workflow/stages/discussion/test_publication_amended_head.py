@@ -40,7 +40,6 @@ from orchestrator.workflow.stages.discussion import (
     models as _models,
     publication as _publication,
 )
-
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import KEY_PARK_REASON
 from tests.workflow.git_owners import seam_patch

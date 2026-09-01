@@ -37,14 +37,15 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import terminals as _terminals
-from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
-from orchestrator.workflow.stages.fixing import feedback as _feedback
-from orchestrator.workflow.stages.fixing import models as _models
-from orchestrator.workflow.stages.fixing import parked as _parked
-from orchestrator.workflow.stages.fixing import resume as _resume
-from orchestrator.workflow.stages.fixing import state as _state
+from orchestrator.workflow.engine import guards as _guards, terminals as _terminals
+from orchestrator.workflow.stages.fixing import (
+    bookmarks as _bookmarks,
+    feedback as _feedback,
+    models as _models,
+    parked as _parked,
+    resume as _resume,
+    state as _state,
+)
 from orchestrator.workflow.stages.implementing import (
     late_push as _late_push,
     late_reconcile as _late_reconcile,

@@ -6,7 +6,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import comments, drift
-
 from tests.workflow.engine import drift_test_support as support
 
 

@@ -17,7 +17,6 @@ from orchestrator.observability.usage import (
 )
 from orchestrator.observability.usage.trajectory_models import TurnUsage
 
-
 TurnUsageRow = tuple[int, str, protocol.TokenBucket]
 
 

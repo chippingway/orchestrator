@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.stages import tracked_repos_test_support as support
-from tests.workflow.stages import tracked_readonly_test_support as readonly_support
+from tests.workflow.stages import (
+    tracked_readonly_test_support as readonly_support,
+    tracked_repos_test_support as support,
+)
 
 
 class DecomposerSpawnTrackedReposTest(

@@ -20,8 +20,7 @@ owner first never needs a name this module has not bound yet.
 """
 from __future__ import annotations
 
-from orchestrator.github import client as _client
-from orchestrator.github import pinned_state as _pinned_state
+from orchestrator.github import client as _client, pinned_state as _pinned_state
 
 __all__ = (
     "GitHubClient",

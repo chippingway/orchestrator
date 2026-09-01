@@ -35,11 +35,13 @@ from orchestrator import config
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import outcomes as _outcomes
-from orchestrator.workflow.stages.conflicts import resume as _resume
-from orchestrator.workflow.stages.conflicts import state as _state
-from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.stages.conflicts import (
+    models as _models,
+    outcomes as _outcomes,
+    resume as _resume,
+    state as _state,
+    transitions as _transitions,
+)
 from orchestrator.workflow.stages.implementing import (
     late_push as _late_push,
     late_records as _late_records,

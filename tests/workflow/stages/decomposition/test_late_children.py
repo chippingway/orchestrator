@@ -11,7 +11,13 @@ from orchestrator.workflow.late_split.models import MAX_LINEAGE_DEPTH
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
+from tests.support.fakes import make_issue
+from tests.workflow.fixtures import LABEL_DONE
+from tests.workflow.stages.decomposition.late_crash_support import (
+    recording_children,
+    refusing,
+    refusing_child_writes,
+)
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     CYCLE_ID,
@@ -19,13 +25,6 @@ from tests.workflow.stages.decomposition.late_test_support import (
     KEYS,
     LATE_ISSUE_NUMBER,
     ROOT_ISSUE,
-)
-from tests.support.fakes import make_issue
-from tests.workflow.fixtures import LABEL_DONE
-from tests.workflow.stages.decomposition.late_crash_support import (
-    recording_children,
-    refusing,
-    refusing_child_writes,
 )
 from tests.workflow.stages.decomposition.late_transaction_support import (
     CHILDREN,
@@ -35,8 +34,6 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     KEY_EXPECTED_CHILDREN,
     KEY_PARENT_NUMBER,
     KEY_UMBRELLA,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
     PARK_CHILDREN_FAILED,
     SNAPSHOT_REF,
     LateSplitCase,

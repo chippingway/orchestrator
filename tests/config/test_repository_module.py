@@ -7,8 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.config import config_test_support as _support
-from tests.config import config_test_values as _config_cases
+from tests.config import config_test_support as _support, config_test_values as _config_cases
 
 
 class RepositoryConfigModuleTest(unittest.TestCase):

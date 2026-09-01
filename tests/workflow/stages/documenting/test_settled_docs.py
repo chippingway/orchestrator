@@ -12,8 +12,6 @@ read a branch in sync with its remote as an issue no docs pass has run for.
 from __future__ import annotations
 
 import unittest
-
-from tests.workflow.fixtures import MEASURED_CANDIDATE_SHA
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
@@ -21,8 +19,7 @@ from orchestrator.git.measurement.models import (
     FrozenCommit,
     MeasurementFailure,
 )
-
-from tests.workflow.fixtures import _agent
+from tests.workflow.fixtures import MEASURED_CANDIDATE_SHA, _agent
 from tests.workflow.mid_run_effects import _MovesThePullRequest
 from tests.workflow.stages.documenting import (
     documenting_test_support as documenting_support,

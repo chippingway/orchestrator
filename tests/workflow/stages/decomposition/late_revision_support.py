@@ -19,15 +19,14 @@ from orchestrator.git.measurement.models import (
     AdditionMeasurement,
     MeasurementFailure,
 )
-
 from tests.support.fakes import FakeLabel
 from tests.workflow.stages.decomposition.late_content_support import (
     DRIFT_PARKED,
     EDITED_TITLE,
-    LateContentCase,
     REVISED_ADDITIONS,
     REVISED_BASE_SHA,
     REVISED_SHA,
+    LateContentCase,
     reply,
 )
 from tests.workflow.stages.decomposition.late_run_support import (

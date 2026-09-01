@@ -30,7 +30,6 @@ from orchestrator.observability.analytics.query.request_models import (
     ReadRequest,
 )
 
-
 LIMIT_FIELD = "limit"
 RECENT_EXIT_LIMIT = 50
 

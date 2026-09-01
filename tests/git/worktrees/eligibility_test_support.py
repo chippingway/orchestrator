@@ -20,7 +20,6 @@ from typing import Any
 
 from orchestrator import config
 from orchestrator.git.worktrees.models import IssueArtifacts, Retention
-
 from tests.git.worktrees.artifact_test_support import BASE_BRANCH
 from tests.support.fakes import (
     FakeGitHubClient,

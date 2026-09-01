@@ -47,7 +47,6 @@ from orchestrator.observability.dashboard.card_html import card_header_html
 from orchestrator.observability.dashboard.charts.usage import usage_over_time
 from orchestrator.observability.dashboard.render_config import PLOTLY_CONFIG
 
-
 TOKEN_TYPE_MODE = "type"
 
 BACKEND_MODE = "backend"

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import re
 
-
 TYPE = "type"
 MESSAGE = "message"
 USAGE = "usage"

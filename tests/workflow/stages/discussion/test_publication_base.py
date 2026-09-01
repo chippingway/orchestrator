@@ -24,13 +24,12 @@ import unittest
 from pathlib import Path
 
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     BASE_TIP_SHA,
     KEY_PARK_REASON,
     TEST_BASE_BRANCH,
-    _TEST_SPEC,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     COMMITTED_PATHS,
     DISCUSSION_SESSION,
@@ -38,8 +37,6 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     HEAD_BEFORE_ROUND,
     KEY_BASE_SHA,
     KEY_DISCUSSION_SESSION_ID,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_PLAN_PATH,
     KEY_ROUND_BRANCH,
     KEY_ROUND_OPEN,
@@ -47,8 +44,6 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     MOVED_HEAD,
     PARK_DISCUSSION_PLAN_INVALID,
     REMOTE_BASE_TIP,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     _DiscussionWorkflowMixin,
     _issue_branch,
     _seed_discussion,

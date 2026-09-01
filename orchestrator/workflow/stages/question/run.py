@@ -24,13 +24,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from orchestrator.agents import AgentResult
-from orchestrator.git.worktrees import creation as _worktree_creation
-from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.question import models as _models
-from orchestrator.workflow.stages.question import session as _session
-from orchestrator.workflow.stages.question import state as _state
+from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
+from orchestrator.workflow.engine import guards as _guards, usage as _usage
+from orchestrator.workflow.stages.question import models as _models, session as _session, state as _state
 
 
 def _execute_question_prompt(

@@ -9,20 +9,19 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import drift as _drift
-
-from tests.workflow.stages.implementing import fresh_test_support
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
-from tests.workflow.stages.implementing_fixing_test_cases import IssueScenario
 from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
-    _PatchedWorkflowMixin,
     _agent,
+    _PatchedWorkflowMixin,
 )
+from tests.workflow.stages.implementing import fresh_test_support
+from tests.workflow.stages.implementing_fixing_test_cases import IssueScenario
 
 AWAITING_HUMAN = "awaiting_human"
 RUN_AGENT = "run_agent"

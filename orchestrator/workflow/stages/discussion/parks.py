@@ -47,10 +47,8 @@ import logging
 from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.stages.discussion import models as _models
-from orchestrator.workflow.stages.discussion import state as _state
+from orchestrator.workflow.engine import guards as _guards, messages as _messages
+from orchestrator.workflow.stages.discussion import models as _models, state as _state
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")

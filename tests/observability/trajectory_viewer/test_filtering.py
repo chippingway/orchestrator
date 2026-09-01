@@ -16,7 +16,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     step,
 )
 
-
 _REPO_A = "a/a"
 
 _REPO_B = "b/b"

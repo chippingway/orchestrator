@@ -15,14 +15,12 @@ from __future__ import annotations
 
 import subprocess
 import unittest
-
 from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git import commands
 from orchestrator.git.snapshots import namespace, refs
-
 from tests.git.snapshots.snapshot_test_support import real_remote
 
 REF = "refs/orchestrator/late-split/issue-41/cycle-3/gen-1"

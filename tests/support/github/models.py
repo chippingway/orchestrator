@@ -8,7 +8,6 @@ from datetime import datetime
 
 from tests.support.github.model_helpers import _copy_issue_comments
 
-
 _STATE_CLOSED = "closed"
 _STATE_OPEN = "open"
 

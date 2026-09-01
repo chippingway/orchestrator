@@ -6,7 +6,6 @@ from __future__ import annotations
 from tests.support.fakes import FakeLabel, FakePR, FakeUser
 from tests.workflow.repo_values import _TEST_SPEC
 
-
 OUTSIDER_LOGIN = "outsider"
 ALLOWED_LOGIN = "geserdugarov"
 ALLOWLIST_CONFIG = "ALLOWED_ISSUE_AUTHORS"

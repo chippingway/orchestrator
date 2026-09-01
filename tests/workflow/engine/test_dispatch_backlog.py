@@ -9,12 +9,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator.github.labels import BACKLOG_LABEL
-from orchestrator.workflow.stages.implementing import handler as implementing
 from orchestrator.workflow.engine import dispatch, pickup
-
+from orchestrator.workflow.stages.implementing import handler as implementing
 from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
-
 
 _UNLABELED_BACKLOG_ISSUE = 701
 _IN_FLIGHT_BACKLOG_ISSUE = 702

@@ -6,24 +6,21 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.workflow.stages.question.question_relabel_test_support import (
-    RelabelCase,
-    _seed_relabel,
-)
 from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
-)
-from tests.workflow.fixtures import (
     _agent,
-)
-
-from tests.workflow.stages.question.question_test_support import (
-    _issue_branch,
 )
 from tests.workflow.stages.question.question_conversation_test_support import (
     _ImplementingStageCall,
     _QuestionWorkflowMixin,
+)
+from tests.workflow.stages.question.question_relabel_test_support import (
+    RelabelCase,
+    _seed_relabel,
+)
+from tests.workflow.stages.question.question_test_support import (
+    _issue_branch,
 )
 
 KEY_QUESTION_SESSION_ID = "question_session_id"

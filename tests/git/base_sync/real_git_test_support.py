@@ -12,8 +12,8 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git import authentication
 from orchestrator.git.base_sync import refresh
-
 from tests.git.base_sync.gate_reads_support import _gate_base_reads
+
 # The label and pull-request state this tree spells for itself, beside
 # the fixture literals every other base-sync case reads them from.
 from tests.git.base_sync.refresh_test_support import (

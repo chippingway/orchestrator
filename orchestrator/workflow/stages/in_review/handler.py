@@ -26,12 +26,13 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import terminals as _terminals
-from orchestrator.workflow.stages.in_review import drift as _drift
-from orchestrator.workflow.stages.in_review import feedback as _feedback
-from orchestrator.workflow.stages.in_review import merge_gate as _merge_gate
-from orchestrator.workflow.stages.in_review import models as _models
+from orchestrator.workflow.engine import guards as _guards, terminals as _terminals
+from orchestrator.workflow.stages.in_review import (
+    drift as _drift,
+    feedback as _feedback,
+    merge_gate as _merge_gate,
+    models as _models,
+)
 from orchestrator.workflow.state import WorkflowLabel
 
 

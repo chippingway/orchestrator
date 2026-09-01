@@ -88,13 +88,14 @@ from orchestrator import config
 from orchestrator.git.measurement import additions as _measurement
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import telemetry as _telemetry
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    guards as _guards,
+    messages as _messages,
+    prompts as _prompts,
+    usage as _usage,
+)
+from orchestrator.workflow.late_split import events as _events, telemetry as _telemetry
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LatePhase,
@@ -102,11 +103,9 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_content as _late_content,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
+    late_owner as _late_owner,
 )
-from orchestrator.workflow.stages.decomposition import late_owner as _late_owner
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateContentSettlement,
     _LateContentSignal,

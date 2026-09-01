@@ -8,7 +8,6 @@ import unittest
 
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.implementing import session_read as _session_read
-
 from tests.workflow.stages import full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE

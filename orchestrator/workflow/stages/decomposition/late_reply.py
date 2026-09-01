@@ -38,8 +38,7 @@ from typing import Any
 from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import LateVerdict
-from orchestrator.workflow.stages.decomposition import manifest as _manifest
-from orchestrator.workflow.stages.decomposition import validation as _validation
+from orchestrator.workflow.stages.decomposition import manifest as _manifest, validation as _validation
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateAdjudication,
 )

@@ -7,9 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-
 
 _IMPLEMENTING_LABEL = "workflow:implementing"
 _CLOSED_IMPLEMENTING_ISSUE = 301

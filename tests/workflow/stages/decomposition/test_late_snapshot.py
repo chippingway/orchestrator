@@ -13,13 +13,12 @@ from orchestrator.workflow.stages.decomposition import (
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
+from tests.workflow.stages.decomposition.late_seam_support import (
+    SnapshotSeed,
+)
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     KEYS,
-)
-from tests.workflow.stages.decomposition.late_seam_support import (
-    SnapshotSeed,
 )
 from tests.workflow.stages.decomposition.late_transaction_support import (
     EVENT_LATE_FAILURE,
@@ -28,8 +27,6 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     PARK_CHILDREN_FAILED,
     PARK_SNAPSHOT_FAILED,
     SNAPSHOT_REF,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
     LateSplitCase,
     child_marker,
 )

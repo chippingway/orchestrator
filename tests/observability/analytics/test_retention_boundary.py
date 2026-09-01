@@ -3,35 +3,21 @@
 """When the analytics prune must do nothing, and what a failed rewrite costs."""
 
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
 
-
-from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
-
-
-from tests.observability.analytics.analytics_jsonl_helpers import (
-    read_text as _read_text,
-    read_lines as _read_lines,
-    write_json_lines as _write_json_lines,
-    timestamp_days_ago as _ts_days_ago,
-)
-
-
-from orchestrator.observability.analytics import retention
-from orchestrator.observability.analytics import retention_rewrite
-
+from orchestrator.observability.analytics import retention, retention_rewrite
 from tests.observability.analytics import (
     retention_test_support as _support,
 )
-
+from tests.observability.analytics.analytics_jsonl_helpers import (
+    read_lines as _read_lines,
+    read_text as _read_text,
+    timestamp_days_ago as _ts_days_ago,
+    write_json_lines as _write_json_lines,
+)
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
 _PRUNE_NOW = _support.PRUNE_NOW
 

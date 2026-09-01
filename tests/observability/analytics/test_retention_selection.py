@@ -3,28 +3,19 @@
 """Which analytics records a by-age prune drops, and which it must keep."""
 
 import json
-
-
 import unittest
-
-
 from datetime import timedelta
 
-
-from tests.observability.analytics.analytics_jsonl_helpers import (
-    read_text as _read_text,
-    read_lines as _read_lines,
-    write_json_lines as _write_json_lines,
-    timestamp_days_ago as _ts_days_ago,
-)
-
-
 from orchestrator.observability.analytics import retention
-
 from tests.observability.analytics import (
     retention_test_support as _support,
 )
-
+from tests.observability.analytics.analytics_jsonl_helpers import (
+    read_lines as _read_lines,
+    read_text as _read_text,
+    timestamp_days_ago as _ts_days_ago,
+    write_json_lines as _write_json_lines,
+)
 
 _EVENT_VALUE = 'x'
 

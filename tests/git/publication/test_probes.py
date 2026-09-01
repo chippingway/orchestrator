@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.git import commands
 from orchestrator.git.publication import probes
-
 from tests.git.publication.publication_helpers import (
     DEFAULT_REVISION_RANGE,
     GIT_HELPER,

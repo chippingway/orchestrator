@@ -155,20 +155,20 @@ from types import MappingProxyType
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git.snapshots import namespace as _namespace
-from orchestrator.git.snapshots import refs as _snapshot_refs
-from orchestrator.git.worktrees import cleanup as _worktree_cleanup
-from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.git.snapshots import namespace as _namespace, refs as _snapshot_refs
+from orchestrator.git.worktrees import cleanup as _worktree_cleanup, paths as _worktree_paths
+from orchestrator.github import comments as _comments
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.github import comments as _comments
 from orchestrator.workflow.engine import observations as _observations
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import lineage as _lineage
-from orchestrator.workflow.late_split import state as _late_state
-from orchestrator.workflow.late_split import telemetry as _telemetry
+from orchestrator.workflow.late_split import (
+    events as _events,
+    formats as _formats,
+    lineage as _lineage,
+    state as _late_state,
+    telemetry as _telemetry,
+)
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateGeneration,
@@ -179,8 +179,8 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_publication as _late_publication,
+    state as _state,
 )
-from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import stage_name
 

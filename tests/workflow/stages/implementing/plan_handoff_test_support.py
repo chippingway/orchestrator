@@ -25,11 +25,10 @@ from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
     LABEL_DONE,
     STATE_CLOSED,
-    _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
-
 from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     DEV_SESSION,
     HEAD_AFTER_COMMIT,
@@ -37,16 +36,12 @@ from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     KEY_PLAN_PATH,
     KEY_PLAN_SHA,
     KEY_PR_NUMBER,
-)
-from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     KEY_READ_ONLY_BASELINE,
     KEY_ROUND_BRANCH,
     KEY_ROUND_SHA,
     PARK_DISCUSSION_PLAN_PUBLISHED,
     PUSH_BRANCH,
     RUN_AGENT,
-)
-from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     _ReadOnlyRelabelMixin,
     _seed_relabeled_discussion,
 )

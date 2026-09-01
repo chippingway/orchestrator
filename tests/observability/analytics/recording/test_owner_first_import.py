@@ -5,8 +5,6 @@
 import json
 import tempfile
 import unittest
-
-
 from pathlib import Path
 
 from tests.observability.observability_test_support import _run_import_probe

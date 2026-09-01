@@ -17,7 +17,6 @@ from orchestrator.workflow.stages.decomposition import (
     late_restart as _late_restart,
 )
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.stages.decomposition import late_restart_support as _fix
 from tests.workflow.stages.decomposition.late_seam_support import (
     local_teardown,

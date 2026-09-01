@@ -9,7 +9,6 @@ import unittest
 from pathlib import Path
 
 from orchestrator.git.worktrees import attribution
-
 from tests.git.worktrees.artifact_test_support import (
     COLLIDING_SLUGS,
     GADGET_SLUG,

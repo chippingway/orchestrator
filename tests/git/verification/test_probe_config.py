@@ -37,7 +37,6 @@ import unittest
 from pathlib import Path
 
 from orchestrator.git.verification import probes
-
 from tests.workflow.fixtures import TEST_BASE_BRANCH
 
 GIT_COMMAND = "git"

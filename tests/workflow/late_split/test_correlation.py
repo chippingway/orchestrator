@@ -9,7 +9,6 @@ from types import MappingProxyType
 from orchestrator.workflow.late_split import records as _records
 from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.late_split import generation_test_support as _support
 
 _MEASUREMENT, _VERDICT = _support.family_cases()[:2]

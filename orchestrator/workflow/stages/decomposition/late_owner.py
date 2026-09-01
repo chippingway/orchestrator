@@ -97,9 +97,7 @@ from __future__ import annotations
 import logging
 from dataclasses import replace
 
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import observations as _observations
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import comments as _comments, observations as _observations, usage as _usage
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateGeneration,
@@ -107,8 +105,6 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_notice as _late_notice,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (

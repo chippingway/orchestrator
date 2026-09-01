@@ -31,7 +31,6 @@ from pathlib import Path
 from orchestrator.observability.trajectory_viewer import parsing
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
-
 # Named as a literal rather than taken from `__name__`: an operator's level and
 # handler selection over the Streamlit log picks the read warning out by logger,
 # so the name has to stay put while the module holding it moves.

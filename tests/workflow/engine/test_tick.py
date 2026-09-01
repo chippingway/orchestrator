@@ -9,11 +9,9 @@ from unittest.mock import patch
 
 from orchestrator.skills import catalog
 from orchestrator.workflow.engine import dispatch, tick
-
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.git_owners import seam_patch
 from tests.workflow.repo_values import _TEST_SPEC
-
 
 _EXPECTED_PASSES = ("refresh", "sweep", "catalog", "dispatch")
 

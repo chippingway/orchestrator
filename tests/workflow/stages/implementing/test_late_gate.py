@@ -20,7 +20,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit
-
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_VALIDATING,

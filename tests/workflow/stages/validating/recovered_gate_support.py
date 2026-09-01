@@ -19,12 +19,12 @@ import pathlib
 from unittest import mock
 
 from orchestrator import config as _config
+
 # The recovery cases name this module `support` and read the frozen commit
 # off it rather than the measurement owner. Nothing here reads it, so the
 # same-name alias is what declares the import a re-export.
 from orchestrator.git.measurement.models import FrozenCommit as FrozenCommit
 from orchestrator.git.worktrees import paths as _worktree_paths
-
 from tests.support import fakes
 from tests.workflow import fixtures
 from tests.workflow.stages import implementing_fixing_test_cases

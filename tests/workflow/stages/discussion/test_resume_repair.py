@@ -28,23 +28,6 @@ from tests.workflow.fixtures import (
     KEY_PARK_REASON,
     _agent,
 )
-
-from tests.workflow.stages.discussion.discussion_test_support import (
-    DISCUSSION_RESPONSE,
-    DISCUSSION_SESSION,
-    DIRTY_OVERFLOW_COUNT,
-    HEAD_AFTER_COMMIT,
-    HEAD_BEFORE_ROUND,
-    PARK_DISCUSSION_COMMITS,
-    PARK_DISCUSSION_DIRTY,
-    PARK_DISCUSSION_UNREADABLE,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    RUN_AGENT,
-    UNMOVED_HEAD_RESUMED,
-    _DiscussionWorkflowMixin,
-    _dirty_files,
-)
 from tests.workflow.stages.discussion.discussion_resume_test_support import (
     DISCUSSION_REPLY,
     PARKED_WATERMARK,
@@ -52,6 +35,20 @@ from tests.workflow.stages.discussion.discussion_resume_test_support import (
     UNASKED_ROUND,
     _reply,
     _seed_parked_discussion,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
+    DIRTY_OVERFLOW_COUNT,
+    DISCUSSION_RESPONSE,
+    DISCUSSION_SESSION,
+    HEAD_AFTER_COMMIT,
+    HEAD_BEFORE_ROUND,
+    PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_DIRTY,
+    PARK_DISCUSSION_UNREADABLE,
+    RUN_AGENT,
+    UNMOVED_HEAD_RESUMED,
+    _dirty_files,
+    _DiscussionWorkflowMixin,
 )
 
 _DIRTIED_ISSUE_NUMBER = 1130

@@ -41,7 +41,6 @@ from orchestrator.observability.trajectory_viewer.models import (
 )
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
-
 TimelineUsagePair = tuple[TurnUsageView | None, TimelineEntry]
 BADGE_BY_KIND: Mapping[str, tuple[str, str]] = MappingProxyType(
     {

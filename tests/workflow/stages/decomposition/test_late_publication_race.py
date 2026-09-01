@@ -23,7 +23,6 @@ from orchestrator.workflow.late_split.models import LatePhase
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.stages.decomposition.late_close_race_support import (
@@ -43,8 +42,6 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     CHILDREN,
     KEY_LINKS_ANNOUNCED,
     KEY_PR_NUMBER,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
     HeldPlanPrSplitCase,
     label_of,
 )

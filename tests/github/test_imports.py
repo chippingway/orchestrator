@@ -9,10 +9,7 @@ import sys
 import unittest
 
 from orchestrator import github as _github
-from orchestrator.github import client as _github_client
-from orchestrator.github import comments as _comments
-from orchestrator.github import pinned_state as _pinned_state
-
+from orchestrator.github import client as _github_client, comments as _comments, pinned_state as _pinned_state
 
 # The package and every owner module. The initializer imports the `client`
 # owner, which pulls the whole mixin chain, and chain leaves import the package

@@ -7,12 +7,10 @@ import json
 import unittest
 from unittest.mock import patch
 
-from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.agents import AgentResult
+from orchestrator.observability.analytics import settings as analytics_settings
 from orchestrator.workflow.engine import usage as engine_usage
-
 from tests.support.fakes import FakeGitHubClient
-
 from tests.workflow.engine import usage_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE

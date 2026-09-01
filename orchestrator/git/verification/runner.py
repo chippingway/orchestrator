@@ -13,11 +13,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from orchestrator.agents import environment as _environment
-from orchestrator.agents import processes as _processes
-from orchestrator.git.verification import models as _models
-from orchestrator.git.verification import probes as _probes
-from orchestrator.git.verification import process as _process
+from orchestrator.agents import environment as _environment, processes as _processes
+from orchestrator.git.verification import models as _models, probes as _probes, process as _process
 
 
 def _run_verify_command(

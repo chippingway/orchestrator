@@ -22,7 +22,6 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git import authentication, commands, locks
 from orchestrator.git.worktrees import creation
-
 from tests.git.concurrency_test_support import (
     BARRIER_TIMEOUT_SECONDS,
     PROBE_DELAY_SECONDS,

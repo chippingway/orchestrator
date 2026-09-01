@@ -7,24 +7,21 @@ import time
 from pathlib import Path
 
 from orchestrator.workflow.engine import tick as _tick
-
 from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
+from tests.workflow.engine.dispatch_scheduler_test_support import (
+    _patch_process_issue,
+    _SchedulerWorkflowTest,
+)
+from tests.workflow.engine.dispatch_scheduler_workers import (
+    _GatedWorker,
+    _wait_for_first_started,
+    _wait_for_log,
+    patch_base_refresh,
+)
 from tests.workflow.fixtures import (
     LABEL_BLOCKED,
     LABEL_DECOMPOSING,
     LABEL_IMPLEMENTING,
-)
-
-from tests.workflow.engine.dispatch_scheduler_workers import (
-    patch_base_refresh,
-    _GatedWorker,
-    _wait_for_first_started,
-    _wait_for_log,
-)
-
-from tests.workflow.engine.dispatch_scheduler_test_support import (
-    _patch_process_issue,
-    _SchedulerWorkflowTest,
 )
 
 REPO_SLUG = "acme/widget"

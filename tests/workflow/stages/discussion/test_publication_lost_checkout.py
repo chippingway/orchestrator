@@ -46,7 +46,13 @@ from tests.workflow.fixtures import (
     STATE_CLOSED,
     _agent,
 )
-
+from tests.workflow.git_owners import seam_patch
+from tests.workflow.stages.discussion.discussion_resume_test_support import (
+    DISCUSSION_REPLY,
+    _mark_in_flight,
+    _reply,
+    _seed_parked_discussion,
+)
 from tests.workflow.stages.discussion.discussion_test_support import (
     CLEANUP_TERMINAL_BRANCH,
     DISCUSSION_SESSION,
@@ -55,16 +61,12 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     HEAD_AFTER_COMMIT,
     HEAD_BEFORE_ROUND,
     KEY_BASE_SHA,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_DISCUSSION_SESSION_ID,
     KEY_PLAN_PATH,
     KEY_PR_NUMBER,
     KEY_PUBLISHING_SHA,
     KEY_ROUND_BRANCH,
     KEY_ROUND_SHA,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     PARK_DISCUSSION_PLAN_PUBLISHED,
     PARK_DISCUSSION_PUSH_FAILED,
     REMOTE_BASE_TIP,
@@ -74,13 +76,6 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     _issue_branch,
     _seed_discussion,
 )
-from tests.workflow.stages.discussion.discussion_resume_test_support import (
-    DISCUSSION_REPLY,
-    _mark_in_flight,
-    _reply,
-    _seed_parked_discussion,
-)
-from tests.workflow.git_owners import seam_patch
 
 _PUBLISHED_ISSUE_NUMBER = 1280
 _UNPUSHED_ISSUE_NUMBER = 1281

@@ -6,9 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.stages.implementing import resume as _implementing_resume
-from orchestrator.workflow.stages.implementing import state as _implementing_state
-
+from orchestrator.workflow.stages.implementing import resume as _implementing_resume, state as _implementing_state
 from tests.workflow.stages.implementing import retry_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE

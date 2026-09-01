@@ -37,7 +37,6 @@ from typing import Any
 from orchestrator.observability.analytics.query.run_models import AgentExitRow
 from orchestrator.observability.dashboard import filters
 
-
 NO_AGENT_EXITS_MESSAGE = "No `agent_exit` rows match the current filters."
 RECENT_RUNS_LABEL = "Recent agent runs"
 

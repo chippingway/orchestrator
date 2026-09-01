@@ -25,7 +25,6 @@ import unittest
 from orchestrator.github.labels import PAUSED_LABEL
 from orchestrator.workflow.late_split.models import LatePhase
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.support.fakes import FakeLabel
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.stages.decomposition.late_cleanup_support import (

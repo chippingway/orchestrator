@@ -17,7 +17,6 @@ from tests.support.line_scanning import (
     _tracked_text_files,
 )
 
-
 _LineRuleCases = dict[str, tuple[str, list[int]]]
 _TEST_LINE_LIMIT = 120
 _LONG_PROSE_REPETITIONS = 40

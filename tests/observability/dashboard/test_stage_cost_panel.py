@@ -30,15 +30,14 @@ from orchestrator.observability.analytics.query.cost_models import (
     ReviewRoundBucketRow,
 )
 from orchestrator.observability.analytics.query.run_models import StageBreakdown
-from orchestrator.observability.dashboard import render_config
-from orchestrator.observability.dashboard import stage_cost_panel
+from orchestrator.observability.dashboard import render_config, stage_cost_panel
 from orchestrator.observability.dashboard.charts import cost_review, cost_stage
 from tests.observability.dashboard.cost_panel_test_support import (
     COLUMN_RATIO,
-    CostPanelStreamlit,
     LEFT,
-    RecordingCharts,
     RIGHT,
+    CostPanelStreamlit,
+    RecordingCharts,
     markup_in,
 )
 

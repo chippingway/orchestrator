@@ -6,13 +6,11 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from orchestrator.workflow.stages.validating import (
+    handler as _validating,
     watermarks as validating_watermarks,
 )
-from orchestrator.workflow.stages.validating import handler as _validating
-
 from tests.support import fakes as _fakes
 from tests.workflow import fixtures as _helpers
-
 
 BACKEND_CLAUDE = _helpers.BACKEND_CLAUDE
 EVENT_AGENT_EXIT = _helpers.EVENT_AGENT_EXIT

@@ -7,21 +7,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-
 from tests.support.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
 from tests.workflow.fixtures import (
     KEY_LAST_ACTION_COMMENT_ID,
-)
-from tests.workflow.fixtures import (
     LABEL_QUESTION,
     _agent,
 )
-
-from tests.workflow.stages.question.question_test_support import (
-    _seed_live_question_session,
-)
 from tests.workflow.stages.question.question_conversation_test_support import (
     _QuestionWorkflowMixin,
+)
+from tests.workflow.stages.question.question_test_support import (
+    _seed_live_question_session,
 )
 
 KEY_QUESTION_SESSION_ID = "question_session_id"

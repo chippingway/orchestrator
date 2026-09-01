@@ -51,18 +51,11 @@ from __future__ import annotations
 
 import logging
 
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import comments as _comments, messages as _messages
 from orchestrator.workflow.stages.decomposition import (
     late_content as _late_content,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_revision as _late_revision,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_session as _late_session,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
