@@ -398,6 +398,13 @@ tracked path the agent rewrote reports clean. Those entries are read separately 
 paths AND as a withheld `readable`, so a caller refusing on what git listed and one that has to prove the tree empty
 both fail closed on them.
 
+One flag on the status read protects the tree from the reader rather than the reader from the tree. `git status`
+refreshes the index as it goes and writes the refreshed stat data back, taking `index.lock` while it does, so a probe
+that was only asked a question would leave a change in the repository it is asking about and could fail on a lock
+neither it nor the agent running beside it needed. `_worktree_status` spells `--no-optional-locks` for that: nothing
+about the answer changes, only whether taking it leaves a trace, and its callers are deciding whether to publish or to
+reclaim rather than editing what they are deciding about.
+
 One more class sits on the individual call, and for the opposite reason: these ARE settings git reads, but it reads
 them from the environment, where a `-c` on the command line does not win. `_git_hardened` therefore takes an
 `env_extra` a caller applies over both the process environment and the hardening above, and the added-line

@@ -432,8 +432,15 @@ The schema is defined by `read_pinned_state` / `write_pinned_state` (see `github
 `PINNED_STATE_RE`). `read_pinned_state` trusts a comment as state only when it is authored by the account backing the
 orchestrator's token AND its whole body is the marker, so neither a third party's forged marker nor an ordinary
 bot-authored comment that embeds the marker in prose can preempt state (see
-[pinned-state authentication](../security.md#pinned-state-authentication)). The keys that matter for the state
-machine fall into a few groups:
+[pinned-state authentication](../security.md#pinned-state-authentication)).
+
+A comment that passes both checks is the state comment whatever its payload turns out to be. One that will not parse,
+or that parses into anything but a JSON object — `[]`, `7`, `null`, from a truncated write or a hand edit — is refused
+rather than handed on: the state reads back empty and flagged unparsed, so a reader deciding on the absence of a
+recorded branch or pull request can tell it from an issue that pinned nothing (both carry `{}`), and the comment id is
+kept, so the next write replaces the corruption in place instead of leaving a second pinned comment beside it.
+
+The keys that matter for the state machine fall into a few groups:
 
 - **Agent identity.** `dev_agent` + `dev_session_id` (locked dev session — see
   [in-flight session lock](../workflow/command-specs.md#in-flight-session-lock)),
