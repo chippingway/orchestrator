@@ -306,13 +306,18 @@ orchestrator/
                         derives, or whose read failed left out of the answer rather than reported empty -- and
                         still put to the attribution, since a repository this scan will not answer for is one the
                         flat branch on its clone could equally belong to
-      evidence.py       the six hardened reads a candidate is judged by -- a checkout that is a worktree of this
-                        clone and on one of this issue's own branch names, a tree that PROVED it carries nothing
-                        loose, a local branch tip, the commit the checkout's own HEAD stands on and which branch
-                        that HEAD is, what the REMOTE
-                        says a branch is at, and whether the base the remote named already contains a given tip
+      evidence.py       the seven hardened reads a candidate is judged by -- a checkout that is a worktree of
+                        this clone and on one of this issue's own branch names, a tree that PROVED it carries
+                        nothing loose, a local branch tip, the commit the checkout's own HEAD stands on and which
+                        branch that HEAD is, what the REMOTE
+                        says a branch is at, whether this clone's own object store has a given commit at all, and
+                        whether the base the remote named already contains a given tip
                         -- each answering "could not read" apart from git's own no, and a base nobody named
-                        counted as the first. The two remote questions go over the authenticated `ls-remote`
+                        counted as the first. The object-store read is what tells a commit only the remote
+                        carries from a repository that would not open, which the ancestry read below it answers
+                        alike; it peels to a commit, since `rev-parse --verify` hands a full object id back
+                        without ever looking the object up. The two remote questions go over the authenticated
+                        `ls-remote`
                         rather than to `refs/remotes/...`, which is a local ref the per-issue worktrees can write:
                         a base mirror repointed at an agent's own tip would otherwise read as a base that carries
                         its work. That read spawns processes, so it is behind a boundary of its own -- a probe
@@ -383,7 +388,15 @@ orchestrator/
                         orchestrator runs can write, so each record is put back through the classification --
                         the issue ended, nobody standing on the branch, the commit surviving its deletion -- and
                         spent on the commit that classification clears now rather than the one the note names,
-                        so a branch whose work moved on and has since been accounted for is still reclaimable. A
+                        so a branch whose work moved on and has since been accounted for is still reclaimable.
+                        It is also the one step here that fetches, and it fetches for that classification rather
+                        than for itself: a branch recreated on the remote from a clone this host has never seen
+                        stands on a commit no local ancestry read can measure, so the record would be kept and
+                        re-asked forever over an answer repetition does not change. The commit is brought into
+                        this clone first, which puts it within reach without making it evidence -- what lands is
+                        objects and a remote-tracking ref, and every reading that decides anything still comes
+                        from the remote. A fetch that failed changes nothing: the classification retains, and the
+                        record stays for the pass after. A
                         remote that no longer carries the branch is settled before any of that, since nothing to
                         delete needs no permission and no local state may hold it back. A remote that moved
                         past what was cleared deletes nothing and keeps its record: the branch is still standing
@@ -455,7 +468,8 @@ off a facade:
   `reclamation` is where that changes: it calls `evidence` for the readings it takes again at the boundary, `paths`
   for the two branch names and the one checkout path a teardown for an issue may touch — and for the issue a record
   names — `commands` and `locks` for the removal and the ref delete, `obligations` for the record either side of the
-  remote deletion, and `authentication` for the lease-pinned delete itself. `obligations` calls `commands`, `locks`,
+  remote deletion, and `authentication` for the lease-pinned delete itself and for the branch fetch that puts a
+  remote-only commit within reach of the classification a record is judged by. `obligations` calls `commands`, `locks`,
   and `paths` for the repository segment its namespace is keyed by, and reaches no remote. The verdict a teardown is
   handed is the whole of its permission, so that path reaches neither `eligibility` nor GitHub; the pass that starts
   from a record has no verdict and calls `eligibility` for one, which is the only upward reach in this package.

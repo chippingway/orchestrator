@@ -120,8 +120,10 @@ _OWNER_ONLY_NAMES = (
 # the clone resolution, the grouping over it and the shape that grouping
 # takes, and the per-clone, per-repository, and per-issue assembly. Then the
 # classification over what that scan found: the three-answer probe vocabulary
-# and the two records a verdict is made of, the six fail-closed reads and the
-# two runners under them, the issue, pinned-state, and pull-request reads
+# and the two records a verdict is made of, the seven fail-closed reads -- the
+# object-store one and the peel that makes it go there among them -- and the
+# three runners under them, the clone-side revision read the last of those
+# shares included, the issue, pinned-state, and pull-request reads
 # GitHub answers with and the boundaries around each of them, and the
 # composition that turns both into one verdict per candidate. Then the
 # teardown that spends one: the surfaces a candidate is taken from and what
@@ -132,8 +134,9 @@ _OWNER_ONLY_NAMES = (
 # the second readings a refused deletion is told apart by on either host, the
 # gates ordering the three, what a verdict clearing no commit for a branch
 # leaves, the line an unfindable leftover is reported on, and the pass that
-# finishes what an earlier one wrote down -- classification, the commit it
-# clears now, and all -- with the ledger under it: the namespace, the
+# finishes what an earlier one wrote down -- classification, the fetch that
+# puts a commit only the remote has within reach of one, the commit it clears
+# now, and all -- with the ledger under it: the namespace, the
 # repository's own key and the room it opens, the ref one branch is recorded
 # at, the write and the delete every note goes through, the value a record
 # carries when nothing was cleared and the reminder written at it, the
@@ -169,6 +172,7 @@ _OWNER_DEFINED = (
     ("_CHECKOUT_LOCKS", reclamation),
     ("_CLEANLINESS_REASONS", eligibility),
     ("_CLONE", reclamation),
+    ("_COMMIT_PEEL", evidence),
     ("_DIGEST_MARK", obligations),
     ("_GIT_NEGATIVE", evidence),
     ("_GIT_NOT_SYMBOLIC", reclamation),
@@ -217,6 +221,7 @@ _OWNER_DEFINED = (
     ("_branch_surfaces", reclamation),
     ("_branch_tip", eligibility),
     ("_candidate_issue_branches", recovery),
+    ("_carries_commit", evidence),
     ("_carrying_pull_request", claims),
     ("_checkout_entries", probes),
     ("_checkout_gitdir", reclamation),
@@ -306,6 +311,7 @@ _OWNER_DEFINED = (
     ("_resolved_commit", creation),
     ("_resolved_root", inventory),
     ("_resolved_tip", evidence),
+    ("_revision_read", evidence),
     ("_root_inventory", inventory),
     ("_run_decompose_worktree_removal", decomposition),
     ("_run_issue_worktree_removal", cleanup),
@@ -327,6 +333,7 @@ _OWNER_DEFINED = (
     ("_unproven_remote", reclamation),
     ("_unresolved", reclamation),
     ("_untouched", reclamation),
+    ("_within_reach", reclamation),
     ("_workflow_members", claims),
     ("_worktree_issue_numbers", probes),
     ("_worktree_path", paths),

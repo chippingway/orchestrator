@@ -7,8 +7,10 @@ issue has nothing left on this host is one the scan in ``inventory`` will
 never report again, so what leads a later pass back to it is the record the
 teardown wrote before it pushed -- and these cases are about that record: that
 it is there while the deletion is in flight, that a deletion which failed
-leaves it, that a deletion which happened does not, and that a pass with no
-candidate and a client of its own finishes what it names.
+leaves it, that a deletion which happened does not, that a pass with no
+candidate and a client of its own finishes what it names, and that a commit
+only the remote has is brought within reach before the record naming it is
+judged.
 
 Real refs and a real bare remote throughout, for the reason the teardown's own
 cases are: the record IS a ref in the clone, and a double of the ref store
@@ -43,10 +45,14 @@ from tests.git.worktrees.artifact_test_support import (
     _namespaced_branch,
     _spec,
 )
-from tests.git.worktrees.candidate_host_test_support import _branch_at
+from tests.git.worktrees.candidate_host_test_support import (
+    QUIET,
+    _branch_at,
+)
 from tests.git.worktrees.eligibility_test_support import (
     ISSUE_NUMBER,
     _github,
+    _pull_request,
     _terminal_issue,
 )
 from tests.git.worktrees.reclamation_test_support import (
@@ -68,6 +74,14 @@ _REMOTE_DELETE_SEAM = "_delete_remote_ref"
 _RECORD_SEAM = "_record_obligation"
 
 _READ_SEAM = "_recorded_obligations"
+
+_TARGET_FETCH_SEAM = "_authed_target_fetch"
+
+# The pull request that accounts for a commit no local read can measure, and
+# the clone it was pushed from.
+PR_NUMBER = 42
+
+PUBLISHER_NAME = "publisher"
 
 
 def _swept(gh, spec) -> tuple:
@@ -404,6 +418,26 @@ class ObligationSweepTest(_ReclaimTestCase):
 class RecordedPermissionTest(_ReclaimTestCase):
     """A record says which branch to ask about; what may go is asked again."""
 
+    def recreated_elsewhere(self) -> str:
+        """Put this branch back on the remote at a commit this clone lacks.
+
+        The reminder, the branch published from a clone of the remote this
+        host has nothing to do with, and the terminal pull request that
+        accounts for what it is standing on: every piece of the answer except
+        the objects, which reach this host only if something fetches them.
+        """
+        obligations._remind(self.spec, self.branch)
+        publisher = self.world.path(PUBLISHER_NAME)
+        _run_git(
+            "clone", QUIET,
+            str(self.world.remote), str(publisher),
+            cwd=self.clone,
+        )
+        recreated = self.world.commit_on(publisher, self.branch)
+        self.world.publish(publisher, self.branch, self.branch)
+        self.gh.add_pr(_pull_request(PR_NUMBER, self.branch, recreated))
+        return recreated
+
     def test_a_remote_gone_needs_no_permission(self) -> None:
         # Nothing to delete is nothing to clear. The local copy somebody
         # recreated with work of their own would keep every classification
@@ -467,6 +501,46 @@ class RecordedPermissionTest(_ReclaimTestCase):
         self.assertEqual(
             tuple(taken.outcome for taken in swept), (FAILED,),
         )
+        self.assertTrue(self.standing()[2])
+        self.assertNotEqual(
+            obligations._recorded_obligations(self.spec), (),
+        )
+
+    def test_a_remote_only_commit_is_reclaimed(self) -> None:
+        # Ancestry is a question about objects this clone holds, so a commit
+        # that has only ever existed on the remote leaves the base read
+        # unable to answer -- and an unanswerable read stops the
+        # classification before the pull request that accounts for the commit
+        # is ever reached. A record kept on that showing is one no repetition
+        # settles, so the commit is brought within reach first.
+        recreated = self.recreated_elsewhere()
+
+        self.assertIs(
+            evidence._carries_commit(self.spec, recreated),
+            ProbeAnswer.REFUTED,
+        )
+        self.assertEqual(
+            _settled(_swept(self.gh, self.spec)),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, CLEANED),),
+        )
+        self.assertFalse(self.standing()[2])
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+
+    def test_a_commit_nothing_fetched_is_kept(self) -> None:
+        # The fail-closed half: a fetch that did not run leaves the proof
+        # exactly where it was without one, so nothing is deleted -- and the
+        # record is still there, which is what has the pass after this one
+        # find the leftover rather than nothing.
+        self.recreated_elsewhere()
+        refused = authentication._failed_fetch("nothing came back")
+
+        with patch.object(
+            authentication, _TARGET_FETCH_SEAM, return_value=refused,
+        ) as asked:
+            swept = _swept(self.gh, self.spec)
+            asked.assert_called_once_with(self.spec, self.branch)
+
+        self.assertEqual(tuple(taken.outcome for taken in swept), (FAILED,))
         self.assertTrue(self.standing()[2])
         self.assertNotEqual(
             obligations._recorded_obligations(self.spec), (),

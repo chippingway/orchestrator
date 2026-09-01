@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """The reads an artifact has to survive before it can be reclaimed.
 
-Six questions: whether a checkout is carrying anything loose, whether it is
+Seven questions: whether a checkout is carrying anything loose, whether it is
 the checkout this issue's own creator made, what its branch is on, what its
-HEAD is on, what the remote says a branch is at, and whether the base the
-remote named already contains a given tip. What the answers are spent on is
+HEAD is on, what the remote says a branch is at, whether this clone's own
+object store has a given commit at all, and whether the base the remote named
+already contains a given tip. What the answers are spent on is
 ``eligibility``'s subject; what they ARE is this module's.
 
 A checkout's HEAD is asked about beside the branches because it is a tip in
@@ -75,6 +76,12 @@ _VERIFY_QUIETLY = ("--verify", "--quiet")
 
 _HEAD = "HEAD"
 
+# What makes a revision read go to the object store rather than take a name at
+# its word. `rev-parse --verify` hands a full object id straight back without
+# ever looking the object up, so the peel is the whole of the question when
+# what is being asked is whether this clone has the commit.
+_COMMIT_PEEL = "^{commit}"
+
 
 def _hardened_read(
     root: Path, *args: str,
@@ -140,6 +147,20 @@ def _resolved_tip(
     return BranchTip(answer=ProbeAnswer.CONFIRMED, sha=tip_sha)
 
 
+def _revision_read(spec: config.RepoSpec, revision: str) -> BranchTip:
+    """What this clone resolves one revision to, in the three answers.
+
+    The shape every clone-side revision read takes -- the argv, the lock the
+    refs move behind, and the subject a reading that failed is named by -- so
+    a branch and a bare object id are asked about in exactly the same way and
+    their negatives mean the same thing.
+    """
+    return _resolved_tip(
+        _clone_read(spec, "rev-parse", *_VERIFY_QUIETLY, revision),
+        f"{revision} in {spec.target_root}",
+    )
+
+
 def _local_branch_tip(spec: config.RepoSpec, branch: str) -> BranchTip:
     """The commit one local branch in this clone stands on.
 
@@ -154,11 +175,7 @@ def _local_branch_tip(spec: config.RepoSpec, branch: str) -> BranchTip:
     another tick's teardown -- which leaves nothing to reclaim rather than
     something to protect.
     """
-    ref = f"{_LOCAL_REF_PREFIX}{branch}"
-    return _resolved_tip(
-        _clone_read(spec, "rev-parse", *_VERIFY_QUIETLY, ref),
-        f"{ref} in {spec.target_root}",
-    )
+    return _revision_read(spec, f"{_LOCAL_REF_PREFIX}{branch}")
 
 
 def _checkout_tip(worktree: Path) -> BranchTip:
@@ -228,6 +245,24 @@ def _published_tip(spec: config.RepoSpec, branch: str) -> BranchTip:
     if not published:
         return BranchTip(answer=ProbeAnswer.REFUTED)
     return BranchTip(answer=ProbeAnswer.CONFIRMED, sha=published)
+
+
+def _carries_commit(spec: config.RepoSpec, sha: str) -> ProbeAnswer:
+    """Whether this clone can resolve `sha` in its own object store.
+
+    The question in front of the ancestry one. `merge-base --is-ancestor`
+    answers 128 for a commit this clone has never had, which is the status a
+    repository that would not open answers with too -- so a tip only the
+    remote carries stops the proof at "nobody could measure it", whatever a
+    pull request would have said about the commit. Put on its own, that case
+    is one a caller can act on: what is missing is objects, and objects can
+    be fetched.
+
+    `REFUTED` is the object genuinely not being here, which the peel is what
+    establishes: a bare full object id comes back from `rev-parse --verify`
+    without git ever looking for it.
+    """
+    return _revision_read(spec, f"{sha}{_COMMIT_PEEL}").answer
 
 
 def _base_contains(

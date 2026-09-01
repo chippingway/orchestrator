@@ -59,6 +59,16 @@ attempted at all. Finishing those records is this module's second entry point,
 and it needs no candidate: it reads what this host wrote down rather than what
 it still holds.
 
+That pass is also the one place here that fetches, and it fetches for the
+classification's sake rather than its own. A branch somebody recreated on the
+remote from a clone this host has never seen stands on a commit no local
+ancestry read can measure, and a read that cannot answer is a retention -- so
+the record would be kept and put again every pass, over an answer that does
+not change by being asked twice. The commit is brought into this clone before
+the record is classified, which puts it within reach without making it
+evidence: what a fetch lands is objects and a remote-tracking ref, and every
+reading that decides anything still comes from the remote itself.
+
 That is the whole of the retry: nothing is remembered in this process. A
 surface that failed is an artifact still on disk, still on the remote, or
 named by a record beside it, so the next pass reports the issue again, the
@@ -936,6 +946,7 @@ def _reclaimed_record(
     published = evidence._published_tip(spec, owed.subject)
     if published.answer is ProbeAnswer.REFUTED:
         return _discharged(spec, owed.subject, SurfaceOutcome.ABSENT)
+    _within_reach(spec, issue_number, owed.subject, published)
     verdict = eligibility._classify_artifacts(gh, IssueArtifacts(
         spec=spec,
         issue_number=issue_number,
@@ -955,6 +966,63 @@ def _reclaimed_record(
     return _reclaimed_remote_branch(
         spec, issue_number, owed.subject, cleared.sha,
     )
+
+
+def _within_reach(
+    spec: config.RepoSpec,
+    issue_number: int,
+    branch: str,
+    published: BranchTip,
+) -> None:
+    """Put the commit the remote is standing on where a proof can read it.
+
+    The one thing the classification cannot do for itself. It measures a tip
+    against the base by ancestry, and ancestry is a question about objects
+    this clone has: a branch somebody recreated on the remote from a clone
+    this host has never fetched leaves that read unable to answer at all, and
+    an unanswerable read is a retention. So the record would be kept, the
+    branch would be asked about again next pass, and the pull request that
+    safely accounts for the commit would never be reached -- forever, since
+    nothing about a remote-only commit changes by being asked twice.
+
+    Fetched here rather than in the classification, which is a pass that
+    reads and decides and writes nothing anywhere. This one already writes,
+    and what it takes is the ordinary authenticated branch fetch every other
+    caller in this orchestrator takes: the objects land in the store and the
+    remote-tracking ref beside them, neither of which is evidence -- every
+    reading that decides anything still comes from the remote itself.
+
+    Only when there is something to fetch, and only for a branch this
+    repository publishes this issue under, which is what the caller
+    established before it got here. A commit this clone already carries costs
+    one local read and no round trip.
+
+    Nothing is answered. A fetch that failed leaves the classification exactly
+    where it would have been without one, which is a retention that keeps the
+    record -- so the leftover stays discoverable and the pass after this one
+    tries again.
+    """
+    if published.answer is not ProbeAnswer.CONFIRMED:
+        return
+    if evidence._carries_commit(spec, published.sha) is ProbeAnswer.CONFIRMED:
+        return
+    try:
+        fetched = authentication._authed_target_fetch(spec, branch)
+    except Exception:
+        log.exception(
+            "issue=#%d fetching %r before classifying its record raised",
+            issue_number, branch,
+        )
+        return
+    if fetched.returncode != 0:
+        log.warning(
+            "issue=#%d %r is at %r on the remote and nowhere in this clone, "
+            "and the fetch that would bring it within reach failed: %s",
+            issue_number,
+            branch,
+            published.sha,
+            (fetched.stderr or "").strip(),
+        )
 
 
 def _cleared_tip(verdict: ArtifactVerdict, branch: str) -> ProvenTip | None:
