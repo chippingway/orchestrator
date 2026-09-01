@@ -70,6 +70,15 @@ _UNTRACKED_ALL = "--untracked-files=all"
 
 _IGNORE_SUBMODULES_NONE = "--ignore-submodules=none"
 
+# What keeps a READ from writing. `git status` refreshes the index as it goes
+# and writes the refreshed stat data back, which is a change to the repository
+# made by a probe that was only asked a question -- and one that takes
+# `index.lock` while it does it, so a status taken beside a running agent can
+# fail on a lock neither of them needed. Every caller here is deciding whether
+# to publish or to reclaim, and none of them is entitled to leave a mark on
+# the tree it is deciding about.
+_NO_OPTIONAL_LOCKS = "--no-optional-locks"
+
 # What every read of a path here asks for. Git's default output quotes a name
 # with anything unusual in it and separates records by newline, so a path can
 # arrive escaped, or split across what reads as two entries. NUL-delimited it
@@ -205,16 +214,25 @@ def _worktree_status(worktree: Path) -> _WorktreeStatus:
     otherwise, and it is the reason this answer is about the directory the
     caller named rather than the one the repository was talked into.
 
-    Neither says anything about the index, which is where the last way out
-    lives: `assume-unchanged` and `skip-worktree` are bits on an index entry
-    rather than config, so nothing above reaches them, and either one has
-    `status` skip the comparison and report a modified tracked file as clean.
+    Optional locks are off, which is what makes this a read. A `status` left
+    to itself refreshes the index and writes the new stat data back, so a
+    probe asking what a tree holds would modify the repository it is asking
+    about -- and would contend for `index.lock` with whatever else is running
+    in a tree an agent owns. Nothing about the answer changes; only whether
+    taking it leaves a trace.
+
+    Neither the envelope nor the flags above say anything about the index
+    CONTENTS, which is where the last way out lives: `assume-unchanged` and
+    `skip-worktree` are bits on an index entry rather than config, so nothing
+    above reaches them, and either one has `status` skip the comparison and
+    report a modified tracked file as clean.
     Those entries come back as paths AND withhold `readable`, because they are
     both things at once -- something the caller must refuse on, and a tree
     nothing here can call empty.
     """
     status_result = _commands._git_hardened(
         _commands._work_tree_arg(worktree),
+        _NO_OPTIONAL_LOCKS,
         "status", "--porcelain", _NUL_DELIMITED,
         _UNTRACKED_ALL, _IGNORE_SUBMODULES_NONE,
         cwd=worktree,

@@ -215,26 +215,31 @@ class GitHubPullRequestMixin(GitHubStateMixin):
         self,
         *,
         branch: str,
-        base: str,
+        base: str | None = None,
     ) -> PullRequest | None:
-        """Return an open PR for the repository-owned head branch."""
-        owner_login = self.repo.owner.login
-        head = f"{owner_login}:{branch}"
-        return next(
-            iter(self.repo.get_pulls(
-                state=_ISSUE_STATE_OPEN,
-                head=head,
-                base=base,
-            )),
-            None,
-        )
+        """Return an open PR for the repository-owned head branch.
+
+        `base` narrows the search to pull requests targeting one branch, which
+        is what a caller about to open or reuse a pull request for its own
+        cycle wants: a thread aimed somewhere else is not the one it would
+        push onto.
+
+        Omitting it widens the search to every base, which is what a caller
+        asking whether ANYBODY is still standing on this branch has to do. A
+        pull request a human retargeted onto a release line, or onto another
+        issue's branch, is still open on this head -- and a lookup pinned to
+        the configured base would report the branch as free.
+        """
+        return next(iter(self._branch_pulls(
+            branch, base, state=_ISSUE_STATE_OPEN,
+        )), None)
 
     def find_pr_for_commit(
         self,
         *,
         branch: str,
-        base: str,
         head_sha: str,
+        base: str | None = None,
     ) -> PullRequest | _UnreadablePrLookup | None:
         """Return the PR for this head branch that carries `head_sha`, any state.
 
@@ -267,6 +272,13 @@ class GitHubPullRequestMixin(GitHubStateMixin):
         that DOES carry it still wins -- a definite answer needs no other
         pull request to have been readable -- so the unreadable one only
         decides the case where nothing else matched.
+
+        `base` narrows the search the way it does for the open-PR lookup, and
+        is omitted by a caller asking whether GitHub holds this commit at all.
+        A pull request retargeted onto another base carries the commit exactly
+        as well as one aimed at the configured base, so a caller measuring
+        whether work is published -- rather than which thread it would push
+        onto -- must not filter it out.
 
         The enumeration itself is the same question one level up, and it fails
         the same way: `get_pulls` is a request, and the pages it is walked
@@ -358,16 +370,32 @@ class GitHubPullRequestMixin(GitHubStateMixin):
             bot_login=getattr(self, "_bot_login", None),
         )
 
-    def _scan_prs_for_commit(self, branch: str, base: str, head_sha: str):
+    def _scan_prs_for_commit(
+        self, branch: str, base: str | None, head_sha: str,
+    ):
         """Walk this branch's pull requests for one carrying `head_sha`."""
-        owner_login = self.repo.owner.login
-        head = f"{owner_login}:{branch}"
         unreadable = False
-        for pull_request in self.repo.get_pulls(
-            state=_ISSUE_STATE_ALL, head=head, base=base,
+        for pull_request in self._branch_pulls(
+            branch, base, state=_ISSUE_STATE_ALL,
         ):
             carries = _pr_carries_commit(pull_request, head_sha)
             if carries:
                 return pull_request
             unreadable = unreadable or carries is None
         return PR_LOOKUP_UNREADABLE if unreadable else None
+
+    def _branch_pulls(
+        self, branch: str, base: str | None, *, state: str,
+    ) -> Iterable[PullRequest]:
+        """The pull requests on one repository-owned head branch.
+
+        The `base` filter is left off the query entirely when the caller named
+        none, rather than passed as an empty value: PyGithub omits an argument
+        it was never given, and a base spelled as "" would be a base no pull
+        request targets.
+        """
+        owner_login = self.repo.owner.login
+        query = {"state": state, "head": f"{owner_login}:{branch}"}
+        if base is not None:
+            query["base"] = base
+        return self.repo.get_pulls(**query)

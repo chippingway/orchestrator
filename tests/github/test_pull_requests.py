@@ -164,6 +164,19 @@ class PullRequestLookupTest(_PullRequestClientTestCase):
             base=_BASE,
         )
 
+    def test_an_unnamed_base_is_left_off(self) -> None:
+        # A caller asking whether anybody is still standing on this branch has
+        # to see a pull request retargeted anywhere, so the base filter is
+        # omitted from the query rather than sent as an empty value -- which
+        # would be a base no pull request targets.
+        self.gh.repo.get_pulls.return_value = iter([])
+
+        self.gh.find_open_pr(branch=_BRANCH)
+
+        self.gh.repo.get_pulls.assert_called_once_with(
+            state=_STATE_OPEN, head=f"{_OWNER_LOGIN}:{_BRANCH}",
+        )
+
     def test_missing_open_pr_is_none(self) -> None:
         self.gh.repo.get_pulls.return_value = iter([])
 
