@@ -18,7 +18,9 @@ fail-closed local reads in ``evidence`` and the issue, pinned-state, and
 pull-request reads in ``claims``; the teardown that spends one of its
 verdicts -- revalidating each artifact at the boundary it is about to be
 deleted at, and reporting what it left on every surface -- lives in
-``reclamation``. Every worktree name is defined on one of these owners, and
+``reclamation``, over the ledger in ``obligations`` that carries a remote
+deletion it began across a restart. Every worktree name is defined on one of
+these owners, and
 callers import the owner they need directly, so this initializer binds nothing
 and importing one owner never drags the others in.
 
@@ -27,7 +29,8 @@ republishes these names either, so each answers on the owner that defines it
 and a test intercepting one targets that owner: the stage handlers name it
 just as the ``git/base_sync/`` and ``workflow/engine/`` callers do.
 ``attribution``, ``claims``, ``cleanup``, ``creation``, ``decomposition``,
-``evidence``, ``inventory``, ``probes``, ``reclamation``, and ``terminal``
-name their logger ``orchestrator.worktree_lifecycle`` rather than after this
-package, because that is the name operator log filters select on.
+``evidence``, ``inventory``, ``obligations``, ``probes``, ``reclamation``,
+and ``terminal`` name their logger ``orchestrator.worktree_lifecycle`` rather
+than after this package, because that is the name operator log filters select
+on.
 """

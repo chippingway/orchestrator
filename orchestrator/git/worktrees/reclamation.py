@@ -38,17 +38,22 @@ the last thing that would have led anybody back to the remote. Every step
 therefore refuses while a surface behind it is still standing, and a teardown
 that failed halfway leaves this host holding the thread.
 
-A branch is one artifact on two hosts, so its two surfaces settle together or
-not at all. The local half never comes back a success while the remote half is
-unsettled -- not even when the ref is already gone from this clone, which is
-the one shape where holding the anchor back is not available: nothing on this
-host names that issue any more, so no later scan will reach what is left on
-the remote, and this pass saying so is the only record there will be.
+That ordering works while this host still holds something. The shape it
+cannot cover is the local artifact that went before the teardown reached it --
+a human deleting the branch a moment earlier -- since then there is nothing
+left to keep back, and a remote deletion that fails afterwards is a leftover
+nothing here names any more. So the deletion is written down in
+``obligations`` before it is attempted, and let go once it has happened or
+stopped being owed; a deletion that could not be written down first is not
+attempted at all. Finishing those records is this module's second entry point,
+and it needs no candidate: it reads what this host wrote down rather than what
+it still holds.
 
-That is the whole of the retry, too: nothing is remembered here. A surface
-that failed is an artifact still on disk or still on the remote, so the next
-scan reports the issue again, the classification proves it again, and this
-runs again -- across a restart exactly as within one process.
+That is the whole of the retry: nothing is remembered in this process. A
+surface that failed is an artifact still on disk, still on the remote, or
+named by a record beside it, so the next pass reports the issue again, the
+classification proves it again, and this runs again -- across a restart
+exactly as within one process.
 """
 from __future__ import annotations
 
@@ -58,8 +63,9 @@ from itertools import chain
 from pathlib import Path
 from types import MappingProxyType
 
+from orchestrator import config
 from orchestrator.git import authentication, commands, locks
-from orchestrator.git.worktrees import evidence, paths
+from orchestrator.git.worktrees import evidence, obligations, paths
 from orchestrator.git.worktrees.models import (
     ArtifactReclamation,
     ArtifactSurface,
@@ -375,7 +381,9 @@ def _reclaimed_branch(
     tip = evidence._local_branch_tip(artifacts.spec, branch)
     remote = SurfaceOutcome.FAILED
     if _unmoved(artifacts, branch, tip, cleared_sha):
-        remote = _reclaimed_remote_branch(artifacts, branch, cleared_sha)
+        remote = _reclaimed_remote_branch(
+            artifacts.spec, artifacts.issue_number, branch, cleared_sha,
+        )
     return _branch_surfaces(branch, remote, _reclaimed_local_branch(
         artifacts, branch, tip, remote=remote, freed=freed,
     ))
@@ -411,7 +419,10 @@ def _unmoved(
 
 
 def _reclaimed_remote_branch(
-    artifacts: IssueArtifacts, branch: str, proven_sha: str | None,
+    spec: config.RepoSpec,
+    issue_number: int,
+    branch: str,
+    cleared_sha: str | None,
 ) -> SurfaceOutcome:
     """Delete the remote's copy of one branch, or say why it is still there.
 
@@ -422,45 +433,154 @@ def _reclaimed_remote_branch(
 
     A branch the remote does not carry is the ordinary terminal shape -- a
     merged pull request's head branch is deleted there -- and it is success.
+
+    A branch the remote carries at some other commit is nobody's to delete on
+    the strength of what was cleared, and it is the one answer that ends the
+    obligation as well: what a record entitles is a deletion at that commit,
+    and the remote has moved past it.
+
+    Taken as a commit and a name rather than as a candidate, so the pass that
+    reads a record back spends it through exactly these steps.
     """
-    published = evidence._published_tip(artifacts.spec, branch)
-    if published.answer is not ProbeAnswer.CONFIRMED:
-        return _unresolved(artifacts, branch, published, _REMOTE)
-    if published.sha != proven_sha:
+    published = evidence._published_tip(spec, branch)
+    if published.answer is ProbeAnswer.REFUTED:
+        return _discharged(spec, branch, SurfaceOutcome.ABSENT)
+    if published.answer is ProbeAnswer.UNREADABLE:
+        return _unresolved(issue_number, branch, published, _REMOTE)
+    if published.sha != cleared_sha:
         log.warning(
-            "issue=#%d keeping %r on the remote: it carries %r where the "
-            "verdict cleared %r",
-            artifacts.issue_number, branch, published.sha, proven_sha,
+            "issue=#%d keeping %r on the remote: it carries %r where what was "
+            "cleared is %r", issue_number, branch, published.sha, cleared_sha,
+        )
+        return _discharged(spec, branch, SurfaceOutcome.FAILED)
+    return _recorded_deletion(spec, issue_number, branch, published.sha)
+
+
+def _recorded_deletion(
+    spec: config.RepoSpec, issue_number: int, branch: str, expected: str,
+) -> SurfaceOutcome:
+    """The deletion, written down before it runs and let go once it has.
+
+    The record is what a later pass finds this by, and it is written first
+    because the failure worth surviving is the one that takes the process with
+    it. A record that could not be written stops the deletion rather than
+    letting it run uncovered: a push that fails leaves a branch on the remote,
+    and without the note nothing on this host may still name the issue it
+    belonged to.
+    """
+    if not obligations._record_obligation(spec, branch, expected):
+        log.warning(
+            "issue=#%d keeping %r on the remote: what this host would owe "
+            "afterwards could not be written down first",
+            issue_number, branch,
         )
         return SurfaceOutcome.FAILED
-    return _deleted_remote_branch(artifacts, branch, published.sha)
+    if not _deleted_remote_branch(spec, issue_number, branch, expected):
+        return SurfaceOutcome.FAILED
+    return _discharged(spec, branch, SurfaceOutcome.CLEANED)
 
 
 def _deleted_remote_branch(
-    artifacts: IssueArtifacts, branch: str, expected: str,
-) -> SurfaceOutcome:
+    spec: config.RepoSpec, issue_number: int, branch: str, expected: str,
+) -> bool:
     """The push that deletes, inside the boundary that owns its failures.
 
-    Pinned to the commit just read, which is the commit the verdict cleared:
-    the same lease the immutable snapshot namespace is reclaimed under. A
-    branch somebody pushed to between the reading and this push fails the
-    lease instead of being overwritten by it, which is the only revalidation
+    Pinned to the commit just read, which is the commit that was cleared: the
+    same lease the immutable snapshot namespace is reclaimed under. A branch
+    somebody pushed to between the reading and this push fails the lease
+    instead of being overwritten by it, which is the only revalidation
     available on a host this process does not hold a lock on.
     """
     try:
-        deleted = authentication._delete_remote_ref(
-            artifacts.spec,
-            artifacts.spec.target_root,
-            ref=_branch_ref(branch),
-            expected=expected,
+        return authentication._delete_remote_ref(
+            spec, spec.target_root, ref=_branch_ref(branch), expected=expected,
         )
     except Exception:
         log.exception(
             "issue=#%d deleting the remote branch %r raised",
-            artifacts.issue_number, branch,
+            issue_number, branch,
         )
-        return SurfaceOutcome.FAILED
-    return SurfaceOutcome.CLEANED if deleted else SurfaceOutcome.FAILED
+        return False
+
+
+def _discharged(
+    spec: config.RepoSpec, branch: str, outcome: SurfaceOutcome,
+) -> SurfaceOutcome:
+    """Let go of the record for a deletion nobody owes any more, and answer.
+
+    Called wherever this pass has established that the remote need not be
+    asked about that commit again: it went, it was already gone, or the branch
+    has moved past what was cleared. A record left behind any of those is one
+    every later pass would spend a round trip on and reach the same answer.
+
+    A record that would not go away does not change the answer. What it
+    covered is settled either way, and the pass after this one asks the remote
+    once more, finds nothing owed, and lets it go then.
+    """
+    obligations._discharge_obligation(spec, branch)
+    return outcome
+
+
+def _reclaim_recorded_remotes(
+    spec: config.RepoSpec,
+) -> tuple[SurfaceResult, ...]:
+    """Finish the remote deletions this host wrote down and did not complete.
+
+    The pass that needs no candidate. What the scan in ``inventory`` reports is
+    what this host still holds, and the leftover this exists for is the one
+    with nothing left to hold: a remote branch whose local artifacts went
+    before the deletion that was to follow them. So this reads what was
+    written down rather than what is on disk, which is what makes the retry
+    survive a restart rather than a tick.
+
+    Every record is put back through the steps the teardown that wrote it was
+    on -- the remote asked what the branch is at, the answer measured against
+    the commit that was cleared, the deletion pinned to it -- because a record
+    is a note about a moment too, and the moment has passed.
+
+    A record this repository does not own is passed over rather than reported.
+    Several `REPOS` entries may share a clone and so this ledger, and a branch
+    another of them publishes has a remote this one knows nothing about; a ref
+    naming something no entry publishes is nobody's to spend either.
+    """
+    recorded = obligations._recorded_obligations(spec)
+    if recorded is None:
+        return (SurfaceResult(
+            ArtifactSurface.REMOTE_BRANCH,
+            obligations.RECLAIM_NAMESPACE,
+            SurfaceOutcome.FAILED,
+        ),)
+    settled = []
+    for owed in recorded:
+        issue_number = _owed_issue(spec, owed.subject)
+        if issue_number is not None:
+            settled.append(SurfaceResult(
+                ArtifactSurface.REMOTE_BRANCH,
+                owed.subject,
+                _reclaimed_remote_branch(
+                    spec, issue_number, owed.subject, owed.sha,
+                ),
+            ))
+    return tuple(settled)
+
+
+def _owed_issue(spec: config.RepoSpec, branch: str) -> int | None:
+    """The issue one recorded branch belongs to, when this repository owns it.
+
+    The ownership policy the teardown applies to a verdict's branches, applied
+    to a name that came off a ref store instead: the issue number is read back
+    out of the name, and the name has to be one of the two this repository
+    publishes that issue under. Everything else answers None, and a caller
+    that has to delete something on a remote may not act on any of them.
+    """
+    issue_number = paths._issue_segment_number(
+        branch.rsplit("/", 1)[-1],
+    )
+    if issue_number is None:
+        return None
+    if branch not in paths._issue_branch_names(spec, issue_number):
+        return None
+    return issue_number
 
 
 def _reclaimed_local_branch(
@@ -480,16 +600,24 @@ def _reclaimed_local_branch(
     that artifact unfindable. The checkout that was on it has to be gone too,
     which is git's rule and this one's both.
 
-    A read that established nothing is answered before either gate, because it
-    is the one answer that is about this branch rather than about what is
-    standing beside it.
+    What this branch's own read established is answered before either gate,
+    because it is about the branch rather than about what is standing beside
+    it: a ref nobody could read is a refusal, and a ref already gone is a
+    deletion that has happened. What a failed remote step then needs is
+    carried by the record that step wrote, not by a surface reported as though
+    the branch were still here to find.
     """
     if tip.answer is ProbeAnswer.UNREADABLE:
-        return _unresolved(artifacts, branch, tip, _CLONE)
-    if remote is SurfaceOutcome.FAILED:
-        return _kept_for_the_remote(artifacts, branch, tip)
+        return _unresolved(artifacts.issue_number, branch, tip, _CLONE)
     if tip.answer is ProbeAnswer.REFUTED:
         return SurfaceOutcome.ABSENT
+    if remote is SurfaceOutcome.FAILED:
+        log.warning(
+            "issue=#%d keeping the local branch %r: its copy on the remote is "
+            "still standing, and this branch is what leads back to it",
+            artifacts.issue_number, branch,
+        )
+        return SurfaceOutcome.FAILED
     if not freed:
         log.warning(
             "issue=#%d keeping the local branch %r: the checkout that stood "
@@ -497,41 +625,6 @@ def _reclaimed_local_branch(
         )
         return SurfaceOutcome.FAILED
     return _deleted_local_branch(artifacts, branch, tip.sha)
-
-
-def _kept_for_the_remote(
-    artifacts: IssueArtifacts, branch: str, tip: BranchTip,
-) -> SurfaceOutcome:
-    """The local half of a branch whose copy on the remote is still standing.
-
-    Never a success, whichever way the local half went, because these two
-    surfaces are one branch on two hosts: a local half reported done beside a
-    remote half nobody could delete would have the pair read as half
-    reclaimed and half clean, and the caller act on the second.
-
-    A branch this host still holds is kept, which is the ordinary shape: it is
-    what the next scan finds the candidate by, and through the candidate the
-    remote copy this pass could not take.
-
-    A branch already gone is the shape nothing can be held back for, and it is
-    said out loud for exactly that reason. The artifact on the remote has
-    outlived every name this host had for the issue, so no later pass will
-    reach it and this line is the only record that it is there.
-    """
-    if tip.answer is ProbeAnswer.REFUTED:
-        log.warning(
-            "issue=#%d %r is gone from this clone while the remote still "
-            "carries it: nothing here names that issue any more, so no later "
-            "pass will find what is left",
-            artifacts.issue_number, branch,
-        )
-        return SurfaceOutcome.FAILED
-    log.warning(
-        "issue=#%d keeping the local branch %r: its copy on the remote is "
-        "still standing, and this branch is what leads back to it",
-        artifacts.issue_number, branch,
-    )
-    return SurfaceOutcome.FAILED
 
 
 def _deleted_local_branch(
@@ -633,7 +726,7 @@ def _standing_on(entry: str, branch: str) -> bool:
 
 
 def _unresolved(
-    artifacts: IssueArtifacts, branch: str, tip: BranchTip, host: str,
+    issue_number: int, branch: str, tip: BranchTip, host: str,
 ) -> SurfaceOutcome:
     """What a ref that did not resolve leaves the step that was to delete it.
 
@@ -647,6 +740,6 @@ def _unresolved(
         return SurfaceOutcome.ABSENT
     log.warning(
         "issue=#%d keeping %r: %s would not say what it is at",
-        artifacts.issue_number, branch, host,
+        issue_number, branch, host,
     )
     return SurfaceOutcome.FAILED

@@ -32,11 +32,9 @@ from orchestrator.git.worktrees.models import (
 )
 
 from tests.git.worktrees.artifact_test_support import (
-    LIFECYCLE_LOGGER,
     WIDGET_SLUG,
     _namespaced_branch,
 )
-from tests.git.worktrees.candidate_host_test_support import _branch_at
 from tests.git.worktrees.eligibility_test_support import (
     ISSUE_NUMBER,
     _candidate,
@@ -62,18 +60,16 @@ FAILED = SurfaceOutcome.FAILED
 # local two are the head of their argv, and the remote one is the transport
 # call that carries the lease. The heads are matched whole, so the reads these
 # steps take -- a `worktree list` under the same first word -- are not one of
-# them.
+# them, and the branch deletion is told from the record written either side of
+# it by the ref it names.
 _WORKTREE_REMOVE = "worktree remove"
 _LOCAL_DELETE = "update-ref -d"
 _REMOTE_DELETE = "push --delete"
 
-_DESTRUCTIVE_ARGV = (("worktree", "remove"), ("update-ref", "-d"))
+_BRANCH_REFS = "refs/heads/"
 
 # The transport seam both the refusing and the racing case stand in for.
 _REMOTE_DELETE_SEAM = "_delete_remote_ref"
-
-# What the one leftover no later pass can reach is reported as.
-_STRANDED = "no later pass will find what is left"
 
 
 class _DestructiveCalls:
@@ -106,8 +102,11 @@ class _DestructiveCalls:
 
     def hardened(self, *args: str, **options):
         """One local git call, noted when it is one of the two that destroy."""
-        if args[:2] in _DESTRUCTIVE_ARGV:
-            self.taken.append(" ".join(args[:2]))
+        head = " ".join(args[:2])
+        if head == _WORKTREE_REMOVE or (
+            head == _LOCAL_DELETE and args[2].startswith(_BRANCH_REFS)
+        ):
+            self.taken.append(head)
         return self._ran_git(*args, **options)
 
     def remote_delete(self, *args, **options):
@@ -384,40 +383,7 @@ class StepFailureTest(_ReclaimTestCase):
 
 
 class ReconciliationTest(_ReclaimTestCase):
-    """A teardown that stopped halfway is finished by the pass after it.
-
-    Or, when the artifact that would have led it back is already gone, says
-    so where an operator will find it: the one case no later pass can reach.
-    """
-
-    def test_a_branch_gone_before_a_failed_delete(self) -> None:
-        # The anchor was taken by somebody else between the reading and the
-        # deletion it was for, so this pass has nothing to hold back -- and
-        # the remote copy it could not delete is now nameless on this host.
-        # The pair does not come back half settled, and the leftover is
-        # reported where the record survives the caller.
-        self.published()
-        cleared = self.verdict()
-        _branch_at(self.clone, self.branch)
-
-        with patch.object(
-            authentication, _REMOTE_DELETE_SEAM, return_value=False,
-        ), self.assertLogs(LIFECYCLE_LOGGER, "WARNING") as watched:
-            reclaimed = self.spend(cleared)
-            reported = watched.output
-
-        self.assertEqual(
-            self.outcomes(reclaimed), _surfaces(None, FAILED, FAILED),
-        )
-        self.assertFalse(reclaimed.settled)
-        self.assertEqual(self.standing()[1:], (False, True))
-        self.assertTrue(
-            any(
-                self.branch in line and _STRANDED in line
-                for line in reported
-            ),
-            msg=reported,
-        )
+    """A teardown that stopped halfway is finished by the pass after it."""
 
     def test_a_half_finished_teardown_is_found_again(self) -> None:
         # Nothing is carried between the two passes. The second rebuilds the

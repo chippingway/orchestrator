@@ -14,7 +14,8 @@ from orchestrator.git import worktrees as _worktrees_package
 
 # Every owner the package defines: the worktree lifecycle ones, the read-only
 # scan and the classification over it, and the teardown that spends one of
-# that classification's verdicts -- which is the only one of them that writes.
+# that classification's verdicts -- the only one of them that writes, and the
+# ledger beside it that it writes its own notes to itself into.
 from orchestrator.git.worktrees import (
     attribution,
     claims,
@@ -25,6 +26,7 @@ from orchestrator.git.worktrees import (
     evidence,
     inventory,
     models,
+    obligations,
     paths,
     probes,
     reclamation,
@@ -57,6 +59,7 @@ _MODULES = (
     "orchestrator.git.worktrees.evidence",
     "orchestrator.git.worktrees.inventory",
     "orchestrator.git.worktrees.models",
+    "orchestrator.git.worktrees.obligations",
     "orchestrator.git.worktrees.paths",
     "orchestrator.git.worktrees.probes",
     "orchestrator.git.worktrees.reclamation",
@@ -93,6 +96,8 @@ _OWNER_ONLY_NAMES = (
     "_decompose_worktree_path",
     "_local_issue_inventory",
     "_reclaim_artifacts",
+    "_reclaim_recorded_remotes",
+    "_recorded_obligations",
     "_remove_issue_worktree",
     "_resolve_branch_name",
     "_sanitize_slug",
@@ -123,10 +128,12 @@ _OWNER_ONLY_NAMES = (
 # each was left in, the checkout's presence, ownership, and revalidation
 # reads, the two lease-pinned deletions and the boundaries around them, the
 # live-checkout read the local one is refused by and the `worktree list`
-# spellings it is written in, the gates ordering the three, the local half a
-# stranded remote keeps, and the refusals a verdict that clears nothing gets.
-# Naming the whole surface makes a helper added to an owner an edit here
-# rather than a definition site nothing checks.
+# spellings it is written in, the gates ordering the three, the refusals a
+# verdict that clears nothing gets, and the pass that finishes what an earlier
+# one wrote down -- with the ledger under it: the namespace, the ref one
+# branch is recorded at, the write, the read-back and the parse beneath it,
+# and the discharge. Naming the whole surface makes a helper added to an owner
+# an edit here rather than a definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
     ("ArtifactReclamation", models),
@@ -139,6 +146,7 @@ _OWNER_DEFINED = (
     ("IssueBranches", attribution),
     ("ProbeAnswer", models),
     ("ProvenTip", models),
+    ("RECLAIM_NAMESPACE", obligations),
     ("Retention", models),
     ("RetentionReason", models),
     ("SurfaceOutcome", models),
@@ -153,10 +161,13 @@ _OWNER_DEFINED = (
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
+    ("_NAMESPACE_PREFIX", obligations),
     ("_ON_BRANCH", reclamation),
     ("_OPEN_PULL_REQUEST", claims),
     ("_ORCHESTRATOR_BRANCH_REFS", probes),
     ("_PRUNABLE", reclamation),
+    ("_RECORD_FIELDS", obligations),
+    ("_RECORD_FORMAT", obligations),
     ("_REF_SEPARATOR", attribution),
     ("_REMOTE", reclamation),
     ("_SAFE_CHAR", paths),
@@ -205,6 +216,8 @@ _OWNER_DEFINED = (
     ("_delete_local_issue_branch", cleanup),
     ("_deleted_local_branch", reclamation),
     ("_deleted_remote_branch", reclamation),
+    ("_discharge_obligation", obligations),
+    ("_discharged", reclamation),
     ("_ended_retentions", claims),
     ("_ensure_decompose_worktree", decomposition),
     ("_ensure_pr_worktree", creation),
@@ -218,25 +231,32 @@ _OWNER_DEFINED = (
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
-    ("_kept_for_the_remote", reclamation),
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
     ("_matching_owners", attribution),
     ("_merged", inventory),
     ("_move_branch_onto", creation),
+    ("_obligation_ref", obligations),
     ("_open_pull_request_retentions", claims),
+    ("_owed_issue", reclamation),
+    ("_parsed_records", obligations),
     ("_pr_branch_start_point", creation),
     ("_proven_tips", eligibility),
     ("_published_tip", evidence),
     ("_read_orchestrator_refs", probes),
+    ("_read_records", obligations),
     ("_read_state", claims),
     ("_reclaim_artifacts", reclamation),
+    ("_reclaim_recorded_remotes", reclamation),
     ("_reclaimed_branch", reclamation),
     ("_reclaimed_checkout", reclamation),
     ("_reclaimed_local_branch", reclamation),
     ("_reclaimed_remote_branch", reclamation),
     ("_record_attribution", attribution),
+    ("_record_obligation", obligations),
+    ("_recorded_deletion", reclamation),
+    ("_recorded_obligations", obligations),
     ("_recorded_pull_request", claims),
     ("_removal_under_lock", reclamation),
     ("_remove_issue_worktree", cleanup),
@@ -274,7 +294,7 @@ _OWNER_DEFINED = (
 # handler selection is keyed on.
 _REPORTING_OWNERS = (
     attribution, claims, cleanup, creation, decomposition, evidence,
-    inventory, probes, reclamation, terminal,
+    inventory, obligations, probes, reclamation, terminal,
 )
 
 

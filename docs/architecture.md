@@ -100,12 +100,13 @@ orchestrator/
                         transport, under the worktree lifecycle, the read-only
                         inventory of the checkouts and branches it leaves, the
                         classification that says which of them a finished
-                        issue may have reclaimed and the teardown that takes
-                        those down, the per-tick base sync, branch
-                        publication, verify runs, the added-line measurement
-                        of a committed candidate, and the immutable ref
-                        namespace one is preserved under when a split
-                        supersedes it
+                        issue may have reclaimed, the teardown that takes
+                        those down and the record carrying an unfinished one
+                        of those across a restart, the per-tick base sync,
+                        branch publication, verify runs, the added-line
+                        measurement of a committed candidate, and the
+                        immutable ref namespace one is preserved under when a
+                        split supersedes it
   observability/        the four surfaces that watch a run without steering
                         it: the analytics sink and everything downstream of
                         it, the parser that meters one finished agent run, the

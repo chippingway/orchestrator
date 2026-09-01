@@ -270,7 +270,8 @@ orchestrator/
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
                         and the branches beside them name, the classification of which of those may be
-                        reclaimed, and the teardown that takes the cleared ones down
+                        reclaimed, and the teardown that takes the cleared ones down -- with the ledger that
+                        carries an unfinished one of those across a restart
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
                         resolution, the exact set of names one issue's branch can be published under, and the
                         `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
@@ -347,11 +348,23 @@ orchestrator/
                         for every ref, so only the two names this issue publishes under and the one path its
                         creators derive can be touched. Already-absent is success; the checkout comes down
                         before the branch it is on, and the remote branch before the local one, since the local
-                        artifacts are what the scan finds a half-finished teardown back by -- which is the whole
-                        of the retry, no failure being remembered anywhere else. A branch's two halves settle
-                        together: the local one never reports success while the remote one has not, and the
-                        shape where the ref is already gone and nothing can be held back says so in the log,
-                        being the only record of it there will be
+                        artifacts are what the scan finds a half-finished teardown back by. What that ordering
+                        cannot cover -- a local artifact somebody took before the teardown reached it, leaving
+                        nothing to hold back -- is covered by the record beneath: every remote deletion is
+                        written down before it is attempted and let go once it has happened or stopped being
+                        owed, one that could not be written down is not attempted, and the second entry point
+                        here finishes the records rather than the candidates, which is the pass a restart
+                        reaches for
+      obligations.py    the ledger those records live in: one ref per branch under
+                        `refs/orchestrator/remote-reclaim/`, valued at the commit the classification cleared, so
+                        what a later pass may spend it on is a deletion of exactly that commit. A ref rather
+                        than a file, because that is where this domain's durable state already lives and it is
+                        written under the same lock; outside `refs/heads/`, so the artifact scan does not read
+                        one as a candidate of its own, and outside the snapshot namespace, which is published.
+                        The read-back answers "could not read" apart from "nothing owed" -- a listing that
+                        warned, a line that did not parse, and a ref outside the namespace all refuse the whole
+                        answer, since a ledger short by one entry is indistinguishable from a complete one.
+                        Nothing here reads a remote or deletes anything on one
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends
@@ -388,9 +401,11 @@ off a facade:
   `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
   disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
   `reclamation` is where that changes: it calls `evidence` for the readings it takes again at the boundary, `paths`
-  for the two branch names and the one checkout path a teardown for an issue may touch, `commands` and `locks` for the
-  removal and the ref delete, and `authentication` for the lease-pinned delete on the remote. It reaches neither
-  `eligibility` nor GitHub -- the verdict it is handed is the whole of the permission.
+  for the two branch names and the one checkout path a teardown for an issue may touch — and for the issue a record
+  names — `commands` and `locks` for the removal and the ref delete, `obligations` for the record either side of the
+  remote deletion, and `authentication` for the lease-pinned delete itself. `obligations` calls `commands` and
+  `locks` and nothing else, and reaches no remote. Neither reaches `eligibility` or GitHub — the verdict a teardown
+  is handed is the whole of the permission, and a record is the same permission written down.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,
