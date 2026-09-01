@@ -339,9 +339,8 @@ class RefusedRelabelRecoveryTest(support._GateCase, unittest.TestCase):
         refused = _RefusedRelabel(self.github)
         with patch.object(config, _DECOMPOSE, decomposing), patch.object(
             self.github, support.SET_LABEL, refused,
-        ):
-            with self.assertRaises(_RelabelRefused):
-                self._run_gate(added_lines=support.SMALL_ADDITIONS)
+        ), self.assertRaises(_RelabelRefused):
+            self._run_gate(added_lines=support.SMALL_ADDITIONS)
         opened = self.github.opened_prs[-1]
         self.github.add_pr(opened)
         self.github.existing_open_pr[opened.head_branch] = opened

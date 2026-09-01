@@ -167,9 +167,8 @@ class SupersessionTest(HeldPlanPrSplitCase, unittest.TestCase):
     def test_an_unreadable_pr_activates_nothing(self) -> None:
         # Both reads it takes -- the hold's own, and the fetch the
         # supersession is made against -- fail closed rather than raising.
-        with refusing(self.github, "get_pr"):
-            with self.assertLogs(level=ERROR):
-                outcome = self._transact(generation=self.generation)
+        with refusing(self.github, "get_pr"), self.assertLogs(level=ERROR):
+            outcome = self._transact(generation=self.generation)
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(
@@ -186,10 +185,8 @@ class SupersessionTest(HeldPlanPrSplitCase, unittest.TestCase):
             "_release_hold",
             return_value=_HeldPrHold(generation=self.generation),
         )
-        with released:
-            with refusing(self.github, "get_pr"):
-                with self.assertLogs(level=ERROR):
-                    outcome = self._transact(generation=self.generation)
+        with released, refusing(self.github, "get_pr"), self.assertLogs(level=ERROR):
+            outcome = self._transact(generation=self.generation)
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(len(self.github.created_child_issues), len(CHILDREN))
@@ -349,9 +346,8 @@ class BranchCleanupTest(LateSplitCase, unittest.TestCase):
         )
 
     def test_a_raising_delete_is_recorded(self) -> None:
-        with refusing(self.github, "delete_remote_branch"):
-            with self.assertLogs(level=ERROR):
-                outcome = self._transact()
+        with refusing(self.github, "delete_remote_branch"), self.assertLogs(level=ERROR):
+            outcome = self._transact()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
 
@@ -360,9 +356,8 @@ class BranchCleanupTest(LateSplitCase, unittest.TestCase):
         # snapshot was proved before any of this -- so a remote that raised
         # is no reason to leave a checkout on a superseded branch for the
         # per-tick base refresh to go on merging into.
-        with refusing(self.github, "delete_remote_branch"):
-            with self.assertLogs(level=ERROR):
-                self._transact()
+        with refusing(self.github, "delete_remote_branch"), self.assertLogs(level=ERROR):
+            self._transact()
 
         self.assertTrue(self.teardown.attempted)
 

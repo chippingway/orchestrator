@@ -148,21 +148,24 @@ class TickFamilySchedulingTest(unittest.TestCase):
             support.make_issue(support._FANOUT_ISSUE_NUMBER, label=support.LABEL_IMPLEMENTING),
         )
         probe = probes._FamilySlotProbe()
-        with support._running_thread(
-            probe.release_after_fanout,
-            probe.cleanup,
-        ):
-            # parallel_limit=2 + 3 submissions total. Family bucket =
-            # one drain task = one slot. Fanout = one task = one slot.
-            # The second family issue stays inside the drain task (not
-            # a separate executor slot), so the fanout's slot is free
-            # while issue #1 is held.
-            with seam_patch(support.REFRESH_BASE), patch.object(
+        # parallel_limit=2 + 3 submissions total. Family bucket =
+        # one drain task = one slot. Fanout = one task = one slot.
+        # The second family issue stays inside the drain task (not
+        # a separate executor slot), so the fanout's slot is free
+        # while issue #1 is held.
+        with (
+            support._running_thread(
+                probe.release_after_fanout,
+                probe.cleanup,
+            ),
+            seam_patch(support.REFRESH_BASE),
+            patch.object(
                 dispatch,
                 support.PROCESS_ISSUE,
                 side_effect=probe.process,
-            ):
-                tick.tick(gh, support._spec(parallel_limit=2))
+            ),
+        ):
+            tick.tick(gh, support._spec(parallel_limit=2))
 
         if probe.releaser_errors:
             raise probe.releaser_errors[0]

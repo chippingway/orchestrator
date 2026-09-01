@@ -135,48 +135,45 @@ class SharedTargetRootTest(unittest.TestCase):
     """
 
     def test_each_repository_fetches_onto_its_own_ref(self) -> None:
-        with real_remote() as first:
-            with real_remote(clone=first.clone) as second:
-                _preserved(first)
-                _preserved(second)
+        with real_remote() as first, real_remote(clone=first.clone) as second:
+            _preserved(first)
+            _preserved(second)
 
-                self.assertNotEqual(
-                    refs.local_snapshot_ref(first.spec, REF),
-                    refs.local_snapshot_ref(second.spec, REF),
-                )
-                self.assertEqual(_mirrored(first), first.sha)
-                self.assertEqual(_mirrored(second), second.sha)
+            self.assertNotEqual(
+                refs.local_snapshot_ref(first.spec, REF),
+                refs.local_snapshot_ref(second.spec, REF),
+            )
+            self.assertEqual(_mirrored(first), first.sha)
+            self.assertEqual(_mirrored(second), second.sha)
 
     def test_each_proof_answers_for_its_own_candidate(self) -> None:
         # The failure an unqualified name produces is a false MISMATCH: the
         # ref the proof resolves carries the other repository's commit.
-        with real_remote() as first:
-            with real_remote(clone=first.clone) as second:
-                _preserved(second)
+        with real_remote() as first, real_remote(clone=first.clone) as second:
+            _preserved(second)
 
-                refs.create_snapshot_ref(
+            refs.create_snapshot_ref(
+                first.spec, first.clone, ref=REF, sha=first.sha,
+            )
+
+            self.assertEqual(
+                refs.prove_snapshot_ref(
                     first.spec, first.clone, ref=REF, sha=first.sha,
-                )
-
-                self.assertEqual(
-                    refs.prove_snapshot_ref(
-                        first.spec, first.clone, ref=REF, sha=first.sha,
-                    ),
-                    refs.SnapshotOutcome.PROVEN,
-                )
+                ),
+                refs.SnapshotOutcome.PROVEN,
+            )
 
     def test_one_reclamation_leaves_the_other_alone(self) -> None:
-        with real_remote() as first:
-            with real_remote(clone=first.clone) as second:
-                _preserved(first)
-                _preserved(second)
+        with real_remote() as first, real_remote(clone=first.clone) as second:
+            _preserved(first)
+            _preserved(second)
 
-                refs.delete_snapshot_ref(
-                    first.spec, first.clone, ref=REF, sha=first.sha,
-                )
+            refs.delete_snapshot_ref(
+                first.spec, first.clone, ref=REF, sha=first.sha,
+            )
 
-                self.assertIsNone(_mirrored(first))
-                self.assertEqual(_mirrored(second), second.sha)
+            self.assertIsNone(_mirrored(first))
+            self.assertEqual(_mirrored(second), second.sha)
 
 
 class LocalSnapshotReclamationTest(unittest.TestCase):

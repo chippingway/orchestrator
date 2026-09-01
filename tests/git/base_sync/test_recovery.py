@@ -289,15 +289,14 @@ class RecoveryComparisonTest(unittest.TestCase):
     def _assert_selects(self, completed, answer: str) -> None:
         selected = {}
 
-        with _every_answer(selected):
-            with _routed(
-                **{COMPLETE_SNAPSHOT: MagicMock(return_value=completed)},
-            ):
-                self.assertTrue(
-                    recovery._route_recovery_snapshot(
-                        fixtures._recovery_context(), fixtures._snapshot(),
-                    ),
-                )
+        with _every_answer(selected), _routed(
+            **{COMPLETE_SNAPSHOT: MagicMock(return_value=completed)},
+        ):
+            self.assertTrue(
+                recovery._route_recovery_snapshot(
+                    fixtures._recovery_context(), fixtures._snapshot(),
+                ),
+            )
 
         self.assertIs(selected.pop(answer).call_args.args[1], completed)
         for unselected in selected.values():
@@ -388,11 +387,10 @@ class RetryRecoveryPushTest(unittest.TestCase):
         push = MagicMock()
         park = _handled()
 
-        with self._push_patches(push=push, dirty=LEFTOVERS):
-            with patch.object(outcomes, "_park_dirty_recovery", park):
-                parked = recovery._retry_recovery_push(
-                    fixtures._recovery_context(), fixtures._snapshot(ahead=1),
-                )
+        with self._push_patches(push=push, dirty=LEFTOVERS), patch.object(outcomes, "_park_dirty_recovery", park):
+            parked = recovery._retry_recovery_push(
+                fixtures._recovery_context(), fixtures._snapshot(ahead=1),
+            )
 
         # Uncommitted edits mean the recovered head is not what a push would
         # publish, so the leftovers are reported before anything leaves.
@@ -406,11 +404,10 @@ class RetryRecoveryPushTest(unittest.TestCase):
 
         with self._push_patches(
             push=MagicMock(return_value=False), finalize=finalize,
-        ):
-            with patch.object(outcomes, "_park_failed_recovery_push", park):
-                parked = recovery._retry_recovery_push(
-                    fixtures._recovery_context(), fixtures._snapshot(ahead=1),
-                )
+        ), patch.object(outcomes, "_park_failed_recovery_push", park):
+            parked = recovery._retry_recovery_push(
+                fixtures._recovery_context(), fixtures._snapshot(ahead=1),
+            )
 
         self.assertTrue(parked)
         park.assert_called_once()

@@ -56,17 +56,15 @@ class SquashBaseShaTest(unittest.TestCase):
 
     def test_failed_merge_base_carries_the_git_detail(self) -> None:
         git = _failed_git("fatal: bad revision\n")
-        with patch.object(commands, GIT_HELPER, git):
-            with self.assertRaisesRegex(PREPARATION_ERROR, "bad revision"):
-                planning._squash_base_sha(_spec(), WORKTREE)
+        with patch.object(commands, GIT_HELPER, git), self.assertRaisesRegex(PREPARATION_ERROR, "bad revision"):
+            planning._squash_base_sha(_spec(), WORKTREE)
 
     def test_empty_merge_base_refuses_to_plan(self) -> None:
         # Unrelated histories exit 0 with no output; an empty base would
         # otherwise become the `reset --soft` target and drop the branch.
         git = MagicMock(side_effect=[_git_result(stdout="\n")])
-        with patch.object(commands, GIT_HELPER, git):
-            with self.assertRaisesRegex(PREPARATION_ERROR, "empty"):
-                planning._squash_base_sha(_spec(), WORKTREE)
+        with patch.object(commands, GIT_HELPER, git), self.assertRaisesRegex(PREPARATION_ERROR, "empty"):
+            planning._squash_base_sha(_spec(), WORKTREE)
 
 
 class SquashSubjectsTest(unittest.TestCase):
@@ -86,9 +84,8 @@ class SquashSubjectsTest(unittest.TestCase):
 
     def test_failed_log_carries_the_git_detail(self) -> None:
         git = _failed_git("fatal: bad object\n")
-        with patch.object(commands, GIT_HELPER, git):
-            with self.assertRaisesRegex(PREPARATION_ERROR, "bad object"):
-                planning._squash_subjects(WORKTREE, BASE_SHA)
+        with patch.object(commands, GIT_HELPER, git), self.assertRaisesRegex(PREPARATION_ERROR, "bad object"):
+            planning._squash_subjects(WORKTREE, BASE_SHA)
 
 
 class SquashMessageTest(unittest.TestCase):

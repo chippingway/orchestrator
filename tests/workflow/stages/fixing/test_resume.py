@@ -216,11 +216,10 @@ class _WriteFailingAfter:
 @contextlib.contextmanager
 def _debounced_in(worktree):
     """The quiet window and the checkout one parked-recovery tick runs in."""
-    with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS):
-        with patch.object(
-            _worktree_paths, WORKTREE_PATH, return_value=worktree,
-        ):
-            yield
+    with patch.object(config, DEBOUNCE_CONFIG, DEBOUNCE_SECONDS), patch.object(
+        _worktree_paths, WORKTREE_PATH, return_value=worktree,
+    ):
+        yield
 
 
 class FixingTransientParkRecoveryTest(
@@ -326,11 +325,10 @@ class FixingTransientParkRecoveryTest(
             with patch.object(
                 gh, WRITE_PINNED_STATE,
                 _WriteFailingAfter(1, gh.write_pinned_state),
-            ):
-                with self.assertRaises(RuntimeError):
-                    self._run_fixing(
-                        gh, issue, run_agent=_agent(), push_branch=True,
-                    )
+            ), self.assertRaises(RuntimeError):
+                self._run_fixing(
+                    gh, issue, run_agent=_agent(), push_branch=True,
+                )
             # The comment really did land before the write blew up; without
             # this the retry below would be a first announcement.
             self.assertEqual(len(gh.posted_comments), 1)

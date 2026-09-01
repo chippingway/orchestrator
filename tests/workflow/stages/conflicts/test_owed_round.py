@@ -181,17 +181,16 @@ class ResolvingConflictCappedRoundTest(
         # the gate holds there leaves the same receipt any other would.
         github = self._edited()
 
-        with patch.object(config, MAX_CONFLICT_ROUNDS, AT_THE_CAP):
-            with patch.object(config, MAX_ADDED_LINES, CEILING):
-                mocks = self._at_the_cap(
-                    github,
-                    head_shas=[BEFORE_HEAD, MERGED_HEAD],
-                    push_branch=True,
-                    added_lines=PAST_THE_CEILING,
-                    run_agent_result=_agent(
-                        session_id="dev-sess", last_message="resolved it",
-                    ),
-                )[0]
+        with patch.object(config, MAX_CONFLICT_ROUNDS, AT_THE_CAP), patch.object(config, MAX_ADDED_LINES, CEILING):
+            mocks = self._at_the_cap(
+                github,
+                head_shas=[BEFORE_HEAD, MERGED_HEAD],
+                push_branch=True,
+                added_lines=PAST_THE_CEILING,
+                run_agent_result=_agent(
+                    session_id="dev-sess", last_message="resolved it",
+                ),
+            )[0]
 
         mocks[PUSH_BRANCH].assert_not_called()
         pinned = self._pinned(github)

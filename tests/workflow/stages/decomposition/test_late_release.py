@@ -206,9 +206,8 @@ class ReopenedAfterDeletionTest(_ReleaseCase, unittest.TestCase):
         # has -- and it is the retry that tells the child, now open again.
         seeded = _reclaiming()
         died = RecordedDelete(_DELETED, raising=KeyboardInterrupt("died"))
-        with self.assertRaises(KeyboardInterrupt):
-            with died.answering():
-                walk_owner(self, seeded)
+        with self.assertRaises(KeyboardInterrupt), died.answering():
+            walk_owner(self, seeded)
         self.assertEqual(
             resource_states(seeded.github)[SNAPSHOT_REF], STATE_RECLAIMING,
         )
@@ -288,9 +287,8 @@ class OrderedRetryTest(_ReleaseCase, unittest.TestCase):
         # asked of the remote and the child keeps what it was cut from.
         seeded = _reclaiming()
 
-        with self.reopening_on_order(seeded):
-            with self.assertLogs(_WORKFLOW_LOG, level="INFO"):
-                deleted = _walk_with(self, seeded, _DELETED)
+        with self.reopening_on_order(seeded), self.assertLogs(_WORKFLOW_LOG, level="INFO"):
+            deleted = _walk_with(self, seeded, _DELETED)
 
         self.assertEqual(deleted.refs, [])
         self.assertEqual(

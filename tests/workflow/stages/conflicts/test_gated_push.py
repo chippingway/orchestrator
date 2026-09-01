@@ -388,9 +388,8 @@ class ResolvingConflictSwitchedOffTest(
         # Answered with the wider fact, an install that turned the gate off
         # has its resolutions measured anyway and a base that moved routes a
         # pull request nobody grew into an adjudication it never opted into.
-        with patch.object(config, DECOMPOSE, False):
-            with patch.object(config, MAX_ADDED_LINES, CEILING):
-                rebased = self._clean_rebase(added_lines=PAST_THE_CEILING)
+        with patch.object(config, DECOMPOSE, False), patch.object(config, MAX_ADDED_LINES, CEILING):
+            rebased = self._clean_rebase(added_lines=PAST_THE_CEILING)
 
         mocks = rebased[1]
         mocks[COUNT_ADDED_LINES].assert_not_called()
@@ -403,11 +402,10 @@ class ResolvingConflictSwitchedOffTest(
         # The other seam that reaches the gate with no agent behind it: a
         # commit an interrupted tick left ahead of the remote. It has never
         # been read either, so the switch publishes it the same way.
-        with patch.object(config, DECOMPOSE, False):
-            with patch.object(config, MAX_ADDED_LINES, CEILING):
-                mocks = self._recovered_push(
-                    added_lines=PAST_THE_CEILING,
-                )[1]
+        with patch.object(config, DECOMPOSE, False), patch.object(config, MAX_ADDED_LINES, CEILING):
+            mocks = self._recovered_push(
+                added_lines=PAST_THE_CEILING,
+            )[1]
 
         mocks[COUNT_ADDED_LINES].assert_not_called()
         self._pushes(mocks).assert_called_once()

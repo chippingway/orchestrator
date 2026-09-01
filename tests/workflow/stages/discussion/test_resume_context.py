@@ -157,16 +157,18 @@ class DiscussionRebuiltContextTest(unittest.TestCase, _DiscussionWorkflowMixin):
     def _run_under_arrivals(self, gh, issue):
         """One tick during which every read of the thread finds it longer."""
         arrivals = _ThreadGainingComments(gh, issue)
-        with patch.object(gh, "comments_after", arrivals.comments_after):
-            with patch.object(issue, "get_comments", arrivals.get_comments):
-                return self._run_discussion(
-                    gh,
-                    issue,
-                    run_agent=_agent(
-                        session_id=DISCUSSION_SESSION,
-                        last_message=DISCUSSION_RESPONSE,
-                    ),
-                )
+        with (
+            patch.object(gh, "comments_after", arrivals.comments_after),
+            patch.object(issue, "get_comments", arrivals.get_comments),
+        ):
+            return self._run_discussion(
+                gh,
+                issue,
+                run_agent=_agent(
+                    session_id=DISCUSSION_SESSION,
+                    last_message=DISCUSSION_RESPONSE,
+                ),
+            )
 
     def _assert_prompt_matches_watermark(self, gh, issue, mocks) -> None:
         """The newest comment the agent was shown IS the mark the round left.

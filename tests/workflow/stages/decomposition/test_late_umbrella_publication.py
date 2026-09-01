@@ -106,9 +106,8 @@ class ReopenedPublicationUmbrellaTest(PublishedSplitCase, unittest.TestCase):
         """One split settled with the publication reopened behind its close."""
         with interleaved_after(
             _late_transaction, PUBLICATION_BARRIER, self.reopened,
-        ):
-            with self.assertLogs(level=ERROR):
-                self._transact(generation=self.generation)
+        ), self.assertLogs(level=ERROR):
+            self._transact(generation=self.generation)
 
     def _umbrella_tick(self) -> None:
         """One real umbrella poll over the issue the transaction left."""
@@ -130,11 +129,10 @@ class ReopenedBetweenRelabelsTest(PublishedSplitCase, unittest.TestCase):
 
         with interleaved_after(
             _late_publication, RELEASE_GATE, self.reopened,
-        ):
-            with self.assertLogs(level=ERROR):
-                _umbrella._handle_umbrella(
-                    self.github, _TEST_SPEC, self.issue,
-                )
+        ), self.assertLogs(level=ERROR):
+            _umbrella._handle_umbrella(
+                self.github, _TEST_SPEC, self.issue,
+            )
 
         released = [
             child.labels[0].name
@@ -147,11 +145,10 @@ class ReopenedBetweenRelabelsTest(PublishedSplitCase, unittest.TestCase):
         """A split whose two independent slices were never released."""
         with interleaved_after(
             _late_transaction, PUBLICATION_BARRIER, self.reopened,
-        ):
-            with self.assertLogs(level=ERROR):
-                self._transact(
-                    generation=self.generation, children=INDEPENDENT,
-                )
+        ), self.assertLogs(level=ERROR):
+            self._transact(
+                generation=self.generation, children=INDEPENDENT,
+            )
 
 
 class LatchedInsideTheLicenceTest(
@@ -174,9 +171,8 @@ class LatchedInsideTheLicenceTest(
     def test_a_close_in_the_lookup_holds_the_child(self) -> None:
         with interleaved_after(
             _late_publication, RELEASE_GATE, self._latched_close,
-        ):
-            with self.assertLogs(level=WARNING):
-                self._transact(generation=self.generation)
+        ), self.assertLogs(level=WARNING):
+            self._transact(generation=self.generation)
 
         self.assertEqual(
             first_child(self.github).labels[0].name, WorkflowLabel.BLOCKED,

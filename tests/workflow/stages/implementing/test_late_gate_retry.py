@@ -443,9 +443,8 @@ class LateGateGuidanceTest(support._ParkedRetryCase, unittest.TestCase):
         self._park(_GUIDANCE)
         recorded = support._RecordAtHandoff(self.github)
 
-        with patch.object(config, _DECOMPOSE, False):
-            with recorded.held():
-                mocks = self._resumed_past_the_record()
+        with patch.object(config, _DECOMPOSE, False), recorded.held():
+            mocks = self._resumed_past_the_record()
 
         self._assert_unmeasured(mocks)
         self._assert_published(mocks)
@@ -461,9 +460,8 @@ class LateGateGuidanceTest(support._ParkedRetryCase, unittest.TestCase):
         self._park(_GUIDANCE)
         recorded = support._RecordAtHandoff(self.github)
 
-        with patch.object(config, _DECOMPOSE, False):
-            with recorded.held():
-                self._resumed_past_the_record()
+        with patch.object(config, _DECOMPOSE, False), recorded.held():
+            self._resumed_past_the_record()
 
         self.assertNotIn(support.KEY_CANDIDATE_SHA, recorded.pinned)
         self.assertEqual(recorded.pinned[support.KEY_RETIRED_CYCLE], 1)

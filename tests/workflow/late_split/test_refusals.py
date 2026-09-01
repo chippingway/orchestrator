@@ -31,15 +31,14 @@ _PROSE_GENERATION = _support.measured_generation(candidate_sha=_PROSE)
 
 def _refused_log(case, event, generation) -> str:
     """The whole line a refused emission leaves, as an operator reads it."""
-    with patch(_ANALYTICS_APPEND):
-        with case.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR) as logged:
-            case.assertEqual(
-                _telemetry.emit_late_event(
-                    FakeGitHubClient(), event, generation, stage=_STAGE,
-                ),
-                {},
-            )
-            return "\n".join(logged.output)
+    with patch(_ANALYTICS_APPEND), case.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR) as logged:
+        case.assertEqual(
+            _telemetry.emit_late_event(
+                FakeGitHubClient(), event, generation, stage=_STAGE,
+            ),
+            {},
+        )
+        return "\n".join(logged.output)
 
 
 class RefusedRecordTest(unittest.TestCase):
@@ -80,11 +79,10 @@ class RefusedRecordTest(unittest.TestCase):
     def test_nothing_is_written_and_nothing_raises(self) -> None:
         gh = FakeGitHubClient()
         appended: list = []
-        with patch(_ANALYTICS_APPEND, appended.append):
-            with self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
-                payload = _telemetry.emit_late_event(
-                    gh, _VERDICT_EVENT, _PROSE_GENERATION, stage=_STAGE,
-                )
+        with patch(_ANALYTICS_APPEND, appended.append), self.assertLogs(_WORKFLOW_CHANNEL, level=_ERROR):
+            payload = _telemetry.emit_late_event(
+                gh, _VERDICT_EVENT, _PROSE_GENERATION, stage=_STAGE,
+            )
         self.assertEqual(payload, {})
         self.assertEqual(gh.recorded_events, [])
         self.assertEqual(appended, [])

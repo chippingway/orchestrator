@@ -57,20 +57,20 @@ class RunnerOwnerRoutingTest(unittest.TestCase):
 
     def test_options_reach_runner_owner(self) -> None:
         for label, backend_runner in _BACKENDS:
-            with self.subTest(backend=label):
-                with (
-                    patch.object(
-                        _runner,
-                        "resolve_agent_run_options",
-                        wraps=_runner.resolve_agent_run_options,
-                    ) as resolve_owner,
-                    patch(
-                        _agent_cases._POPEN_TARGET,
-                        return_value=_support.completed(),
-                    ),
-                ):
-                    backend_runner(_agent_cases._PROMPT, _agent_cases._CWD)
-                    self.assertEqual(resolve_owner.call_count, 1)
+            with (
+                self.subTest(backend=label),
+                patch.object(
+                    _runner,
+                    "resolve_agent_run_options",
+                    wraps=_runner.resolve_agent_run_options,
+                ) as resolve_owner,
+                patch(
+                    _agent_cases._POPEN_TARGET,
+                    return_value=_support.completed(),
+                ),
+            ):
+                backend_runner(_agent_cases._PROMPT, _agent_cases._CWD)
+                self.assertEqual(resolve_owner.call_count, 1)
 
 
 class ParserOwnerRoutingTest(unittest.TestCase):
@@ -85,24 +85,24 @@ class ParserOwnerRoutingTest(unittest.TestCase):
 
     def test_session_id_reaches_sessions_owner(self) -> None:
         for label, backend_runner in _BACKENDS:
-            with self.subTest(backend=label):
-                with (
-                    patch.object(
-                        _sessions,
-                        "parse_session_id",
-                        return_value="owner-session-id",
-                    ) as parse_owner,
-                    patch(
-                        _agent_cases._POPEN_TARGET,
-                        return_value=_support.completed(),
-                    ),
-                ):
-                    agent_result = backend_runner(
-                        _agent_cases._PROMPT,
-                        _agent_cases._CWD,
-                    )
-                    self.assertEqual(parse_owner.call_count, 1)
-                    self.assertEqual(agent_result.session_id, "owner-session-id")
+            with (
+                self.subTest(backend=label),
+                patch.object(
+                    _sessions,
+                    "parse_session_id",
+                    return_value="owner-session-id",
+                ) as parse_owner,
+                patch(
+                    _agent_cases._POPEN_TARGET,
+                    return_value=_support.completed(),
+                ),
+            ):
+                agent_result = backend_runner(
+                    _agent_cases._PROMPT,
+                    _agent_cases._CWD,
+                )
+                self.assertEqual(parse_owner.call_count, 1)
+                self.assertEqual(agent_result.session_id, "owner-session-id")
 
     def test_final_message_reaches_sessions_owner(self) -> None:
         with (

@@ -114,9 +114,8 @@ class DiscussionRetryTest(unittest.TestCase, _DiscussionWorkflowMixin):
         # The tick dies where a publication has already changed the world: the
         # branch is pushed, the marker is durable, and nothing has recorded the
         # PR it was opening.
-        with patch.object(gh, "open_pr", side_effect=RuntimeError(_CRASH)):
-            with self.assertRaises(RuntimeError):
-                self._retry_tick(gh, issue)
+        with patch.object(gh, "open_pr", side_effect=RuntimeError(_CRASH)), self.assertRaises(RuntimeError):
+            self._retry_tick(gh, issue)
 
         self._retry_tick(gh, issue)
 

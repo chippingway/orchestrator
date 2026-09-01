@@ -52,10 +52,12 @@ def _gate_switched_off(counter):
     push that goes out went out unmeasured -- and the counter says so directly
     rather than by the label the reading would have written.
     """
-    with patch.object(config, _DECOMPOSE, False):
-        with patch.object(config, _MAX_ADDED_LINES, _CEILING):
-            with patch.object(_measurement, _COUNT_ADDED_LINES, counter):
-                yield
+    with (
+        patch.object(config, _DECOMPOSE, False),
+        patch.object(config, _MAX_ADDED_LINES, _CEILING),
+        patch.object(_measurement, _COUNT_ADDED_LINES, counter),
+    ):
+        yield
 
 
 def _oversized_count() -> MagicMock:

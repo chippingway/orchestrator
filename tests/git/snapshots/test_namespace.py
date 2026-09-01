@@ -79,13 +79,12 @@ class SnapshotRefTest(unittest.TestCase):
 
     def test_a_damaged_generation_builds_no_ref(self) -> None:
         for damaged in (True, -1, 2.9, "1", None):
-            with self.subTest(given=damaged):
-                with self.assertRaises(namespace.InvalidSnapshotRef):
-                    namespace.snapshot_ref(
-                        issue_number=ISSUE,
-                        cycle_id=CYCLE,
-                        generation=damaged,
-                    )
+            with self.subTest(given=damaged), self.assertRaises(namespace.InvalidSnapshotRef):
+                namespace.snapshot_ref(
+                    issue_number=ISSUE,
+                    cycle_id=CYCLE,
+                    generation=damaged,
+                )
 
 
 class SnapshotRefRecognitionTest(unittest.TestCase):

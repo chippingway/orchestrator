@@ -490,9 +490,8 @@ class RestartTransactionTest(_fix.RestartCase, unittest.TestCase):
             self.github,
             _WRITE_PINNED_STATE,
             side_effect=RuntimeError(_REFUSED),
-        ):
-            with self.assertRaises(RuntimeError):
-                self._reported_route()
+        ), self.assertRaises(RuntimeError):
+            self._reported_route()
         self.assertNotIn(_fix.KEY_RESTART_PENDING, self._pinned())
 
         self._reported_route()

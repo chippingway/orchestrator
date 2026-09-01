@@ -41,9 +41,8 @@ def _configured_sink(
 ) -> Iterator[None]:
     """Pin what the two omitted inputs resolve to for the body."""
     holder = import_module(_SETTINGS_HOLDER)
-    with patch.object(holder, _LOG_PATH_SETTING, log_path):
-        with patch.object(holder, _DB_URL_SETTING, db_url):
-            yield
+    with patch.object(holder, _LOG_PATH_SETTING, log_path), patch.object(holder, _DB_URL_SETTING, db_url):
+        yield
 
 
 class _DialLog:
@@ -73,9 +72,8 @@ class DisabledSyncTest(unittest.TestCase):
     """
 
     def test_no_op_when_the_database_url_is_unset(self) -> None:
-        with jsonl_log([sample_record()]) as path:
-            with _configured_sink(path, None):
-                sync_result = _sync_without_dialing(self)
+        with jsonl_log([sample_record()]) as path, _configured_sink(path, None):
+            sync_result = _sync_without_dialing(self)
         self.assertEqual(sync_result.inserted, 0)
         self.assertEqual(sync_result.total_lines, 0)
 
@@ -87,9 +85,8 @@ class DisabledSyncTest(unittest.TestCase):
     def test_no_op_when_the_file_is_absent(self) -> None:
         # Configured, but nothing has emitted a record yet: do not dial, do not
         # fail.
-        with jsonl_log([]) as path:
-            with _configured_sink(path.parent / _ABSENT_FILENAME, DB_URL):
-                sync_result = _sync_without_dialing(self)
+        with jsonl_log([]) as path, _configured_sink(path.parent / _ABSENT_FILENAME, DB_URL):
+            sync_result = _sync_without_dialing(self)
         self.assertEqual(sync_result.inserted, 0)
 
 

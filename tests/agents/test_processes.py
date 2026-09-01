@@ -78,14 +78,13 @@ class TerminateAllRunningTest(unittest.TestCase):
         proc2.pid = 222
         proc1.wait.return_value = 0
         proc2.wait.return_value = 0
-        with _support.registered_procs(proc1, proc2):
-            with patch.object(
-                _processes.os,
-                _agent_cases._KILLPG,
-                side_effect=_support.killpg_group_empty,
-            ) as signal_mock:
-                terminated_count = _processes.terminate_all_running(grace=0.5)
-                sent = {call.args for call in signal_mock.call_args_list}
+        with _support.registered_procs(proc1, proc2), patch.object(
+            _processes.os,
+            _agent_cases._KILLPG,
+            side_effect=_support.killpg_group_empty,
+        ) as signal_mock:
+            terminated_count = _processes.terminate_all_running(grace=0.5)
+            sent = {call.args for call in signal_mock.call_args_list}
         self.assertEqual(terminated_count, 2)
         self.assertIn((111, signal.SIGTERM), sent)
         self.assertIn((222, signal.SIGTERM), sent)
@@ -100,14 +99,13 @@ class TerminateAllRunningTest(unittest.TestCase):
         proc = MagicMock()
         proc.pid = 555
         proc.wait.return_value = 0  # leader exits promptly on SIGTERM
-        with _support.registered_procs(proc):
-            with patch.object(
-                _processes.os,
-                _agent_cases._KILLPG,
-                side_effect=_support.killpg_group_alive,
-            ) as signal_mock:
-                _processes.terminate_all_running(grace=_agent_cases._TERMINATION_GRACE_SECONDS)
-                sent = [call.args for call in signal_mock.call_args_list]
+        with _support.registered_procs(proc), patch.object(
+            _processes.os,
+            _agent_cases._KILLPG,
+            side_effect=_support.killpg_group_alive,
+        ) as signal_mock:
+            _processes.terminate_all_running(grace=_agent_cases._TERMINATION_GRACE_SECONDS)
+            sent = [call.args for call in signal_mock.call_args_list]
         self.assertIn((555, signal.SIGTERM), sent)
         self.assertIn((555, 0), sent)  # group liveness probed after leader exit
         self.assertIn((555, signal.SIGKILL), sent)
@@ -121,10 +119,9 @@ class TerminateAllRunningTest(unittest.TestCase):
             cmd=_agent_cases._AGENT_COMMAND,
             timeout=_agent_cases._TERMINATION_GRACE_SECONDS,
         )
-        with _support.registered_procs(proc):
-            with patch.object(_processes.os, _agent_cases._KILLPG) as killpg:
-                _processes.terminate_all_running(grace=_agent_cases._TERMINATION_GRACE_SECONDS)
-                calls = [call.args for call in killpg.call_args_list]
+        with _support.registered_procs(proc), patch.object(_processes.os, _agent_cases._KILLPG) as killpg:
+            _processes.terminate_all_running(grace=_agent_cases._TERMINATION_GRACE_SECONDS)
+            calls = [call.args for call in killpg.call_args_list]
         self.assertIn((333, signal.SIGTERM), calls)
         self.assertIn((333, signal.SIGKILL), calls)
 
@@ -134,18 +131,17 @@ class TerminateAllRunningTest(unittest.TestCase):
         proc = MagicMock()
         proc.pid = 444
         proc.wait.return_value = 0
-        with _support.registered_procs(proc):
-            with patch.object(
-                _processes.os,
-                _agent_cases._KILLPG,
-                side_effect=ProcessLookupError,
-            ):
-                self.assertEqual(
-                    _processes.terminate_all_running(
-                        grace=_agent_cases._TERMINATION_GRACE_SECONDS,
-                    ),
-                    1,
-                )
+        with _support.registered_procs(proc), patch.object(
+            _processes.os,
+            _agent_cases._KILLPG,
+            side_effect=ProcessLookupError,
+        ):
+            self.assertEqual(
+                _processes.terminate_all_running(
+                    grace=_agent_cases._TERMINATION_GRACE_SECONDS,
+                ),
+                1,
+            )
 
     def test_process_group_alive_real_process(self) -> None:
         # The mock tests can't exercise the actual `killpg(_, 0)` probe the

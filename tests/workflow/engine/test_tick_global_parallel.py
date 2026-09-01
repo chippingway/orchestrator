@@ -136,6 +136,9 @@ class TickGlobalSchedulingTest(unittest.TestCase):
         support._seed_issues(gh, (1, 2, 3))
         recorder = probes._IssueProcessRecorder()
 
+        # The enumeration failure is not caught inside `tick` (it lives
+        # at the per-repo boundary in `runtime.ticks.tick_one_repo`), but the issues
+        # yielded BEFORE the raise must still have been processed.
         with (
             patch.object(
                 gh,
@@ -144,11 +147,8 @@ class TickGlobalSchedulingTest(unittest.TestCase):
             ),
             seam_patch(support.REFRESH_BASE),
             patch.object(dispatch, support.PROCESS_ISSUE, side_effect=recorder),
+            self.assertRaises(RuntimeError),
         ):
-            # The enumeration failure is not caught inside `tick` (it lives
-            # at the per-repo boundary in `runtime.ticks.tick_one_repo`), but the issues
-            # yielded BEFORE the raise must still have been processed.
-            with self.assertRaises(RuntimeError):
-                tick.tick(gh, support._spec(parallel_limit=1))
+            tick.tick(gh, support._spec(parallel_limit=1))
 
         self.assertEqual(recorder.processed, [1, 2])

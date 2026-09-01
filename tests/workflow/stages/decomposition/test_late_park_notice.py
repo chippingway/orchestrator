@@ -72,9 +72,8 @@ class RefusedQuestionNoticeTest(LateContentCase):
 
     def setUp(self) -> None:
         self._seed()
-        with RefusedComment(self.github):
-            with self.assertRaises(RuntimeError):
-                self._run(QUESTION_REPLY)
+        with RefusedComment(self.github), self.assertRaises(RuntimeError):
+            self._run(QUESTION_REPLY)
 
     def test_the_park_stands_with_nothing_said(self) -> None:
         pinned = self._pinned()
@@ -111,9 +110,8 @@ class RefusedDriftNoticeTest(LateContentCase):
     def setUp(self) -> None:
         self._seed()
         self.issue.title = EDITED_TITLE
-        with RefusedComment(self.github):
-            with self.assertRaises(RuntimeError):
-                adjudicate(self.github, self.issue)
+        with RefusedComment(self.github), self.assertRaises(RuntimeError):
+            adjudicate(self.github, self.issue)
 
     def test_the_hold_stands_with_nothing_said(self) -> None:
         pinned = self._pinned()
@@ -139,9 +137,8 @@ class RefusedRevisionNoticeTest(RevisionCase):
     def setUp(self) -> None:
         self._seed(**DEV_PIN)
         reply(self.issue)
-        with RefusedComment(self.github, DIRTY_NOTICE):
-            with self.assertRaises(RuntimeError):
-                self._revise(seed=WorktreeSeed(dirty=DIRTY_TREE))
+        with RefusedComment(self.github, DIRTY_NOTICE), self.assertRaises(RuntimeError):
+            self._revise(seed=WorktreeSeed(dirty=DIRTY_TREE))
 
     def test_the_revision_park_says_nothing(self) -> None:
         pinned = self._pinned()

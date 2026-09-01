@@ -216,15 +216,14 @@ class ValidatingTransientParkRecoveryTest(
         with patch.object(
             gh, WRITE_PINNED_STATE,
             _fixtures._WriteFailingAfter(1, gh.write_pinned_state),
-        ):
-            with self.assertRaises(RuntimeError):
-                self._run_parked_validating(
-                    gh, issue, run_agent=_agent(),
-                    # The push lands, so the pull request stands on what it
-                    # published: the retry below reads a publication that is
-                    # over rather than one to make again.
-                    push_branch=LandingPush(gh, VALIDATING_PR),
-                )
+        ), self.assertRaises(RuntimeError):
+            self._run_parked_validating(
+                gh, issue, run_agent=_agent(),
+                # The push lands, so the pull request stands on what it
+                # published: the retry below reads a publication that is
+                # over rather than one to make again.
+                push_branch=LandingPush(gh, VALIDATING_PR),
+            )
         # The comment really did land before the write blew up; without this
         # the retry below would be exercising a first announcement.
         self.assertEqual(len(gh.posted_comments), 1)
@@ -645,16 +644,15 @@ class ValidatingDevParkRecoveryTest(
         )
         gh = switched_off[0]
 
-        with patch.object(config, DECOMPOSE, False):
-            with patch.object(config, MAX_ADDED_LINES, CEILING):
-                mocks = self._run_parked_validating(
-                    *switched_off,
-                    run_agent=_agent(),
-                    dirty_files=(),
-                    push_branch=True,
-                    head_shas=(TIMEOUT_HEAD,),
-                    added_lines=PAST_THE_CEILING,
-                )
+        with patch.object(config, DECOMPOSE, False), patch.object(config, MAX_ADDED_LINES, CEILING):
+            mocks = self._run_parked_validating(
+                *switched_off,
+                run_agent=_agent(),
+                dirty_files=(),
+                push_branch=True,
+                head_shas=(TIMEOUT_HEAD,),
+                added_lines=PAST_THE_CEILING,
+            )
 
         mocks[COUNT_ADDED_LINES].assert_not_called()
         self._pushes(mocks).assert_called_once()

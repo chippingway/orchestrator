@@ -191,9 +191,8 @@ class SchedulerDrainTest(unittest.TestCase):
         state = RuntimeState()
         scheduler = MagicMock()
 
-        with self.assertRaises(RuntimeError):
-            with loop.scheduler_drained(state, scheduler):
-                raise RuntimeError(_BODY_FAILURE)
+        with self.assertRaises(RuntimeError), loop.scheduler_drained(state, scheduler):
+            raise RuntimeError(_BODY_FAILURE)
 
         scheduler.shutdown.assert_called_once_with(wait=True)
         self.assertTrue(state.shutdown_complete.is_set())

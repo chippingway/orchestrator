@@ -56,48 +56,46 @@ def render_repo_and_reliability(
 ) -> None:
     """Render repository spend and reliability throughput."""
     repo_column, reliability_column = modules.st.columns([7, 5])
-    with repo_column:
-        with modules.st.container(border=True):
-            modules.st.markdown(
-                card_header_html(
-                    "Cost by repository",
-                    "Spend across managed repos",
-                ),
-                unsafe_allow_html=True,
-            )
-            modules.st.plotly_chart(
-                cost_by_repo(panel.repos),
-                use_container_width=True,
-                config=dict(render_config.PLOTLY_CONFIG),
-            )
-    with reliability_column:
-        with modules.st.container(border=True):
-            modules.st.markdown(
-                card_header_html(
-                    "Reliability & throughput",
-                    "Run health and issues resolved per day",
-                ),
-                unsafe_allow_html=True,
-            )
-            raw_tiles = reliability_tile_data(
-                panel.summary,
-                resolved=panel.resolved,
-                rejected=panel.rejected,
-            )
-            modules.st.markdown(
-                reliability_tiles_html(
-                    raw_tiles,
-                    fmt_num=modules.theme.fmt_num,
-                ),
-                unsafe_allow_html=True,
-            )
-            modules.st.plotly_chart(
-                done_per_day_bars(
-                    panel.throughput,
-                    window_start=panel.window.start.date(),
-                    window_end=(panel.window.end - timedelta(days=1)).date(),
-                    title=None,
-                ),
-                use_container_width=True,
-                config=dict(render_config.PLOTLY_CONFIG),
-            )
+    with repo_column, modules.st.container(border=True):
+        modules.st.markdown(
+            card_header_html(
+                "Cost by repository",
+                "Spend across managed repos",
+            ),
+            unsafe_allow_html=True,
+        )
+        modules.st.plotly_chart(
+            cost_by_repo(panel.repos),
+            use_container_width=True,
+            config=dict(render_config.PLOTLY_CONFIG),
+        )
+    with reliability_column, modules.st.container(border=True):
+        modules.st.markdown(
+            card_header_html(
+                "Reliability & throughput",
+                "Run health and issues resolved per day",
+            ),
+            unsafe_allow_html=True,
+        )
+        raw_tiles = reliability_tile_data(
+            panel.summary,
+            resolved=panel.resolved,
+            rejected=panel.rejected,
+        )
+        modules.st.markdown(
+            reliability_tiles_html(
+                raw_tiles,
+                fmt_num=modules.theme.fmt_num,
+            ),
+            unsafe_allow_html=True,
+        )
+        modules.st.plotly_chart(
+            done_per_day_bars(
+                panel.throughput,
+                window_start=panel.window.start.date(),
+                window_end=(panel.window.end - timedelta(days=1)).date(),
+                title=None,
+            ),
+            use_container_width=True,
+            config=dict(render_config.PLOTLY_CONFIG),
+        )

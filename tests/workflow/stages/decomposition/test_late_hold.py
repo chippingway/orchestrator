@@ -431,9 +431,8 @@ class PlanPrProvenanceTest(_HoldCase):
             self.github, "write_pinned_state", side_effect=RuntimeError,
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                hold = self._reconcile()
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            hold = self._reconcile()
 
         self.assertTrue(hold.failed)
         self.assertFalse(hold.held)
@@ -482,9 +481,11 @@ class PlanPrHoldFailureTest(_HoldCase):
         # provenance included -- so a fetch nobody could make leaves the
         # question unanswered, and "could not ask" must not be acted on the
         # way "not the plan" safely is.
-        with patch.object(self.github, GET_PR, side_effect=RuntimeError):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                hold = self._reconcile()
+        with (
+            patch.object(self.github, GET_PR, side_effect=RuntimeError),
+            self.assertLogs(WORKFLOW_LOG, level=ERROR),
+        ):
+            hold = self._reconcile()
 
         self.assertTrue(hold.failed)
         self.assertFalse(hold.held)
@@ -495,9 +496,8 @@ class PlanPrHoldFailureTest(_HoldCase):
             self.github, "edit_pr_body", side_effect=RuntimeError,
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                hold = self._reconcile()
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            hold = self._reconcile()
 
         self.assertTrue(hold.failed)
         # The identity and the original body are already durable, so the
@@ -553,9 +553,8 @@ class PlanPrHoldFailureTest(_HoldCase):
             self.github, GET_PR, return_value=unreadable,
         )
 
-        with fetched:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                hold = self._reconcile()
+        with fetched, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            hold = self._reconcile()
 
         self.assertTrue(hold.failed)
         self.assertFalse(hold.held)

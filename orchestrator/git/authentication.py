@@ -189,18 +189,17 @@ def _authed_fetch(
         )
     with _git_auth_session(
         spec, token, include_identity=True,
-    ) as auth_session:
-        with locks._target_root_lock(spec.target_root):
-            return subprocess.run(
-                [
-                    *commands._AUTHED_GIT_PREFIX,
-                    _FETCH, "--quiet", auth_session.auth_url, refspec,
-                ],
-                cwd=str(cwd),
-                capture_output=True,
-                text=True,
-                env=auth_session.env,
-            )
+    ) as auth_session, locks._target_root_lock(spec.target_root):
+        return subprocess.run(
+            [
+                *commands._AUTHED_GIT_PREFIX,
+                _FETCH, "--quiet", auth_session.auth_url, refspec,
+            ],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            env=auth_session.env,
+        )
 
 
 def _authed_target_fetch(
@@ -268,18 +267,17 @@ def _authed_target_fetch(
     refspec = (
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}"
     )
-    with _git_auth_session(spec, token) as auth_session:
-        with locks._target_root_lock(spec.target_root):
-            return subprocess.run(
-                [
-                    *commands._AUTHED_GIT_PREFIX,
-                    _FETCH, "--quiet", auth_session.auth_url, refspec,
-                ],
-                cwd=str(spec.target_root),
-                capture_output=True,
-                text=True,
-                env=auth_session.env,
-            )
+    with _git_auth_session(spec, token) as auth_session, locks._target_root_lock(spec.target_root):
+        return subprocess.run(
+            [
+                *commands._AUTHED_GIT_PREFIX,
+                _FETCH, "--quiet", auth_session.auth_url, refspec,
+            ],
+            cwd=str(spec.target_root),
+            capture_output=True,
+            text=True,
+            env=auth_session.env,
+        )
 
 
 def _remote_branch_tip(

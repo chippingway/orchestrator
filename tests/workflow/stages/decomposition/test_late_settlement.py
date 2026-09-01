@@ -298,9 +298,8 @@ class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
             self.github, EDIT_PR_BODY, side_effect=RuntimeError,
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                outcome = self._decide(SINGLE_RUN)
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            outcome = self._decide(SINGLE_RUN)
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(self._pinned().get(KEYS.exempt_sha), CANDIDATE_SHA)
@@ -315,9 +314,8 @@ class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
             self.github, EDIT_PR_BODY, side_effect=RuntimeError,
         )
 
-        with refused:
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                outcome = self._decide(SINGLE_RUN)
+        with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            outcome = self._decide(SINGLE_RUN)
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         pinned = self._pinned()

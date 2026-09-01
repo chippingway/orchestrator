@@ -104,9 +104,8 @@ class PackageSurfaceTest(unittest.TestCase):
 
     def test_initializer_exposes_no_owner_names(self) -> None:
         for owner_only_name in _OWNER_ONLY_NAMES:
-            with self.subTest(name=owner_only_name):
-                with self.assertRaises(AttributeError):
-                    getattr(_git_package, owner_only_name)
+            with self.subTest(name=owner_only_name), self.assertRaises(AttributeError):
+                getattr(_git_package, owner_only_name)
 
 
     def test_unpublished_names_stay_owner_only(self) -> None:

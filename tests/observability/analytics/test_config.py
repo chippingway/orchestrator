@@ -73,9 +73,8 @@ class AnalyticsSinkKnobTest(unittest.TestCase):
 
     def test_disabling_values_turn_the_sink_off(self) -> None:
         for spelling in _DISABLING:
-            with self.subTest(spelling=spelling):
-                with _environment(ANALYTICS_LOG_PATH=spelling):
-                    self.assertIsNone(analytics_config.parse_log_path())
+            with self.subTest(spelling=spelling), _environment(ANALYTICS_LOG_PATH=spelling):
+                self.assertIsNone(analytics_config.parse_log_path())
 
     def test_default_retention_is_ninety_days(self) -> None:
         with _environment():
@@ -86,11 +85,10 @@ class AnalyticsSinkKnobTest(unittest.TestCase):
 
     def test_retention_reads_the_environment(self) -> None:
         for raw, expected in _RETENTION_CASES:
-            with self.subTest(raw=raw):
-                with _environment(ANALYTICS_RETENTION_DAYS=raw):
-                    self.assertEqual(
-                        analytics_config.parse_retention_days(), expected,
-                    )
+            with self.subTest(raw=raw), _environment(ANALYTICS_RETENTION_DAYS=raw):
+                self.assertEqual(
+                    analytics_config.parse_retention_days(), expected,
+                )
 
 
 class TrajectorySinkKnobTest(unittest.TestCase):
@@ -106,11 +104,10 @@ class TrajectorySinkKnobTest(unittest.TestCase):
 
     def test_disabling_values_turn_the_sink_off(self) -> None:
         for spelling in _DISABLING:
-            with self.subTest(spelling=spelling):
-                with _environment(TRAJECTORY_LOG_PATH=spelling):
-                    self.assertIsNone(
-                        analytics_config.parse_trajectory_log_path(),
-                    )
+            with self.subTest(spelling=spelling), _environment(TRAJECTORY_LOG_PATH=spelling):
+                self.assertIsNone(
+                    analytics_config.parse_trajectory_log_path(),
+                )
 
     def test_explicit_path_enables(self) -> None:
         with _environment(TRAJECTORY_LOG_PATH=_EXPLICIT_TRAJECTORY_PATH):
@@ -128,12 +125,11 @@ class TrajectorySinkKnobTest(unittest.TestCase):
 
     def test_retention_reads_the_environment(self) -> None:
         for raw, expected in _RETENTION_CASES:
-            with self.subTest(raw=raw):
-                with _environment(TRAJECTORY_RETENTION_DAYS=raw):
-                    self.assertEqual(
-                        analytics_config.parse_trajectory_retention_days(),
-                        expected,
-                    )
+            with self.subTest(raw=raw), _environment(TRAJECTORY_RETENTION_DAYS=raw):
+                self.assertEqual(
+                    analytics_config.parse_trajectory_retention_days(),
+                    expected,
+                )
 
 
 class DatabaseUrlKnobTest(unittest.TestCase):
@@ -148,9 +144,8 @@ class DatabaseUrlKnobTest(unittest.TestCase):
 
     def test_disabling_values_turn_the_surfaces_off(self) -> None:
         for spelling in _DISABLING:
-            with self.subTest(spelling=spelling):
-                with _environment(ANALYTICS_DB_URL=spelling):
-                    self.assertIsNone(analytics_config.parse_db_url())
+            with self.subTest(spelling=spelling), _environment(ANALYTICS_DB_URL=spelling):
+                self.assertIsNone(analytics_config.parse_db_url())
 
     def test_real_url_passes_through(self) -> None:
         with _environment(ANALYTICS_DB_URL=_DB_URL):
@@ -176,19 +171,17 @@ class SkillTriggerKnobTest(unittest.TestCase):
 
     def test_truthy_spellings_enable(self) -> None:
         for spelling in ("1", "true", "on", "yes", "On", " YES "):
-            with self.subTest(spelling=spelling):
-                with _environment(TRACK_SKILL_TRIGGERS=spelling):
-                    self.assertTrue(
-                        analytics_config.parse_track_skill_triggers(),
-                    )
+            with self.subTest(spelling=spelling), _environment(TRACK_SKILL_TRIGGERS=spelling):
+                self.assertTrue(
+                    analytics_config.parse_track_skill_triggers(),
+                )
 
     def test_falsey_and_unknown_values_stay_off(self) -> None:
         for spelling in ("0", "false", "off", "no", "", "maybe"):
-            with self.subTest(spelling=spelling):
-                with _environment(TRACK_SKILL_TRIGGERS=spelling):
-                    self.assertFalse(
-                        analytics_config.parse_track_skill_triggers(),
-                    )
+            with self.subTest(spelling=spelling), _environment(TRACK_SKILL_TRIGGERS=spelling):
+                self.assertFalse(
+                    analytics_config.parse_track_skill_triggers(),
+                )
 
 
 if __name__ == "__main__":

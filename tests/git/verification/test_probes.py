@@ -107,9 +107,11 @@ class PorcelainParsingTest(unittest.TestCase):
 
     def test_each_status_record_yields_its_path(self) -> None:
         for record, expected in PORCELAIN_CASES:
-            with self.subTest(record=record):
-                with patch.object(commands, HARDENED_GIT, return_value=_completed(0, record)):
-                    self.assertEqual(probes._worktree_dirty_files(WORKTREE), expected)
+            with (
+                self.subTest(record=record),
+                patch.object(commands, HARDENED_GIT, return_value=_completed(0, record)),
+            ):
+                self.assertEqual(probes._worktree_dirty_files(WORKTREE), expected)
 
     def test_all_reported_paths_are_collected(self) -> None:
         status = "".join(record for record, paths in PORCELAIN_CASES if paths)
@@ -173,13 +175,12 @@ class RevisionContainsPathProbeTest(unittest.TestCase):
         # branch carries changes exactly the path writing it would. git reports
         # it as an empty reading rather than a failure.
         for read in (_completed(GIT_FAILURE, ""), _completed(0, "")):
-            with self.subTest(returncode=read.returncode):
-                with patch.object(commands, HARDENED_GIT, return_value=read):
-                    self.assertFalse(
-                        probes._revision_contains_path(
-                            WORKTREE, HEAD_SHA, PLAN_PATH,
-                        ),
-                    )
+            with self.subTest(returncode=read.returncode), patch.object(commands, HARDENED_GIT, return_value=read):
+                self.assertFalse(
+                    probes._revision_contains_path(
+                        WORKTREE, HEAD_SHA, PLAN_PATH,
+                    ),
+                )
 
     def test_only_a_regular_file_answers_yes(self) -> None:
         # Every mode git can store at the path, and only two of them are the

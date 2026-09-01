@@ -130,6 +130,5 @@ class PublicSurfaceTest(unittest.TestCase):
             "_codex_command",
             "_AgentRunOptionFields",
         ):
-            with self.subTest(name=owner_only_name):
-                with self.assertRaises(AttributeError):
-                    getattr(_agents, owner_only_name)
+            with self.subTest(name=owner_only_name), self.assertRaises(AttributeError):
+                getattr(_agents, owner_only_name)

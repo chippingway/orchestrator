@@ -94,25 +94,22 @@ class ParseParallelReadsFlagTest(unittest.TestCase):
 
     def test_unset_and_empty_stay_sequential(self) -> None:
         for environment in ({}, {_PARALLEL_READS_ENV: ""}):
-            with self.subTest(environment=environment):
-                with patch.dict(os.environ, environment, clear=True):
-                    self.assertFalse(read_mode.parse_parallel_reads_flag())
+            with self.subTest(environment=environment), patch.dict(os.environ, environment, clear=True):
+                self.assertFalse(read_mode.parse_parallel_reads_flag())
 
     def test_truthy_spellings_enable_the_fan_out(self) -> None:
         for spelling in _TRUTHY_SPELLINGS:
-            with self.subTest(spelling=spelling):
-                with patch.dict(
-                    os.environ, {_PARALLEL_READS_ENV: spelling}, clear=True,
-                ):
-                    self.assertTrue(read_mode.parse_parallel_reads_flag())
+            with self.subTest(spelling=spelling), patch.dict(
+                os.environ, {_PARALLEL_READS_ENV: spelling}, clear=True,
+            ):
+                self.assertTrue(read_mode.parse_parallel_reads_flag())
 
     def test_anything_else_keeps_the_reads_sequential(self) -> None:
         for spelling in _FALSY_SPELLINGS:
-            with self.subTest(spelling=spelling):
-                with patch.dict(
-                    os.environ, {_PARALLEL_READS_ENV: spelling}, clear=True,
-                ):
-                    self.assertFalse(read_mode.parse_parallel_reads_flag())
+            with self.subTest(spelling=spelling), patch.dict(
+                os.environ, {_PARALLEL_READS_ENV: spelling}, clear=True,
+            ):
+                self.assertFalse(read_mode.parse_parallel_reads_flag())
 
     def test_surrounding_whitespace_is_stripped(self) -> None:
         # Operators paste env values out of playbooks, so a stray newline must
@@ -136,14 +133,13 @@ class DashboardParallelReadsTest(unittest.TestCase):
 
     def test_the_import_binds_what_was_asked_for(self) -> None:
         for spelling, expected in ((_ENABLED, True), ("", False)):
-            with self.subTest(spelling=spelling):
-                with reload_helpers.read_mode_reloaded_under(
-                    {_PARALLEL_READS_ENV: spelling},
-                ) as owner:
-                    self.assertIs(owner.DASHBOARD_PARALLEL_READS, expected)
-                    self.assertIs(
-                        owner.dashboard_parallel_reads_enabled(), expected,
-                    )
+            with self.subTest(spelling=spelling), reload_helpers.read_mode_reloaded_under(
+                {_PARALLEL_READS_ENV: spelling},
+            ) as owner:
+                self.assertIs(owner.DASHBOARD_PARALLEL_READS, expected)
+                self.assertIs(
+                    owner.dashboard_parallel_reads_enabled(), expected,
+                )
 
     def test_the_staged_load_is_issued_that_way(self) -> None:
         # The plan a page carries between its two waves is what the fan-out is
@@ -162,9 +158,11 @@ class DashboardParallelReadsTest(unittest.TestCase):
         # An operator turns the fan-out on by restarting the Streamlit process,
         # so what a load reads is what the import decided: re-parsing per
         # render could issue one page's reads two different ways.
-        with reload_helpers.read_mode_reloaded_under({}) as owner:
-            with patch.dict(os.environ, {_PARALLEL_READS_ENV: _ENABLED}):
-                self.assertFalse(owner.dashboard_parallel_reads_enabled())
+        with (
+            reload_helpers.read_mode_reloaded_under({}) as owner,
+            patch.dict(os.environ, {_PARALLEL_READS_ENV: _ENABLED}),
+        ):
+            self.assertFalse(owner.dashboard_parallel_reads_enabled())
 
 
 class DbUnconfiguredMessageTest(unittest.TestCase):

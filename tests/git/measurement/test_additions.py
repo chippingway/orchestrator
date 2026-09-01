@@ -323,13 +323,12 @@ class MeasurementCompositionTest(unittest.TestCase):
         unreadable = FrozenCommit(failure=MeasurementFailure.BASE_UNREADABLE)
         with patch.object(
             commits, "_freeze_base_commit", return_value=unreadable,
-        ):
-            with patch.object(commits, "_prove_candidate_commit") as prove:
-                measured = additions._measure_candidate(
-                    self._repo.spec, self._repo.worktree, candidate,
-                )
+        ), patch.object(commits, "_prove_candidate_commit") as prove:
+            measured = additions._measure_candidate(
+                self._repo.spec, self._repo.worktree, candidate,
+            )
 
-                prove.assert_not_called()
+            prove.assert_not_called()
 
         self.assertEqual(measured.failure, MeasurementFailure.BASE_UNREADABLE)
         self.assertEqual(measured.base_sha, "")

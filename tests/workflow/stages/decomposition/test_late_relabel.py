@@ -43,11 +43,10 @@ class _LateLabelCase(unittest.TestCase):
 
     def _route(self, github, issue) -> bool:
         """Take the kill switch's bailout with `DECOMPOSE=off`."""
-        with patch.object(config, DECOMPOSE, False):
-            with patch.object(_handoff._implementing, HANDLE_IMPLEMENTING):
-                return _handoff._route_disabled_to_implementing(
-                    github, _TEST_SPEC, issue, github.read_pinned_state(issue),
-                )
+        with patch.object(config, DECOMPOSE, False), patch.object(_handoff._implementing, HANDLE_IMPLEMENTING):
+            return _handoff._route_disabled_to_implementing(
+                github, _TEST_SPEC, issue, github.read_pinned_state(issue),
+            )
 
     def _restore(self, github, issue) -> bool:
         return _late_relabel._restore_decomposing_label(
@@ -162,9 +161,8 @@ class LabelRestorationTest(_LateLabelCase):
         # land the label says nothing and the retry is the one that speaks.
         github, issue = late_issue()
         relabelled(issue, WorkflowLabel.VALIDATING)
-        with patch.object(github, SET_WORKFLOW_LABEL, side_effect=RuntimeError):
-            with self.assertRaises(RuntimeError):
-                self._restore(github, issue)
+        with patch.object(github, SET_WORKFLOW_LABEL, side_effect=RuntimeError), self.assertRaises(RuntimeError):
+            self._restore(github, issue)
         self.assertEqual(github.posted_comments, [])
 
         with patch.object(config, TRANSITION_GUARD, ENFORCE):

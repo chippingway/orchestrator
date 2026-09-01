@@ -107,13 +107,12 @@ class RebaseInProgressTest(unittest.TestCase):
             _git_result(returncode=GIT_FAILURE_EXIT_CODE),
             _git_result(stdout="\n"),
         ):
-            with self.subTest(returncode=git_path_result.returncode):
-                with _patch_base_sync(
-                    hardened=MagicMock(return_value=git_path_result),
-                ):
-                    self.assertFalse(
-                        pre_pr._rebase_in_progress(self.worktree),
-                    )
+            with self.subTest(returncode=git_path_result.returncode), _patch_base_sync(
+                hardened=MagicMock(return_value=git_path_result),
+            ):
+                self.assertFalse(
+                    pre_pr._rebase_in_progress(self.worktree),
+                )
 
     def _probe(self, git_path_stdout: str) -> bool:
         with _patch_base_sync(

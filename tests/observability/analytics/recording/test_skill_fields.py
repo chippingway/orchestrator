@@ -308,20 +308,20 @@ class RecordAgentExitSkillFieldsTest(_RecordAgentExitSkillSupport):
     def test_parse_failure_keeps_baseline_record(self) -> None:
         # A skill-parser bug must NOT drop the usage/cost record: the inner
         # fail-open guard logs and falls through with the skill fields unset.
-        with tempfile.TemporaryDirectory() as td:
-            with (
-                patch.object(
-                    _usage_skills,
-                    "parse_agent_skills",
-                    side_effect=RuntimeError("boom"),
-                ),
-                self.assertLogs(analytics_sink.log, level="ERROR"),
-            ):
-                records = self._emit(
-                    Path(td) / _ANALYTICS_FILENAME,
-                    stdout=_claude_stdout_with_skills(skills=(_DEVELOP,)),
-                    track=True,
-                )
+        with (
+            tempfile.TemporaryDirectory() as td,
+            patch.object(
+                _usage_skills,
+                "parse_agent_skills",
+                side_effect=RuntimeError("boom"),
+            ),
+            self.assertLogs(analytics_sink.log, level="ERROR"),
+        ):
+            records = self._emit(
+                Path(td) / _ANALYTICS_FILENAME,
+                stdout=_claude_stdout_with_skills(skills=(_DEVELOP,)),
+                track=True,
+            )
         self.assertEqual(len(records), 1)
         rec = records[0]
         # Baseline usage fields survived the skill-parse failure...

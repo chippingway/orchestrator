@@ -68,34 +68,32 @@ def render_stage_review_bars(
     """Render aligned per-stage and per-review-round cost bars."""
     bars_height = paired_bars_height(stage_rows, review_round_rows)
     stage_column, round_column = st.columns([7, 5])
-    with stage_column:
-        with st.container(border=True):
-            st.markdown(
-                card_header_html(
-                    "Cost by workflow stage",
-                    "Where spend lands across the issue lifecycle",
-                ),
-                unsafe_allow_html=True,
-            )
-            st.plotly_chart(
-                cost_by_stage(stage_rows, height=bars_height),
-                use_container_width=True,
-                config=dict(render_config.PLOTLY_CONFIG),
-            )
-    with round_column:
-        with st.container(border=True):
-            st.markdown(
-                card_header_html(
-                    "Development and review by round",
-                    "Developer and reviewer spend per review cycle",
-                ),
-                unsafe_allow_html=True,
-            )
-            st.plotly_chart(
-                cost_by_review_round(
-                    review_round_rows,
-                    height=bars_height,
-                ),
-                use_container_width=True,
-                config=dict(render_config.PLOTLY_CONFIG),
-            )
+    with stage_column, st.container(border=True):
+        st.markdown(
+            card_header_html(
+                "Cost by workflow stage",
+                "Where spend lands across the issue lifecycle",
+            ),
+            unsafe_allow_html=True,
+        )
+        st.plotly_chart(
+            cost_by_stage(stage_rows, height=bars_height),
+            use_container_width=True,
+            config=dict(render_config.PLOTLY_CONFIG),
+        )
+    with round_column, st.container(border=True):
+        st.markdown(
+            card_header_html(
+                "Development and review by round",
+                "Developer and reviewer spend per review cycle",
+            ),
+            unsafe_allow_html=True,
+        )
+        st.plotly_chart(
+            cost_by_review_round(
+                review_round_rows,
+                height=bars_height,
+            ),
+            use_container_width=True,
+            config=dict(render_config.PLOTLY_CONFIG),
+        )

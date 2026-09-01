@@ -154,9 +154,8 @@ class CrashedHandoffReconcileTest(unittest.TestCase, _HandoffTickMixin):
             gh,
             "write_pinned_state",
             side_effect=_WriteFailsAfterTheAnchor(gh.write_pinned_state),
-        ):
-            with self.assertRaises(RuntimeError):
-                self._run_handoff_tick(gh, crashed)
+        ), self.assertRaises(RuntimeError):
+            self._run_handoff_tick(gh, crashed)
 
         # What the crash left: the branch on their head, the records still
         # naming the commit before it, and the marker that tells them apart.

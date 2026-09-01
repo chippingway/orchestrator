@@ -275,17 +275,15 @@ class SetWorkflowLabelGuardWiringTest(unittest.TestCase):
 
     def test_enforce_blocks_illegal_relabel(self) -> None:
         gh, issue = _guarded_issue()
-        with patch.object(config, _GUARD_CONFIG_NAME, _GUARD_ENFORCE):
-            with self.assertRaises(IllegalTransition):
-                gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
+        with patch.object(config, _GUARD_CONFIG_NAME, _GUARD_ENFORCE), self.assertRaises(IllegalTransition):
+            gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
         # Label unchanged after the rejected write.
         self.assertEqual(gh.workflow_label(issue), WorkflowLabel.VALIDATING)
 
     def test_warn_allows_illegal_relabel(self) -> None:
         gh, issue = _guarded_issue()
-        with patch.object(config, _GUARD_CONFIG_NAME, "warn"):
-            with self.assertLogs(_GUARD_LOGGER_NAME, level="WARNING"):
-                gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
+        with patch.object(config, _GUARD_CONFIG_NAME, "warn"), self.assertLogs(_GUARD_LOGGER_NAME, level="WARNING"):
+            gh.set_workflow_label(issue, WorkflowLabel.IN_REVIEW)
         self.assertEqual(gh.workflow_label(issue), WorkflowLabel.IN_REVIEW)
 
     def test_enforce_allows_legal_relabel(self) -> None:

@@ -128,9 +128,8 @@ class LateRouteTest(_RouteCase, unittest.TestCase):
         adjudicated = MagicMock(return_value=_decided())
         prepared = MagicMock()
 
-        with patch.object(_late_coordinator, _ADJUDICATE, adjudicated):
-            with patch.object(_run, _PREPARE_RUN, prepared):
-                self._tick(github, issue)
+        with patch.object(_late_coordinator, _ADJUDICATE, adjudicated), patch.object(_run, _PREPARE_RUN, prepared):
+            self._tick(github, issue)
 
         adjudicated.assert_called_once()
         self.assertIs(adjudicated.call_args.args[2], issue)
@@ -147,9 +146,8 @@ class LateRouteTest(_RouteCase, unittest.TestCase):
         prepared = MagicMock()
         handled = MagicMock()
 
-        with patch.object(_run, _PREPARE_RUN, prepared):
-            with patch.object(_implementing, _HANDLE_IMPLEMENTING, handled):
-                self._tick(github, issue)
+        with patch.object(_run, _PREPARE_RUN, prepared), patch.object(_implementing, _HANDLE_IMPLEMENTING, handled):
+            self._tick(github, issue)
 
         prepared.assert_not_called()
         handled.assert_called_once()
@@ -185,15 +183,13 @@ class LateRouteTest(_RouteCase, unittest.TestCase):
         github, issue = self._settled()
         refused = MagicMock(side_effect=RuntimeError("label write refused"))
 
-        with patch.object(github, _SET_WORKFLOW_LABEL, refused):
-            with self.assertRaises(RuntimeError):
-                self._tick(github, issue)
+        with patch.object(github, _SET_WORKFLOW_LABEL, refused), self.assertRaises(RuntimeError):
+            self._tick(github, issue)
 
         prepared = MagicMock()
         handled = MagicMock()
-        with patch.object(_run, _PREPARE_RUN, prepared):
-            with patch.object(_implementing, _HANDLE_IMPLEMENTING, handled):
-                self._tick(github, issue)
+        with patch.object(_run, _PREPARE_RUN, prepared), patch.object(_implementing, _HANDLE_IMPLEMENTING, handled):
+            self._tick(github, issue)
 
         prepared.assert_not_called()
         handled.assert_called_once()
@@ -299,9 +295,12 @@ class LateSettledHandoffTest(unittest.TestCase):
             self.github, _EDIT_PR_BODY, side_effect=RuntimeError,
         )
 
-        with refused, patch.object(_implementing, _HANDLE_IMPLEMENTING, handled):
-            with self.assertLogs(_WORKFLOW_LOG, level=_ERROR):
-                _run._handle_decomposing(self.github, _TEST_SPEC, self.issue)
+        with (
+            refused,
+            patch.object(_implementing, _HANDLE_IMPLEMENTING, handled),
+            self.assertLogs(_WORKFLOW_LOG, level=_ERROR),
+        ):
+            _run._handle_decomposing(self.github, _TEST_SPEC, self.issue)
 
         handled.assert_not_called()
         self.assertEqual(self.github.label_history, [])
@@ -345,9 +344,8 @@ class LateHandoffTest(_RouteCase, unittest.TestCase):
         handled = MagicMock()
         refreshed = _stale_label_client(self, github)
 
-        with patch.object(config, _DECOMPOSE, False):
-            with patch.object(_implementing, _HANDLE_IMPLEMENTING, handled):
-                self._tick(github, issue)
+        with patch.object(config, _DECOMPOSE, False), patch.object(_implementing, _HANDLE_IMPLEMENTING, handled):
+            self._tick(github, issue)
 
         self.assertIs(handled.call_args.args[2], refreshed)
 
@@ -358,9 +356,11 @@ class LateHandoffTest(_RouteCase, unittest.TestCase):
         github, issue = self._settled()
         handled = MagicMock()
 
-        with patch.object(github, _GET_ISSUE, side_effect=RuntimeError("gone")):
-            with patch.object(_implementing, _HANDLE_IMPLEMENTING, handled):
-                self._tick(github, issue)
+        with (
+            patch.object(github, _GET_ISSUE, side_effect=RuntimeError("gone")),
+            patch.object(_implementing, _HANDLE_IMPLEMENTING, handled),
+        ):
+            self._tick(github, issue)
 
         handled.assert_not_called()
 

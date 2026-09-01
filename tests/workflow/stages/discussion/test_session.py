@@ -78,17 +78,16 @@ class DiscussionSessionLockTest(unittest.TestCase, _DiscussionWorkflowMixin):
         # discussion belongs to, so it runs under the pinned spec.
         gh, issue = _seed_discussion(_REPLAY_ISSUE_NUMBER)
 
-        with _configured_spec(SPEC_WITH_ARGS, SPEC_BACKEND, SPEC_ARGS):
-            with patch.object(
+        with _configured_spec(SPEC_WITH_ARGS, SPEC_BACKEND, SPEC_ARGS), patch.object(
+            gh,
+            "get_issue",
+            return_value=_paused_view(_REPLAY_ISSUE_NUMBER, "paused"),
+        ):
+            self._run_discussion(
                 gh,
-                "get_issue",
-                return_value=_paused_view(_REPLAY_ISSUE_NUMBER, "paused"),
-            ):
-                self._run_discussion(
-                    gh,
-                    issue,
-                    run_agent=_agent(last_message=DISCUSSION_RESPONSE),
-                )
+                issue,
+                run_agent=_agent(last_message=DISCUSSION_RESPONSE),
+            )
 
         with _configured_spec(FLIPPED_SPEC, FLIPPED_BACKEND, FLIPPED_ARGS):
             replay_mocks = self._run_discussion(

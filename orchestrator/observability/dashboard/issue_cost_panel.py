@@ -62,39 +62,37 @@ def render_issues_and_backends(
 ) -> None:
     """Render the top-cost issues and backend-efficiency columns."""
     issues_column, backend_column = st.columns([7, 5])
-    with issues_column:
-        with st.container(border=True):
-            st.markdown(
-                card_header_html(
-                    "Most expensive issues",
-                    "Cost, run count, review rounds, and failure count",
-                ),
-                unsafe_allow_html=True,
-            )
-            expensive = top_expensive_issues(issues_rows)
-            if expensive:
-                st.markdown(issues_table_html(expensive), unsafe_allow_html=True)
-            else:
-                st.info("No agent runs with recorded cost in this window.")
-    with backend_column:
-        with st.container(border=True):
-            st.markdown(
-                card_header_html(
-                    "Backend efficiency",
-                    "Cost density, cache leverage, $/run",
-                ),
-                unsafe_allow_html=True,
-            )
-            if backend_rows:
-                for row in backend_rows:
-                    st.markdown(
-                        backend_efficiency_card_html(row, theme=theme),
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.info(NO_AGENT_EXITS_MESSAGE)
-            if cost_coverage_rows:
+    with issues_column, st.container(border=True):
+        st.markdown(
+            card_header_html(
+                "Most expensive issues",
+                "Cost, run count, review rounds, and failure count",
+            ),
+            unsafe_allow_html=True,
+        )
+        expensive = top_expensive_issues(issues_rows)
+        if expensive:
+            st.markdown(issues_table_html(expensive), unsafe_allow_html=True)
+        else:
+            st.info("No agent runs with recorded cost in this window.")
+    with backend_column, st.container(border=True):
+        st.markdown(
+            card_header_html(
+                "Backend efficiency",
+                "Cost density, cache leverage, $/run",
+            ),
+            unsafe_allow_html=True,
+        )
+        if backend_rows:
+            for row in backend_rows:
                 st.markdown(
-                    cost_coverage_bar_html(cost_coverage_rows, theme=theme),
+                    backend_efficiency_card_html(row, theme=theme),
                     unsafe_allow_html=True,
                 )
+        else:
+            st.info(NO_AGENT_EXITS_MESSAGE)
+        if cost_coverage_rows:
+            st.markdown(
+                cost_coverage_bar_html(cost_coverage_rows, theme=theme),
+                unsafe_allow_html=True,
+            )

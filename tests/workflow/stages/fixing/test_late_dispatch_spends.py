@@ -340,9 +340,8 @@ class RecoveredRoundEndToEndTest(unittest.TestCase, _FrozenPairMixin):
 
         with patch.object(
             _late_push, PUBLICATION_PAID, _DiesPastTheReceipt(),
-        ):
-            with self.assertRaises(RuntimeError):
-                self._run_the_stage(github)
+        ), self.assertRaises(RuntimeError):
+            self._run_the_stage(github)
 
         pinned = _pinned(github)
         self.assertEqual(pinned[KEY_RECEIPT_SHA], MEASURED_CANDIDATE_SHA)

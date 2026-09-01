@@ -128,15 +128,14 @@ class ThroughputReadTest(unittest.TestCase):
 
     def test_a_selection_without_terminals_stops(self) -> None:
         for selection in _EMPTY_SELECTIONS:
-            with self.subTest(selection=selection):
-                with configured_db_url():
-                    self.assertEqual(
-                        get_throughput_breakdown(
-                            connect=FakeConnect(),
-                            **selection,
-                        ),
-                        [],
-                    )
+            with self.subTest(selection=selection), configured_db_url():
+                self.assertEqual(
+                    get_throughput_breakdown(
+                        connect=FakeConnect(),
+                        **selection,
+                    ),
+                    [],
+                )
 
     def test_each_day_is_a_resolved_rejected_pair(self) -> None:
         conn = FakeConnection(rows=((_DAY, 3, 1), (_NEXT_DAY, 5, 0)))

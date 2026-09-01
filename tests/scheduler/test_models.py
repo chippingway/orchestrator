@@ -71,12 +71,11 @@ class BindSubmissionRequestTest(unittest.TestCase):
     def test_typed_request_rejection_names_extra(self) -> None:
         request = _request()
         for extra_positional, extra_keywords, detail in _REJECTED_TYPED_CALLS:
-            with self.subTest(detail=detail):
-                with self.assertRaisesRegex(TypeError, detail):
-                    models.bind_submission_request(
-                        (request, *extra_positional),
-                        extra_keywords,
-                    )
+            with self.subTest(detail=detail), self.assertRaisesRegex(TypeError, detail):
+                models.bind_submission_request(
+                    (request, *extra_positional),
+                    extra_keywords,
+                )
 
 
 class NormalizeSubmissionTest(unittest.TestCase):

@@ -97,9 +97,8 @@ class ModelBehaviorTest(unittest.TestCase):
             models.TurnUsageView(),
             models.RunUsageView(),
         ):
-            with self.subTest(view=type(view).__name__):
-                with self.assertRaises(FrozenInstanceError):
-                    view.turn = 1
+            with self.subTest(view=type(view).__name__), self.assertRaises(FrozenInstanceError):
+                view.turn = 1
 
     def test_a_step_reports_which_half_it_is(self) -> None:
         # A message turn is a step too, so neither half claims it.

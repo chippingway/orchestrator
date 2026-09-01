@@ -315,12 +315,10 @@ class AdjudicatedRoundTest(unittest.TestCase, _SizeGateFixtureMixin):
         })
         github = scenario.github
 
-        with patch.object(config, support.MAX_ADDED_LINES, CEILING):
-            with patch.object(
-                github, SET_WORKFLOW_LABEL, _RefusesTheRelabel(),
-            ):
-                with self.assertRaises(RuntimeError):
-                    self._run_fix_round(scenario, added_lines=PAST_THE_CEILING)
+        with patch.object(config, support.MAX_ADDED_LINES, CEILING), patch.object(
+            github, SET_WORKFLOW_LABEL, _RefusesTheRelabel(),
+        ), self.assertRaises(RuntimeError):
+            self._run_fix_round(scenario, added_lines=PAST_THE_CEILING)
 
         self.assertEqual(_pinned(scenario)[REVIEW_ROUND], 3)
 

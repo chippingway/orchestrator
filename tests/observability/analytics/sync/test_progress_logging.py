@@ -38,9 +38,8 @@ class ProgressLogTest(unittest.TestCase):
 
     def test_one_record_per_full_flush(self) -> None:
         written = sample_records(_TEST_BATCH_SIZE * 2)
-        with jsonl_log(written) as path:
-            with patch.object(ingest, _BATCH_SIZE_ATTR, _TEST_BATCH_SIZE):
-                _, log_lines = sync_capturing_logs(self, path, FakeConnection())
+        with jsonl_log(written) as path, patch.object(ingest, _BATCH_SIZE_ATTR, _TEST_BATCH_SIZE):
+            _, log_lines = sync_capturing_logs(self, path, FakeConnection())
         progress_lines = _progress_lines(log_lines)
         self.assertEqual(len(progress_lines), 2)
         # Each record fires after its flush, so the counts are cumulative.
@@ -49,9 +48,8 @@ class ProgressLogTest(unittest.TestCase):
 
     def test_the_partial_flush_reports_too(self) -> None:
         written = sample_records(_TEST_BATCH_SIZE + 2)
-        with jsonl_log(written) as path:
-            with patch.object(ingest, _BATCH_SIZE_ATTR, _TEST_BATCH_SIZE):
-                _, log_lines = sync_capturing_logs(self, path, FakeConnection())
+        with jsonl_log(written) as path, patch.object(ingest, _BATCH_SIZE_ATTR, _TEST_BATCH_SIZE):
+            _, log_lines = sync_capturing_logs(self, path, FakeConnection())
         progress_lines = _progress_lines(log_lines)
         self.assertEqual(len(progress_lines), 2)
         self.assertIn(f"inserted={_TEST_BATCH_SIZE}", progress_lines[0])

@@ -279,9 +279,8 @@ class GuardedLateCase(LateCase):
 
     def _decide_unread(self, agent_result=SPLIT_RUN):
         """Adjudicate once with the owner unreadable, log line included."""
-        with unreadable_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                return self._decide(agent_result)
+        with unreadable_owner(self.github), self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            return self._decide(agent_result)
 
     def _seed_owing(self, recorded=None, **generation_fields) -> None:
         """Re-seed this issue as one owing an owner read from a prior tick.

@@ -132,9 +132,8 @@ class OwnerReadTest(GuardedLateCase, unittest.TestCase):
     def test_a_state_naming_nothing_fails_closed(self) -> None:
         # A read that established nothing is not the same claim as "open", and
         # defaulting it either way would publish on the strength of it.
-        with stateless_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                outcome = self._decide()
+        with stateless_owner(self.github), self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            outcome = self._decide()
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(
@@ -312,9 +311,8 @@ class UnannouncedCompletionTest(GuardedLateCase, unittest.TestCase):
         # reason stands and the next tick reconciles from it.
         refused = patch.object(self.github, COMMENT, side_effect=RuntimeError)
 
-        with refused:
-            with self.assertRaises(RuntimeError):
-                self._decide(TIMEOUT_RUN)
+        with refused, self.assertRaises(RuntimeError):
+            self._decide(TIMEOUT_RUN)
 
         self.assertTrue(self._pinned().get(KEYS.awaiting))
         self.assertEqual(_park_reason(self._pinned()), PARK_TIMEOUT)
@@ -329,11 +327,10 @@ class UnannouncedCompletionTest(GuardedLateCase, unittest.TestCase):
 
     def _unread_during(self, completion):
         """One completion whose owner read fails, log line included."""
-        with unreadable_owner(self.github):
-            with self.assertLogs(WORKFLOW_LOG, level=ERROR):
-                outcome, _spawn = self._adjudicate(
-                    completion[RUN], worktree=completion[TREE],
-                )
+        with unreadable_owner(self.github), self.assertLogs(WORKFLOW_LOG, level=ERROR):
+            outcome, _spawn = self._adjudicate(
+                completion[RUN], worktree=completion[TREE],
+            )
         return outcome
 
 
