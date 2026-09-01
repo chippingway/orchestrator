@@ -27,18 +27,9 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-
 from tests.workflow.fixtures import (
     KEY_LAST_ACTION_COMMENT_ID,
     _agent,
-)
-
-from tests.workflow.stages.discussion.discussion_test_support import (
-    DISCUSSION_RESPONSE,
-    DISCUSSION_SESSION,
-    RUN_AGENT,
-    _DiscussionWorkflowMixin,
-    _seed_discussion,
 )
 from tests.workflow.stages.discussion.discussion_resume_test_support import (
     OPENING_NOTE,
@@ -46,6 +37,13 @@ from tests.workflow.stages.discussion.discussion_resume_test_support import (
     TRUSTED_AUTHOR,
     _reply,
     _seed_parked_discussion,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
+    DISCUSSION_RESPONSE,
+    DISCUSSION_SESSION,
+    RUN_AGENT,
+    _DiscussionWorkflowMixin,
+    _seed_discussion,
 )
 
 _OPENING_ISSUE_NUMBER = 1140

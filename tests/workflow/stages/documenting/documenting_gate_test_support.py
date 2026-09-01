@@ -19,7 +19,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
-
 from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow import fixtures
 from tests.workflow.stages.documenting import (

@@ -4,16 +4,13 @@
 from __future__ import annotations
 
 import unittest
-
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.workflow.engine import comments, drift
-from orchestrator.workflow.engine import pickup as _pickup
+from orchestrator.workflow.engine import comments, drift, pickup as _pickup
 from orchestrator.workflow.stages.decomposition import blocked as _blocked
 from orchestrator.workflow.stages.in_review import handler as _in_review
 from orchestrator.workflow.stages.validating import handler as _validating
-
 from tests.workflow.engine import drift_test_support as support
 
 

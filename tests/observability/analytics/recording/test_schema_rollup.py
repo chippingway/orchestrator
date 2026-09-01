@@ -3,13 +3,8 @@
 """Analytics daily-rollup definition, aggregation, and index tests."""
 
 import re
-
-
 import unittest
-
-
 from pathlib import Path
-
 
 _SCHEMA_DIR = Path(__file__).resolve().parents[4] / "analytics-db" / "init"
 

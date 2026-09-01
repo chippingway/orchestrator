@@ -37,7 +37,6 @@ from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.stages.implementing import (
     late_reconcile as _reconcile,
 )
-
 from tests.git.publication import squash_git_support as squash_support
 from tests.git.publication.squash_gate_support import (
     SQUASH_LABEL,

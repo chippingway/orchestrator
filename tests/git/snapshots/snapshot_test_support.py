@@ -25,7 +25,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestrator import config
-
 from tests.git.auth_session_test_support import _SESSIONS
 
 GIT = "git"

@@ -10,7 +10,6 @@ from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.workflow.stages.implementing import resume as _implementing_resume
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -21,11 +20,11 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    REVIEW_APPROVED_MESSAGE,
     _FAKE_WT,
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
+    REVIEW_APPROVED_MESSAGE,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 CONSUMED_REPLY_ISSUE = 900

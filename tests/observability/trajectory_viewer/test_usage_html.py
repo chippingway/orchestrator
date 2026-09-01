@@ -9,7 +9,6 @@ from typing import Any
 from orchestrator.observability.trajectory_viewer import models, usage_html
 from tests.observability.trajectory_viewer.trajectory_viewer_test_support import run
 
-
 _MODEL_CLAUDE = "claude-opus-4-8"
 
 _MODEL_CODEX = "gpt-5-codex"

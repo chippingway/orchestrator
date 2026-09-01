@@ -14,7 +14,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.git.snapshots import namespace, refs
-
 from tests.git.snapshots.snapshot_test_support import PLUMBING_LOG, real_remote
 
 ISSUE = 41

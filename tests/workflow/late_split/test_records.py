@@ -5,11 +5,9 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.late_split import records as _records
-from orchestrator.workflow.late_split import formats as _formats
+from orchestrator.workflow.late_split import formats as _formats, records as _records
 from orchestrator.workflow.late_split.models import LateGeneration, LateVerdict
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.late_split import generation_test_support as _support
 
 _PREDECESSOR = 1

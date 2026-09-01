@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 
 from orchestrator import config
 from orchestrator.git.base_sync import pre_pr
-
 from tests.git.base_sync.sync_test_support import _git_result, _patch_base_sync
 
 ISSUE = 7

@@ -16,9 +16,7 @@ from orchestrator.github.comments import (
     filter_trusted,
     is_trusted_author,
 )
-
 from tests.support.fakes import FakeComment, FakeUser
-
 
 _ALLOWED_LOGIN = "alice"
 _BOT_ACCOUNT_TYPE = "Bot"

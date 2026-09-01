@@ -15,7 +15,6 @@ import unittest
 from functools import partial
 
 from orchestrator.scheduler import IssueScheduler
-
 from tests.scheduler.coordination_helpers import (
     _tracked_worker,
 )

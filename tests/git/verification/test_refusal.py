@@ -8,7 +8,6 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.git.verification import probes, runner
-
 from tests.git.verification import command_helpers
 
 VERIFY_HEAD_CHANGED = "head_changed"

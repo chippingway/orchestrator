@@ -21,7 +21,6 @@ the edited body is the operator's call, not ours.
 """
 from __future__ import annotations
 
-
 from github.Issue import Issue
 
 from orchestrator import config
@@ -30,10 +29,7 @@ from orchestrator.git.worktrees import decomposition as _worktree_decomposition
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import comments as _comments, drift as _drift, prompts as _prompts, usage as _usage
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _DecomposerSession
 from orchestrator.workflow.stages.implementing import session as _dev_session

@@ -3,44 +3,25 @@
 """Analytics agent-exit skill-field tests."""
 
 import contextlib
-
-
 import json
-
-
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
-
-
-from orchestrator.observability.usage import skills as _usage_skills
-
-
-
 
 from orchestrator.observability.analytics import (
     recording,
     settings as analytics_settings,
     sink as analytics_sink,
 )
-
+from orchestrator.observability.usage import skills as _usage_skills
 from tests.observability.analytics.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
-
-
 from tests.observability.analytics.analytics_recording_cases import (
     agent_exit_result as _agent_exit_result,
     claude_stdout_with_skills as _claude_stdout_with_skills,
 )
-
 
 _ANALYTICS_FILENAME = 'a.jsonl'
 

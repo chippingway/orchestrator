@@ -22,9 +22,6 @@ from unittest.mock import Mock, patch
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.late_split import state as _late_state
-from orchestrator.workflow.stages.decomposition import (
-    late_cancellation as _late_cancellation,
-)
 from orchestrator.workflow.late_split.models import (
     LateGeneration,
     LatePhase,
@@ -32,7 +29,9 @@ from orchestrator.workflow.late_split.models import (
     LateResourceKind,
     LateResourceState,
 )
-
+from orchestrator.workflow.stages.decomposition import (
+    late_cancellation as _late_cancellation,
+)
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_test_support import (

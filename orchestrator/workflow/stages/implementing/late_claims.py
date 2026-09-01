@@ -35,6 +35,7 @@ import logging
 
 from orchestrator import config
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow import state as _workflow_state
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
@@ -42,7 +43,6 @@ from orchestrator.workflow.stages.implementing import (
     late_records as _records,
     state as _state,
 )
-from orchestrator.workflow import state as _workflow_state
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")

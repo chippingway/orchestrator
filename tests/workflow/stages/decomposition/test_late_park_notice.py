@@ -27,13 +27,12 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
 from orchestrator.workflow.stages.decomposition.late_notice import PARK_NOTICE
-
 from tests.workflow.stages.decomposition.late_content_support import (
     EDITED_TITLE,
-    LateContentCase,
     PARK_CONTENT_DRIFT,
     PARK_QUESTION,
     PARK_REVISION_DIRTY,
+    LateContentCase,
     RefusedComment,
     reply,
 )

@@ -11,12 +11,9 @@ from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.workflow.stages.decomposition import run as _decomposing
-from orchestrator.workflow.stages.implementing import handler as _implementing
-from orchestrator.workflow.stages.implementing import resume as _implementing_resume
-
+from orchestrator.workflow.stages.implementing import handler as _implementing, resume as _implementing_resume
 from tests.support import fakes as _fakes
 from tests.workflow import fixtures as _helpers
-
 
 REVIEW_APPROVED_MESSAGE = _helpers.REVIEW_APPROVED_MESSAGE
 _PatchedWorkflowMixin = _helpers._PatchedWorkflowMixin

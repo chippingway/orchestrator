@@ -31,8 +31,7 @@ from github.Issue import Issue
 
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.stages.in_review import models as _models
-from orchestrator.workflow.stages.in_review import state as _state
+from orchestrator.workflow.stages.in_review import models as _models, state as _state
 
 
 def _comment_created_at(comment) -> datetime | None:

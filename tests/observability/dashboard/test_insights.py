@@ -22,7 +22,6 @@ from orchestrator.observability.analytics.query.cost_models import CostCoverageR
 from orchestrator.observability.analytics.query.overview_models import Summary
 from orchestrator.observability.dashboard import insights
 
-
 _ERROR = "error"
 
 _WARNING = "warning"

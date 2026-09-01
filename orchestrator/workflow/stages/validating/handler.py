@@ -24,10 +24,12 @@ from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import terminals as _terminals
-from orchestrator.workflow.stages.validating import awaiting_resume as _awaiting_resume
-from orchestrator.workflow.stages.validating import drift as _drift
-from orchestrator.workflow.stages.validating import reviewer as _reviewer
-from orchestrator.workflow.stages.validating import state as _state
+from orchestrator.workflow.stages.validating import (
+    awaiting_resume as _awaiting_resume,
+    drift as _drift,
+    reviewer as _reviewer,
+    state as _state,
+)
 
 
 def _finalize_validating_terminal(

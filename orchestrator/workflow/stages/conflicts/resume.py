@@ -33,24 +33,26 @@ base.
 """
 from __future__ import annotations
 
-
 from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.comments import filter_trusted
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.conflicts import guards as _conflict_guards
-from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import outcomes as _outcomes
-from orchestrator.workflow.stages.conflicts import state as _state
-from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    drift as _drift,
+    guards as _guards,
+    messages as _messages,
+    prompts as _prompts,
+    usage as _usage,
+)
+from orchestrator.workflow.stages.conflicts import (
+    guards as _conflict_guards,
+    models as _models,
+    outcomes as _outcomes,
+    state as _state,
+    transitions as _transitions,
+)
 from orchestrator.workflow.stages.implementing import resume as _dev_resume
 from orchestrator.workflow.stages.validating import drift_outcomes as _drift_outcomes
-
 
 # What a round a body-edit resume finished is recorded as, in the audit event
 # and in the receipt a hold leaves for the tick that resumes behind it.

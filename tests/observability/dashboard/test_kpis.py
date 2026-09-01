@@ -33,7 +33,6 @@ from tests.observability.dashboard.dashboard_test_support import (
     utc_midnight,
 )
 
-
 # The labels the six tiles are keyed by, which is also the order the panel
 # renders them in.
 _AGENT_RUNS = "Agent runs"

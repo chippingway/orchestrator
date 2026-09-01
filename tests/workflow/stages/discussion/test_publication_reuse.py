@@ -46,7 +46,6 @@ import unittest
 from pathlib import Path
 
 from orchestrator import config
-
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
     BASE_TIP_SHA,
@@ -54,7 +53,6 @@ from tests.workflow.fixtures import (
     STATE_CLOSED,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_SESSION,
     HEAD_AFTER_COMMIT,
@@ -62,20 +60,16 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_BASE_SHA,
     KEY_DISCUSSION_AGENT,
     KEY_DISCUSSION_SESSION_ID,
-    KEY_PR_NUMBER,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_PLAN_PATH,
+    KEY_PR_NUMBER,
     KEY_PUBLISHING_SHA,
     KEY_ROUND_BRANCH,
     KEY_ROUND_OPEN,
     KEY_ROUND_SHA,
     PARK_DISCUSSION_PLAN_PUBLISHED,
+    PARK_DISCUSSION_UNATTRIBUTED,
     PUSH_BRANCH,
     RUN_AGENT,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    PARK_DISCUSSION_UNATTRIBUTED,
     SPEC_BACKEND,
     _DiscussionWorkflowMixin,
     _issue_branch,

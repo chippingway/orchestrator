@@ -6,7 +6,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.documenting import handler as _documenting
-
 from tests.workflow.stages import tracked_repos_test_support as support
 
 

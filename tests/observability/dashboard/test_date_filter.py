@@ -22,9 +22,7 @@ from orchestrator.observability.dashboard import (
     date_filter,
     windows,
 )
-from tests.observability.dashboard import dashboard_test_support as fixtures
-from tests.observability.dashboard import date_test_support as fakes
-
+from tests.observability.dashboard import dashboard_test_support as fixtures, date_test_support as fakes
 
 _CARD_MARK = '<div class="orch-cardmark"></div>'
 

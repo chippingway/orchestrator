@@ -12,7 +12,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.workflow.engine import comments as _comments
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -27,9 +26,9 @@ from tests.workflow.fixtures import (
     LABEL_FIXING,
     LABEL_IN_REVIEW,
     REVIEW_APPROVED_MESSAGE,
-    _PatchedWorkflowMixin,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
 
 SAME_ACCOUNT_ISSUE = 100

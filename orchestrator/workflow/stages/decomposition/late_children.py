@@ -73,9 +73,7 @@ from orchestrator.git.snapshots import refs as _snapshot_refs
 from orchestrator.github.comments import carries_reserved_marker
 from orchestrator.github.issues import issue_is_closed
 from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import identity as _identity
-from orchestrator.workflow.late_split import lineage as _lineage
+from orchestrator.workflow.late_split import formats as _formats, identity as _identity, lineage as _lineage
 from orchestrator.workflow.late_split.models import (
     MAX_LINEAGE_DEPTH,
     LateFailure,
@@ -86,12 +84,10 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_owner as _late_owner,
+    split as _split,
+    state as _state,
 )
-from orchestrator.workflow.stages.decomposition import split as _split
-from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.late_models import _LateContext
 from orchestrator.workflow.stages.decomposition.models import _SplitPlan
 

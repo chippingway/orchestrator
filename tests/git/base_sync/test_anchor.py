@@ -7,6 +7,11 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
+from tests.git.base_sync.anchor_assertions import (
+    _assert_hardened_calls,
+    _assert_not_called,
+    _assert_parked_without_anchor,
+)
 from tests.git.base_sync.refresh_scenarios import (
     PUSH_PATCH,
     REBASE_PATCH,
@@ -14,19 +19,13 @@ from tests.git.base_sync.refresh_scenarios import (
     _scenario,
 )
 from tests.git.base_sync.refresh_test_support import (
-    _diverged,
     AFTER_SHA,
     REBASED_SHA,
+    _diverged,
+    _git_result,
     _RebaseAnchorRecorder,
     _RemoteHeadGit,
     _SyncWorktreeWithBaseFixture,
-    _git_result,
-)
-
-from tests.git.base_sync.anchor_assertions import (
-    _assert_hardened_calls,
-    _assert_not_called,
-    _assert_parked_without_anchor,
 )
 
 ISSUE = 7

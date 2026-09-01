@@ -64,11 +64,13 @@ from orchestrator.git.publication import (
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import pull_requests as _pull_requests
-from orchestrator.workflow.stages.discussion import models as _models
-from orchestrator.workflow.stages.discussion import parks as _parks
-from orchestrator.workflow.stages.discussion import run as _run
-from orchestrator.workflow.stages.discussion import session as _session
-from orchestrator.workflow.stages.discussion import state as _state
+from orchestrator.workflow.stages.discussion import (
+    models as _models,
+    parks as _parks,
+    run as _run,
+    session as _session,
+    state as _state,
+)
 
 log = logging.getLogger("orchestrator.workflow")
 

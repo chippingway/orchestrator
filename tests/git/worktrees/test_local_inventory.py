@@ -19,15 +19,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator.git.worktrees import inventory, paths, probes
-
 from tests.git.worktrees.artifact_test_support import (
     COLLIDING_SLUGS,
     GADGET_SLUG,
     LIFECYCLE_LOGGER,
     WIDGET_SLUG,
-)
-# The builders a world is planted with, named apart from what it is named by.
-from tests.git.worktrees.artifact_test_support import (
     _ArtifactWorld,
     _block_worktrees_root,
     _break_ref,

@@ -3,21 +3,9 @@
 """Analytics trajectory source-item accounting tests."""
 
 import json
-
-
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
-from tests.observability.analytics.analytics_jsonl_helpers import (
-    read_records as _read_records,
-)
-
 
 from tests.observability.analytics.analytics_codex_item_cases import (
     CODEX_ACCOUNTED_ITEMS,
@@ -27,13 +15,12 @@ from tests.observability.analytics.analytics_codex_item_cases import (
     CODEX_HIDDEN_REASONING_TEXT,
     codex_accounting_stdout as _codex_accounting_stdout,
 )
-
-
+from tests.observability.analytics.analytics_jsonl_helpers import (
+    read_records as _read_records,
+)
 from tests.observability.analytics.analytics_trajectory_cases import (
     claude_trajectory_stdout as _claude_trajectory_stdout,
 )
-
-
 from tests.observability.analytics.trajectories import (
     trajectories_test_support as _support,
 )

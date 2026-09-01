@@ -4,7 +4,6 @@
 
 from types import MappingProxyType
 
-
 CLAUDE = "claude"
 CODEX = "codex"
 SONNET = "claude-sonnet-4-6"

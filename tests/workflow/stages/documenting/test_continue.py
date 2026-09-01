@@ -2,26 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from tests.workflow.stages.documenting import (
-    documenting_test_support as documenting_support,
-)
-
 import unittest
-
 
 from tests.workflow.fixtures import (
     MEASURED_CANDIDATE_SHA,
     _agent,
 )
-
-
-# --- Workflow labels this stage routes between --------------------------
-from tests.workflow.stages.documenting.documenting_scenario_test_support import (
-    _ContinueDocumentingFixture,
+from tests.workflow.stages.documenting import (
+    documenting_test_support as documenting_support,
 )
 from tests.workflow.stages.documenting.documenting_assertion_test_support import (
     _agent_prompt,
     _issue_comment_text,
+)
+
+# --- Workflow labels this stage routes between --------------------------
+from tests.workflow.stages.documenting.documenting_scenario_test_support import (
+    _ContinueDocumentingFixture,
 )
 
 DOCUMENTING = "workflow:documenting"

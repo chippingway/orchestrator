@@ -11,7 +11,6 @@ from orchestrator.workflow.late_split.models import (
     LateResource,
     LateResourceKind,
 )
-
 from tests.workflow.late_split import generation_test_support as _support
 
 

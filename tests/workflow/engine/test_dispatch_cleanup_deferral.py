@@ -24,13 +24,6 @@ from __future__ import annotations
 import unittest
 from unittest.mock import Mock
 
-from tests.workflow.fixtures import (
-    LABEL_DECOMPOSING,
-    LABEL_DONE,
-    LABEL_READY,
-    LABEL_REJECTED,
-    LABEL_UMBRELLA,
-)
 from tests.workflow.engine.cleanup_deferral_support import (
     DEFERRED,
     ENDING_UNFINISHED,
@@ -38,12 +31,10 @@ from tests.workflow.engine.cleanup_deferral_support import (
     HELD_BY_A_WORKER,
     OWNER_NUMBER,
     OWNER_REF,
-    RECONCILED,
-    RETAINED,
-)
-from tests.workflow.engine.cleanup_deferral_support import (
     PASS_FAILED,
+    RECONCILED,
     REPO_SLUG,
+    RETAINED,
     WORKFLOW_LOG,
     DeferralCase,
     receipts_on,
@@ -53,6 +44,13 @@ from tests.workflow.engine.unfinished_cleanup_support import (
     UnfinishedCleanupCase,
     cleanup_settled,
     refusing,
+)
+from tests.workflow.fixtures import (
+    LABEL_DECOMPOSING,
+    LABEL_DONE,
+    LABEL_READY,
+    LABEL_REJECTED,
+    LABEL_UMBRELLA,
 )
 
 _OWED = frozenset((OWNER_NUMBER,))

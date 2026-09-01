@@ -18,14 +18,13 @@ from unittest import mock
 from orchestrator import config
 from orchestrator.git import authentication
 from orchestrator.git.publication import squash
-
-from tests.support.fakes import make_issue
 from tests.git.publication.squash_gate_support import (
     PublicationSeed,
     SquashRun,
     _driven_reads,
     _squash_gate,
 )
+from tests.support.fakes import make_issue
 
 BASE_BRANCH_NAME = "main"
 GIT_AUTHOR_NAME = "GIT_AUTHOR_NAME"

@@ -5,8 +5,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import drift as _drift
-
-from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -18,11 +16,11 @@ from tests.workflow.fixtures import (
     _agent,
 )
 
-
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting import (
     documenting_test_support as documenting_support,
 )
+from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
 from tests.workflow.stages.documenting.documenting_test_support import (
     _branch,
     _DocumentingWorkflowMixin,

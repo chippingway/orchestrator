@@ -13,8 +13,7 @@ from importlib.util import find_spec
 from unittest.mock import patch
 
 from orchestrator import workflow as _workflow
-from orchestrator.workflow import engine as _engine
-from orchestrator.workflow import state as _state
+from orchestrator.workflow import engine as _engine, state as _state
 
 _TICK = "tick"
 

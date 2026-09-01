@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from unittest.mock import MagicMock
 
 from orchestrator.workflow.stages.discussion import terminal as _terminal
-
 from tests.workflow.fixtures import (
     EVENT_PR_CLOSED_WITHOUT_MERGE,
     EVENT_PR_MERGED,
@@ -30,15 +29,6 @@ from tests.workflow.fixtures import (
     LABEL_DONE,
     LABEL_REJECTED,
     STATE_CLOSED,
-)
-
-from tests.workflow.stages.discussion.discussion_test_support import (
-    CLEANUP_TERMINAL_BRANCH,
-    KEY_BRANCH,
-    KEY_PR_NUMBER,
-    PARK_DISCUSSION_RESPONSE,
-    PUSH_BRANCH,
-    RUN_AGENT,
 )
 from tests.workflow.stages.discussion.discussion_terminal_test_support import (
     KEY_CLOSED_WITHOUT_MERGE_AT,
@@ -49,6 +39,14 @@ from tests.workflow.stages.discussion.discussion_terminal_test_support import (
     _seed_closed_discussion,
     _seed_interrupted_publication,
     _seed_published_plan,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
+    CLEANUP_TERMINAL_BRANCH,
+    KEY_BRANCH,
+    KEY_PR_NUMBER,
+    PARK_DISCUSSION_RESPONSE,
+    PUSH_BRANCH,
+    RUN_AGENT,
 )
 
 _MERGED_ISSUE_NUMBER = 960

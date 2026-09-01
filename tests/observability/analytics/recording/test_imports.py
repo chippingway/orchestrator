@@ -14,7 +14,6 @@ from tests.observability.observability_test_support import (
     _under,
 )
 
-
 _PACKAGE = "orchestrator.observability.analytics.recording"
 
 # The owner the three directly-called recorders and the sink append are

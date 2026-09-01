@@ -38,7 +38,6 @@ from orchestrator.observability.analytics.query.overview_models import (
 from orchestrator.observability.dashboard import formatting, kpi_strip, palette
 from tests.observability.dashboard.dashboard_test_support import MAY01, MAY07
 
-
 _EVENT = "agent_exit"
 
 _LABEL_KEY = "label"

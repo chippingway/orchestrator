@@ -6,10 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication as _authentication
-from orchestrator.git import commands as _git_commands
+from orchestrator.git import authentication as _authentication, commands as _git_commands
 from orchestrator.workflow.stages.conflicts import guards as _guards
-
 from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,

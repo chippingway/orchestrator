@@ -77,8 +77,7 @@ from orchestrator.github.issues import (
     _STATE_ATTR,
 )
 from orchestrator.workflow.engine import terminals as _terminals
-from orchestrator.workflow.stages.discussion import models as _models
-from orchestrator.workflow.stages.discussion import state as _state
+from orchestrator.workflow.stages.discussion import models as _models, state as _state
 
 log = logging.getLogger("orchestrator.workflow")
 

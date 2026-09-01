@@ -102,11 +102,8 @@ from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import state as _late_state
-from orchestrator.workflow.late_split import validation as _late_validation
+from orchestrator.workflow.engine import guards as _guards, usage as _usage
+from orchestrator.workflow.late_split import formats as _formats, state as _late_state, validation as _late_validation
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateGeneration,
@@ -114,19 +111,11 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_guidance as _late_guidance,
-)
-from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
-from orchestrator.workflow.stages.decomposition import (
+    late_hold as _late_hold,
     late_outcome as _late_outcome,
-)
-from orchestrator.workflow.stages.decomposition import late_owner as _late_owner
-from orchestrator.workflow.stages.decomposition import (
+    late_owner as _late_owner,
     late_session as _late_session,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_settlement as _late_settlement,
-)
-from orchestrator.workflow.stages.decomposition import (
     late_transaction as _late_transaction,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (

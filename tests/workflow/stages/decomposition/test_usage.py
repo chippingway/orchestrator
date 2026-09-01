@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import drift as _drift
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -17,15 +16,10 @@ from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_ISSUE_AGENT_RUNS,
     KEY_ISSUE_TOTAL_TOKENS,
-)
-from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
-)
-from tests.workflow.fixtures import (
     _agent,
     _manifest,
 )
-
 from tests.workflow.stages.decomposition.decomposing_test_support import (
     _DecomposingWorkflowMixin,
 )

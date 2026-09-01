@@ -23,12 +23,11 @@ from orchestrator.workflow.late_split.models import (
     LateResourceKind,
     LateResourceState,
 )
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.engine.dispatch_scheduler_test_support import (
     REPO_SLUG,
-    patch_base_refresh,
     _SchedulerWorkflowTest,
+    patch_base_refresh,
 )
 from tests.workflow.fixtures import LABEL_UMBRELLA
 from tests.workflow.observation_support import ObservedCloseCase, receipt_for

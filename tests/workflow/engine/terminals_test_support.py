@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from orchestrator.github import PinnedState
 from orchestrator.workflow.engine import terminals
 from orchestrator.workflow.state import stage_name
-
 from tests.support import fakes as _fakes
 from tests.workflow import (
     other_labels as _other_labels,
@@ -20,7 +19,6 @@ from tests.workflow import (
     value_helpers as _value_helpers,
 )
 from tests.workflow.engine import event_values as _events
-
 
 EVENT_PR_CLOSED_WITHOUT_MERGE = _events.EVENT_PR_CLOSED_WITHOUT_MERGE
 EVENT_PR_MERGED = _events.EVENT_PR_MERGED

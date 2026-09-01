@@ -24,10 +24,12 @@ from orchestrator import config
 from orchestrator.git import authentication as _authentication
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 from orchestrator.git.verification import probes as _verification_probes
-from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import publication as _publication
-from orchestrator.workflow.stages.conflicts import state as _state
-from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.stages.conflicts import (
+    models as _models,
+    publication as _publication,
+    state as _state,
+    transitions as _transitions,
+)
 
 log = logging.getLogger("orchestrator.workflow")
 

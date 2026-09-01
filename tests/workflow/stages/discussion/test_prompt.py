@@ -29,7 +29,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import prompts as _prompts
-
 from tests.support.fakes import FakeComment, FakeUser, make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 

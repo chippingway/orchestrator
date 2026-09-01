@@ -36,7 +36,6 @@ from orchestrator.observability.analytics.query import (
 )
 from orchestrator.observability.dashboard import filter_binding, kpis
 
-
 DEFAULT_RECENT_AGENT_EXITS = 100
 
 

@@ -27,14 +27,13 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit
-
 from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.patch_models import _agent
 from tests.workflow.stages.conflicts.test_settled_round import (
     ResolvingConflictBodyEditRoundTest,
     ResolvingConflictSettledRoundTest,
-    _ResolvingConflictMixin,
     _receipt_of,
+    _ResolvingConflictMixin,
     _rounds_of,
     _settlements_of,
 )

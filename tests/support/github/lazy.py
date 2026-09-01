@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from tests.support.github.models import FakePR
 
-
 # What a lazy attribute read answers with where the request behind it failed.
 LAZY_READ_REFUSED = "the pull request could not be read"
 

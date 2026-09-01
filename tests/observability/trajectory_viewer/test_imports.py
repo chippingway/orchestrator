@@ -13,7 +13,6 @@ from tests.observability.observability_test_support import (
     _imported_orchestrator_modules,
 )
 
-
 _PACKAGE = "orchestrator.observability.trajectory_viewer"
 
 _COERCION_OWNER = "coercion"

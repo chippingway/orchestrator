@@ -6,13 +6,12 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
-
 from tests.support.fakes import FakeComment, FakeUser
+from tests.workflow.fixtures import _agent
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,
 )
-from tests.workflow.fixtures import _agent
 
 CONFLICT_ISSUE = 200
 CONFLICT_FILE = "a.py"

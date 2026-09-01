@@ -32,7 +32,6 @@ definition is what keeps the two reading as a single document.
 """
 from __future__ import annotations
 
-
 from github.Issue import Issue
 
 from orchestrator import config

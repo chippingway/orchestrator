@@ -20,7 +20,6 @@ import os
 import subprocess
 from pathlib import Path
 
-
 from orchestrator import config
 from orchestrator.git import commands
 from orchestrator.git.publication import models, planning

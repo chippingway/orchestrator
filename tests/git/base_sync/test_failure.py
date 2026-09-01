@@ -10,8 +10,8 @@ from unittest.mock import MagicMock
 from tests.git.base_sync.refresh_scenarios import PUSH_PATCH, _scenario
 from tests.git.base_sync.refresh_test_support import (
     AFTER_SHA,
-    _SyncWorktreeWithBaseFixture,
     _git_result,
+    _SyncWorktreeWithBaseFixture,
 )
 
 ISSUE = 7

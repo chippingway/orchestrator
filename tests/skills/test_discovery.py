@@ -10,9 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator.skills import discovery
-
 from tests.skills.skills_test_support import _make_skill
-
 
 _DEVELOP_SKILL = "develop"
 _REVIEW_SKILL = "review"

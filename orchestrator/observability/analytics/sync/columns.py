@@ -10,7 +10,6 @@ moment two of them disagree about it.
 """
 from __future__ import annotations
 
-
 COL_TS = "ts"
 COL_REPO = "repo"
 COL_ISSUE = "issue"

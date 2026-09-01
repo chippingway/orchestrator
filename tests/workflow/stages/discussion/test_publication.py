@@ -24,24 +24,26 @@ from __future__ import annotations
 import unittest
 
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     BASE_TIP_SHA,
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
     LABEL_IMPLEMENTING,
     TEST_BASE_BRANCH,
-    _TEST_SPEC,
     _agent,
 )
-
+from tests.workflow.stages.discussion.discussion_resume_test_support import (
+    DISCUSSION_REPLY,
+    _reply,
+)
 from tests.workflow.stages.discussion.discussion_test_support import (
+    COMMITTED_PATHS,
     DISCUSSION_SESSION,
     HEAD_AFTER_COMMIT,
     HEAD_BEFORE_ROUND,
     KEY_BASE_SHA,
     KEY_BRANCH,
     KEY_DISCUSSION_SESSION_ID,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_PLAN_PATH,
     KEY_PLAN_SHA,
     KEY_PR_NUMBER,
@@ -49,30 +51,19 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_ROUND_BRANCH,
     KEY_ROUND_OPEN,
     KEY_ROUND_SHA,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    COMMITTED_PATHS,
     MOVED_HEAD,
     PARK_DISCUSSION_PLAN_INVALID,
     PARK_DISCUSSION_PLAN_PUBLISHED,
     PARK_DISCUSSION_PUSH_FAILED,
     PARK_DISCUSSION_UNATTRIBUTED,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     PUSH_BRANCH,
     REVISION_CONTAINS_PATH,
     RUN_AGENT,
     SPEC_BACKEND,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    _DiscussionWorkflowMixin,
     _dirty_files,
+    _DiscussionWorkflowMixin,
     _issue_branch,
     _seed_discussion,
-)
-from tests.workflow.stages.discussion.discussion_resume_test_support import (
-    DISCUSSION_REPLY,
-    _reply,
 )
 
 _PUBLISH_ISSUE_NUMBER = 1200

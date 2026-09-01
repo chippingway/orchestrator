@@ -22,7 +22,6 @@ from unittest.mock import patch
 from orchestrator.git import commands
 from orchestrator.git.measurement import additions, commits
 from orchestrator.git.measurement.models import FrozenCommit, MeasurementFailure
-
 from tests.git.measurement import measurement_test_support as _support
 
 _WORKTREE = Path("/tmp/orchestrator-test-measurement-additions")

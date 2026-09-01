@@ -7,13 +7,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator.agents import environment as _environment
-from orchestrator.agents import runner as _runner
-from orchestrator.agents import sessions as _sessions
-from orchestrator.agents.backends import claude as _claude
-from orchestrator.agents.backends import codex as _codex
-from tests.agents import agent_test_support as _support
-from tests.agents import agent_test_values as _agent_cases
+from orchestrator.agents import environment as _environment, runner as _runner, sessions as _sessions
+from orchestrator.agents.backends import claude as _claude, codex as _codex
+from tests.agents import agent_test_support as _support, agent_test_values as _agent_cases
 
 # (label, backend runner) pairs so each owner-routing assertion runs against
 # both backends without duplicating the body per backend.

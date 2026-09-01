@@ -9,6 +9,7 @@ from pathlib import Path
 
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.observability.usage import trajectory as _trajectory
+from tests.support.fakes import FakeGitHubClient
 from tests.workflow import (
     patch_runner as _runner,
     repo_values as _repo,
@@ -18,9 +19,7 @@ from tests.workflow import (
     value_helpers as _value_helpers,
     verdict_values as _verdicts,
 )
-from tests.support.fakes import FakeGitHubClient
 from tests.workflow.engine import event_values as _events
-
 
 # The owner a tracked run's trajectory is parsed on, so a fail-open test
 # patches the module the analytics writer calls.

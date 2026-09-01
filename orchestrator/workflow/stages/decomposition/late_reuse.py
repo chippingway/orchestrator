@@ -129,8 +129,7 @@ from orchestrator.github import comments as _comments
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.late_split import lineage as _lineage
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import lineage as _lineage, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
 
 log = logging.getLogger("orchestrator.workflow")

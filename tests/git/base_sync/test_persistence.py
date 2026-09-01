@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 from orchestrator.git import commands
 from orchestrator.git.base_sync import persistence
 from orchestrator.workflow.engine import comments
-
 from tests.git.base_sync import base_sync_helpers as fixtures
 from tests.git.base_sync.base_sync_helpers import _OrderedCall, _recorded_calls
 

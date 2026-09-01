@@ -5,12 +5,10 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-
 from tests.workflow.fixtures import (
     MEASURED_CANDIDATE_SHA,
     _agent,
 )
-
 
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting import (

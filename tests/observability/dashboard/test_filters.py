@@ -10,7 +10,6 @@ from datetime import UTC, datetime, timedelta
 from orchestrator.observability.dashboard import filters, windows
 from tests.observability.dashboard import dashboard_test_support as fixtures
 
-
 # The offset the page opens on. It is documented as UTC+7 rather than merely
 # selectable, so it is pinned by value here and is also the eastern offset the
 # shift cases are read in.

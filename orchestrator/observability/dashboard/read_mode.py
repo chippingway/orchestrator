@@ -24,7 +24,6 @@ import os
 
 from orchestrator.observability.analytics import config as analytics_config
 
-
 PARALLEL_READS_ENV = "DASHBOARD_PARALLEL_READS"
 PARALLEL_READS_MAX_WORKERS = 8
 TRUTHY = frozenset(("1", "true", "on", "yes"))

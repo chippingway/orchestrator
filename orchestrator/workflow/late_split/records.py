@@ -62,9 +62,7 @@ from enum import StrEnum
 from typing import Any
 
 from orchestrator.workflow import state as _workflow_state
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import identity as _identity
-from orchestrator.workflow.late_split import validation as _validation
+from orchestrator.workflow.late_split import events as _events, identity as _identity, validation as _validation
 from orchestrator.workflow.late_split.models import LateGeneration
 
 # The field both halves of that answer are written under, spelled once for

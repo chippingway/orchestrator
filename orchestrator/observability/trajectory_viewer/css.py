@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from orchestrator.observability.dashboard import tokens
 
-
 EXTRA_CSS = f"""
 <style>
   .orch-traj-meta {{

@@ -12,7 +12,6 @@ from orchestrator.observability.usage import (
 )
 from orchestrator.observability.usage.trajectory_models import TrajectoryStep
 
-
 TEXT = "text"
 TOOL_RESULT = "tool_result"
 

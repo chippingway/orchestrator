@@ -8,7 +8,6 @@ import tomllib
 from collections.abc import Iterator
 from pathlib import Path
 
-
 # The scan walks every tracked file, so it resolves the repository root off
 # this module's own location: `tests/support/` is two levels beneath it.
 _REPO_ROOT = Path(__file__).resolve().parents[2]

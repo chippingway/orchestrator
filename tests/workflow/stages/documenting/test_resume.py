@@ -4,10 +4,6 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.stages.documenting.documenting_assertion_test_support import (
-    _agent_prompt,
-    _pr_comment_text,
-)
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -15,16 +11,19 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    MEASURED_CANDIDATE_SHA,
     _TEST_SPEC,
+    MEASURED_CANDIDATE_SHA,
     _agent,
     _open_pr_for,
 )
 
-
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting import (
     documenting_test_support as documenting_support,
+)
+from tests.workflow.stages.documenting.documenting_assertion_test_support import (
+    _agent_prompt,
+    _pr_comment_text,
 )
 from tests.workflow.stages.documenting.documenting_test_support import (
     _branch,

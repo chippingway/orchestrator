@@ -51,6 +51,10 @@ Before committing, run each of these and fix what they report:
   - **F541** (f-string without placeholders): use a plain string.
   - **F841** (unused local).
   - **E402** (module-level import not at top of file).
+- `uv run ruff check orchestrator tests --select=I001 --fix` — the run above does not select `I001`, so this is what
+  keeps a new import in sorted order; `tests/repository/test_import_sorting.py` fails on a block left unsorted. Never
+  split one module's names across several `from ... import` statements to duck **WPS235** — the sorter merges every
+  statement reading from the same module back into one.
 - `uv run flake8 orchestrator tests --select=WPS` — all WPS naming, complexity, consistency, bug-prevention,
   refactoring, and OOP rules must pass.
 - `git diff --check origin/main...HEAD` — catches trailing whitespace and stray blank lines at EOF.

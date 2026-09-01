@@ -38,7 +38,6 @@ from orchestrator.observability.dashboard.kpi_series import (
 )
 from orchestrator.observability.dashboard.kpis import kpi_delta, rework_totals
 
-
 # The keys the strip's HTML builder reads each entry back by.
 _LABEL_KEY = "label"
 _VALUE_KEY = "value"

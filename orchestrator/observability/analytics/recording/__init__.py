@@ -43,8 +43,7 @@ This is the one analytics path the orchestrator process itself runs, and it
 runs fail-open inside a tracked agent run, so it stays free of the query,
 sync, and page graphs above it.
 """
-from orchestrator.observability.analytics.recording import agent_exit as _agent_exit
-from orchestrator.observability.analytics.recording import events as _events
+from orchestrator.observability.analytics.recording import agent_exit as _agent_exit, events as _events
 
 __all__ = (
     "append_record",

@@ -7,19 +7,16 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.verification.models import VerifyResult
-
-from tests.workflow.stages.validating import (
-    validating_review_test_support as review_support,
-)
-from tests.workflow.stages.validating import (
-    validating_verify_test_support as verify_support,
-)
 from tests.workflow.fixtures import (
     LABEL_DOCUMENTING,
     LABEL_IN_REVIEW,
     REVIEW_APPROVED_MESSAGE,
     REVIEW_CHANGES_REQUESTED_MESSAGE,
     _agent,
+)
+from tests.workflow.stages.validating import (
+    validating_review_test_support as review_support,
+    validating_verify_test_support as verify_support,
 )
 
 ISSUE = 7

@@ -15,7 +15,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     TOOL_RESULT,
 )
 
-
 _BODY_KEYWORD = "content"
 
 _BODY = "ls -la"

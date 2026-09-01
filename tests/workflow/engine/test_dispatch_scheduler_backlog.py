@@ -6,18 +6,15 @@ from pathlib import Path
 
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
 from orchestrator.workflow.engine import tick as _tick
-
-from tests.workflow.engine.dispatch_scheduler_workers import patch_base_refresh
-
 from tests.support.fakes import FakeGitHubClient, make_issue
+from tests.workflow.engine.dispatch_scheduler_test_support import (
+    _BacklogDispatchFixture,
+    _patch_process_issue,
+)
+from tests.workflow.engine.dispatch_scheduler_workers import patch_base_refresh
 from tests.workflow.fixtures import (
     LABEL_BLOCKED,
     LABEL_IMPLEMENTING,
-)
-
-from tests.workflow.engine.dispatch_scheduler_test_support import (
-    _patch_process_issue,
-    _BacklogDispatchFixture,
 )
 
 REPO_SLUG = "acme/widget"

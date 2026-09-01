@@ -25,9 +25,7 @@ from orchestrator.git.measurement.models import (
     FrozenCommit,
     MeasurementFailure,
 )
-
 from tests.workflow.patch_models import _agent
-
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     RESOLVED_HEAD_SHA,
     _ResolvingConflictMixin,

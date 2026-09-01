@@ -16,7 +16,6 @@ from datetime import UTC, datetime, timedelta
 from orchestrator.observability.analytics.query.run_models import AgentExitRow
 from orchestrator.observability.dashboard import recent_runs
 
-
 _YEAR = 2026
 
 _MAY = 5

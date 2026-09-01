@@ -3,46 +3,25 @@
 """Analytics trajectory budget tests."""
 
 import json
-
-
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
 
-
-from orchestrator.observability.usage import trajectory as _usage_trajectory
-from orchestrator.observability.usage import trajectory_models as _usage_records
-
-
 from orchestrator.observability.analytics.trajectories import models as trajectory_models
-
-
-
-from tests.observability.analytics.analytics_jsonl_helpers import (
-    read_text as _read_text,
-    read_records as _read_records,
-)
-
-
+from orchestrator.observability.usage import trajectory as _usage_trajectory, trajectory_models as _usage_records
 from tests.observability.analytics.analytics_codex_item_cases import (
     CODEX_ACCOUNTING_COUNTS,
     CODEX_ACCOUNTING_STEP_COUNT,
     codex_accounting_stdout as _codex_accounting_stdout,
 )
-
-
+from tests.observability.analytics.analytics_jsonl_helpers import (
+    read_records as _read_records,
+    read_text as _read_text,
+)
 from tests.observability.analytics.analytics_trajectory_cases import (
     claude_multistep_stdout as _claude_multistep_stdout,
 )
-
-
 from tests.observability.analytics.trajectories import (
     trajectories_test_support as _support,
 )

@@ -9,7 +9,6 @@ import subprocess
 from unittest import mock
 
 from orchestrator import config
-
 from tests.git.base_sync.gate_reads_support import _gate_reads
 from tests.support import fakes
 from tests.workflow import fixtures, git_owners

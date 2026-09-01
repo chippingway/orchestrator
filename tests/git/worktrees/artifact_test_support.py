@@ -19,7 +19,6 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git import locks
 from orchestrator.git.worktrees import paths
-
 from tests.workflow.stages.question.question_real_git_test_support import (
     _run_git,
 )

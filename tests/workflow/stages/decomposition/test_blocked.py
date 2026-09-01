@@ -5,21 +5,20 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.decomposition import blocked as _blocked
-
-from tests.workflow.stages.decomposition.decomposition_test_support import (
-    _comments_for_issue,
-    _labels_for_issue,
-    _run_with_logs,
-)
 from tests.support.fakes import (
     FakeGitHubClient,
     FakeIssue,
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
+    _PatchedWorkflowMixin,
+)
+from tests.workflow.stages.decomposition.decomposition_test_support import (
+    _comments_for_issue,
+    _labels_for_issue,
+    _run_with_logs,
 )
 
 LABEL_BLOCKED = "workflow:blocked"

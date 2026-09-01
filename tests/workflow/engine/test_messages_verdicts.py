@@ -13,13 +13,11 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import messages
-
 from tests.workflow.verdict_values import (
     VERDICT_APPROVED,
     VERDICT_CHANGES_REQUESTED,
     VERDICT_UNKNOWN,
 )
-
 
 REVIEW_APPROVED_BODY = "Looks good."
 REVIEW_APPROVED_MARKER = "VERDICT: APPROVED"

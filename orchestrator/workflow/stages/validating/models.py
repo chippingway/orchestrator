@@ -49,8 +49,8 @@ from orchestrator.github import (
     pinned_state as _pinned_state,
 )
 from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.state import WorkflowLabel
 from orchestrator.workflow.stages.validating import state as _state
+from orchestrator.workflow.state import WorkflowLabel
 
 
 @dataclass(frozen=True)

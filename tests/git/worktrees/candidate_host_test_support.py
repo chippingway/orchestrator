@@ -24,7 +24,6 @@ from pathlib import Path
 
 from orchestrator import config
 from orchestrator.git.worktrees import paths
-
 from tests.git.auth_session_test_support import _SESSIONS
 from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,

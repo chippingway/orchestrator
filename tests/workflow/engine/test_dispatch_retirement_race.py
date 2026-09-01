@@ -15,7 +15,6 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.workflow.engine import observations
-
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.engine.refused_submit_support import (
     CYCLE_ID,
@@ -23,8 +22,6 @@ from tests.workflow.engine.refused_submit_support import (
     PINNED_READ,
     SPEC,
     WORKFLOW_LOG,
-)
-from tests.workflow.engine.refused_submit_support import (
     Retiring,
     Scheduler,
     closed_owner,

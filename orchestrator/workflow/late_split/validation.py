@@ -45,9 +45,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Any
 
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import restart as _restart
+from orchestrator.workflow.late_split import events as _events, formats as _formats, restart as _restart
 from orchestrator.workflow.late_split.models import (
     MAX_LINEAGE_DEPTH,
     LateGeneration,

@@ -18,7 +18,6 @@ from unittest.mock import patch
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.support.fakes import LazyPullRequest
 from tests.workflow.fixtures import LABEL_DECOMPOSING
 from tests.workflow.stages.decomposition.late_published_support import (

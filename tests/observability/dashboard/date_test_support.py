@@ -21,7 +21,6 @@ from collections.abc import Sequence
 from datetime import date
 from typing import Any, Self
 
-
 # The region the bar's own card opens, and the five slots inside it, named as
 # the owner's columns are.
 CARD = "card"

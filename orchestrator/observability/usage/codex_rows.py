@@ -12,7 +12,6 @@ from orchestrator.observability.usage import (
     protocol,
 )
 
-
 CODEX_USAGE_PATHS: tuple[tuple[str, ...], ...] = (
     (protocol.USAGE,),
     ("token_usage",),

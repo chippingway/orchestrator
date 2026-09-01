@@ -7,7 +7,6 @@ import unittest
 
 from orchestrator.observability.trajectory_viewer import summaries, summary_html
 
-
 _TOTAL_RUNS = 10
 
 _SHOWN_RUNS = 3

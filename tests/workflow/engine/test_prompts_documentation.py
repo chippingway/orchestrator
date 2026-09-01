@@ -9,10 +9,8 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import prompts
-
 from tests.support.fakes import make_issue
 from tests.workflow.fixtures import _TEST_SPEC
-
 
 _DOCUMENTATION_ISSUE_NUMBER = 67100
 

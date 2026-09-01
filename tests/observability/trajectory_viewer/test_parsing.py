@@ -16,7 +16,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     record,
 )
 
-
 _KIND = "kind"
 
 _NAME = "name"

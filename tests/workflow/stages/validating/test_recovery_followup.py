@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.validating import recovery as _recovery
-
 from tests.support.fakes import FakeComment, FakeGitHubClient, make_issue
 from tests.workflow import fixtures as _fixtures
 

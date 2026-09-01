@@ -27,9 +27,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-
 from tests.workflow.fixtures import KEY_PARK_REASON, _agent
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
@@ -38,18 +36,14 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_DISCUSSION_AGENT,
     KEY_DISCUSSION_SESSION_ID,
     KEY_ROUND_SHA,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     PARK_DISCUSSION_PLAN_INVALID,
     PARK_DISCUSSION_RESPONSE,
     RUN_AGENT,
     SPEC_ARGS,
     SPEC_BACKEND,
     SPEC_WITH_ARGS,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    _DiscussionWorkflowMixin,
     _configured_spec,
+    _DiscussionWorkflowMixin,
     _seed_discussion,
 )
 

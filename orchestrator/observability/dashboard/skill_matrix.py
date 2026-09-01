@@ -42,7 +42,6 @@ from orchestrator.observability.dashboard.skill_matrix_sort import (
 )
 from orchestrator.observability.dashboard.tables import table_css, table_html
 
-
 SKILL_MATRIX_EMPTY_MESSAGE = (
     "No catalog-backed skill matrix for this window. The matrix pairs "
     "each repo's offered-skill catalog with the skills its runs "

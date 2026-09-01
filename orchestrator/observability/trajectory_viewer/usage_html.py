@@ -36,7 +36,6 @@ from orchestrator.observability.trajectory_viewer.models import TurnUsageView
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 from orchestrator.observability.trajectory_viewer.summary_html import fmt_cost_usd
 
-
 USAGE_SEPARATOR = '<span class="orch-traj-usage-sep">·</span>'
 
 

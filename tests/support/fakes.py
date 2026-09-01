@@ -7,11 +7,7 @@ is the one name the rest of the suite reaches all of them through.
 """
 from __future__ import annotations
 
-from tests.support.github import client as _client
-from tests.support.github import factories as _factories
-from tests.support.github import lazy as _lazy
-from tests.support.github import models as _models
-
+from tests.support.github import client as _client, factories as _factories, lazy as _lazy, models as _models
 
 FakeGitHubClient = _client.FakeGitHubClient
 FakeComment = _models.FakeComment

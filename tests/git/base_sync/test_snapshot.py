@@ -11,7 +11,6 @@ from orchestrator.git import authentication, commands
 from orchestrator.git.base_sync import persistence, snapshot
 from orchestrator.git.publication import probes as publication_probes
 from orchestrator.git.verification import probes as verification_probes
-
 from tests.git.base_sync import base_sync_helpers as fixtures
 from tests.git.base_sync.sync_test_support import _diverged
 

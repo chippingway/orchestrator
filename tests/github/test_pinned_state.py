@@ -7,7 +7,6 @@ import unittest
 
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PINNED_STATE_TEMPLATE, PinnedState
-
 from tests.support.fakes import FakeComment, FakeUser, make_issue
 
 BOT = "orchestrator-bot"

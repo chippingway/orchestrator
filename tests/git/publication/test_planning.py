@@ -10,14 +10,13 @@ from unittest.mock import MagicMock, patch
 from orchestrator.git import commands
 from orchestrator.git.publication import planning, titles
 from orchestrator.git.verification import probes as verification_probes
-
-from tests.support.fakes import make_issue
 from tests.git.publication.publication_helpers import (
     GIT_HELPER,
     WORKTREE,
     _git_result,
     _spec,
 )
+from tests.support.fakes import make_issue
 
 BASE_SHA = "base1234"
 ORIGINAL_HEAD = "head5678"

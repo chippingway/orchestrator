@@ -69,17 +69,15 @@ from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.github import pinned_state as _pinned_state
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import payloads as _payloads
+from orchestrator.workflow.engine import comments as _comments, usage as _usage
+from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import (
     LateGeneration,
     LateVerdict,
 )
-from orchestrator.workflow.stages.decomposition import late_prompt as _prompt
 from orchestrator.workflow.stages.decomposition import (
+    late_prompt as _prompt,
     validation as _split_validation,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (

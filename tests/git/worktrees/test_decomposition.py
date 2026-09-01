@@ -9,7 +9,6 @@ from unittest.mock import patch
 
 from orchestrator.git import commands
 from orchestrator.git.worktrees import decomposition, paths
-
 from tests.git.worktrees.lifecycle_test_support import (
     BASE_BRANCH,
     ORIGIN_REMOTE,

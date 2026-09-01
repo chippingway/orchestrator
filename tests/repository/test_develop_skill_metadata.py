@@ -18,7 +18,6 @@ from itertools import takewhile
 from pathlib import Path
 
 from orchestrator.workflow.engine import prompts
-
 from tests.support.fakes import make_issue
 from tests.workflow.fixtures import _TEST_SPEC
 

@@ -7,7 +7,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.implementing import session_read as _session_read
-
 from tests.workflow.stages.implementing import retry_test_support as support
 
 DEFAULT_SESSION = support.DEFAULT_SESSION

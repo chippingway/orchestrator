@@ -6,13 +6,11 @@ from __future__ import annotations
 import dataclasses
 import unittest
 
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import restart as _restart
+from orchestrator.workflow.late_split import formats as _formats, restart as _restart
 from orchestrator.workflow.late_split.models import (
     LateGeneration,
     LateResourceState,
 )
-
 from tests.workflow.late_split import generation_test_support as _support
 
 _IMPLEMENTING = "workflow:implementing"

@@ -11,25 +11,24 @@ from importlib import import_module
 from importlib.util import find_spec
 
 from orchestrator.git import worktrees as _worktrees_package
-from orchestrator.git.worktrees import (
-    cleanup,
-    creation,
-    decomposition,
-    paths,
-    recovery,
-    terminal,
-)
+
 # The artifact scan's own owners and the classification over it, named apart
 # from the lifecycle ones above because that is the split the map draws: these
 # seven are read-only.
 from orchestrator.git.worktrees import (
     attribution,
     claims,
+    cleanup,
+    creation,
+    decomposition,
     eligibility,
     evidence,
     inventory,
     models,
+    paths,
     probes,
+    recovery,
+    terminal,
 )
 from tests.git.inventory_test_support import inventory_modules
 

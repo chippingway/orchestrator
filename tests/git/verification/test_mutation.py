@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.agents import processes
 from orchestrator.git.verification import probes, process, runner
-
 from tests.git.verification import command_helpers
 
 VERIFY_HEAD_CHANGED = "head_changed"

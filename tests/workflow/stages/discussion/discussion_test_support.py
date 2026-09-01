@@ -27,12 +27,11 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.workflow.stages.discussion import handler as _discussion
-
 from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     LABEL_DISCUSSION,
     _PatchedWorkflowMixin,
-    _TEST_SPEC,
 )
 from tests.workflow.git_owners import seam_patch
 

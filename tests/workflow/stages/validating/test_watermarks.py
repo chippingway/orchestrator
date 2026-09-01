@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -19,8 +18,8 @@ from tests.support.fakes import (
 )
 from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
-    _PatchedWorkflowMixin,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 HUMAN_FEEDBACK_ISSUE = 15

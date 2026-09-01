@@ -29,10 +29,8 @@ recording a field the gate would read.
 """
 from __future__ import annotations
 
-
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import payloads as _payloads
+from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads
 
 # The commit a decided `single` verdict published under. Spelled here because
 # this is the field's owner, and it is deliberately not one of the keys

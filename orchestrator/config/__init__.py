@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import NoReturn
 
 from orchestrator.config import credentials, environment
+
 # The repository-entry model lives in the config `models` leaf and the REPOS
 # parsing / default-spec construction in `repositories`; `RepoSpec` is
 # re-exported here because a caller that reads a resolved setting reads the

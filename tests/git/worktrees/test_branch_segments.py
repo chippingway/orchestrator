@@ -8,7 +8,6 @@ import subprocess
 import unittest
 
 from orchestrator.git.worktrees import paths
-
 from tests.git.worktrees.path_test_support import (
     ALICE_REPO_SLUG,
     DOUBLE_DOT_SLUG,

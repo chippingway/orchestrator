@@ -9,24 +9,20 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from orchestrator.workflow.engine import tick as _tick
-
-from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.git.base_sync.sync_test_support import _patch_base_sync
-
-from tests.workflow.engine.dispatch_scheduler_workers import (
-    patch_base_refresh,
-    _record_current_thread,
-)
-
+from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.engine.dispatch_scheduler_fakes import (
     _FakeWorktreeRoot,
     _WorkerClientFactory,
 )
-
 from tests.workflow.engine.dispatch_scheduler_test_support import (
-    _patch_process_issue,
     LABEL_IMPLEMENTING,
+    _patch_process_issue,
     _SchedulerWorkflowTest,
+)
+from tests.workflow.engine.dispatch_scheduler_workers import (
+    _record_current_thread,
+    patch_base_refresh,
 )
 
 REPO_SLUG = "acme/widget"

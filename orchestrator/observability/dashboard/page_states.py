@@ -46,7 +46,6 @@ from orchestrator.observability.dashboard import (
     summary_html,
 )
 
-
 NO_DATA_MESSAGE = (
     "No analytics events have been recorded yet. Run "
     "`uv run python -m orchestrator.observability.analytics.sync.cli` after some "

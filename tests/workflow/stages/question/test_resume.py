@@ -5,19 +5,15 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 from tests.support.fakes import FakeComment, FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
     BACKEND_CLAUDE,
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
     KEY_PARK_REASON,
-)
-from tests.workflow.fixtures import (
     LABEL_QUESTION,
     _agent,
 )
-
 from tests.workflow.stages.question.question_conversation_test_support import (
     _assert_fresh_round,
     _assert_resumed_round,

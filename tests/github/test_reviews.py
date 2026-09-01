@@ -8,7 +8,6 @@ import unittest
 from orchestrator.github import reviews as _reviews
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PINNED_STATE_TEMPLATE
-
 from tests.support.fakes import FakeComment, FakePRReview, FakeUser
 
 _HEAD_SHA = "f00dcafe"

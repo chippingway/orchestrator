@@ -5,9 +5,7 @@
 import unittest
 
 from orchestrator.config._dotenv import strip_dotenv_quotes
-
-from tests.config import config_test_support as _support
-from tests.config import config_test_values as _config_cases
+from tests.config import config_test_support as _support, config_test_values as _config_cases
 
 
 class DotenvQuoteStrippingTest(unittest.TestCase):

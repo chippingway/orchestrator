@@ -24,13 +24,11 @@ from orchestrator.git.measurement.models import (
     FrozenCommit,
 )
 from orchestrator.git.verification import probes as _verification_probes
-
 from tests.git.base_sync.refresh_test_support import (
     GATE_BASE_SHA,
     GATE_CANDIDATE_SHA,
     _patched,
 )
-
 
 # What the switch, the ceiling, and the count are named as here.
 _DECOMPOSE = "DECOMPOSE"

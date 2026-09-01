@@ -5,7 +5,6 @@ from pathlib import Path
 
 from orchestrator import config
 
-
 TEST_REPO_SLUG = "chippingway/orchestrator"
 TEST_BASE_BRANCH = "main"
 # What the remote says the base branch is at when a round opens. Pinned

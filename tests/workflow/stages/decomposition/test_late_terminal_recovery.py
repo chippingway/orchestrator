@@ -21,8 +21,7 @@ from unittest.mock import patch
 
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.state import WorkflowLabel
-
-from tests.workflow.fixtures import _PatchedWorkflowMixin, _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC, _PatchedWorkflowMixin
 from tests.workflow.observation_support import (
     ObservedCloseCase,
     receipt_for,

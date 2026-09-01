@@ -7,18 +7,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from orchestrator.workflow.engine import tick as _tick
-
 from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
-from tests.workflow.fixtures import (
-    LABEL_IMPLEMENTING,
+from tests.workflow.engine.dispatch_scheduler_test_support import (
+    _SchedulerWorkflowTest,
 )
-
 from tests.workflow.engine.dispatch_scheduler_workers import (
     _BarrierIssueProcessor,
 )
-
-from tests.workflow.engine.dispatch_scheduler_test_support import (
-    _SchedulerWorkflowTest,
+from tests.workflow.fixtures import (
+    LABEL_IMPLEMENTING,
 )
 
 REPO_SLUG = "acme/widget"

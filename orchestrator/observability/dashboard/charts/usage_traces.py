@@ -37,9 +37,9 @@ from orchestrator.observability.dashboard.charts.usage_bands import (
     BACKEND_MODE,
     CACHE_BAND,
     COST_BAND,
-    DailyTokenValues,
     INPUT_BAND,
     OUTPUT_BAND,
+    DailyTokenValues,
     roll_up_time_series,
 )
 from orchestrator.observability.dashboard.charts.usage_series import (

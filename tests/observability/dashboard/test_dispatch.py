@@ -24,7 +24,6 @@ from orchestrator.observability.analytics.query.connections import (
 )
 from orchestrator.observability.dashboard import dispatch, fanout, read_plan
 
-
 # What the stand-in records around the reads, so one list carries the whole
 # order a load ran in.
 _SPINNER_OPEN = "spinner-open"

@@ -30,8 +30,8 @@ from orchestrator.workflow.stages.decomposition import (
     late_coordinator as _coordinator,
     late_transaction as _late_transaction,
 )
-
 from tests.workflow.fixtures import _TEST_SPEC, _agent
+
 # The two recorders come back out of this module for the cases that read
 # what a run held or spawned. Nothing here calls either, so the same-name
 # alias is what declares each import a re-export instead of a dead one.

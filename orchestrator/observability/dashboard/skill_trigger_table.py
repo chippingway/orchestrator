@@ -39,7 +39,6 @@ from orchestrator.observability.dashboard.tables import (
     table_html,
 )
 
-
 UNKNOWN = "unknown"
 SKILL_TRIGGERS_TABLE_COLUMNS = (
     ("Role", False),

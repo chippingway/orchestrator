@@ -19,14 +19,13 @@ import unittest
 from pathlib import Path
 
 from tests.workflow.fixtures import KEY_ISSUE_AGENT_RUNS
-
+from tests.workflow.stages.discussion.discussion_resume_test_support import (
+    _DiscussionConversation,
+)
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_SESSION,
     PARK_DISCUSSION_RESPONSE,
     _DiscussionWorkflowMixin,
-)
-from tests.workflow.stages.discussion.discussion_resume_test_support import (
-    _DiscussionConversation,
 )
 
 _CONVERSATION_ISSUE_NUMBER = 1200

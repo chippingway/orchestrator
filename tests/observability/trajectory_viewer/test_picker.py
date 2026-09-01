@@ -15,7 +15,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     run,
 )
 
-
 _LOG_PATH = Path("/var/log/orchestrator/trajectories.jsonl")
 
 _OTHER_REPO = "acme/gadgets"

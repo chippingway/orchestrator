@@ -13,7 +13,6 @@ from orchestrator.workflow.late_split.models import (
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.support.fakes import FakeLabel
 from tests.workflow.stages.decomposition.late_run_support import (
     LateCase,
@@ -24,17 +23,15 @@ from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     EVENT_LATE_VERDICT,
     KEYS,
+    LATE_FENCE,
+    LATE_SESSION_ID,
     NEXT_GENERATION,
     NO_BLOCK_REPLY,
     QUESTION_ASKED,
-    THRESHOLD,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
-    LATE_FENCE,
-    LATE_SESSION_ID,
     QUESTION_REPLY,
     SINGLE_REPLY,
     SPLIT_REPLY,
+    THRESHOLD,
     generation_state,
     late_generation,
 )

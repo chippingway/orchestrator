@@ -7,18 +7,18 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-from tests.git.base_sync.refresh_scenarios import PUSH_PATCH, REBASE_PATCH, _scenario
 from tests.git.base_sync.gate_reads_support import _gate_candidates
-from tests.support.fakes import FakePRRef
-from tests.support.publication import LandingPush
+from tests.git.base_sync.refresh_scenarios import PUSH_PATCH, REBASE_PATCH, _scenario
 from tests.git.base_sync.refresh_test_support import (
-    _diverged,
     PR_NUMBER,
     _CrashRecoveryVerificationFixture,
+    _diverged,
+    _git_result,
     _RemoteHeadGit,
     _SyncWorktreeWithBaseFixture,
-    _git_result,
 )
+from tests.support.fakes import FakePRRef
+from tests.support.publication import LandingPush
 
 ISSUE = 7
 

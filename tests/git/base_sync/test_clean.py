@@ -12,23 +12,6 @@ from orchestrator.git.measurement import additions as _measurement
 from orchestrator.git.measurement.models import AdditionMeasurement
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages.in_review import handler as _in_review
-
-from tests.git.base_sync.refresh_scenarios import (
-    PUSH_PATCH,
-    REBASE_PATCH,
-    _clean_rebase_scenario,
-    _conflict_rebase_scenario,
-)
-from tests.git.base_sync.refresh_test_support import (
-    CONFLICT_PR_HEAD_SHA,
-    _git_result,
-    GATE_BASE_SHA,
-    GATE_CANDIDATE_SHA,
-    _AwaitingHumanRecorder,
-    _SyncWorktreeWithBaseFixture,
-)
-from tests.support.fakes import FakePRRef
-
 from tests.git.base_sync.clean_assertions import (
     _assert_clean_events,
     _assert_clean_publication,
@@ -38,6 +21,21 @@ from tests.git.base_sync.clean_assertions import (
     _assert_push_failure_git,
     _assert_push_failure_state,
 )
+from tests.git.base_sync.refresh_scenarios import (
+    PUSH_PATCH,
+    REBASE_PATCH,
+    _clean_rebase_scenario,
+    _conflict_rebase_scenario,
+)
+from tests.git.base_sync.refresh_test_support import (
+    CONFLICT_PR_HEAD_SHA,
+    GATE_BASE_SHA,
+    GATE_CANDIDATE_SHA,
+    _AwaitingHumanRecorder,
+    _git_result,
+    _SyncWorktreeWithBaseFixture,
+)
+from tests.support.fakes import FakePRRef
 
 ISSUE = 7
 

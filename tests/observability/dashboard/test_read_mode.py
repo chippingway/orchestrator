@@ -23,7 +23,6 @@ from tests.observability.dashboard import (
     reload_helpers,
 )
 
-
 _ANALYTICS_SETTINGS = "orchestrator.observability.analytics.settings"
 
 _DB_URL_ATTRIBUTE = "ANALYTICS_DB_URL"

@@ -18,15 +18,15 @@ import unittest
 
 from tests.support.fakes import FakePR
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
-    _PatchedWorkflowMixin,
-    _TEST_SPEC,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
-
 from tests.workflow.stages.implementing.read_only_relabel_test_support import (
+    COUNT_ADDED_LINES,
     DEV_SESSION,
     ENSURE_PR_WORKTREE,
     ENSURE_WORKTREE,
@@ -34,14 +34,9 @@ from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     HEAD_BEFORE_ROUND,
     KEY_READ_ONLY_BASELINE,
     KEY_ROUND_SHA,
-)
-from tests.workflow.stages.implementing.read_only_relabel_test_support import (
-    COUNT_ADDED_LINES,
     PARK_DISCUSSION_RESPONSE,
     PUSH_BRANCH,
     RUN_AGENT,
-)
-from tests.workflow.stages.implementing.read_only_relabel_test_support import (
     _ReadOnlyRelabelMixin,
     _seed_relabeled_discussion,
 )

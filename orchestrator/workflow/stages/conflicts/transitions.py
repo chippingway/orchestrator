@@ -24,14 +24,12 @@ import logging
 from orchestrator import config
 from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import guards as _guards, usage as _usage
 from orchestrator.workflow.late_split import (
     formats as _formats,
     payloads as _payloads,
 )
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import state as _state
+from orchestrator.workflow.stages.conflicts import models as _models, state as _state
 from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
 )

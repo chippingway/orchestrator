@@ -18,7 +18,6 @@ from tests.observability.observability_test_support import (
     _run_import_probe,
 )
 
-
 _TESTS_ROOT = Path(__file__).resolve().parents[1]
 
 # What `import orchestrator` alone plants, so the cost check can hold each

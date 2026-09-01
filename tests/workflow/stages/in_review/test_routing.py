@@ -12,7 +12,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.workflow.engine import comments as _comments
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -22,10 +21,10 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
 )
 
 ROUTING_ISSUE = 30

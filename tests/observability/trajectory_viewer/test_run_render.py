@@ -18,7 +18,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     step,
 )
 
-
 _FIXTURE_SESSION = "sess-abc"
 
 _PROMPT_TEXT = "you are a developer"

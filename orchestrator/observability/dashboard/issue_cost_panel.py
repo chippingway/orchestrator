@@ -48,7 +48,6 @@ from orchestrator.observability.dashboard.coverage_card import (
 from orchestrator.observability.dashboard.issue_table import issues_table_html
 from orchestrator.observability.dashboard.kpis import top_expensive_issues
 
-
 NO_AGENT_EXITS_MESSAGE = "No `agent_exit` rows match the current filters."
 
 

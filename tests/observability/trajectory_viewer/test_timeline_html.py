@@ -22,7 +22,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     step,
 )
 
-
 _T1 = "t1"
 
 _UNKNOWN_KIND = "weird"

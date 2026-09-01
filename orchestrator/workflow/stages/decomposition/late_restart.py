@@ -110,11 +110,13 @@ from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import lineage as _lineage
-from orchestrator.workflow.late_split import restart as _restart
-from orchestrator.workflow.late_split import state as _late_state
-from orchestrator.workflow.late_split import telemetry as _telemetry
+from orchestrator.workflow.late_split import (
+    events as _events,
+    lineage as _lineage,
+    restart as _restart,
+    state as _late_state,
+    telemetry as _telemetry,
+)
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateGeneration,

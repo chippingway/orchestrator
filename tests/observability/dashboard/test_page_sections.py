@@ -34,7 +34,6 @@ from tests.observability.dashboard.page_render_test_support import (
     section_reads,
 )
 
-
 _SKILL_CARD = "render_skill_adoption"
 
 _RUN_LISTING = "render_recent_runs"

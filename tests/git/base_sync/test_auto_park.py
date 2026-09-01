@@ -9,21 +9,19 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.git.base_sync import refresh as _base_refresh
-
+from tests.git.base_sync.park_assertions import (
+    _assert_park_state,
+    _assert_retry_success,
+    _assert_scenario_idle,
+)
 from tests.git.base_sync.refresh_scenarios import (
     _clean_rebase_scenario,
     _scenario,
 )
 from tests.git.base_sync.refresh_test_support import (
-    _SyncWorktreeWithBaseFixture,
     _git_result,
     _patch_base_sync,
-)
-
-from tests.git.base_sync.park_assertions import (
-    _assert_park_state,
-    _assert_retry_success,
-    _assert_scenario_idle,
+    _SyncWorktreeWithBaseFixture,
 )
 
 ISSUE = 7

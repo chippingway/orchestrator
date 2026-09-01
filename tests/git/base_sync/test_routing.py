@@ -9,10 +9,9 @@ from unittest.mock import MagicMock
 
 from orchestrator.git.base_sync import refresh
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
-
-from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.git.base_sync import base_sync_helpers as fixtures
 from tests.git.base_sync.sync_test_support import _patch_base_sync
+from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 
 LABEL_IN_REVIEW = "in_review"
 

@@ -6,7 +6,6 @@ from __future__ import annotations
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.stages.decomposition.late_content_support import (
     BARE_CONTINUE,
     KEY_GENERATION,
@@ -19,8 +18,8 @@ from tests.workflow.stages.decomposition.late_revision_support import (
     DEV_QUESTION,
     DEV_SILENT,
     NON_ANSWERS,
-    RevisionCase,
     UNCHANGED,
+    RevisionCase,
 )
 from tests.workflow.stages.decomposition.late_run_support import agent_reply
 from tests.workflow.stages.decomposition.late_test_support import (

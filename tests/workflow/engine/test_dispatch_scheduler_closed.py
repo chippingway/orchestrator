@@ -6,18 +6,15 @@ import unittest
 from pathlib import Path
 
 from orchestrator.workflow.engine import tick as _tick
-
-from tests.workflow.engine.dispatch_scheduler_workers import patch_base_refresh
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-from tests.workflow.fixtures import (
-    LABEL_IN_REVIEW,
-    LABEL_VALIDATING,
-)
-
 from tests.workflow.engine.dispatch_scheduler_test_support import (
     _patch_process_issue,
     _SchedulerWorkflowTest,
+)
+from tests.workflow.engine.dispatch_scheduler_workers import patch_base_refresh
+from tests.workflow.fixtures import (
+    LABEL_IN_REVIEW,
+    LABEL_VALIDATING,
 )
 
 REPO_SLUG = "acme/widget"

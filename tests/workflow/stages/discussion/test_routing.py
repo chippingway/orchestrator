@@ -14,12 +14,10 @@ from orchestrator.github.labels import (
     WORKFLOW_LABEL_SPECS,
     WORKFLOW_LABELS,
 )
-from orchestrator.workflow.engine import dispatch as _dispatch
-from orchestrator.workflow.engine import pickup as _pickup
+from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
 from orchestrator.workflow.stages.discussion import handler as _discussion
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-from tests.workflow.fixtures import LABEL_DISCUSSION, _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC, LABEL_DISCUSSION
 
 DISCUSSION_ISSUE_NUMBER = 901
 

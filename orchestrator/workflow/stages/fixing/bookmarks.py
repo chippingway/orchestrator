@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from orchestrator.workflow.stages.fixing import state as _state
 
-
 # Every bookmark one fix route leaves, and the value clearing it writes.
 # Spelled as pairs rather than as a sequence of writes, so a caller that has
 # to hand the clear somewhere else -- the size gate, which applies a route's

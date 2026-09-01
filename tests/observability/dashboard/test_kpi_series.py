@@ -32,7 +32,6 @@ from tests.observability.dashboard.dashboard_test_support import (
     MAY03,
 )
 
-
 _EVENT = "agent_exit"
 
 # One order of magnitude per token column, so a reduction dropping any single

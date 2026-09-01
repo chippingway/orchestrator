@@ -10,7 +10,6 @@ import unittest
 
 from orchestrator.github import PinnedState
 from orchestrator.workflow.engine import terminals
-
 from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
@@ -18,14 +17,13 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    EVENT_PR_MERGED,
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
+    EVENT_PR_MERGED,
     _agent,
     _issue_branch,
+    _PatchedWorkflowMixin,
     _state_with_pr_number,
 )
-
 
 _VALIDATING_LABEL = "workflow:validating"
 _IMPLEMENTING_LABEL = "workflow:implementing"

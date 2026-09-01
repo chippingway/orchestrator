@@ -40,8 +40,7 @@ from __future__ import annotations
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import comments as _comments, messages as _messages
 from orchestrator.workflow.engine.comments import _SECTION_SEP
 from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
 from orchestrator.workflow.state import WorkflowLabel

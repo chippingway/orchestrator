@@ -15,7 +15,6 @@ from orchestrator.workflow.stages.decomposition import (
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.stages.decomposition.late_run_support import (
     LateCase,
     adjudicate,
@@ -24,26 +23,22 @@ from tests.workflow.stages.decomposition.late_run_support import (
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     CYCLE_ID,
-    KEYS,
     KEY_PLAN_PATH,
+    KEYS,
     LATE_ISSUE_NUMBER,
     LATE_SESSION_ID,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     PLAN_PATH,
     PLAN_PR_BODY,
     PLAN_PR_NUMBER,
     QUESTION_ASKED,
-    seed_plan_pr,
-    seeded_late_issue,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
     QUESTION_REPLY,
     SINGLE_REPLY,
     SPLIT_REPLY,
     generation_state,
     late_block,
     late_generation,
+    seed_plan_pr,
+    seeded_late_issue,
 )
 
 NEXT_CYCLE_ID = CYCLE_ID + 1

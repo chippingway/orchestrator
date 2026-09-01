@@ -19,7 +19,6 @@ from tests.workflow.fixtures import (
     KEY_PARK_REASON,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,

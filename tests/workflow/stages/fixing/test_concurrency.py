@@ -7,7 +7,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.github.pinned_state import PinnedState
-
 from tests.workflow.stages.fixing import fixing_test_support as support
 
 IssueScenario = support.IssueScenario

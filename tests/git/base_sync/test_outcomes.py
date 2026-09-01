@@ -8,7 +8,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator.git.base_sync import outcomes, persistence, snapshot
-
 from tests.git.base_sync import base_sync_helpers as fixtures
 
 FINALIZE_HELPER = "_finalize_recovered_rebase"

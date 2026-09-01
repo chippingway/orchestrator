@@ -38,7 +38,6 @@ from orchestrator.observability.trajectory_viewer import (
 )
 from orchestrator.observability.trajectory_viewer.css import EXTRA_CSS
 
-
 NO_TRAJECTORIES_MESSAGE = (
     "No `agent_trajectory` records were found. The trajectory sink writes "
     "one record per tracked agent run once `TRAJECTORY_LOG_PATH` is set and "

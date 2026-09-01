@@ -9,7 +9,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -21,9 +20,9 @@ from tests.support.fakes import (
 )
 from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
-    _PatchedWorkflowMixin,
     _agent,
     _open_pr_for,
+    _PatchedWorkflowMixin,
 )
 from tests.workflow.stages.validating import (
     validating_review_test_support as review_support,

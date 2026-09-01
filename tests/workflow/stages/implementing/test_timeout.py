@@ -19,20 +19,19 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import drift as _drift
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
     FakeUser,
     make_issue,
 )
-from tests.workflow.stages.implementing_fixing_test_cases import IssueScenario
 from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     LABEL_VALIDATING,
-    _PatchedWorkflowMixin,
     _agent,
+    _PatchedWorkflowMixin,
 )
+from tests.workflow.stages.implementing_fixing_test_cases import IssueScenario
 
 AWAITING_HUMAN = "awaiting_human"
 PARK_REASON = "park_reason"

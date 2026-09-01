@@ -9,14 +9,12 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.validating import (
+    handler as _validating,
     watermarks as _validating_watermarks,
 )
-from orchestrator.workflow.stages.implementing import handler as _implementing
-from orchestrator.workflow.stages.validating import handler as _validating
-
 from tests.support.fakes import FakeGitHubClient, FakeIssue, FakePR, make_issue
-
 from tests.workflow.engine import usage_test_support as support
 
 EVENT_AGENT_EXIT = support.EVENT_AGENT_EXIT

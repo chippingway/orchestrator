@@ -8,7 +8,6 @@ from typing import Any
 from unittest.mock import MagicMock
 
 from orchestrator.workflow.engine import drift as _drift
-
 from tests.support.fakes import (
     FakeGitHubClient,
     FakePR,
@@ -25,7 +24,6 @@ from tests.workflow.repo_values import (
     STATE_OPEN,
 )
 from tests.workflow.value_helpers import _issue_branch
-
 
 _CONFLICT_ISSUE_NUMBER = 200
 _CONFLICT_BRANCH = _issue_branch(_CONFLICT_ISSUE_NUMBER)

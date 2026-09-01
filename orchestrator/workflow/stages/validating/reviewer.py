@@ -30,24 +30,26 @@ the analytics record exists even for the paths that park.
 """
 from __future__ import annotations
 
-
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git.worktrees import creation as _worktree_creation
-from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    guards as _guards,
+    messages as _messages,
+    prompts as _prompts,
+    usage as _usage,
+)
 from orchestrator.workflow.stages.implementing import session_read as _dev_session_read
-from orchestrator.workflow.stages.validating import approval as _approval
-from orchestrator.workflow.stages.validating import models as _models
-from orchestrator.workflow.stages.validating import requested_changes as _requested_changes
-from orchestrator.workflow.stages.validating import state as _state
+from orchestrator.workflow.stages.validating import (
+    approval as _approval,
+    models as _models,
+    requested_changes as _requested_changes,
+    state as _state,
+)
 
 
 def _run_reviewer_round(

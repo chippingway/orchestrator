@@ -44,7 +44,6 @@ from dataclasses import replace
 from orchestrator.git.snapshots import refs as _snapshot_refs
 from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.support.fakes import FakeComment, FakeLabel, FakeUser
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_published_split_support import (
@@ -59,15 +58,15 @@ from tests.workflow.stages.decomposition.late_seam_support import (
     SnapshotOutcome,
     local_teardown,
 )
+from tests.workflow.stages.decomposition.late_test_support import (
+    LATE_ISSUE_NUMBER,
+)
 from tests.workflow.stages.decomposition.late_transaction_support import (
     ERROR,
     KEY_RESOURCES,
     LateSplitCase,
     SnapshotSeed,
     label_of,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
-    LATE_ISSUE_NUMBER,
 )
 
 LABEL_DONE = "done"

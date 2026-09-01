@@ -166,9 +166,7 @@ from github.Issue import Issue
 
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import payloads as _payloads
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.decomposition import (
     late_session as _late_session,

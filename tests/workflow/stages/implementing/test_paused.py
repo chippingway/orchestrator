@@ -18,7 +18,6 @@ from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.github.labels import PAUSED_LABEL
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.stages.implementing import resume as _implementing_resume
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -27,11 +26,11 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    LABEL_IMPLEMENTING,
     _FAKE_WT,
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
+    LABEL_IMPLEMENTING,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 GET_ISSUE = "get_issue"

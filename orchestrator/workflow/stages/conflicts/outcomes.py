@@ -25,15 +25,13 @@ from orchestrator import config
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.engine import guards as _guards, messages as _messages
+from orchestrator.workflow.stages.conflicts import models as _models, transitions as _transitions
 from orchestrator.workflow.stages.implementing import (
     late_push as _late_push,
     late_records as _late_records,
+    parks as _dev_parks,
 )
-from orchestrator.workflow.stages.implementing import parks as _dev_parks
 
 
 def _post_conflict_resolution_result(

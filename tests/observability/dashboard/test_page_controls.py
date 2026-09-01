@@ -32,9 +32,7 @@ from orchestrator.observability.dashboard import (
     read_mode,
     windows,
 )
-from tests.observability.dashboard import dashboard_test_support as fixtures
-from tests.observability.dashboard import page_controls_test_support as fakes
-
+from tests.observability.dashboard import dashboard_test_support as fixtures, page_controls_test_support as fakes
 
 _REPOS = ("owner/one", "owner/two")
 

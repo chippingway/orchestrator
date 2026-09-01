@@ -23,15 +23,16 @@ consuming it here as PR feedback would silently drop the retry intent.
 """
 from __future__ import annotations
 
-
 from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.stages.in_review import fixing_route as _fixing_route
-from orchestrator.workflow.stages.in_review import models as _models
-from orchestrator.workflow.stages.in_review import state as _state
-from orchestrator.workflow.stages.in_review import watermarks as _watermarks
+from orchestrator.workflow.stages.in_review import (
+    fixing_route as _fixing_route,
+    models as _models,
+    state as _state,
+    watermarks as _watermarks,
+)
 
 
 def _drop_orchestrator_comments(comments, orchestrator_ids) -> list:

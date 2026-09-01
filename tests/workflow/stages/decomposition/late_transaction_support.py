@@ -18,8 +18,7 @@ from __future__ import annotations
 from contextlib import nullcontext
 from dataclasses import replace
 
-from orchestrator.workflow.late_split import lineage as _lineage
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import lineage as _lineage, state as _late_state
 from orchestrator.workflow.stages.decomposition import (
     late_children as _late_children,
     late_hold as _late_hold,
@@ -32,7 +31,7 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
     _LateRun,
 )
-
+from tests.support.fakes import FakeGitHubClient
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.stages.decomposition.late_seam_support import (
     SnapshotSeed,
@@ -48,8 +47,6 @@ from tests.workflow.stages.decomposition.late_test_support import (
     seed_late_issue,
     seed_plan_pr,
 )
-
-from tests.support.fakes import FakeGitHubClient
 
 # The manifest every case splits into, and the dependency between its two
 # children -- so activation has one child to release and one to hold.

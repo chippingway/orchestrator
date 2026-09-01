@@ -34,8 +34,7 @@ from typing import Any
 from orchestrator import config
 from orchestrator.git.worktrees import paths
 from orchestrator.git.worktrees.models import Retention, RetentionReason
-from orchestrator.github import issues as github_issues
-from orchestrator.github import pull_requests as github_pull_requests
+from orchestrator.github import issues as github_issues, pull_requests as github_pull_requests
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.state import WorkflowLabel, label_for_name

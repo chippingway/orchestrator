@@ -18,19 +18,17 @@ Streamlit nor Plotly, so an importer that never renders still loads cleanly.
 from __future__ import annotations
 
 from orchestrator.observability.dashboard.palette import (
+    ACCENT,
     BACKGROUND,
     BORDER,
     CARD_BG,
+    DANGER,
     GRID,
     INK,
     MUTED_TEXT,
     MUTED_TEXT_SOFT,
-    SURFACE,
-)
-from orchestrator.observability.dashboard.palette import (
-    ACCENT,
-    DANGER,
     SUCCESS,
+    SURFACE,
     TOKEN_TYPE_COLORS,
     WARNING,
 )

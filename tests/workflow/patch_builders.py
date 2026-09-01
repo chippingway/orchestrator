@@ -7,21 +7,18 @@ from unittest.mock import MagicMock
 
 from orchestrator.git.publication import probes as _publication_probes
 from orchestrator.git.verification.models import VerifyResult
-
 from tests.workflow.patch_measurement import _measurement_mocks
 from tests.workflow.patch_models import (
     _AnchorAnswers,
-    _HeadReadings,
-    _RemoteTipAnswers,
-    _TreeReadings,
-    _WorkflowRunContext,
     _as_mock,
     _default_infer_subject_prefix,
-)
-from tests.workflow.patch_models import (
     _fetched,
+    _HeadReadings,
     _published_branch,
+    _RemoteTipAnswers,
     _squashed,
+    _TreeReadings,
+    _WorkflowRunContext,
 )
 from tests.workflow.repo_values import _FAKE_WT
 

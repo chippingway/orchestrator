@@ -19,7 +19,6 @@ from unittest.mock import patch
 from orchestrator.observability.analytics.query import connection_cache
 from orchestrator.observability.dashboard import scoped_reads
 
-
 _CONNECTION = "socket"
 
 _ENTERED = "entered"

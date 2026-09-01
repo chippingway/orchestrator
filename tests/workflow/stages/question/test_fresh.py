@@ -8,23 +8,19 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.workflow.stages.implementing import session as _dev_session
-
-from tests.workflow.fixtures import (
-    KEY_AWAITING_HUMAN,
-    KEY_PARK_REASON,
-)
 from tests.workflow.fixtures import (
     _TEST_SPEC,
+    KEY_AWAITING_HUMAN,
+    KEY_PARK_REASON,
     _agent,
 )
-
+from tests.workflow.stages.question.question_conversation_test_support import (
+    _QuestionWorkflowMixin,
+)
 from tests.workflow.stages.question.question_test_support import (
     _assert_no_pr_no_push_no_relabel,
     _issue_branch,
     _seed_question,
-)
-from tests.workflow.stages.question.question_conversation_test_support import (
-    _QuestionWorkflowMixin,
 )
 
 KEY_QUESTION_SESSION_ID = "question_session_id"

@@ -11,7 +11,6 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.in_review import handler as _in_review
-
 from tests.workflow import pr_lifecycle_test_support as support
 
 

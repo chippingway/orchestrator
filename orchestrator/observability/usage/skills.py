@@ -14,7 +14,6 @@ from orchestrator.observability.usage import (
     skills_codex,
 )
 
-
 FoldedCounts = tuple[list[str], dict[str, int]]
 EVIDENCE_CONFIRMED = "confirmed"
 EVIDENCE_INFERRED = "inferred"

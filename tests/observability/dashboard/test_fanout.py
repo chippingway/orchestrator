@@ -21,7 +21,6 @@ from orchestrator.observability.analytics.query.connections import (
 )
 from orchestrator.observability.dashboard import fanout, read_mode
 
-
 # Three readers named apart, so a case can say which of them ran and in which
 # order rather than only how many did.
 _FIRST, _SECOND, _THIRD = ("a", "b", "c")

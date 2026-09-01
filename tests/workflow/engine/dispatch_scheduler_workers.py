@@ -9,7 +9,6 @@ from pathlib import Path
 
 from tests.workflow.git_owners import seam_patch
 
-
 REPO_SLUG = "acme/widget"
 TARGET_ROOT = Path("/tmp/orchestrator-test-target-root")
 PROCESS_ISSUE = "_process_issue"

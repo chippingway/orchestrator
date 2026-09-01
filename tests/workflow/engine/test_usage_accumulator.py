@@ -19,7 +19,6 @@ from orchestrator.github import PinnedState
 from orchestrator.observability.usage.metrics import UsageMetrics
 from orchestrator.workflow.engine import drift as _drift, usage as engine_usage
 from orchestrator.workflow.stages.implementing import resume as _resume
-
 from tests.workflow.engine import usage_accumulator_test_support as support
 
 FakeGitHubClient = support.FakeGitHubClient

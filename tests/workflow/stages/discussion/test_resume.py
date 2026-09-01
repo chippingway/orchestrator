@@ -27,31 +27,11 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.workflow.engine import prompts as _prompts
-
 from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
     KEY_PARK_REASON,
     _agent,
-)
-
-from tests.workflow.stages.discussion.discussion_test_support import (
-    DISCUSSION_RESPONSE,
-    DISCUSSION_SESSION,
-    DISCUSSION_TOPIC,
-    HEAD_BEFORE_ROUND,
-    KEY_DISCUSSION_AGENT,
-    KEY_DISCUSSION_SESSION_ID,
-    KEY_ROUND_SHA,
-    MOVED_HEAD_RESUMED,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    PARK_DISCUSSION_PLAN_INVALID,
-    PARK_DISCUSSION_RESPONSE,
-    RESUME_SESSION_ID,
-    RUN_AGENT,
-    _DiscussionWorkflowMixin,
-    _seed_discussion,
 )
 from tests.workflow.stages.discussion.discussion_resume_test_support import (
     DISCUSSION_REPLY,
@@ -61,6 +41,22 @@ from tests.workflow.stages.discussion.discussion_resume_test_support import (
     _mixed_batch,
     _reply,
     _seed_parked_discussion,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
+    DISCUSSION_RESPONSE,
+    DISCUSSION_SESSION,
+    DISCUSSION_TOPIC,
+    HEAD_BEFORE_ROUND,
+    KEY_DISCUSSION_AGENT,
+    KEY_DISCUSSION_SESSION_ID,
+    KEY_ROUND_SHA,
+    MOVED_HEAD_RESUMED,
+    PARK_DISCUSSION_PLAN_INVALID,
+    PARK_DISCUSSION_RESPONSE,
+    RESUME_SESSION_ID,
+    RUN_AGENT,
+    _DiscussionWorkflowMixin,
+    _seed_discussion,
 )
 
 _RESUME_ISSUE_NUMBER = 1100

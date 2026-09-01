@@ -7,14 +7,13 @@ from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.stages.decomposition.late_content_support import (
     ASKED_STATE,
     BARE_CONTINUE,
     EDITED_TITLE,
     LATE_SESSION,
-    LateContentCase,
     PARK_QUESTION,
+    LateContentCase,
     guidance_comment,
     reply,
 )

@@ -15,14 +15,12 @@ from orchestrator.workflow.state import (
     replaced_label_names,
     stage_name,
 )
-
 from tests.support.fakes import (
     FakeGitHubClient,
     FakeIssue,
     FakeLabel,
     make_issue,
 )
-
 
 _NAMESPACE = "workflow:"
 _MIXED_ISSUE = 1

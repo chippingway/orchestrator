@@ -21,7 +21,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.git.measurement.models import FrozenCommit
-
 from tests.support.fakes import FakeLabel
 from tests.workflow import fixtures
 from tests.workflow.mid_run_effects import (

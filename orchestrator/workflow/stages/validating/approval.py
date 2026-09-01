@@ -30,18 +30,15 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.git.publication import squash as _squash
-from orchestrator.workflow.stages.implementing import (
-    late_records as _late_records,
-)
 from orchestrator.git.verification import runner as _verify_runner
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.stages.validating import models as _models
-from orchestrator.workflow.stages.validating import verify as _verify
-from orchestrator.workflow.stages.validating import watermarks as _watermarks
+from orchestrator.workflow.engine import comments as _comments, guards as _guards
+from orchestrator.workflow.stages.implementing import (
+    late_records as _late_records,
+)
+from orchestrator.workflow.stages.validating import models as _models, verify as _verify, watermarks as _watermarks
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")

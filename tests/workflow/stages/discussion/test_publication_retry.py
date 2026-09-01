@@ -28,7 +28,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tests.workflow.fixtures import KEY_PARK_REASON, _agent
-
+from tests.workflow.stages.discussion.discussion_resume_test_support import (
+    DISCUSSION_REPLY,
+    UNASKED_ROUND,
+    _mark_in_flight,
+    _reply,
+    _seed_parked_discussion,
+)
 from tests.workflow.stages.discussion.discussion_test_support import (
     HEAD_AFTER_COMMIT,
     KEY_DISCUSSION_SESSION_ID,
@@ -38,18 +44,9 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     PARK_DISCUSSION_PUSH_FAILED,
     PUSH_BRANCH,
     RUN_AGENT,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     _DiscussionWorkflowMixin,
     _issue_branch,
     _seed_discussion,
-)
-from tests.workflow.stages.discussion.discussion_resume_test_support import (
-    DISCUSSION_REPLY,
-    UNASKED_ROUND,
-    _mark_in_flight,
-    _reply,
-    _seed_parked_discussion,
 )
 
 _RETRY_ISSUE_NUMBER = 1243

@@ -18,35 +18,29 @@ from __future__ import annotations
 import unittest
 
 from orchestrator import config
-
 from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DIRTY_DISPLAY_LIMIT,
     DIRTY_FILE_COUNT,
     DIRTY_OVERFLOW_COUNT,
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
+    HEAD_BEFORE_ROUND,
+    KEY_ROUND_SHA,
     MOVED_HEAD,
     PARK_DISCUSSION_DIRTY,
     PARK_DISCUSSION_PLAN_INVALID,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     PARK_DISCUSSION_RESPONSE,
     PARK_DISCUSSION_SILENT,
     PARK_DISCUSSION_TIMEOUT,
-    RUN_AGENT,
-    _DiscussionWorkflowMixin,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    HEAD_BEFORE_ROUND,
-    KEY_ROUND_SHA,
     PARK_DISCUSSION_UNREADABLE,
+    RUN_AGENT,
     _dirty_files,
+    _DiscussionWorkflowMixin,
     _seed_discussion,
 )
 

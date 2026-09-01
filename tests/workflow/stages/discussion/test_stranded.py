@@ -22,7 +22,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from orchestrator import config
-
 from tests.workflow.fixtures import (
     BASE_TIP_SHA,
     KEY_AWAITING_HUMAN,
@@ -30,19 +29,12 @@ from tests.workflow.fixtures import (
     _agent,
 )
 from tests.workflow.git_owners import seam_patch
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DIRTY_FILE_COUNT,
     DISCUSSION_RESPONSE,
+    DISCUSSION_SESSION,
     ENSURE_PR_WORKTREE,
     ENSURE_WORKTREE,
-    PARK_DISCUSSION_STRANDED,
-    PARK_DISCUSSION_UNREADABLE,
-    RUN_AGENT,
-    WORKTREE_PATH,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    DISCUSSION_SESSION,
     HEAD_AFTER_COMMIT,
     HEAD_BEFORE_ROUND,
     KEY_BASE_SHA,
@@ -50,10 +42,12 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_ROUND_BRANCH,
     KEY_ROUND_OPEN,
     KEY_ROUND_SHA,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    _DiscussionWorkflowMixin,
+    PARK_DISCUSSION_STRANDED,
+    PARK_DISCUSSION_UNREADABLE,
+    RUN_AGENT,
+    WORKTREE_PATH,
     _dirty_files,
+    _DiscussionWorkflowMixin,
     _issue_branch,
     _seed_discussion,
 )

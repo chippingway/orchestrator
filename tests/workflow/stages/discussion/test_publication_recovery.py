@@ -30,43 +30,13 @@ import tempfile
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
+
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
     BASE_TIP_SHA,
     KEY_PARK_REASON,
     STATE_CLOSED,
     _agent,
-)
-
-from tests.workflow.stages.discussion.discussion_test_support import (
-    HEAD_AFTER_COMMIT,
-    HEAD_BEFORE_ROUND,
-    KEY_BASE_SHA,
-    KEY_PLAN_PATH,
-    KEY_PUBLISHING_SHA,
-    KEY_ROUND_BRANCH,
-    KEY_ROUND_OPEN,
-    KEY_ROUND_SHA,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    MOVED_HEAD,
-    PARK_DISCUSSION_COMMITS,
-    PARK_DISCUSSION_PLAN_PUBLISHED,
-    PARK_DISCUSSION_PUSH_FAILED,
-    PARK_FOREIGN_QUESTION,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    DISCUSSION_SESSION,
-    KEY_DISCUSSION_SESSION_ID,
-    PARK_DISCUSSION_STALE_PUBLISH,
-    PARK_DISCUSSION_UNATTRIBUTED,
-    PUSH_BRANCH,
-    RUN_AGENT,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    _DiscussionWorkflowMixin,
-    _issue_branch,
-    _seed_discussion,
 )
 from tests.workflow.stages.discussion.discussion_resume_test_support import (
     DISCUSSION_REPLY,
@@ -75,6 +45,30 @@ from tests.workflow.stages.discussion.discussion_resume_test_support import (
     _paused_resumed_round,
     _reply,
     _seed_parked_discussion,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
+    DISCUSSION_SESSION,
+    HEAD_AFTER_COMMIT,
+    HEAD_BEFORE_ROUND,
+    KEY_BASE_SHA,
+    KEY_DISCUSSION_SESSION_ID,
+    KEY_PLAN_PATH,
+    KEY_PUBLISHING_SHA,
+    KEY_ROUND_BRANCH,
+    KEY_ROUND_OPEN,
+    KEY_ROUND_SHA,
+    MOVED_HEAD,
+    PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_PLAN_PUBLISHED,
+    PARK_DISCUSSION_PUSH_FAILED,
+    PARK_DISCUSSION_STALE_PUBLISH,
+    PARK_DISCUSSION_UNATTRIBUTED,
+    PARK_FOREIGN_QUESTION,
+    PUSH_BRANCH,
+    RUN_AGENT,
+    _DiscussionWorkflowMixin,
+    _issue_branch,
+    _seed_discussion,
 )
 
 _RECOVERED_ISSUE_NUMBER = 1240

@@ -26,8 +26,8 @@ condition can resolve without anyone commenting.
 """
 from __future__ import annotations
 
-from types import MappingProxyType
 import re
+from types import MappingProxyType
 
 _ReviewRoundsCommand = tuple[int, str | None]
 

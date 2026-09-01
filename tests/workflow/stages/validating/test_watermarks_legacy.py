@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.workflow.engine import comments as _comments
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -20,8 +19,8 @@ from tests.support.fakes import (
 )
 from tests.workflow.fixtures import (
     REVIEW_APPROVED_MESSAGE,
-    _PatchedWorkflowMixin,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 WATERMARK_ISSUE = 300

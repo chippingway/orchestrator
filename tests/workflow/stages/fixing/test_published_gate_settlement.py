@@ -25,9 +25,8 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.implementing import late_push as _late_push
-
-from tests.workflow.stages.fixing import fixing_test_support as fixing
 from tests.workflow.stages.fixing import (
+    fixing_test_support as fixing,
     published_gate_support as support,
 )
 from tests.workflow.stages.fixing.test_late_dispatch import (

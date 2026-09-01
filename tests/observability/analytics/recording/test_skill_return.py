@@ -3,33 +3,18 @@
 """Analytics agent-exit skill-return tests."""
 
 import contextlib
-
-
 import unittest
-
-
 from unittest.mock import MagicMock, patch
 
-
+from orchestrator.observability.analytics import recording, settings as analytics_settings, sink as analytics_sink
 from orchestrator.observability.usage import skills as _usage_skills
-
-
-
-
-from orchestrator.observability.analytics import recording
-from orchestrator.observability.analytics import settings as analytics_settings
-from orchestrator.observability.analytics import sink as analytics_sink
-
 from tests.observability.analytics.analytics_jsonl_helpers import (
     read_records as _read_records,
 )
-
-
 from tests.observability.analytics.analytics_recording_cases import (
     agent_exit_result as _agent_exit_result,
     claude_stdout_with_skills as _claude_stdout_with_skills,
 )
-
 
 AGENT_EXIT_ISSUE_NUMBER = 7
 

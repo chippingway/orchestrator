@@ -19,8 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from orchestrator.observability.analytics import config as analytics_config
-from orchestrator.observability.analytics import sink
+from orchestrator.observability.analytics import config as analytics_config, sink
 from orchestrator.observability.analytics.recording.models import (
     AgentExitContext,
     CodexCatalog,

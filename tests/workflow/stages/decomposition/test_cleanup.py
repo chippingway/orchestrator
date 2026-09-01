@@ -4,19 +4,17 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.stages.decomposition import blocked as _blocked
-from orchestrator.workflow.stages.decomposition import run as _decomposing
-
-from tests.workflow.stages.decomposition.decomposition_test_support import _comment_with_marker
+from orchestrator.workflow.stages.decomposition import blocked as _blocked, run as _decomposing
 from tests.support.fakes import (
     FakeGitHubClient,
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
+    _PatchedWorkflowMixin,
 )
+from tests.workflow.stages.decomposition.decomposition_test_support import _comment_with_marker
 
 STALE_USER_CONTENT_HASH = "stale-hash"
 READY_DRIFT_PARENT_NUMBER = 800

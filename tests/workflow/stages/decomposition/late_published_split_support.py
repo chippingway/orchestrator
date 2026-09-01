@@ -22,7 +22,6 @@ from dataclasses import replace
 
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
-
 from tests.support.fakes import FakeGitHubClient, FakeIssue, FakePR
 from tests.workflow.fixtures import _issue_branch
 from tests.workflow.stages.decomposition.late_published_support import (
@@ -39,7 +38,6 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     KEY_PR_NUMBER,
     LateSplitCase,
 )
-
 
 # The description an implementation pull request was opened with, and what
 # the hold on it displaced.

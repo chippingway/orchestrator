@@ -9,7 +9,6 @@ from pathlib import Path
 
 from orchestrator import config
 from orchestrator.git.worktrees import paths
-
 from tests.git.worktrees.path_test_support import (
     ALICE_REPO_SLUG,
     BASE_BRANCH,

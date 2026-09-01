@@ -23,26 +23,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-
 from tests.workflow.fixtures import (
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
     KEY_PARK_REASON,
     _agent,
-)
-
-from tests.workflow.stages.discussion.discussion_test_support import (
-    ENSURE_WORKTREE,
-    HEAD_AFTER_COMMIT,
-    PARK_DISCUSSION_COMMITS,
-    PARK_DISCUSSION_DIRTY,
-    PARK_DISCUSSION_RESPONSE,
-    RUN_AGENT,
-    UNMOVED_HEAD_RESUMED,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
-    _DiscussionWorkflowMixin,
-    _dirty_files,
 )
 from tests.workflow.stages.discussion.discussion_resume_test_support import (
     DISCUSSION_REPLY,
@@ -53,6 +38,17 @@ from tests.workflow.stages.discussion.discussion_resume_test_support import (
     UNASKED_ROUND,
     _reply,
     _seed_parked_discussion,
+)
+from tests.workflow.stages.discussion.discussion_test_support import (
+    ENSURE_WORKTREE,
+    HEAD_AFTER_COMMIT,
+    PARK_DISCUSSION_COMMITS,
+    PARK_DISCUSSION_DIRTY,
+    PARK_DISCUSSION_RESPONSE,
+    RUN_AGENT,
+    UNMOVED_HEAD_RESUMED,
+    _dirty_files,
+    _DiscussionWorkflowMixin,
 )
 
 _QUIET_ISSUE_NUMBER = 1110

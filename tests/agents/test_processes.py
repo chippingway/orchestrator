@@ -13,8 +13,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator.agents import processes as _processes
-from tests.agents import agent_test_support as _support
-from tests.agents import agent_test_values as _agent_cases
+from tests.agents import agent_test_support as _support, agent_test_values as _agent_cases
 
 
 class RunSubprocessRegistrationTest(unittest.TestCase):

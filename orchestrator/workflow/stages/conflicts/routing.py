@@ -45,13 +45,15 @@ from orchestrator.git.publication import probes as _publication_probes
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.stages.conflicts import divergence as _divergence
-from orchestrator.workflow.stages.conflicts import guards as _guards
-from orchestrator.workflow.stages.conflicts import models as _models
-from orchestrator.workflow.stages.conflicts import rebase as _rebase
-from orchestrator.workflow.stages.conflicts import resume as _resume
-from orchestrator.workflow.stages.conflicts import state as _state
-from orchestrator.workflow.stages.conflicts import transitions as _transitions
+from orchestrator.workflow.stages.conflicts import (
+    divergence as _divergence,
+    guards as _guards,
+    models as _models,
+    rebase as _rebase,
+    resume as _resume,
+    state as _state,
+    transitions as _transitions,
+)
 
 log = logging.getLogger("orchestrator.workflow")
 

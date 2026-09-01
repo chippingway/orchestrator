@@ -8,25 +8,21 @@ from pathlib import Path
 
 from orchestrator import config
 from orchestrator.workflow.stages.implementing import handler as _implementing
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-from tests.workflow.stages.question.question_relabel_test_support import (
-    RelabelCase,
-    _seed_relabel,
-)
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
     LABEL_IMPLEMENTING,
-)
-from tests.workflow.fixtures import (
-    _TEST_SPEC,
     _agent,
 )
-
 from tests.workflow.stages.question.question_conversation_test_support import (
     _ImplementingStageCall,
     _QuestionWorkflowMixin,
+)
+from tests.workflow.stages.question.question_relabel_test_support import (
+    RelabelCase,
+    _seed_relabel,
 )
 
 KEY_QUESTION_SESSION_ID = "question_session_id"

@@ -37,21 +37,24 @@ from pathlib import Path
 from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
-from orchestrator.git.worktrees import creation as _worktree_creation
-from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _engine_drift
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.fixing import bookmarks as _bookmarks
+from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    drift as _engine_drift,
+    messages as _messages,
+    prompts as _prompts,
+    usage as _usage,
+)
+from orchestrator.workflow.stages.fixing import (
+    bookmarks as _bookmarks,
+    feedback as _feedback,
+    models as _models,
+    state as _state,
+)
 from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
+    resume as _dev_resume,
 )
-from orchestrator.workflow.stages.fixing import feedback as _feedback
-from orchestrator.workflow.stages.fixing import models as _models
-from orchestrator.workflow.stages.fixing import state as _state
-from orchestrator.workflow.stages.implementing import resume as _dev_resume
 from orchestrator.workflow.stages.in_review import watermarks as _in_review_watermarks
 from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
 from orchestrator.workflow.state import WorkflowLabel

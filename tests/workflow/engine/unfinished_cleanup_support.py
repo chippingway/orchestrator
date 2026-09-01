@@ -18,7 +18,6 @@ from orchestrator.git.snapshots import refs as _snapshot_refs
 from orchestrator.workflow.stages.decomposition import (
     late_cancellation as _late_cancellation,
 )
-
 from tests.support.fakes import FakeLabel
 from tests.workflow.engine.cleanup_deferral_support import (
     OWNER_NUMBER,

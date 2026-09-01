@@ -19,7 +19,6 @@ from orchestrator.workflow.stages.decomposition import (
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.fixtures import STAGE_DECOMPOSING
 from tests.workflow.stages.decomposition.late_run_support import (
@@ -34,15 +33,13 @@ from tests.workflow.stages.decomposition.late_test_support import (
     BASE_SHA,
     CANDIDATE_SHA,
     EVENT_LATE_FAILURE,
-    KEYS,
     KEY_PLAN_PATH,
+    KEYS,
+    LATE_ISSUE_NUMBER,
     MERGED_SHA,
     PLAN_PATH,
-    PLAN_PR_NUMBER,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
-    LATE_ISSUE_NUMBER,
     PLAN_PR_BODY,
+    PLAN_PR_NUMBER,
     ROLE_DECOMPOSER,
     SPLIT_REPLY,
     UNDERSIZED_ADDITIONS,

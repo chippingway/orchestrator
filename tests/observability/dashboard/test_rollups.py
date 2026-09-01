@@ -41,7 +41,6 @@ from tests.observability.dashboard.dashboard_test_support import (
     utc_midnight,
 )
 
-
 _REPO = "owner/repo"
 
 _EVENTS = ("stage_entered", "agent_exit")

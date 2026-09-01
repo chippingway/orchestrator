@@ -8,12 +8,11 @@ import unittest
 from unittest.mock import MagicMock
 
 from orchestrator.git.base_sync import refresh as _base_refresh
-
 from tests.git.base_sync.refresh_test_support import (
     AFTER_SHA,
-    _SyncWorktreeWithBaseFixture,
     _git_result,
     _patch_base_sync,
+    _SyncWorktreeWithBaseFixture,
 )
 
 ISSUE = 7

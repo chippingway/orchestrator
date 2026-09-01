@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from types import MappingProxyType, ModuleType
 from unittest.mock import patch
 
-
 _CONFIG_MODULE = "orchestrator.config"
 _MISSING = object()
 _BASE_ENV = MappingProxyType(

@@ -17,17 +17,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-
 from unittest import mock
 
 from orchestrator.git.measurement import commits as _measurement_commits
-from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.measurement.models import FrozenCommit
 from orchestrator.git.publication import models
+from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
 )
-
 from tests.git.publication.publication_helpers import _spec
 from tests.support.fakes import (
     FakeGitHubClient,

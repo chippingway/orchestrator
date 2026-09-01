@@ -32,7 +32,6 @@ from orchestrator.observability.analytics.query.cost_models import (
     BackendEfficiencyRow,
 )
 
-
 _TOKENS_PER_MILLION = 1_000_000
 
 

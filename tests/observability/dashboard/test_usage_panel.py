@@ -18,9 +18,9 @@ from tests.observability.dashboard.usage_panel_test_support import (
     CLAUDE,
     CODEX,
     FIGURE,
-    HeroStreamlit,
     MAY01,
     MAY07,
+    HeroStreamlit,
     backend_row,
 )
 

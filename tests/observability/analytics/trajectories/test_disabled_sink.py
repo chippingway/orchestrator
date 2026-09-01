@@ -3,19 +3,11 @@
 """What a trajectory append costs while the sink is off: nothing on disk."""
 
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
 
-
 from orchestrator.observability.analytics.trajectories import api as trajectory_api
-
 from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
-
-
 from tests.observability.analytics.trajectories.trajectories_test_support import (
     TRAJECTORY_LOG_PATH as _TRAJECTORY_LOG_PATH,
 )

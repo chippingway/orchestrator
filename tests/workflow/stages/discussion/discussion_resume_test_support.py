@@ -24,7 +24,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.github.labels import PAUSED_LABEL
-
 from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.fixtures import (
     BASE_TIP_SHA,
@@ -33,7 +32,6 @@ from tests.workflow.fixtures import (
     KEY_PARK_REASON,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_SESSION,
     ENSURE_WORKTREE,
@@ -41,18 +39,14 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_BASE_SHA,
     KEY_DISCUSSION_AGENT,
     KEY_DISCUSSION_SESSION_ID,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_ROUND_BRANCH,
     KEY_ROUND_SHA,
     PARK_DISCUSSION_RESPONSE,
-    _paused_view,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     RESUME_SESSION_ID,
     RUN_AGENT,
     UNMOVED_HEAD_RESUMED,
     _issue_branch,
+    _paused_view,
     _seed_discussion,
 )
 

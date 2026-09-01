@@ -27,8 +27,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import payloads as _payloads
+from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads
 from orchestrator.workflow.late_split.models import (
     MAX_RESOURCE_TARGET,
     LateResource,

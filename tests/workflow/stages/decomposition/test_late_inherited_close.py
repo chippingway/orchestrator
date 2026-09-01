@@ -24,7 +24,6 @@ from unittest.mock import Mock, patch
 
 from orchestrator.workflow.late_split.models import LateResourceState
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.fixtures import _PatchedWorkflowMixin
 from tests.workflow.observation_support import ObservedCloseCase, receipt_for
 from tests.workflow.stages.decomposition.late_cleanup_support import (

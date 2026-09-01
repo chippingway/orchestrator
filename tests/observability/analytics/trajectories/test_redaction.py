@@ -3,43 +3,23 @@
 """Analytics trajectory redaction tests."""
 
 import json
-
-
 import os
-
-
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
 
-
 from orchestrator.observability.analytics.trajectories import models as trajectory_models
-
-
-
-from tests.observability.analytics.analytics_jsonl_helpers import (
-    read_records as _read_records,
-)
-
-
 from tests.observability.analytics.analytics_codex_item_cases import (
     codex_structured_payload_stdout as _codex_structured_payload_stdout,
 )
-
-
+from tests.observability.analytics.analytics_jsonl_helpers import (
+    read_records as _read_records,
+)
 from tests.observability.analytics.analytics_trajectory_cases import (
     claude_trajectory_stdout as _claude_trajectory_stdout,
     codex_mcp_trajectory_stdout as _codex_mcp_trajectory_stdout,
 )
-
-
 from tests.observability.analytics.trajectories import (
     trajectories_test_support as _support,
 )

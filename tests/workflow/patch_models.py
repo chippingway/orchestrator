@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 from orchestrator.agents import AgentResult
 from orchestrator.git.publication import models as _publication_models
 from orchestrator.git.verification.probes import _WorktreeStatus
-
 from tests.support.fakes import DEFAULT_PR_HEAD_SHA
 from tests.workflow.repo_values import (
     BASE_TIP_SHA,

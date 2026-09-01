@@ -36,7 +36,6 @@ from typing import Any
 from orchestrator.observability.analytics.query import connections
 from orchestrator.observability.dashboard import fanout, read_plan
 
-
 LOADING_INDICATOR_MESSAGE = "Loading analytics…"
 ReadResults = dict[str, Any]
 # Named as a literal rather than taken from `__name__`: an operator's level and

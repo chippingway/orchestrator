@@ -21,7 +21,6 @@ from orchestrator.git.measurement.models import (
     FrozenCommit,
     MeasurementFailure,
 )
-
 from tests.workflow.fixtures import (
     LABEL_VALIDATING,
     MEASURED_CANDIDATE_SHA,

@@ -3,18 +3,17 @@
 """Family-aware workflow tick scheduling tests."""
 from __future__ import annotations
 
-import unittest
-
 import threading
+import unittest
 from unittest.mock import patch
 
 from orchestrator.workflow.engine import dispatch, tick
-
+from tests.workflow.engine import (
+    tick_family_test_support as family_support,
+    tick_parallel_test_support as support,
+    tick_probe_test_support as probes,
+)
 from tests.workflow.git_owners import seam_patch
-
-from tests.workflow.engine import tick_parallel_test_support as support
-from tests.workflow.engine import tick_probe_test_support as probes
-from tests.workflow.engine import tick_family_test_support as family_support
 
 
 class TickFamilySchedulingTest(unittest.TestCase):

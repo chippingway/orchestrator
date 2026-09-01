@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.decomposition import blocked as _blocked
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -13,9 +12,9 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
+    _PatchedWorkflowMixin,
 )
 
 LABEL_READY = "workflow:ready"

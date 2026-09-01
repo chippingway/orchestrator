@@ -13,7 +13,6 @@ routed: conflicted files are the dev agent's work, anything else is a park.
 """
 from __future__ import annotations
 
-
 from github.PullRequest import PullRequest
 
 from orchestrator import config

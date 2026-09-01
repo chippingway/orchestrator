@@ -27,8 +27,8 @@ from orchestrator.git.verification.probes import (
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
-
 from tests.workflow import fixtures
+
 # The four things a case can have happen to the pull request while the dev
 # run is out, reached off this module through the same door.
 from tests.workflow.mid_run_effects import (

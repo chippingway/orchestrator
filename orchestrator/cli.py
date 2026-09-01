@@ -16,7 +16,6 @@ first: a restart the loop asked for, or the signal that stopped the run.
 """
 from __future__ import annotations
 
-
 from orchestrator.runtime import logs, loop, shutdown, startup
 from orchestrator.runtime.state import RuntimeState
 

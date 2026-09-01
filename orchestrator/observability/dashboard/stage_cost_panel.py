@@ -45,7 +45,6 @@ from orchestrator.observability.dashboard.charts.cost_review import (
 )
 from orchestrator.observability.dashboard.charts.cost_stage import cost_by_stage
 
-
 TABLE_ROW_HEIGHT = 40
 TABLE_BASE_HEIGHT = 80
 

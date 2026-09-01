@@ -21,7 +21,6 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.stages.decomposition.late_crash_support import (
     killed_after,
     refusing,
@@ -35,10 +34,8 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     KEY_CHILDREN,
     KEY_CONSUMERS,
     PARK_CHILDREN_FAILED,
-    child_marker,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
     LateSplitCase,
+    child_marker,
     sibling_marker,
 )
 

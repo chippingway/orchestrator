@@ -32,7 +32,6 @@ from tests.observability.dashboard.dashboard_test_support import (
     data_extent,
 )
 
-
 # One move, read in both directions and under both mappings.
 _MOVE = 0.25
 

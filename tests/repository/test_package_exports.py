@@ -23,13 +23,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import MappingProxyType, ModuleType
 
+from tests.repository.binding_test_support import module_level_names
 from tests.repository.layout_test_support import (
     PACKAGE,
     PACKAGE_ROOT,
     dotted_name,
     package_directories,
 )
-from tests.repository.binding_test_support import module_level_names
 
 _ANALYTICS = f"{PACKAGE}.observability.analytics"
 

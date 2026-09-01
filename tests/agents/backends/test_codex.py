@@ -9,11 +9,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator.agents import environment as _environment
-from orchestrator.agents import models as _models
+from orchestrator.agents import environment as _environment, models as _models
 from orchestrator.agents.backends import codex as _codex
-from tests.agents import agent_test_support as _support
-from tests.agents import agent_test_values as _agent_cases
+from tests.agents import agent_test_support as _support, agent_test_values as _agent_cases
 
 _LAST_MESSAGE_PATH = Path("/tmp/codex-last-message-doesnt-matter.txt")
 

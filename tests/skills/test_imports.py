@@ -13,7 +13,6 @@ from unittest.mock import patch
 
 from orchestrator import skills as _package
 
-
 _PACKAGE = "orchestrator.skills"
 
 _CATALOG_OWNER = "catalog"
@@ -226,13 +225,12 @@ class CallSiteTest(unittest.TestCase):
         # Patching the owner is what intercepts a codex run's offered skills
         # and tools, which holds only while the writer names it -- and the one
         # scan it reaches for is what both catalog projections are read off.
+        from orchestrator.observability.analytics import (
+            settings as analytics_settings,
+        )
         from orchestrator.observability.analytics.recording import (
             catalog as recording_catalog,
             models as recording_models,
-        )
-
-        from orchestrator.observability.analytics import (
-            settings as analytics_settings,
         )
 
         owner = _OWNER_MODULES[_DISCOVERY_OWNER]

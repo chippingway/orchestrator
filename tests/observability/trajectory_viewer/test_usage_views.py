@@ -15,7 +15,6 @@ from tests.observability.trajectory_viewer.trajectory_viewer_test_support import
     step,
 )
 
-
 _MODEL_CLAUDE = "claude-opus-4-8"
 
 _REPORTED = "reported"

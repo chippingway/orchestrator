@@ -8,7 +8,6 @@ import unittest
 
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.stages.validating import handler as _validating
-
 from tests.workflow.stages import full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE

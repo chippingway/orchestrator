@@ -25,7 +25,6 @@ from orchestrator.observability.dashboard import (
     theme,
 )
 
-
 _PAGE_TITLE = "Orchestrator Analytics"
 
 _LAYOUT = "wide"

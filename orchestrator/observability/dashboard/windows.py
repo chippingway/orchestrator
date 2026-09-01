@@ -20,7 +20,6 @@ from types import MappingProxyType
 
 from orchestrator.observability.analytics.query.overview_models import DataExtent
 
-
 DEFAULT_WINDOW_DAYS = 7
 PRESET_RECENT_THREE_DAYS = "3d"
 PRESET_RECENT_WEEK = "7d"

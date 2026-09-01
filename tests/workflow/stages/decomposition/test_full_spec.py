@@ -7,9 +7,7 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.stages.decomposition import run as _decomposing
-from orchestrator.workflow.stages.decomposition import session as _decomposer_session
-
+from orchestrator.workflow.stages.decomposition import run as _decomposing, session as _decomposer_session
 from tests.workflow.stages import full_spec_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE

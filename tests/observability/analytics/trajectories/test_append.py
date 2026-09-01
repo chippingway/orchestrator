@@ -3,34 +3,18 @@
 """Trajectory JSONL append tests."""
 
 import contextlib
-
-
 import json
-
-
 import tempfile
-
-
 import unittest
-
-
 from functools import partial
-
-
 from pathlib import Path
 
-
-from orchestrator.observability.analytics.trajectories import api as trajectory_api
 from orchestrator.observability.analytics import sink as analytics_sink
-
-from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
-
-
+from orchestrator.observability.analytics.trajectories import api as trajectory_api
 from tests.observability.analytics.analytics_jsonl_helpers import (
     read_lines as _read_lines,
 )
-
-
+from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 from tests.observability.analytics.trajectories.trajectories_test_support import (
     TRAJECTORY_LOG_PATH as _TRAJECTORY_LOG_PATH,
     trajectory_sink as _trajectory_sink,

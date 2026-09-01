@@ -10,7 +10,6 @@ from tests.observability.observability_test_support import (
     _imported_orchestrator_modules,
 )
 
-
 _OWNER = "orchestrator.observability.dashboard.render_config"
 
 _MODEBAR_KEY = "displayModeBar"

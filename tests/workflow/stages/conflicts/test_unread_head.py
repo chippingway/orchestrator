@@ -34,7 +34,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.git.measurement.models import FrozenCommit
-
 from tests.workflow.stages.conflicts.conflicts_test_support import (
     CONFLICT_PR_HEAD_SHA,
     MOVED_PR_HEAD_SHA,

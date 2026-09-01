@@ -32,7 +32,6 @@ from orchestrator.observability.dashboard import (
 )
 from tests.observability.dashboard.dashboard_test_support import MAY22, MAY28
 
-
 _REPO = "acme/widgets"
 
 _EVENTS = ("agent_exit", "stage_enter")

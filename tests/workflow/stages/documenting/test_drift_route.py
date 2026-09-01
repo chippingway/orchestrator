@@ -4,27 +4,26 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
-from tests.workflow.stages.documenting.documenting_drift_test_support import (
-    _assert_reconcile_calls,
-    _run_drift_reconcile,
-)
 from tests.workflow.fixtures import (
-    MEASURED_CANDIDATE_SHA,
     _TEST_SPEC,
+    MEASURED_CANDIDATE_SHA,
     _agent,
 )
-
 
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting import (
     documenting_test_support as documenting_support,
 )
-from tests.workflow.stages.documenting.documenting_test_support import (
-    _branch,
+from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
+from tests.workflow.stages.documenting.documenting_drift_test_support import (
+    _assert_reconcile_calls,
+    _run_drift_reconcile,
 )
 from tests.workflow.stages.documenting.documenting_scenario_test_support import (
     _DocumentingDriftFixture,
+)
+from tests.workflow.stages.documenting.documenting_test_support import (
+    _branch,
 )
 
 DOCUMENTING = "workflow:documenting"

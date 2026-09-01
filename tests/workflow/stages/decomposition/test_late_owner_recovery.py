@@ -17,23 +17,20 @@ from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.support.fakes import FakeComment, FakeGitHubClient, FakeUser
 from tests.workflow.stages.decomposition.late_run_support import adjudicate
 from tests.workflow.stages.decomposition.late_settlement_support import (
     ERROR,
-    GuardedLateCase,
     KEY_LAST_ACTION_COMMENT_ID,
     NO_ACTION_LINE,
     PARK_NOTICE_ID,
     PARK_OWNER_UNREADABLE,
     RECORDED_SPLIT,
-)
-from tests.workflow.stages.decomposition.late_settlement_support import (
     RECOVERED_PREFIX,
     RECOVERY_FOLLOWUP_MARKER,
     SPLIT_CHILDREN,
     WORKFLOW_LOG,
+    GuardedLateCase,
     unreadable_owner,
 )
 from tests.workflow.stages.decomposition.late_test_support import (

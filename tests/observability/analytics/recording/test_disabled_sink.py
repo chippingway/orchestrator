@@ -3,22 +3,13 @@
 """What an append costs when the sink is turned off: nothing on disk."""
 
 import tempfile
-
-
 import unittest
-
-
 from pathlib import Path
-
-
 from unittest.mock import patch
-
 
 from orchestrator import config as orchestrator_config
 from orchestrator.observability.analytics import recording
-
 from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
-
 
 _EVENT_VALUE = 'x'
 

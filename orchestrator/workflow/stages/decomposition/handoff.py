@@ -28,8 +28,8 @@ from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
     late_relabel as _late_relabel,
     late_settlement as _late_settlement,
+    state as _state,
 )
-from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.late_models import _LateContext
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.state import WorkflowLabel

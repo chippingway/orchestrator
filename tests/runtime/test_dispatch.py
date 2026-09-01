@@ -7,10 +7,12 @@ from __future__ import annotations
 import time
 import unittest
 
-from tests.runtime import polling_scheduler_probes as _probes
-from tests.runtime import polling_signal_probes as _signal_probes
-from tests.runtime import polling_test_support as _support
-from tests.runtime import tick_test_support as _execution
+from tests.runtime import (
+    polling_scheduler_probes as _probes,
+    polling_signal_probes as _signal_probes,
+    polling_test_support as _support,
+    tick_test_support as _execution,
+)
 
 
 class AsyncPollingDispatchTest(unittest.TestCase):

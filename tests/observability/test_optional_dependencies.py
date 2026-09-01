@@ -11,7 +11,6 @@ from tests.observability.observability_test_support import (
     _run_import_probe,
 )
 
-
 # Streamlit and Plotly live in the optional `dashboard` dependency group, so
 # the default `uv sync --locked` install has neither. Blocking them outright
 # is what keeps this honest for an operator who installed that group: a

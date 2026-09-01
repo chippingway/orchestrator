@@ -18,22 +18,19 @@ from orchestrator.workflow.late_split.models import LateFailure
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.support.fakes import FakePR
 from tests.workflow.fixtures import LABEL_DECOMPOSING, LABEL_IMPLEMENTING
 from tests.workflow.stages.decomposition.late_settlement_support import (
     CANDIDATE_BRANCH,
     CARRYING_PR_NUMBER,
     ERROR,
-    GuardedLateCase,
     KEY_BRANCH,
     KEY_PR_NUMBER,
-    SETTLED_PR_NUMBER,
-)
-from tests.workflow.stages.decomposition.late_settlement_support import (
     PARK_PR_UNRECONCILED,
+    SETTLED_PR_NUMBER,
     SINGLE_RUN,
     WORKFLOW_LOG,
+    GuardedLateCase,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,

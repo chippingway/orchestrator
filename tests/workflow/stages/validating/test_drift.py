@@ -7,10 +7,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
+from orchestrator.git.measurement.models import FrozenCommit
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import drift as _drift
-
-from tests.support.publication import LandingPush
 from tests.support.fakes import (
     DEFAULT_PR_HEAD_SHA,
     FakeComment,
@@ -19,16 +18,15 @@ from tests.support.fakes import (
     FakeUser,
     make_issue,
 )
-from orchestrator.git.measurement.models import FrozenCommit
-
+from tests.support.publication import LandingPush
 from tests.workflow import fixtures as _fixtures
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     MEASURED_CANDIDATE_SHA,
     REVIEW_APPROVED_MESSAGE,
-    _PatchedWorkflowMixin,
     _agent,
     _open_pr_for,
+    _PatchedWorkflowMixin,
 )
 
 LATE_APPROVED_SHA = "late_approved_sha"

@@ -24,7 +24,6 @@ from orchestrator.workflow.engine import drift
 from orchestrator.workflow.stages.decomposition import run as _decomposing
 from orchestrator.workflow.stages.question import handler as _question
 from orchestrator.workflow.stages.validating import handler as _validating
-
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -33,12 +32,11 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
     _manifest,
+    _PatchedWorkflowMixin,
 )
-
 
 _GET_ISSUE_METHOD = "get_issue"
 _DECOMPOSING_LABEL = "workflow:decomposing"

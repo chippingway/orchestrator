@@ -6,12 +6,12 @@ import json
 import unittest
 from types import MappingProxyType
 
-from orchestrator.observability.usage import trajectory_models as _records
-from orchestrator.observability.usage import skills as _skills
-from orchestrator.observability.usage import trajectory as _trajectory
-from tests.observability.usage import usage_test_values as _usage_cases
-from tests.observability.usage import usage_jsonl_helpers as _jsonl
-from tests.observability.usage import usage_codex_events as _codex
+from orchestrator.observability.usage import skills as _skills, trajectory as _trajectory, trajectory_models as _records
+from tests.observability.usage import (
+    usage_codex_events as _codex,
+    usage_jsonl_helpers as _jsonl,
+    usage_test_values as _usage_cases,
+)
 
 
 class CodexTrajectoryErrorTest(unittest.TestCase):

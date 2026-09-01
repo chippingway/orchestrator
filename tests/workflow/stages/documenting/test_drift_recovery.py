@@ -2,15 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
+import unittest
+from unittest.mock import MagicMock
+
+from tests.workflow.fixtures import MEASURED_CANDIDATE_SHA
 from tests.workflow.stages.documenting import (
     documenting_test_support as documenting_support,
 )
-
-import unittest
-
-from tests.workflow.fixtures import MEASURED_CANDIDATE_SHA
-from unittest.mock import MagicMock
-
 from tests.workflow.stages.documenting.documenting_drift_recovery_test_support import (
     _assert_pending_state,
     _assert_reset_failure_park,
@@ -21,7 +19,6 @@ from tests.workflow.stages.documenting.documenting_drift_recovery_test_support i
 from tests.workflow.stages.documenting.documenting_drift_test_support import (
     _run_with_git,
 )
-
 
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting.documenting_scenario_test_support import (

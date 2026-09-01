@@ -7,7 +7,6 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import dispatch as _dispatch
-
 from tests.workflow.stages.fixing import (
     fixing_routing_test_support as support,
 )

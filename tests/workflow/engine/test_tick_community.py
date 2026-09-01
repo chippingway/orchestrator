@@ -12,7 +12,6 @@ from orchestrator.github.labels import (
     COMMUNITY_CONTRIBUTION_LABEL_NAMES,
 )
 from orchestrator.workflow.engine import tick
-
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.engine.tick_community_test_support import (
     ALLOWED_LOGIN,
@@ -23,7 +22,6 @@ from tests.workflow.engine.tick_community_test_support import (
     fail_first_label_write,
     make_pr,
 )
-
 
 _ALLOWED_LOGIN = ALLOWED_LOGIN
 _ALLOWLIST_CONFIG = ALLOWLIST_CONFIG

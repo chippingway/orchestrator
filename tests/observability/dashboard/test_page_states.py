@@ -31,7 +31,6 @@ from orchestrator.observability.dashboard import (
     windows,
 )
 
-
 _YEAR = 2026
 
 _MAY = 5

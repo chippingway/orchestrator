@@ -13,7 +13,6 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.git import authentication
-
 from tests.git.authentication_test_support import (
     FAKE_TOKEN,
     REPOSITORY_SLUG,

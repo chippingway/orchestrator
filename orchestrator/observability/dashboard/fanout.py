@@ -23,7 +23,6 @@ from typing import Any
 
 from orchestrator.observability.dashboard import read_mode
 
-
 NamedReader = tuple[str, Callable[[], Any]]
 
 

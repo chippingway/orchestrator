@@ -25,7 +25,6 @@ from unittest.mock import Mock, patch
 from orchestrator.observability.analytics.query.overview_models import DataExtent
 from orchestrator.observability.dashboard import page_models, windows
 
-
 _YEAR = 2026
 
 _MAY = 5

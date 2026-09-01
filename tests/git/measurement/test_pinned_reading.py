@@ -20,7 +20,6 @@ from unittest.mock import patch
 
 from orchestrator.git.measurement import additions, commits
 from orchestrator.git.measurement.models import MeasurementFailure
-
 from tests.git.measurement import measurement_test_support as _support
 
 _FEATURE_PATH = "feature.py"

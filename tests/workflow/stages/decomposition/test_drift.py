@@ -5,14 +5,7 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.stages.decomposition import blocked as _blocked
-from orchestrator.workflow.stages.decomposition import run as _decomposing
-from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
-
-from tests.workflow.stages.decomposition.decomposition_test_support import (
-    _comment_with_marker,
-    _comments_for_issue,
-)
+from orchestrator.workflow.stages.decomposition import blocked as _blocked, run as _decomposing, umbrella as _umbrella
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -20,9 +13,13 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
+    _PatchedWorkflowMixin,
+)
+from tests.workflow.stages.decomposition.decomposition_test_support import (
+    _comment_with_marker,
+    _comments_for_issue,
 )
 
 LABEL_DECOMPOSING = "workflow:decomposing"

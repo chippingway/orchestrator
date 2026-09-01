@@ -20,8 +20,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
-from orchestrator.observability.analytics import config as analytics_config
-from orchestrator.observability.analytics import sink
+from orchestrator.observability.analytics import config as analytics_config, sink
 from orchestrator.observability.analytics.trajectories import api
 from orchestrator.observability.analytics.trajectories.serialize import (
     build_trajectory_record,

@@ -32,15 +32,11 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.workflow.stages.decomposition import (
-    late_transaction as _late_transaction,
-)
-from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
-from orchestrator.workflow.state import WorkflowLabel
-
-from orchestrator.workflow.stages.decomposition import (
     late_publication as _late_publication,
+    late_transaction as _late_transaction,
+    umbrella as _umbrella,
 )
-
+from orchestrator.workflow.state import WorkflowLabel
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.stages.decomposition.late_published_split_support import (
@@ -50,12 +46,12 @@ from tests.workflow.stages.decomposition.late_published_split_support import (
 from tests.workflow.stages.decomposition.late_race_support import (
     interleaved_after,
 )
+from tests.workflow.stages.decomposition.late_test_support import (
+    LATE_ISSUE_NUMBER,
+)
 from tests.workflow.stages.decomposition.late_transaction_support import (
     ERROR,
     first_child,
-)
-from tests.workflow.stages.decomposition.late_test_support import (
-    LATE_ISSUE_NUMBER,
 )
 
 # A manifest whose slices depend on nothing, so one walk has two relabels to

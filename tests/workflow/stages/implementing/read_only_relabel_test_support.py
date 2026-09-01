@@ -25,13 +25,12 @@ from orchestrator.git.worktrees import (
 )
 from orchestrator.workflow.engine import drift as _drift
 from orchestrator.workflow.stages.implementing import handler as _implementing
-
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     KEY_AWAITING_HUMAN,
     KEY_PARK_REASON,
     LABEL_IMPLEMENTING,
-    _TEST_SPEC,
     _agent,
     _issue_branch,
 )

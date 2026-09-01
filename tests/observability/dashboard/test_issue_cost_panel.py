@@ -46,9 +46,9 @@ from tests.observability.dashboard.card_test_support import (
 )
 from tests.observability.dashboard.cost_panel_test_support import (
     COLUMN_RATIO,
-    CostPanelStreamlit,
     LEFT,
     RIGHT,
+    CostPanelStreamlit,
     markup_in,
     notices_in,
 )

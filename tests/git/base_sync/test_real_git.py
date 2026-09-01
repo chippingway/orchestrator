@@ -11,7 +11,6 @@ from orchestrator.workflow.stages.implementing import (
     disposition as _disposition,
     late_evidence as _late_evidence,
 )
-
 from tests.git.base_sync.real_git_test_support import (
     _RefreshBaseRealGitFixture,
 )

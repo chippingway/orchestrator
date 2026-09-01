@@ -26,17 +26,15 @@ from typing import Any
 from unittest.mock import MagicMock
 
 from orchestrator.workflow.stages.discussion import handler as _discussion
-
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     STAGE_DISCUSSION,
     STATE_OPEN,
-    _TEST_SPEC,
     _agent,
     _issue_branch,
 )
 from tests.workflow.git_owners import seam_patch
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     CLEANUP_TERMINAL_BRANCH,
     KEY_BRANCH,
@@ -44,8 +42,6 @@ from tests.workflow.stages.discussion.discussion_test_support import (
     KEY_PLAN_SHA,
     KEY_PR_NUMBER,
     KEY_PUBLISHING_SHA,
-)
-from tests.workflow.stages.discussion.discussion_test_support import (
     RUN_AGENT,
     _DiscussionWorkflowMixin,
     _seed_discussion,

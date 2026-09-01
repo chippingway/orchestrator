@@ -8,7 +8,6 @@ import re
 
 from orchestrator.observability.usage import shell_segments
 
-
 CodexTokenClassification = tuple[list[str], list[str], bool]
 
 SKILL_PATH_RE = re.compile(r"(?<!\w)skills/([^/\s\"']+)/SKILL\.md\b")

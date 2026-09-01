@@ -18,13 +18,12 @@ from functools import partial
 from unittest.mock import patch
 
 from orchestrator.scheduler import IssueScheduler
-
+from tests.scheduler.coordination_helpers import (
+    _release_after,
+)
 from tests.scheduler.shutdown_helpers import (
     _CallbackRegistrationRace,
     _ShutdownTrial,
-)
-from tests.scheduler.coordination_helpers import (
-    _release_after,
 )
 from tests.scheduler.worker_helpers import (
     _finishing_worker,

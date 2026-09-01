@@ -31,7 +31,6 @@ from typing import Any
 from orchestrator.observability.analytics.query.overview_models import Summary
 from orchestrator.observability.analytics.query.run_models import IssueSummaryRow
 
-
 DEFAULT_EXPENSIVE_LIMIT = 8
 
 # Bucket strings the review-round breakdown emits whose runs are

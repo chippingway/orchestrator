@@ -7,7 +7,11 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.git.base_sync import refresh as _base_refresh
-
+from tests.git.base_sync.sync_test_support import (
+    _diverged,
+    _git_result,
+    _patch_base_sync,
+)
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -17,11 +21,6 @@ from tests.support.fakes import (
     FakePRRef,
     FakeUser,
     make_issue,
-)
-from tests.git.base_sync.sync_test_support import (
-    _diverged,
-    _git_result,
-    _patch_base_sync,
 )
 
 # --- Shared base-sync fixture literals -----------------------------------

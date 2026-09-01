@@ -7,10 +7,8 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator.workflow.stages.documenting import handoff as _handoff
-from orchestrator.workflow.stages.validating import watermarks as _validating_watermarks
 from orchestrator.workflow.stages.in_review import handler as _in_review
-
-from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
+from orchestrator.workflow.stages.validating import watermarks as _validating_watermarks
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -21,19 +19,19 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
-    MEASURED_CANDIDATE_SHA,
     _TEST_SPEC,
+    MEASURED_CANDIDATE_SHA,
     _agent,
 )
-
+from tests.workflow.stages.documenting.documenting_assertion_test_support import _issue_comment_text
+from tests.workflow.stages.documenting.documenting_scenario_test_support import (
+    _FinalDocsFixture,
+)
 
 # --- Workflow labels this stage routes between --------------------------
 from tests.workflow.stages.documenting.documenting_test_support import (
     SHA_BEFORE as _SHA_BEFORE,
     _branch,
-)
-from tests.workflow.stages.documenting.documenting_scenario_test_support import (
-    _FinalDocsFixture,
 )
 
 DOCUMENTING = "workflow:documenting"

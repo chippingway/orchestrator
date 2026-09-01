@@ -36,9 +36,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.engine import usage as _usage
+from orchestrator.workflow.engine import comments as _comments, drift as _drift, usage as _usage
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")

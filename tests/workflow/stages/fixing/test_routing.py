@@ -8,16 +8,14 @@ import unittest
 
 from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.github import labels as _labels
-from orchestrator.workflow.engine import dispatch as _dispatch
-from orchestrator.workflow.engine import pickup as _pickup
+from orchestrator.workflow.engine import dispatch as _dispatch, pickup as _pickup
 from orchestrator.workflow.stages.fixing import handler as _fixing
 from orchestrator.workflow.stages.implementing import handler as _implementing
 from orchestrator.workflow.stages.in_review import handler as _in_review
-
-from tests.workflow.stages.implementing_fixing_test_cases import IssueScenario
 from tests.workflow.stages.fixing import (
     fixing_routing_test_support as support,
 )
+from tests.workflow.stages.implementing_fixing_test_cases import IssueScenario
 
 DISPATCH_ISSUE = support.DISPATCH_ISSUE
 FakeGitHubClient = support.FakeGitHubClient

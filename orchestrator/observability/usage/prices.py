@@ -8,7 +8,6 @@ import re
 
 from orchestrator.observability.usage import protocol
 
-
 CLAUDE_RATES: tuple[protocol.ClaudeRateRow, ...] = (
     (
         re.compile(r"opus.*4([._-]?[567]|\.[567])"),

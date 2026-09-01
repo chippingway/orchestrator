@@ -45,7 +45,6 @@ from orchestrator.observability.dashboard.tables import (
     table_html,
 )
 
-
 ISSUES_TABLE_COLUMNS = (
     ("Issue", False),
     ("Cost", True),

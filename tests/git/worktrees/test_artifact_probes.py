@@ -18,7 +18,6 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.worktrees import probes
-
 from tests.git.worktrees.artifact_test_support import (
     LIFECYCLE_LOGGER,
     WIDGET_SLUG,
@@ -27,8 +26,9 @@ from tests.git.worktrees.artifact_test_support import (
     _break_ref,
     _legacy_branch,
     _namespaced_branch,
+    _spec,
+    _worktrees_root,
 )
-from tests.git.worktrees.artifact_test_support import _spec, _worktrees_root
 
 CLONE_NAME = "target"
 NAMESPACED_ISSUE_NUMBER = 4

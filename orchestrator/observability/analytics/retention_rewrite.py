@@ -23,11 +23,11 @@ import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from orchestrator.observability.analytics.sink import log
 from orchestrator.observability.analytics.retention_scan import (
     probe_exists,
     read_kept_records,
 )
+from orchestrator.observability.analytics.sink import log
 
 
 def unlink_quietly(path: str) -> None:

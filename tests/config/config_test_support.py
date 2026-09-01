@@ -12,10 +12,7 @@ from types import ModuleType
 from unittest.mock import patch
 
 from orchestrator.config import _dotenv
-
-from tests.config import config_reload_helpers as _reload
-from tests.config import config_test_values as _config_cases
-
+from tests.config import config_reload_helpers as _reload, config_test_values as _config_cases
 
 _AGENT_DEFAULTS = (
     (_config_cases._DEV_AGENT_ENV, _config_cases._CLAUDE),

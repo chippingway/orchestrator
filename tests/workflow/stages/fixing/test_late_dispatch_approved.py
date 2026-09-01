@@ -22,10 +22,10 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.git.measurement.models import MeasurementFailure
-
+from orchestrator.workflow.stages.implementing import late_push as _late_push
 from tests.support.publication import LandingPush
-from tests.workflow.stages.fixing import fixing_test_support as fixing
 from tests.workflow.stages.fixing import (
+    fixing_test_support as fixing,
     published_gate_support as support,
 )
 from tests.workflow.stages.fixing.test_late_dispatch import (
@@ -40,8 +40,6 @@ from tests.workflow.stages.fixing.test_late_dispatch_spends import (
 from tests.workflow.stages.fixing.test_published_gate_receipts import (
     _CrashesOnceTheReceiptIsWritten,
 )
-
-from orchestrator.workflow.stages.implementing import late_push as _late_push
 
 ISSUE = fixing.ISSUE
 PUSH_BRANCH = fixing.PUSH_BRANCH

@@ -7,35 +7,28 @@ from orchestrator.workflow.late_split.models import LateFailure
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.stages.decomposition.late_content_support import (
+    BARE_CONTINUE,
     DRIFT_PARKED,
     EDITED_BODY,
     EDITED_TITLE,
     EVENT_AGENT_SPAWN,
     EVENT_LATE_MEASUREMENT,
     GUIDANCE_BODY,
-)
-from tests.workflow.stages.decomposition.late_content_support import (
     KEY_ADDITIONS,
     KEY_COMMENT_WATERMARK,
     KEY_GENERATION,
     KEY_LAST_ACTION_COMMENT_ID,
-)
-from tests.workflow.stages.decomposition.late_content_support import (
+    PARK_QUESTION,
     PARK_REVISION_DIRTY,
     PARK_REVISION_UNMEASURED,
+    RECORDED_SINGLE,
     REVISED_ADDITIONS,
     REVISED_BASE_SHA,
     REVISED_SHA,
     REVISION_PARKED,
     ROLE_DEVELOPER,
     STAGE_DECOMPOSING,
-)
-from tests.workflow.stages.decomposition.late_content_support import (
-    BARE_CONTINUE,
-    PARK_QUESTION,
-    RECORDED_SINGLE,
     reply,
 )
 from tests.workflow.stages.decomposition.late_revision_support import (
@@ -43,10 +36,10 @@ from tests.workflow.stages.decomposition.late_revision_support import (
     DEV_PIN,
     DEV_SESSION,
     DIRTY_TREE,
-    PausedDuringRun,
     REMEASURED_OVERSIZED,
-    RevisionCase,
     UNMEASURED,
+    PausedDuringRun,
+    RevisionCase,
 )
 from tests.workflow.stages.decomposition.late_run_support import (
     WorktreeSeed,

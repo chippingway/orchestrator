@@ -49,10 +49,12 @@ from typing import Any
 from orchestrator.github.client import GitHubClient
 from orchestrator.observability.analytics import recording
 from orchestrator.workflow import state as _workflow_state
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import payloads as _payloads
-from orchestrator.workflow.late_split import records as _records
+from orchestrator.workflow.late_split import (
+    events as _events,
+    formats as _formats,
+    payloads as _payloads,
+    records as _records,
+)
 from orchestrator.workflow.late_split.models import LateGeneration
 
 log = logging.getLogger("orchestrator.workflow")

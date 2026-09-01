@@ -11,7 +11,6 @@ from orchestrator.github.issues import (
 )
 from orchestrator.workflow.state import label_for_name
 
-
 _CLOSED_SWEEP_LABELS = frozenset(CLOSED_SWEEP_LABELS + CLEANUP_ROUTE_LABELS)
 
 

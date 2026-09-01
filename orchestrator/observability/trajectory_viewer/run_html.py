@@ -26,7 +26,6 @@ from collections.abc import Sequence
 
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
-
 REPO_LABEL = "Repo"
 FIXTURE_LABEL_PREFIX = "[fixture] "
 

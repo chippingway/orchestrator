@@ -8,7 +8,6 @@ from pathlib import Path
 
 from orchestrator import config
 
-
 KEY_QUESTION_SESSION_ID = "question_session_id"
 
 PARK_QUESTION_ANSWER = "question_answer"

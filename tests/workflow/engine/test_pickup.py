@@ -14,10 +14,8 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import pickup
 from orchestrator.workflow.stages.decomposition import run as _decomposing
 from orchestrator.workflow.stages.implementing import handler as _implementing
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-from tests.workflow.fixtures import _PatchedWorkflowMixin, _TEST_SPEC, _agent
-
+from tests.workflow.fixtures import _TEST_SPEC, _agent, _PatchedWorkflowMixin
 
 _DECOMPOSE_CONFIG = "DECOMPOSE"
 _ALLOWLIST_CONFIG = "ALLOWED_ISSUE_AUTHORS"

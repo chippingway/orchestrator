@@ -7,7 +7,6 @@ from typing import Any
 
 from orchestrator.observability.trajectory_viewer import constants, models, runs
 
-
 TOOL_CALL = "tool_call"
 
 TOOL_RESULT = "tool_result"

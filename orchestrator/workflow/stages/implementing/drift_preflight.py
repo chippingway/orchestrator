@@ -18,7 +18,6 @@ replied, the reply is the signal and the resume path owns the tick instead.
 """
 from __future__ import annotations
 
-
 from github.Issue import Issue
 
 from orchestrator import config

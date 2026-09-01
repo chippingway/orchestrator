@@ -26,14 +26,14 @@ from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import messages as _messages
-from orchestrator.workflow.engine import prompts as _prompts
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.decomposition import manifest as _manifest
-from orchestrator.workflow.stages.decomposition import split as _split
-from orchestrator.workflow.stages.decomposition import state as _state
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    guards as _guards,
+    messages as _messages,
+    prompts as _prompts,
+    usage as _usage,
+)
+from orchestrator.workflow.stages.decomposition import manifest as _manifest, split as _split, state as _state
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")

@@ -8,11 +8,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from orchestrator.github import PinnedState
-
 from tests.support.fakes import FakeGitHubClient, FakePR
 from tests.workflow.repo_values import (
-    TEST_REPO_SLUG,
     _FAKE_WT,
+    TEST_REPO_SLUG,
 )
 
 

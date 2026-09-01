@@ -27,9 +27,7 @@ from unittest.mock import MagicMock
 
 from orchestrator.git.verification import probes
 from orchestrator.workflow.stages.discussion import models as _models, run as _run
-
 from tests.workflow.git_owners import seam_patch
-
 from tests.workflow.stages.discussion.discussion_real_git_test_support import (
     PLAN_TEXT,
     UPSTREAM_DIR,

@@ -15,11 +15,9 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
 from orchestrator.workflow.engine import dispatch
 from orchestrator.workflow.stages.decomposition import late_sweep as _late_sweep
-
-from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
-
 from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow.fixtures import (
     LABEL_BLOCKED,

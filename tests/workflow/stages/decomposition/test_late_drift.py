@@ -9,22 +9,19 @@ from orchestrator import config
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
-
 from tests.workflow.stages.decomposition.late_content_support import (
     BARE_CONTINUE,
     DRIFT_PARKED,
     EDITED_TITLE,
     HUMAN,
-    LATE_SESSION,
-    OUTSIDER,
-    SECOND_ID,
-)
-from tests.workflow.stages.decomposition.late_content_support import (
     KEY_COMMENT_HASH,
     KEY_COMMENT_WATERMARK,
     KEY_TITLE_BODY_HASH,
-    LateContentCase,
+    LATE_SESSION,
+    OUTSIDER,
     PARK_CONTENT_DRIFT,
+    SECOND_ID,
+    LateContentCase,
     guidance_comment,
     human_comment,
     reply,

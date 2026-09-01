@@ -27,9 +27,8 @@ from orchestrator.git.measurement.models import (
     FrozenCommit,
     MeasurementFailure,
 )
-
-from tests.workflow.stages.fixing import fixing_test_support as fixing
 from tests.workflow.stages.fixing import (
+    fixing_test_support as fixing,
     published_gate_support as support,
 )
 from tests.workflow.stages.fixing.test_late_dispatch import (

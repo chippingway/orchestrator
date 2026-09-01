@@ -7,9 +7,7 @@ import unittest
 
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import LateVerdict
-from orchestrator.workflow.stages.decomposition import manifest as _manifest
-from orchestrator.workflow.stages.decomposition import late_reply as _late_reply
-
+from orchestrator.workflow.stages.decomposition import late_reply as _late_reply, manifest as _manifest
 from tests.workflow.fixtures import _manifest as _initial_block
 from tests.workflow.stages.decomposition.late_test_support import (
     QUESTION_REPLY,

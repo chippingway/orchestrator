@@ -6,7 +6,6 @@ import unittest
 
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.stages.decomposition import manifest as _decompose_manifest
-
 from tests.support.fakes import make_issue
 from tests.workflow.fixtures import _TEST_SPEC, _manifest
 

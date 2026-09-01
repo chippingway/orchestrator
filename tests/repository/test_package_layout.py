@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import unittest
 
+from tests.repository.binding_test_support import module_level_names
 from tests.repository.layout_test_support import (
     PACKAGE_ROOT,
     TESTS_ROOT,
@@ -25,7 +26,6 @@ from tests.repository.layout_test_support import (
     package_directories,
     python_files,
 )
-from tests.repository.binding_test_support import module_level_names
 
 # What sits directly under the package root. The version metadata, the console
 # script's composition point, and the module launch form over it -- three files

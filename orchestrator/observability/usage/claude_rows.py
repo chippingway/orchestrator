@@ -12,7 +12,6 @@ from orchestrator.observability.usage import (
     protocol,
 )
 
-
 ClaudeUsageRow = tuple[int, str, protocol.TokenBucket]
 
 

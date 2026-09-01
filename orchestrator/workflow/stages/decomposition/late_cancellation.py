@@ -148,13 +148,14 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import CLEANUP_ROUTE_LABELS, issue_is_closed
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import observations as _observations
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.late_split import events as _events
-from orchestrator.workflow.late_split import lineage as _lineage
-from orchestrator.workflow.late_split import restart as _restart
-from orchestrator.workflow.late_split import state as _late_state
-from orchestrator.workflow.late_split import telemetry as _telemetry
+from orchestrator.workflow.engine import observations as _observations, usage as _usage
+from orchestrator.workflow.late_split import (
+    events as _events,
+    lineage as _lineage,
+    restart as _restart,
+    state as _late_state,
+    telemetry as _telemetry,
+)
 from orchestrator.workflow.late_split.models import (
     LateGeneration,
     LatePhase,
@@ -164,8 +165,8 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
+    late_hold as _late_hold,
 )
-from orchestrator.workflow.stages.decomposition import late_hold as _late_hold
 from orchestrator.workflow.stages.decomposition.models import _ChildScan
 from orchestrator.workflow.state import (
     WorkflowLabel,

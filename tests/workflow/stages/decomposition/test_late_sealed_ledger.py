@@ -60,8 +60,8 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     KEY_RESOURCES,
     KEY_SPLIT_CHILDREN,
     LABEL_REJECTED,
-    LateSplitCase,
     SNAPSHOT_REF,
+    LateSplitCase,
 )
 
 _WORKFLOW_LOG = "orchestrator.workflow"

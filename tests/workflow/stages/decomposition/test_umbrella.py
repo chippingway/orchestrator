@@ -7,21 +7,20 @@ from unittest.mock import patch
 
 from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages.decomposition import umbrella as _umbrella
-
-from tests.workflow.stages.decomposition.decomposition_test_support import (
-    _comments_for_issue,
-    _labels_for_issue,
-    _run_with_logs,
-)
 from tests.support.fakes import (
     FakeGitHubClient,
     FakeIssue,
     make_issue,
 )
 from tests.workflow.fixtures import (
-    _PatchedWorkflowMixin,
     _TEST_SPEC,
     _agent,
+    _PatchedWorkflowMixin,
+)
+from tests.workflow.stages.decomposition.decomposition_test_support import (
+    _comments_for_issue,
+    _labels_for_issue,
+    _run_with_logs,
 )
 
 UMBRELLA = "workflow:umbrella"

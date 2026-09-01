@@ -44,15 +44,15 @@ touching the order the decisions are made in.
 """
 from __future__ import annotations
 
-
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.workflow.engine import guards as _guards
-from orchestrator.workflow.engine import usage as _usage
-from orchestrator.workflow.stages.discussion import models as _models
-from orchestrator.workflow.stages.discussion import parks as _parks
-from orchestrator.workflow.stages.discussion import publication as _publication
-from orchestrator.workflow.stages.discussion import state as _state
+from orchestrator.workflow.engine import guards as _guards, usage as _usage
+from orchestrator.workflow.stages.discussion import (
+    models as _models,
+    parks as _parks,
+    publication as _publication,
+    state as _state,
+)
 
 
 def _round_committed(

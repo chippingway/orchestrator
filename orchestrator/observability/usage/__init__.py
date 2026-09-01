@@ -33,10 +33,12 @@ The parser is what a tracked run folds its per-issue counters from, so no owner
 here may reach the workflow that calls it: the dependency runs the other way,
 and a parser is fed a payload rather than an issue.
 """
-from orchestrator.observability.usage import metrics as _metrics
-from orchestrator.observability.usage import skills as _skills
-from orchestrator.observability.usage import trajectory as _trajectory
-from orchestrator.observability.usage import trajectory_models as _records
+from orchestrator.observability.usage import (
+    metrics as _metrics,
+    skills as _skills,
+    trajectory as _trajectory,
+    trajectory_models as _records,
+)
 
 __all__ = (
     "AgentTrajectory",

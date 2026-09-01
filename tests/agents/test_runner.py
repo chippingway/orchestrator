@@ -8,12 +8,9 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator.agents import models as _models
-from orchestrator.agents import runner as _runner
-from orchestrator.agents.backends import claude as _claude
-from orchestrator.agents.backends import codex as _codex
-from tests.agents import agent_test_support as _support
-from tests.agents import agent_test_values as _agent_cases
+from orchestrator.agents import models as _models, runner as _runner
+from orchestrator.agents.backends import claude as _claude, codex as _codex
+from tests.agents import agent_test_support as _support, agent_test_values as _agent_cases
 
 # (backend, owner module, runner attr) triples so dispatch assertions cover
 # both backends without duplicating the body per backend.

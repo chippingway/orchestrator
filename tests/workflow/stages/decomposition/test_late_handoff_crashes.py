@@ -22,7 +22,6 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
 from orchestrator.workflow.state import WorkflowLabel
-
 from tests.workflow.stages.decomposition.late_crash_support import (
     killed_after,
     killed_before,
@@ -34,8 +33,6 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     CHILDREN,
     KEY_CHILDREN,
     SUPERSESSION_MARKER,
-)
-from tests.workflow.stages.decomposition.late_transaction_support import (
     HeldPlanPrSplitCase,
     LateSplitCase,
     label_of,

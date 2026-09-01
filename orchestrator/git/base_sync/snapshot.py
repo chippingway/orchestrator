@@ -13,7 +13,6 @@ head it never saw.
 """
 from __future__ import annotations
 
-
 from orchestrator import config
 from orchestrator.git import authentication, commands
 from orchestrator.git.base_sync import persistence

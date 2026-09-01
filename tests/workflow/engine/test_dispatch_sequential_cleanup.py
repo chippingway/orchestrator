@@ -29,9 +29,8 @@ from orchestrator.workflow.late_split.models import (
     LateResourceKind,
     LateResourceState,
 )
-
 from tests.support.fakes import FakeGitHubClient, make_issue
-from tests.workflow.fixtures import LABEL_UMBRELLA, _TEST_SPEC
+from tests.workflow.fixtures import _TEST_SPEC, LABEL_UMBRELLA
 from tests.workflow.git_owners import seam_patch
 
 _OWNER_NUMBER = 41

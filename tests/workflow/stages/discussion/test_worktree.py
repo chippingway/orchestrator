@@ -20,7 +20,6 @@ from tests.workflow.fixtures import (
     _TEST_SPEC,
     _agent,
 )
-
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     ENSURE_PR_WORKTREE,

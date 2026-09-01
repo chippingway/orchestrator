@@ -32,7 +32,6 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any, Self
 
-
 # The one region the filter widgets are drawn inside, and what a widget drawn
 # on the page itself records instead.
 SIDEBAR = "sidebar"

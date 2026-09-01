@@ -42,8 +42,7 @@ import dataclasses
 from enum import StrEnum
 from typing import Any
 
-from orchestrator.workflow.late_split import formats as _formats
-from orchestrator.workflow.late_split import identity as _identity
+from orchestrator.workflow.late_split import formats as _formats, identity as _identity
 from orchestrator.workflow.late_split.models import (
     LateGeneration,
     LateResourceState,
