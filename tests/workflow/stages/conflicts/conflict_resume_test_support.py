@@ -7,6 +7,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from tests.workflow import fixtures
+# The gated-push cases reach the effect through this module rather than
+# past it. Nothing below reads it, so the same-name alias is what declares
+# the import a re-export instead of a dead one.
 from tests.workflow.mid_run_effects import (
     _MovesThePullRequest as _MovesThePullRequest,
 )

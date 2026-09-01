@@ -30,7 +30,7 @@ from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import _TEST_SPEC, _agent
 from tests.workflow.stages.decomposition.late_seam_support import (
     LocalTeardown,
-    RecordedDelete as RecordedDelete,
+    RecordedDelete,
     SnapshotOutcome,
     local_teardown,
 )

@@ -16,6 +16,10 @@ package boundary for it.
 
 from __future__ import annotations
 
+# The frozen commit and the worktree status a case seeds the gate with.
+# Every case names this module `support` and reads them off it, so the
+# same-name alias is what declares the import a re-export rather than a
+# dead one -- the same reason the mid-run effects below carry one.
 from orchestrator.git.measurement.models import FrozenCommit as FrozenCommit
 from orchestrator.git.verification.probes import (
     _WorktreeStatus as _WorktreeStatus,
@@ -25,6 +29,8 @@ from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 
 from tests.workflow import fixtures
+# The four things a case can have happen to the pull request while the dev
+# run is out, reached off this module through the same door.
 from tests.workflow.mid_run_effects import (
     _BreaksThePullRequest as _BreaksThePullRequest,
     _ClosesThePullRequest as _ClosesThePullRequest,

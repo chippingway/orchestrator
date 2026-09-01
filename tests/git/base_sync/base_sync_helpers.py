@@ -12,8 +12,6 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.base_sync import models
 
-from tests.git.base_sync.sync_test_support import _diverged as _diverged
-
 from tests.git.base_sync.refresh_test_support import GATE_CANDIDATE_SHA
 from tests.support.fakes import (
     FakeComment,

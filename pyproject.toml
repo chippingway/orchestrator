@@ -60,3 +60,22 @@ select = ["E4", "E7", "E9", "F"]
 # E501 (line too long) is not in the selected baseline; opt into it so
 # the line-length target above is actually enforced.
 extend-select = ["E501"]
+
+# PLC0414 (`import X as X`) sits outside the baseline above, and the audit
+# that runs it -- `ruff check orchestrator tests --select=PLC0414` -- reads
+# these entries. The rule stands against the convention F401 is answered
+# with here: a same-name alias is what declares an import an explicit
+# re-export, and the import that drops it is what F401 reports as dead. Each
+# path below is a module whose job is to bind names it does not itself read
+# -- the theme a dashboard page hands every panel, and the stage fixtures a
+# sibling test module reaches its scenario types through -- so every alias in
+# it is load-bearing. Exact paths rather than a glob, so a neighbouring or
+# future module is still held to the rule: an alias on a name its own module
+# already reads earns no F401 exemption and is removed instead.
+[tool.ruff.lint.per-file-ignores]
+"orchestrator/observability/dashboard/theme.py" = ["PLC0414"]
+"tests/workflow/stages/conflicts/conflict_resume_test_support.py" = ["PLC0414"]
+"tests/workflow/stages/conflicts/content_update_support.py" = ["PLC0414"]
+"tests/workflow/stages/decomposition/late_run_support.py" = ["PLC0414"]
+"tests/workflow/stages/fixing/published_gate_support.py" = ["PLC0414"]
+"tests/workflow/stages/validating/recovered_gate_support.py" = ["PLC0414"]

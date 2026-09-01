@@ -45,6 +45,9 @@ Before committing, run each of these and fix what they report:
     surface with imports (`orchestrator/agents/`, `github/`, `scheduler/`, `observability/usage/`), alias it with
     `... as <name>` so ruff treats it as an explicit re-export instead of dead code. A name the initializer
     lists in `__all__` — how `orchestrator/workflow/` publishes its label and guard surface — is already exempt.
+    Outside an initializer that alias also trips **PLC0414**, so the module has to be one of the exact paths
+    waived under `[tool.ruff.lint.per-file-ignores]` in `pyproject.toml`; alias only a name the module never reads
+    itself, and add the path in the same commit. `tests/repository/test_reexport_aliases.py` fails on anything else.
   - **F541** (f-string without placeholders): use a plain string.
   - **F841** (unused local).
   - **E402** (module-level import not at top of file).

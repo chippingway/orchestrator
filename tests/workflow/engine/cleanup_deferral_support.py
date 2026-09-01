@@ -26,7 +26,7 @@ from orchestrator.workflow.late_split.models import (
 
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.engine.dispatch_scheduler_test_support import (
-    REPO_SLUG as REPO_SLUG,
+    REPO_SLUG,
     patch_base_refresh,
     _SchedulerWorkflowTest,
 )

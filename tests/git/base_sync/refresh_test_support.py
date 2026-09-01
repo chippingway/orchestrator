@@ -19,9 +19,9 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.git.base_sync.sync_test_support import (
-    _diverged as _diverged,
-    _git_result as _git_result,
-    _patch_base_sync as _patch_base_sync,
+    _diverged,
+    _git_result,
+    _patch_base_sync,
 )
 
 # --- Shared base-sync fixture literals -----------------------------------
