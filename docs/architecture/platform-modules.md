@@ -44,7 +44,11 @@ last is held by the loader itself rather than by a check.
   of its six subpackages, `runtime/`, `skills/` — its own `test_imports.py` asserts that nothing resolves at the
   retired spelling, that no inventory or resolver hook names one as a target, and that no aggregate over the git
   domains sits above them — `tests/git/publication/test_imports.py` carries that last one. `git/measurement/` and
-  `git/snapshots/` replaced nothing and hold the surface assertion anyway.
+  `git/snapshots/` replaced nothing and hold the surface assertion anyway. The rule also holds one name at a time
+  where a second binding would be invisible: the transport reaches the token lookup, the askpass session, and the
+  session record through `credentials` rather than importing the three by name, and `tests/git/test_imports.py`
+  asserts each is bound on that owner and nowhere in `authentication` — a copy there would read as the patch target
+  a test aims at while the session a call actually opens stayed the owner's.
 - **Operator log channels.** Four names are spelled literally rather than derived from `__name__`, because an
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/authentication.py`,
   `git/credentials.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that log, which all report on
