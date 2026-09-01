@@ -39,6 +39,7 @@ from orchestrator.git.worktrees.models import (
 
 from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,
+    LIFECYCLE_LOGGER,
     WIDGET_SLUG,
     _namespaced_branch,
 )
@@ -79,8 +80,11 @@ _REMOTE_DELETE = "push --delete"
 
 _BRANCH_REFS = "refs/heads/"
 
-# The transport seam both the refusing and the racing case stand in for.
+# The transport seam both the refusing and the racing case stand in for, and
+# the ledger seam the case about a host that will not write stands in for.
 _REMOTE_DELETE_SEAM = "_delete_remote_ref"
+
+_RECORD_SEAM = "_record_obligation"
 
 
 class _DestructiveCalls:
@@ -237,8 +241,8 @@ class WholeCandidateTest(_ReclaimTestCase):
         )
 
 
-class RefusedVerdictTest(_ReclaimTestCase):
-    """A verdict that keeps its candidate is spent on nothing."""
+class VerdictPermissionTest(_ReclaimTestCase):
+    """What a verdict authorizes, and what it leaves exactly as it was."""
 
     def test_a_retained_candidate_is_left_alone(self) -> None:
         self.published()
@@ -283,6 +287,36 @@ class RefusedVerdictTest(_ReclaimTestCase):
             self.outcomes(reclaimed), _surfaces(None, FAILED, FAILED),
         )
         self.assertEqual(self.standing()[1:], (True, True))
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+
+    def test_a_branch_gone_everywhere_settles(self) -> None:
+        # The classification clears a commit for every branch it finds on
+        # either host, so a verdict handing over none for one it names is one
+        # that found it on neither. There is nothing to delete and nothing
+        # left anywhere for a later pass to find, so refusing it would be a
+        # failure nothing could ever settle.
+        cleared = self.verdict()
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, ABSENT, ABSENT),
+        )
+        self.assertTrue(reclaimed.settled)
+
+    def test_a_branch_back_on_the_remote_is_left(self) -> None:
+        # The same verdict, and the branch published again after it was taken.
+        # What is under that name now is work nobody adjudicated: it is not
+        # deleted, and nothing is written down for it either.
+        cleared = self.verdict()
+        self.world.publish(self.clone, self.branch, BASE_BRANCH)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertTrue(self.standing()[2])
         self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
 
@@ -464,6 +498,31 @@ class StepFailureTest(_ReclaimTestCase):
             self.outcomes(reclaimed), _surfaces(None, CLEANED, FAILED),
         )
         self.assertEqual(_tip(self.clone, BASE_BRANCH), tip)
+
+    def test_a_record_that_will_not_write_is_told(self) -> None:
+        # The local copy is already gone, so there is nothing left to keep
+        # back, and the ledger will not take the note that would have led a
+        # later pass here. Nothing is deleted -- the remote is left exactly as
+        # it was found -- and the pass says so where an operator reads it,
+        # which is the only trace a host that will not write can keep.
+        self.published()
+        cleared = self.verdict()
+        _branch_at(self.clone, self.branch)
+
+        with patch.object(
+            obligations, _RECORD_SEAM, return_value=False,
+        ), self.assertLogs(LIFECYCLE_LOGGER, "ERROR") as watched:
+            reclaimed = self.spend(cleared)
+            reported = watched.output
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertTrue(self.standing()[2])
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+        self.assertTrue(
+            any(self.branch in line for line in reported), msg=reported,
+        )
 
     def test_a_remote_that_will_not_answer_keeps_it(self) -> None:
         # An unasked question is not a branch the remote does not carry, and

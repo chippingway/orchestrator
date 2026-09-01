@@ -364,14 +364,22 @@ orchestrator/
                         things that fail and a record written after them is one those failures never reach. It
                         is let go only once the branch is gone from the remote; one that could not be written
                         down stops the deletion, a branch no verdict cleared a commit for is neither deleted nor
-                        recorded, and the second entry point here finishes the records rather than the
+                        recorded -- and is a success when the remote does not carry it either, since a candidate
+                        whose artifacts are all demonstrably gone must not be reported as a failure nothing
+                        could settle -- and the second entry point here finishes the records rather than the
                         candidates, which is the pass a restart reaches for. That pass takes a client, because a
                         record is a reminder and never a permission: the ledger is a ref store the agents this
                         orchestrator runs can write, so each record is put back through the classification --
                         the issue ended, nobody standing on the branch, the commit surviving its deletion -- and
-                        spent only when what comes back clears the very commit it names. A remote that moved
+                        spent on the commit that classification clears now rather than the one the note names,
+                        so a branch whose work moved on and has since been accounted for is still reclaimable. A
+                        remote that no longer carries the branch is settled before any of that, since nothing to
+                        delete needs no permission and no local state may hold it back. A remote that moved
                         past what was cleared deletes nothing and keeps its record: the branch is still standing
-                        there, and the record is the only thing that would lead anybody back to it
+                        there, and the record is the only thing that would lead anybody back to it. The one
+                        leftover no record can carry -- a local copy taken before the teardown reached it, on a
+                        host whose ref store then refuses the note -- is reported at error level instead, being
+                        the only failure here that no later pass can reach
       obligations.py    the ledger those records live in: one ref per branch under
                         `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
                         classification cleared, so what a later pass may spend it on is a deletion of exactly

@@ -130,9 +130,10 @@ _OWNER_ONLY_NAMES = (
 # live-checkout and symbolic-ref reads the local one is refused by, the
 # `worktree list` spellings and the undereferenced argv they are written in,
 # the second readings a refused deletion is told apart by on either host, the
-# gates ordering the three, the refusals a verdict that clears nothing gets,
-# and the pass that finishes what an earlier one wrote down -- classification
-# and all -- with the ledger under it: the namespace, the repository's
+# gates ordering the three, what a verdict clearing no commit for a branch
+# leaves, the line an unfindable leftover is reported on, and the pass that
+# finishes what an earlier one wrote down -- classification, the commit it
+# clears now, and all -- with the ledger under it: the namespace, the repository's
 # own room inside it, the ref one branch is recorded at, the write, the
 # read-back and the parse beneath it, and the discharge -- and the second
 # reading a refused branch deletion is told apart by. Naming the whole surface makes a helper added to an owner
@@ -213,6 +214,7 @@ _OWNER_DEFINED = (
     ("_cleanup_decompose_worktree", decomposition),
     ("_cleanup_question_worktree", terminal),
     ("_cleanup_terminal_branch", terminal),
+    ("_cleared_tip", reclamation),
     ("_clone_read", evidence),
     ("_colliding_worktree_slugs", attribution),
     ("_commit_accounting", claims),
@@ -290,10 +292,12 @@ _OWNER_DEFINED = (
     ("_specs_by_clone", inventory),
     ("_standing_on", reclamation),
     ("_still_cleared", reclamation),
+    ("_stranded", reclamation),
     ("_symbolic_branch", reclamation),
     ("_terminal_retentions", claims),
     ("_tip_retentions", eligibility),
     ("_unmoved", reclamation),
+    ("_unproven_remote", reclamation),
     ("_unresolved", reclamation),
     ("_untouched", reclamation),
     ("_workflow_members", claims),

@@ -340,7 +340,54 @@ class ObligationSweepTest(_ReclaimTestCase):
 
 
 class RecordedPermissionTest(_ReclaimTestCase):
-    """A record says which branch to ask about, never that it may go."""
+    """A record says which branch to ask about; what may go is asked again."""
+
+    def test_a_remote_gone_needs_no_permission(self) -> None:
+        # Nothing to delete is nothing to clear. The local copy somebody
+        # recreated with work of their own would keep every classification
+        # refusing, and a record held back on that would be one no later pass
+        # could ever settle -- over a branch that is already off the remote.
+        obligations._record_obligation(
+            self.spec, self.branch, self.published(),
+        )
+        self.world.unpublish(self.clone, self.branch)
+        self.world.commit_on(self.clone, self.branch, start=self.branch)
+
+        swept = _swept(self.gh, self.spec)
+
+        self.assertEqual(
+            _settled(swept),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, ABSENT),),
+        )
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
+        self.assertEqual(_swept(self.gh, self.spec), ())
+
+    def test_a_remote_that_advanced_is_reclaimed(self) -> None:
+        # The record names what was cleared when it was written, and the
+        # branch has moved on since. The pass that finds the new work
+        # unaccounted for keeps the record; the one after it, once that work
+        # has landed, spends it on what the branch is standing on now.
+        tip = self.published()
+        obligations._record_obligation(self.spec, self.branch, tip)
+        self.world.commit_on(self.clone, self.branch, start=self.branch)
+        self.world.publish(self.clone, self.branch, self.branch)
+
+        held = _swept(self.gh, self.spec)
+
+        self.assertEqual(tuple(taken.outcome for taken in held), (FAILED,))
+        self.assertEqual(
+            obligations._recorded_obligations(self.spec),
+            (ProvenTip(self.branch, tip),),
+        )
+
+        self.world.publish(self.clone, BASE_BRANCH, self.branch)
+
+        self.assertEqual(
+            _settled(_swept(self.gh, self.spec)),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, CLEANED),),
+        )
+        self.assertFalse(self.standing()[2])
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
     def test_a_record_for_a_live_issue_is_refused(self) -> None:
         # The ledger is a ref store the agents this orchestrator runs can

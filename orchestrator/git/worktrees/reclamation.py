@@ -412,9 +412,38 @@ def _reclaimed_branch(
         remote = _reclaimed_remote_branch(
             artifacts.spec, artifacts.issue_number, branch, cleared_sha,
         )
+    if tip.answer is ProbeAnswer.REFUTED and remote is SurfaceOutcome.FAILED:
+        _stranded(artifacts, branch)
     return _branch_surfaces(branch, remote, _reclaimed_local_branch(
         artifacts, branch, tip, remote=remote, freed=freed,
     ))
+
+
+def _stranded(artifacts: IssueArtifacts, branch: str) -> None:
+    """Say so when nothing is left to find a branch this could not settle by.
+
+    The one shape this domain cannot make discoverable on its own. The local
+    copy went before the teardown reached it, so there is no artifact to keep
+    back, and if the record that would have carried it could not be written --
+    a ref store refusing a write is one nothing durable can be put in -- then
+    nothing here names that branch any more.
+
+    Reported at error rather than warning for exactly that reason: every other
+    failure in this pass is one a later pass picks up, and this is the one
+    only an operator can. A record that IS there says the opposite, and the
+    ledger is asked rather than assumed, since the write and this line are two
+    steps and only the first of them knows whether it landed.
+    """
+    owed = obligations._recorded_obligations(artifacts.spec)
+    if owed is not None and any(
+        record.subject == branch for record in owed
+    ):
+        return
+    log.error(
+        "issue=#%d %r is gone from this clone and was not settled on the "
+        "remote, with nothing written down for it: no later pass of this "
+        "host will find it", artifacts.issue_number, branch,
+    )
 
 
 def _unmoved(
@@ -466,19 +495,17 @@ def _reclaimed_remote_branch(
     only once the remote had confirmed would be a record exactly the failures
     that need it never reach.
 
-    Nothing is written for a branch nothing cleared. A record is the note that
-    a deletion of one commit is owed, and an artifact no verdict handed a
-    commit for is not one this may delete, now or on any later pass.
+    Nothing is written for a branch nothing cleared, and nothing is deleted
+    for one either. A record is the note that a deletion of one commit is
+    owed, and an artifact no verdict handed a commit for is not one this may
+    delete -- which is a different answer from there being nothing there, and
+    `_unproven_remote` is where the two are told apart.
 
     Taken as a commit and a name rather than as a candidate, so the pass that
     reads a record back spends it through exactly these steps.
     """
     if cleared_sha is None:
-        log.warning(
-            "issue=#%d keeping %r on the remote: nothing cleared a commit "
-            "for it", issue_number, branch,
-        )
-        return SurfaceOutcome.FAILED
+        return _unproven_remote(spec, issue_number, branch)
     if not obligations._record_obligation(spec, branch, cleared_sha):
         log.warning(
             "issue=#%d keeping %r on the remote: what this host would owe "
@@ -487,6 +514,33 @@ def _reclaimed_remote_branch(
         )
         return SurfaceOutcome.FAILED
     return _recorded_deletion(spec, issue_number, branch, cleared_sha)
+
+
+def _unproven_remote(
+    spec: config.RepoSpec, issue_number: int, branch: str,
+) -> SurfaceOutcome:
+    """What is left on the remote for a branch nothing cleared a commit for.
+
+    The classification clears a commit for every branch it finds on either
+    host, so no commit means it found this one on neither -- and a remote with
+    nothing under that name is a surface with nothing to reclaim, which is the
+    success every other absence in this domain is. Refusing it instead would
+    leave a candidate whose artifacts are all demonstrably gone reported as a
+    failure no later pass could settle, since there is nothing left anywhere
+    for one to find.
+
+    A branch that is back is the other answer. Something published it after
+    the proof was taken, so what is under that name is work nobody
+    adjudicated: it is not deleted, and nothing is written down for it either.
+    """
+    published = evidence._published_tip(spec, branch)
+    if published.answer is not ProbeAnswer.CONFIRMED:
+        return _unresolved(issue_number, branch, published, _REMOTE)
+    log.warning(
+        "issue=#%d keeping %r on the remote: it is back at %r and nothing "
+        "cleared a commit for it", issue_number, branch, published.sha,
+    )
+    return SurfaceOutcome.FAILED
 
 
 def _recorded_deletion(
@@ -658,38 +712,59 @@ def _reclaimed_record(
     the deletion -- and it is asked again here rather than assumed, because
     nothing this pass has was established by anybody but the last one.
 
-    The commit has to be the one written down, too. A verdict clearing some
-    other commit is a verdict about some other state of that branch, and the
-    deletion a record authorizes is pinned to what it names.
+    A record that outlives every reason to spend it is let go rather than
+    carried: the point of one is a leftover somebody can still act on.
 
-    An eligible verdict that clears nothing at all is the branch being gone
-    from this clone and from the remote both, which is a record with nothing
-    left to cover: it is let go, as every other absence in this domain is.
+    The remote is asked before any of that, because a branch that is no longer
+    there needs no permission: nothing is deleted, so nothing has to be
+    cleared, and a record kept over it would be one every later pass spent a
+    classification on to reach the same answer. It is also the one answer no
+    reading of this host can overturn -- a local copy somebody recreated with
+    work of their own would otherwise keep a settled remote unsettled forever.
+
+    What is spent is the commit the fresh verdict clears, not the one the
+    record names. The ledger says which branch to go and ask about; the answer
+    is about that branch as it is now. A branch whose work moved on after the
+    record was written and has since been accounted for is one this may still
+    reclaim, and refusing it because an older note named an older commit would
+    leave a leftover nothing could ever clean up.
     """
+    published = evidence._published_tip(spec, owed.subject)
+    if published.answer is ProbeAnswer.REFUTED:
+        return _discharged(spec, owed.subject, SurfaceOutcome.ABSENT)
     verdict = eligibility._classify_artifacts(gh, IssueArtifacts(
         spec=spec,
         issue_number=issue_number,
         worktree=None,
         branches=(owed.subject,),
     ))
-    if not verdict.eligible:
+    cleared = _cleared_tip(verdict, owed.subject)
+    if cleared is None:
         log.warning(
             "issue=#%d not spending the record for %r: the classification "
-            "keeps it (%s)",
+            "clears no commit for it (%s)",
             issue_number,
             owed.subject,
             ", ".join(sorted(kept.reason for kept in verdict.retentions)),
         )
         return SurfaceOutcome.FAILED
-    if not verdict.proven:
-        return _discharged(spec, owed.subject, SurfaceOutcome.ABSENT)
-    if owed not in verdict.proven:
-        log.warning(
-            "issue=#%d not spending the record for %r: what was cleared is "
-            "not the %r it names", issue_number, owed.subject, owed.sha,
-        )
-        return SurfaceOutcome.FAILED
-    return _recorded_deletion(spec, issue_number, owed.subject, owed.sha)
+    return _reclaimed_remote_branch(
+        spec, issue_number, owed.subject, cleared.sha,
+    )
+
+
+def _cleared_tip(verdict: ArtifactVerdict, branch: str) -> ProvenTip | None:
+    """The commit one fresh classification cleared for one branch, if any.
+
+    None covers both ways there is nothing to spend: a verdict that keeps the
+    candidate carries no proof at all, and an eligible one can clear nothing
+    for a branch it found on neither host. A caller holding a record has to
+    treat them alike -- neither is permission to delete anything -- and the
+    reason they differ is in the retentions it reports.
+    """
+    return next(
+        (tip for tip in verdict.proven if tip.subject == branch), None,
+    )
 
 
 def _owed_issue(spec: config.RepoSpec, branch: str) -> int | None:
