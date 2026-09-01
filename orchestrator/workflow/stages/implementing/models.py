@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -36,7 +35,7 @@ from orchestrator.workflow.stages.implementing import state as _state
 @dataclass(frozen=True)
 class _PreparedDevRun:
     agent_result: AgentResult
-    before_sha: Optional[str]
+    before_sha: str | None
     paused: bool
     worktree: Path
     # True when no agent ran and the result was synthesized from commits the
@@ -95,7 +94,7 @@ class _DevSession:
     spec: str
     backend: str
     extra_args: tuple[str, ...]
-    session_id: Optional[str]
+    session_id: str | None
 
 
 @dataclass(frozen=True)
@@ -112,7 +111,7 @@ class _DevResumeRequest:
     issue: Issue
     resume_args: tuple
     option_fields: dict
-    stage: Optional[str]
+    stage: str | None
 
     @property
     def resolved_stage(self) -> str:

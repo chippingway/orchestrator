@@ -40,7 +40,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -443,7 +442,7 @@ def _publication_intent(
     state: _pinned_state.PinnedState,
     approved: _models._ApprovedWork,
     worktree: Path,
-) -> Optional[str]:
+) -> str | None:
     """The one commit this publication is about, durable before it is pushed.
 
     Everything past this line is named against what it returns: the push, the

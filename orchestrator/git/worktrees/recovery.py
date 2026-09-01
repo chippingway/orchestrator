@@ -9,7 +9,6 @@ it belongs to is gone.
 from __future__ import annotations
 
 import subprocess
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git import commands, locks
@@ -18,7 +17,7 @@ from orchestrator.git.worktrees import paths
 
 def _branch_has_unpushed_commits(
     spec: config.RepoSpec, issue_number: int,
-) -> Optional[str]:
+) -> str | None:
     """Return the per-issue branch carrying unpushed commits, or None.
 
     Probes BOTH the slug-namespaced branch and the legacy

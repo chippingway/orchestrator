@@ -17,7 +17,7 @@ nothing on this path charges an importer for the skill scanner.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics import sink
@@ -47,7 +47,7 @@ def discover_codex_skill_sources(
 def discover_codex_tools(
     context: AgentExitContext,
     discovery: Any,
-) -> Optional[list[str]]:
+) -> list[str] | None:
     """Read Codex's baseline tools only for trajectory records."""
     settings = analytics_config.live_settings()
     if settings.trajectory_log_path is None:

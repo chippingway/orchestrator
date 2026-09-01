@@ -66,7 +66,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field, replace
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -239,7 +238,7 @@ class _ChildWalk:
 
 def _create_late_children(
     context: _LateContext, manifest: tuple, snapshot_ref: str,
-) -> Optional[_SplitPlan]:
+) -> _SplitPlan | None:
     """Create or adopt every child of this split, in the crash-safe order.
 
     Returns the populated plan, or None when the loop stopped early -- a
@@ -428,7 +427,7 @@ def _prepared(context: _LateContext, manifest: tuple) -> None:
 
 def _child_issue(
     context: _LateContext, walk: _ChildWalk, index: int, child: dict,
-) -> Optional[Issue]:
+) -> Issue | None:
     """Adopt the child this index already has, or create it exactly once.
 
     Adoption is what keeps a retry from opening a second issue for a slice
@@ -459,7 +458,7 @@ def _child_issue(
 
 def _adopted_or_created(
     context: _LateContext, walk: _ChildWalk, index: int, child: dict,
-) -> Optional[Issue]:
+) -> Issue | None:
     """Return the child at this index, opening one only where none exists.
 
     Three answers in order, and the middle one is the whole point. A number
@@ -504,7 +503,7 @@ def _adopted_or_created(
 
 def _orphan_for(
     context: _LateContext, walk: _ChildWalk, index: int,
-) -> Optional[Issue]:
+) -> Issue | None:
     """The issue an earlier pass created for this slice and never recorded.
 
     Asked only on a resumed pass. The lookup is a walk over the repository's
@@ -557,7 +556,7 @@ def _sole_receipt(orphan: Issue, marker: str) -> bool:
     return marker in body and body.count(_lineage.CHILD_RECEIPT) == 1
 
 
-def _forged_receipt(children: tuple) -> Optional[str]:
+def _forged_receipt(children: tuple) -> str | None:
     """The first declared slice carrying a receipt marker of ours, described.
 
     Asked of the whole manifest before the transaction creates anything,

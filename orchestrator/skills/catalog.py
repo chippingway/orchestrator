@@ -31,7 +31,7 @@ after `_refresh_base_and_worktrees` has refreshed `<remote_name>/<base_branch>`.
 from __future__ import annotations
 
 import logging
-from typing import Iterable, Optional
+from typing import Iterable
 
 from orchestrator.config import RepoSpec
 from orchestrator.git.commands import _git
@@ -50,7 +50,7 @@ _SkillPaths = dict[str, list[str]]
 _SkillCatalog = tuple[list[str], _SkillPaths]
 
 
-def _direct_skill_name(parts: list[str]) -> Optional[str]:
+def _direct_skill_name(parts: list[str]) -> str | None:
     """Return the name from an exact ``<name>/SKILL.md`` suffix."""
     if len(parts) != 2:
         return None
@@ -60,7 +60,7 @@ def _direct_skill_name(parts: list[str]) -> Optional[str]:
     return skill_name
 
 
-def _skill_name_from_path(path: str) -> Optional[str]:
+def _skill_name_from_path(path: str) -> str | None:
     """Return the skill name for a direct `<root>/<name>/SKILL.md` path.
 
     None for any path that is not exactly a known root followed by a
@@ -115,7 +115,7 @@ def _extract_skill_catalog(
     return skills_available, skill_paths
 
 
-def _list_skill_tree(spec: RepoSpec) -> Optional[list[str]]:
+def _list_skill_tree(spec: RepoSpec) -> list[str] | None:
     """Run `git ls-tree` for the skill roots on the spec's base ref.
 
     Returns the non-empty path lines (possibly an empty list when the

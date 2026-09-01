@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Unpack
+from typing import Unpack
 
 from orchestrator import config
 from orchestrator.agents import environment as _agent_environment
@@ -54,7 +54,7 @@ def run_claude(
     prompt: str,
     cwd: Path,
     *,
-    options: Optional[_agent_models.AgentRunOptions] = None,
+    options: _agent_models.AgentRunOptions | None = None,
     **option_fields: Unpack[_agent_models.AgentRunOptionFields],
 ) -> _agent_models.AgentResult:
     """Run Claude through the shared process owner."""

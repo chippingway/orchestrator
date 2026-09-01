@@ -33,7 +33,6 @@ base.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.git.verification import probes as _verification_probes
@@ -208,7 +207,7 @@ def _resume_awaiting_human(
     )
 
 
-def _awaiting_human_followup(ctx: _models._ConflictContext) -> Optional[str]:
+def _awaiting_human_followup(ctx: _models._ConflictContext) -> str | None:
     """Build the dev-resume prompt for a parked rebase from the trusted human
     reply, or return ``None`` when the tick is handled without a resume.
 

@@ -25,7 +25,6 @@ the rotation decision made above it, not of the caller that asked for a resume.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -123,7 +122,7 @@ def _check_and_increment_retry_budget(
 
     now = datetime.now(timezone.utc)
     window_start_raw = state.get(_state._RETRY_WINDOW_START)
-    window_start: Optional[datetime] = None
+    window_start: datetime | None = None
     if window_start_raw:
         try:
             window_start = datetime.fromisoformat(window_start_raw)
@@ -201,8 +200,8 @@ def _resolve_dev_session_for_resume(
 
 
 def _dev_session_retirement_reason(
-    session_id: Optional[str], resume_count: int, silent_count: int,
-) -> Optional[str]:
+    session_id: str | None, resume_count: int, silent_count: int,
+) -> str | None:
     if session_id is None:
         return None
     max_resumes = config.DEV_SESSION_MAX_RESUMES

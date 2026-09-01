@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from orchestrator import config
 
@@ -98,7 +97,7 @@ def filter_agent_env(
     }
 
 
-def agent_env(extra_env: Optional[dict[str, str]]) -> dict[str, str]:
+def agent_env(extra_env: dict[str, str] | None) -> dict[str, str]:
     """Build the filtered agent environment with orchestrator git identity."""
     environ = filter_agent_env(dict(os.environ))
     environ["GIT_AUTHOR_NAME"] = config.AGENT_GIT_NAME

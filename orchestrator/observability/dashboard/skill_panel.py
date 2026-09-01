@@ -42,7 +42,7 @@ and a prompt to turn it on otherwise.
 """
 from __future__ import annotations
 
-from typing import Any, Iterator, NamedTuple, Optional, Sequence
+from typing import Any, Iterator, NamedTuple, Sequence
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillAdoptionRow,
@@ -170,7 +170,7 @@ def _level_sections(
 
 def skill_adoption_zero_caption(
     skill_adoption_rows: Sequence[SkillAdoptionRow],
-) -> Optional[str]:
+) -> str | None:
     """Return a neutral caption for a genuine zero-adoption window."""
     if not skill_adoption_rows:
         return None

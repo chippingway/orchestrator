@@ -16,7 +16,7 @@ import contextlib
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator
 
 from tests.observability.analytics.analytics_reload_helpers import reload_analytics as _reload
 
@@ -67,7 +67,7 @@ REPO_SHORT = "o/r"
 ENCODING = "utf-8"
 
 @contextlib.contextmanager
-def analytics_sink(retention: Optional[str] = None) -> Iterator[Path]:
+def analytics_sink(retention: str | None = None) -> Iterator[Path]:
     """Point the analytics knobs at a temporary `analytics.jsonl`."""
     with tempfile.TemporaryDirectory() as sink_dir:
         path = Path(sink_dir) / "analytics.jsonl"
@@ -79,7 +79,7 @@ def analytics_sink(retention: Optional[str] = None) -> Iterator[Path]:
 
 
 @contextlib.contextmanager
-def trajectory_sink(retention: Optional[str] = None) -> Iterator[Path]:
+def trajectory_sink(retention: str | None = None) -> Iterator[Path]:
     """Point the trajectory knobs at a temporary `trajectory.jsonl`."""
     with tempfile.TemporaryDirectory() as sink_dir:
         path = Path(sink_dir) / "trajectory.jsonl"

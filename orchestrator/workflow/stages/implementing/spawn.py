@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -82,7 +81,7 @@ def _spawn_implementer(
     issue: Issue,
     state: PinnedState,
     worktree: Path,
-) -> Optional[tuple[AgentResult, bool]]:
+) -> tuple[AgentResult, bool] | None:
     if not _session._check_and_increment_retry_budget(gh, issue, state):
         gh.write_pinned_state(issue, state)
         return None
@@ -178,7 +177,7 @@ def _ensure_dev_worktree(
 
 def _prepare_active_dev_run(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
-) -> Optional[_models._PreparedDevRun]:
+) -> _models._PreparedDevRun | None:
     """Run or recover one unparked dev tick, once the checkout can be trusted.
 
     The size gate's own recovery comes first, and it is here rather than in
@@ -217,7 +216,7 @@ def _prepare_active_dev_run(
 
 def _prepare_dev_run(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
-) -> Optional[_models._PreparedDevRun]:
+) -> _models._PreparedDevRun | None:
     """Set up and run (or recover) the dev agent for one implementing tick.
 
     Returns a prepared run for the caller to dispose, or None

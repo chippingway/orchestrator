@@ -48,7 +48,7 @@ from __future__ import annotations
 import json
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import formats as _formats
@@ -206,7 +206,7 @@ _SPENDABLE_FIELDS = MappingProxyType({
 SPENDABLE_FIELDS = frozenset(_SPENDABLE_FIELDS)
 
 
-def read_retired_cycle(state: PinnedState) -> Optional[int]:
+def read_retired_cycle(state: PinnedState) -> int | None:
     """The cycle a retirement dropped off this record, if one did.
 
     Read through the domain's own identity reader, so a hand-edited value
@@ -553,7 +553,7 @@ def _written_fields(generation: LateGeneration) -> dict[str, Any]:
     }
 
 
-def _wire(member: Optional[StrEnum]) -> Optional[str]:
+def _wire(member: StrEnum | None) -> str | None:
     """Return the wire string one vocabulary field is recorded under, or None.
 
     Every field holding a member goes through it -- the boundary a generation
@@ -622,7 +622,7 @@ def _ledger_fields(generation: LateGeneration) -> dict[str, Any]:
     return {key: ledger for key, ledger in owed.items() if ledger is not None}
 
 
-def _ledger_written(opaque: Optional[str], typed: list) -> Any:
+def _ledger_written(opaque: str | None, typed: list) -> Any:
     """Return what one external ledger is written back as.
 
     The verbatim copy outranks the typed view wherever there is one: the typed

@@ -25,7 +25,7 @@ which is what makes the ranking readable at all.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from orchestrator.observability.analytics.query.overview_models import Summary
 from orchestrator.observability.analytics.query.run_models import IssueSummaryRow
@@ -45,7 +45,7 @@ REWORK_BUCKETS: frozenset[str] = frozenset(
 
 def kpi_delta(
     current: float, previous: float
-) -> Optional[float]:
+) -> float | None:
     """Relative change vs the previous window.
 
     Returns `(current - previous) / previous` (e.g. `0.25` = +25%) or

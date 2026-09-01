@@ -21,7 +21,6 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.observability.analytics.sink import log
 
@@ -44,7 +43,7 @@ def probe_exists(path: Path) -> bool:
         return False
 
 
-def prune_timestamp(raw_line: str) -> Optional[datetime]:
+def prune_timestamp(raw_line: str) -> datetime | None:
     """Parse a JSONL record timestamp, returning None for kept malformed data."""
     try:
         record = json.loads(raw_line)
@@ -88,7 +87,7 @@ class PruneScan:
 def read_kept_records(
     path: Path,
     cutoff: datetime,
-) -> Optional[_KeptRemoved]:
+) -> _KeptRemoved | None:
     """Split `path`'s lines into (kept, removed_count) by the `cutoff` time.
 
     A record is removed only when its `ts` parses to a time strictly before

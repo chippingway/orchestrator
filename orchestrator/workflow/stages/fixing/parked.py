@@ -30,7 +30,6 @@ answer for the human.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.workflow.engine import comments as _comments
@@ -47,7 +46,7 @@ from orchestrator.workflow.state import WorkflowLabel
 
 def _dispatch_continue_command(
     ctx: _models._FixingContext, feedback: _models._FixingFeedback,
-) -> Optional[_models._ParkedFixingDecision]:
+) -> _models._ParkedFixingDecision | None:
     """Apply a `/orchestrator continue` command to a parked tick.
 
     Returns a `_ParkedFixingDecision` when the command was resolved (a refused
@@ -68,7 +67,7 @@ def _dispatch_continue_command(
 
 def _dispatch_validating_recovery(
     ctx: _models._FixingContext, feedback: _models._FixingFeedback, park_reason,
-) -> Optional[_models._ParkedFixingDecision]:
+) -> _models._ParkedFixingDecision | None:
     """Attempt silent recovery of a validating-route transient park.
 
     Returns a stop-decision when this branch owns the tick (a stuck transient

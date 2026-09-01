@@ -28,7 +28,6 @@ import logging
 import subprocess
 from pathlib import Path
 from stat import S_ISDIR
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git import commands, locks
@@ -49,7 +48,7 @@ _ORCHESTRATOR_BRANCH_REFS = "refs/heads/orchestrator/"
 _LOCAL_BRANCH_PREFIX = "refs/heads/"
 
 
-def _read_orchestrator_refs(root: Path) -> Optional[subprocess.CompletedProcess]:
+def _read_orchestrator_refs(root: Path) -> subprocess.CompletedProcess | None:
     """Run the branch listing in one clone, or report that it could not run.
 
     Hardened and lock-held for the reasons every read of this clone is: the
@@ -78,7 +77,7 @@ def _read_orchestrator_refs(root: Path) -> Optional[subprocess.CompletedProcess]
         return None
 
 
-def _local_orchestrator_branches(root: Path) -> Optional[tuple[str, ...]]:
+def _local_orchestrator_branches(root: Path) -> tuple[str, ...] | None:
     """Every local branch under the orchestrator-owned namespace in one clone.
 
     Named as the derivations in ``paths`` spell them, which is why the
@@ -123,7 +122,7 @@ def _local_orchestrator_branches(root: Path) -> Optional[tuple[str, ...]]:
     )
 
 
-def _issue_checkout_number(entry: Path) -> Optional[int]:
+def _issue_checkout_number(entry: Path) -> int | None:
     """The issue a directory under the worktrees root belongs to, or None.
 
     Two conditions, and the answer is an issue candidate only under both: the
@@ -174,7 +173,7 @@ def _checkout_entries(root: Path) -> tuple[int, ...]:
     return tuple(number for number in numbers if number is not None)
 
 
-def _worktree_issue_numbers(spec: config.RepoSpec) -> Optional[frozenset[int]]:
+def _worktree_issue_numbers(spec: config.RepoSpec) -> frozenset[int] | None:
     """Every issue this host still holds a per-issue checkout for.
 
     The empty set when the spec has no worktrees root at all: a repository

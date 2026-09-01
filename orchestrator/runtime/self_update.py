@@ -11,7 +11,6 @@ loop keeps polling through.
 from __future__ import annotations
 
 import subprocess
-from typing import Optional
 
 from orchestrator import config
 
@@ -28,7 +27,7 @@ def git(*args: str) -> subprocess.CompletedProcess:
     )
 
 
-def own_head_sha() -> Optional[str]:
+def own_head_sha() -> str | None:
     """Return the orchestrator checkout's HEAD when resolvable."""
     head_revision = git("rev-parse", "HEAD")
     return (

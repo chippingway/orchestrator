@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from types import MappingProxyType
-from typing import Mapping, Optional
+from typing import Mapping
 
 from orchestrator.observability.analytics.query.overview_models import DataExtent
 
@@ -63,7 +63,7 @@ class DateWindow:
 
 def default_date_range(
     *,
-    today: Optional[date] = None,
+    today: date | None = None,
     days: int = DEFAULT_WINDOW_DAYS,
 ) -> tuple[date, date]:
     range_end = today or date.today()
@@ -83,7 +83,7 @@ def to_window(start_date: date, end_date: date) -> DateWindow:
     return DateWindow(start=start_datetime, end=end_datetime)
 
 
-def extent_dates(extent: DataExtent) -> Optional[tuple[date, date]]:
+def extent_dates(extent: DataExtent) -> tuple[date, date] | None:
     if extent.min_ts is None or extent.max_ts is None:
         return None
     return extent.min_ts.date(), extent.max_ts.date()
@@ -92,7 +92,7 @@ def extent_dates(extent: DataExtent) -> Optional[tuple[date, date]]:
 def preset_window(
     preset: str,
     extent: DataExtent,
-) -> Optional[DateWindow]:
+) -> DateWindow | None:
     bounds = extent_dates(extent)
     if bounds is None:
         return None

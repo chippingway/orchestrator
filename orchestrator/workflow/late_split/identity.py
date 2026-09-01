@@ -37,7 +37,7 @@ it was taken over.
 from __future__ import annotations
 
 import hashlib
-from typing import Iterable, Optional
+from typing import Iterable
 
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split.models import (
@@ -55,7 +55,7 @@ class LineageDepthExceeded(Exception):
     """A child was asked for at or past `MAX_LINEAGE_DEPTH`."""
 
 
-def next_identity(current: Optional[int]) -> int:
+def next_identity(current: int | None) -> int:
     """Return the next value of a monotonic identity.
 
     One helper for both the cycle and the generation, because they are the
@@ -71,7 +71,7 @@ def next_identity(current: Optional[int]) -> int:
     return max(previous, 0) + 1
 
 
-def child_lineage_depth(depth: Optional[int]) -> int:
+def child_lineage_depth(depth: int | None) -> int:
     """Return the depth a child of a generation at `depth` is born at.
 
     Raises `LineageDepthExceeded` at the bound rather than returning a fourth

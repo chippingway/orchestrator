@@ -22,7 +22,6 @@ import tempfile
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.observability.analytics.sink import log
 from orchestrator.observability.analytics.retention_scan import (
@@ -107,10 +106,10 @@ def rewrite_pruned_file(
 
 
 def prune_jsonl_records(
-    path: Optional[Path],
+    path: Path | None,
     days: int,
     lock: threading.Lock,
-    now: Optional[datetime],
+    now: datetime | None,
 ) -> int:
     """Remove records whose `ts` is older than `days` from `path` under
     `lock`.

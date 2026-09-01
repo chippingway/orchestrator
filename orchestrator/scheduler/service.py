@@ -21,7 +21,7 @@ import logging
 import threading
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator
 
 from orchestrator.scheduler import models
 
@@ -45,7 +45,7 @@ class _SchedulerViewMixin:
     def per_repo_cap(self) -> int:
         return self._per_repo_cap
 
-    def active_count(self, repo_slug: Optional[str] = None) -> int:
+    def active_count(self, repo_slug: str | None = None) -> int:
         """Return counted in-flight workers, globally or for one repo."""
         with self._lock:
             if repo_slug is None:
@@ -85,7 +85,7 @@ class _SchedulerReservationMixin(_SchedulerViewMixin):
     def _cap_skip_reason_locked(
         self,
         submission: models.Submission,
-    ) -> Optional[str]:
+    ) -> str | None:
         if len(self._active) >= self._global_cap:
             return "global_cap"
         repo_active = self._per_repo_active.get(submission.repo_slug, 0)
@@ -96,7 +96,7 @@ class _SchedulerReservationMixin(_SchedulerViewMixin):
     def _skip_reason_locked(
         self,
         submission: models.Submission,
-    ) -> Optional[str]:
+    ) -> str | None:
         if self._closed:
             return "closed"
         if submission.key in self._active or submission.key in self._tracked:

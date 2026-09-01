@@ -54,7 +54,6 @@ forever.
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -147,7 +146,7 @@ def _rebaselined(
 
 
 def _fingerprint(
-    issue: Issue, trusted: list, watermark: Optional[int],
+    issue: Issue, trusted: list, watermark: int | None,
 ) -> _LateFingerprint:
     """The fingerprint the content as it stands would be recorded as.
 

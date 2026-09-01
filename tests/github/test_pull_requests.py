@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import Optional
 from unittest.mock import MagicMock
 
 from github import GithubException
@@ -50,8 +49,8 @@ class _RefreshingPR:
     refresh rather than treat the first `None` as "not mergeable".
     """
 
-    def __init__(self, *, refresh_error: Optional[Exception] = None) -> None:
-        self.mergeable: Optional[bool] = None
+    def __init__(self, *, refresh_error: Exception | None = None) -> None:
+        self.mergeable: bool | None = None
         self.update_calls = 0
         self._refresh_error = refresh_error
 
@@ -274,7 +273,7 @@ class PullRequestWriteTest(_PullRequestClientTestCase):
                     f"heads/{_BRANCH}",
                 )
 
-    def _bind_ref_delete(self, raised_status: Optional[int]) -> None:
+    def _bind_ref_delete(self, raised_status: int | None) -> None:
         self.gh.repo.get_git_ref.reset_mock()
         git_ref = MagicMock()
         if raised_status is not None:

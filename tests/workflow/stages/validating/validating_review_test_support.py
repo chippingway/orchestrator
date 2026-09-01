@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pathlib
-import typing
 from unittest import mock
 
 from orchestrator import config as _config
@@ -15,7 +14,6 @@ from tests.support import fakes
 from tests.workflow import fixtures
 
 Path = pathlib.Path
-Optional = typing.Optional
 patch = mock.patch
 MagicMock = mock.MagicMock
 config = _config
@@ -200,7 +198,7 @@ class ContinueCommandFixtureMixin(_PatchedWorkflowMixin):
 
 
 class ReviewCapFixtureMixin(_PatchedWorkflowMixin):
-    def _seeded(self, *, comment_body: Optional[str] = None, **state):
+    def _seeded(self, *, comment_body: str | None = None, **state):
         github = FakeGitHubClient()
         issue = make_issue(REVIEW_CAP_ISSUE, label=LABEL_VALIDATING)
         if comment_body is not None:

@@ -17,7 +17,6 @@ that builds it for the opposite reason: nothing outside that step reads a plan.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -44,7 +43,7 @@ class _SquashOutcome:
     """
 
     success: bool = False
-    sha: Optional[str] = None
+    sha: str | None = None
     count: int = 0
-    error: Optional[str] = None
+    error: str | None = None
     held: bool = False

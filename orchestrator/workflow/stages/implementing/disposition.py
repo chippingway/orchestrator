@@ -43,7 +43,6 @@ another agent.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -142,7 +141,7 @@ def _park_agent_timeout(
     gh: GitHubClient,
     issue: Issue,
     state: PinnedState,
-    before_sha: Optional[str],
+    before_sha: str | None,
 ) -> None:
     """Park an implementer timeout that produced no publishable commit.
 

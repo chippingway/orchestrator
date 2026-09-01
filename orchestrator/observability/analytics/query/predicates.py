@@ -14,7 +14,7 @@ multiselect, which is the contract the dashboard's widgets move together by.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.analytics.query.filters import (
     WhereBuilder,
@@ -22,7 +22,7 @@ from orchestrator.observability.analytics.query.filters import (
 )
 
 
-def day_bound(bound: Optional[datetime]) -> Any:
+def day_bound(bound: datetime | None) -> Any:
     if isinstance(bound, datetime):
         return bound.date()
     return bound

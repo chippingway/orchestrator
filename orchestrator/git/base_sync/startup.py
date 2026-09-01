@@ -13,7 +13,6 @@ routed: conflicted files are the dev agent's work, anything else is a park.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from github.PullRequest import PullRequest
 
@@ -61,7 +60,7 @@ def _park_unreadable_pre_rebase_head(context: _AutoRebaseContext) -> None:
 def _record_auto_rebase_attempt(
     context: _AutoRebaseContext,
     before_sha: str,
-    consumed_comment_id: Optional[int],
+    consumed_comment_id: int | None,
 ) -> None:
     """Persist the recovery anchor and any retry unpark before git runs."""
     if consumed_comment_id is not None:
@@ -130,8 +129,8 @@ def _handle_failed_auto_rebase(
 def _start_auto_rebase(
     context: _AutoRebaseContext,
     pr: PullRequest,
-    consumed_comment_id: Optional[int],
-) -> Optional[str]:
+    consumed_comment_id: int | None,
+) -> str | None:
     """Anchor and execute the rebase, returning the known pre-rebase SHA."""
     before_sha = probes._head_sha(context.worktree) or ""
     if not before_sha:

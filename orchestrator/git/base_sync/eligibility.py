@@ -17,7 +17,6 @@ base earns a rebase of its own.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from github.PullRequest import PullRequest
 
@@ -118,7 +117,7 @@ def _auto_rebase_retry_decision(
 
 def _open_auto_rebase_pr(
     context: _AutoRebaseContext,
-) -> Optional[PullRequest]:
+) -> PullRequest | None:
     """Return the open PR or leave terminal and unreadable PRs untouched."""
     try:
         pr = context.gh.get_pr(context.pr_number)
@@ -155,7 +154,7 @@ def _open_auto_rebase_pr(
 
 def _auto_rebase_recovery_decision(
     context: _AutoRebaseContext,
-    consumed_comment_id: Optional[int],
+    consumed_comment_id: int | None,
 ) -> _AutoRebaseDecision:
     """Run pending crash recovery and retain only an uncommitted retry."""
     if not context.pending_pre_rebase_sha:

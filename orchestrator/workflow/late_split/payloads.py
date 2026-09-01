@@ -28,7 +28,7 @@ unreadable value is to preserve it rather than to default it.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split.models import MAX_LINEAGE_DEPTH
@@ -36,7 +36,7 @@ from orchestrator.workflow.late_split.models import MAX_LINEAGE_DEPTH
 _Member = TypeVar("_Member", bound=StrEnum)
 
 
-def as_count(raw: Any) -> Optional[int]:
+def as_count(raw: Any) -> int | None:
     """Return a counted field, or None unless it is a real, non-negative one.
 
     A threshold, an additions total, and a generation counter are all counts:
@@ -48,7 +48,7 @@ def as_count(raw: Any) -> Optional[int]:
     return raw
 
 
-def as_identity(raw: Any) -> Optional[int]:
+def as_identity(raw: Any) -> int | None:
     """Return an identity field, or None unless it is a positive whole number.
 
     Cycles, issues, pull requests, and comment ids all start at 1: a zero or a
@@ -59,7 +59,7 @@ def as_identity(raw: Any) -> Optional[int]:
     return number if number else None
 
 
-def as_depth(raw: Any) -> Optional[int]:
+def as_depth(raw: Any) -> int | None:
     """Return a lineage depth, or None unless it is one inside the bound.
 
     Unknown rather than clamped: a depth outside the lineage is a field this
@@ -72,7 +72,7 @@ def as_depth(raw: Any) -> Optional[int]:
     return number
 
 
-def as_hex(raw: Any, lengths: frozenset) -> Optional[str]:
+def as_hex(raw: Any, lengths: frozenset) -> str | None:
     """Return a hex field of exactly one of those lengths, or None.
 
     What keeps a commit field a commit and a fingerprint a fingerprint: the
@@ -88,7 +88,7 @@ def as_flag(raw: Any) -> bool:
     return raw is True
 
 
-def as_text(raw: Any) -> Optional[str]:
+def as_text(raw: Any) -> str | None:
     """Return a free-text field, or None when it is absent or not a string.
 
     The fields read this way -- a declared scope, a held PR body, a stamp --
@@ -98,7 +98,7 @@ def as_text(raw: Any) -> Optional[str]:
     return raw if isinstance(raw, str) else None
 
 
-def as_member(members: type[_Member], raw: Any) -> Optional[_Member]:
+def as_member(members: type[_Member], raw: Any) -> _Member | None:
     """Return the vocabulary member a wire string names, or None.
 
     An unknown spelling is a field this binary cannot act on, and answering

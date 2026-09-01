@@ -31,7 +31,6 @@ reviewer would read a head that is missing the fix it asked for.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -272,7 +271,7 @@ def _handle_fixing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> Non
     # previously-consumed feedback, so `feedback` can only carry genuinely new
     # content, and without that guard a single poisoned tick would loop on
     # every poll, spamming the same dev-resume prompt.
-    replay_batch: Optional[list] = None
+    replay_batch: list | None = None
     if state.get(_state._AWAITING_HUMAN):
         parked = _parked._dispatch_parked_fixing(
             _models._FixingContext(gh, spec, issue, state, pr), feedback,

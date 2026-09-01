@@ -17,7 +17,7 @@ them once per record.
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from orchestrator.observability.analytics.trajectories.models import TrajectoryLimits
 
@@ -62,7 +62,7 @@ def redact_and_truncate(
     field_value: Any,
     redact: Redactor,
     limits: TrajectoryLimits,
-) -> Optional[str]:
+) -> str | None:
     """Redact then per-field head/tail truncate one trajectory value.
 
     String leaves are redacted with `redact_secrets` BEFORE any JSON

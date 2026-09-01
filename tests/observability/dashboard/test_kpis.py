@@ -20,7 +20,6 @@ a check on the head alone would pass while the tail reshuffled between reruns.
 from __future__ import annotations
 
 import unittest
-from typing import Optional
 
 from orchestrator.observability.analytics.query.cost_models import (
     ReviewRoundBucketRow,
@@ -129,7 +128,7 @@ def _tiles(summary: Summary, **throughput: int) -> dict:
 
 
 def _issue(
-    repo: str, number: int, cost: Optional[float], runs: int = 1,
+    repo: str, number: int, cost: float | None, runs: int = 1,
 ) -> IssueSummaryRow:
     """An issue row carrying only the columns the ranking orders on."""
     return IssueSummaryRow(

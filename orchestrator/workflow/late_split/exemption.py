@@ -29,7 +29,6 @@ recording a field the gate would read.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import formats as _formats
@@ -41,7 +40,7 @@ from orchestrator.workflow.late_split import payloads as _payloads
 LATE_EXEMPT_SHA = "late_exempt_sha"
 
 
-def read_exemption(state: PinnedState) -> Optional[str]:
+def read_exemption(state: PinnedState) -> str | None:
     """Return the commit this issue currently exempts, or None.
 
     Read through the domain's own object-id reader, so an abbreviation, prose,

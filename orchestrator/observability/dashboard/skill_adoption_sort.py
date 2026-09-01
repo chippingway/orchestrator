@@ -20,7 +20,7 @@ The parse takes its argument through a pinned signature so callers keep passing
 from __future__ import annotations
 
 from inspect import Parameter, Signature
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillAdoptionRow,
@@ -35,7 +35,7 @@ from orchestrator.observability.dashboard.skill_adoption_columns import (
 def parse_skill_adoption_sort(
     *args: Any,
     **kwargs: Any,
-) -> tuple[Optional[str], bool]:
+) -> tuple[str | None, bool]:
     """Resolve the adoption sort key and direction from query parameters."""
     bound = _SORT_SIGNATURE.bind(*args, **kwargs)
     query_params = bound.arguments["params"]
@@ -53,7 +53,7 @@ parse_skill_adoption_sort.__signature__ = _SORT_SIGNATURE
 
 def sort_skill_adoption_rows(
     rows: Sequence[SkillAdoptionRow],
-    sort_key: Optional[str],
+    sort_key: str | None,
     descending: bool,
 ) -> list[SkillAdoptionRow]:
     """Order the rows by one column, leaving a key nobody offers alone."""

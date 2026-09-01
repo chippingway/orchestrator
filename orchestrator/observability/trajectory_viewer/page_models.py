@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Sequence
 
 from orchestrator.observability.trajectory_viewer.filter_models import FilterOptions
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
@@ -28,11 +28,11 @@ from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 class _TrajectoryFilters:
     """What the sidebar answered, in the terms the run filter takes."""
 
-    repo: Optional[str]
-    backends: Optional[Sequence[str]]
-    agent_roles: Optional[Sequence[str]]
-    stages: Optional[Sequence[str]]
-    issue: Optional[int]
+    repo: str | None
+    backends: Sequence[str] | None
+    agent_roles: Sequence[str] | None
+    stages: Sequence[str] | None
+    issue: int | None
     query: str
     hide_fixtures: bool
 
@@ -41,7 +41,7 @@ class _TrajectoryFilters:
 class _TrajectoryPage:
     """One read of the file: where it came from, and what it offers."""
 
-    log_path: Optional[Path]
+    log_path: Path | None
     runs: Sequence[TrajectoryRun]
     options: FilterOptions
     fixture_total: int

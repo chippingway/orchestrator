@@ -19,7 +19,6 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
 from orchestrator import config
@@ -59,7 +58,7 @@ def _rollback_squash(
     plan: planning._SquashPlan,
     reason: str,
     error: str,
-    reported: Optional[models._SquashOutcome] = None,
+    reported: models._SquashOutcome | None = None,
 ) -> models._SquashOutcome:
     """Restore the original branch after a post-reset failure or refusal.
 

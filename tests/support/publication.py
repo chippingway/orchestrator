@@ -16,7 +16,6 @@ commit the push was named against.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 
 class LandingPush:
@@ -33,8 +32,8 @@ class LandingPush:
         _worktree,
         _branch,
         *,
-        revision: Optional[str] = None,
-        force_with_lease: Optional[str] = None,
+        revision: str | None = None,
+        force_with_lease: str | None = None,
     ) -> bool:
         """Publish the named commit, leaving the pull request standing on it.
 

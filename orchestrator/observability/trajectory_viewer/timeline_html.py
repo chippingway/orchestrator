@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import html
 from types import MappingProxyType
-from typing import Mapping, Optional
+from typing import Mapping
 
 from orchestrator.observability.trajectory_viewer import constants
 from orchestrator.observability.trajectory_viewer.models import (
@@ -42,7 +42,7 @@ from orchestrator.observability.trajectory_viewer.models import (
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 
 
-TimelineUsagePair = tuple[Optional[TurnUsageView], TimelineEntry]
+TimelineUsagePair = tuple[TurnUsageView | None, TimelineEntry]
 BADGE_BY_KIND: Mapping[str, tuple[str, str]] = MappingProxyType(
     {
         constants.TIMELINE_PROMPT: ("prompt", "prompt"),
@@ -83,7 +83,7 @@ def timeline_entry_html(entry: TimelineEntry, index: int) -> str:
 def timeline_with_usage(run: TrajectoryRun) -> list[TimelineUsagePair]:
     """Pair the first entry of each assistant turn with its usage strip."""
     paired: list[TimelineUsagePair] = []
-    previous_turn: Optional[int] = None
+    previous_turn: int | None = None
     for entry in run.timeline:
         strip = None
         if entry.turn is not None and entry.turn != previous_turn:

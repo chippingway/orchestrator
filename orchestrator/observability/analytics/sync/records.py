@@ -13,7 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.analytics.sync.columns import (
     COL_EVENT,
@@ -39,7 +39,7 @@ def content_hash(record: dict) -> str:
     return hashlib.sha256(canonical_json(record).encode("utf-8")).hexdigest()
 
 
-def parse_ts(raw: Any) -> Optional[datetime]:
+def parse_ts(raw: Any) -> datetime | None:
     """Parse the `ts` field into a timezone-aware datetime.
 
     Naive timestamps are interpreted as UTC -- mirrors
@@ -59,20 +59,20 @@ def parse_ts(raw: Any) -> Optional[datetime]:
     return parsed
 
 
-def required_text(raw: Any) -> Optional[str]:
+def required_text(raw: Any) -> str | None:
     if not isinstance(raw, str) or not raw:
         return None
     return raw
 
 
-def issue_number(raw: Any) -> Optional[int]:
+def issue_number(raw: Any) -> int | None:
     try:
         return int(raw)
     except (TypeError, ValueError):
         return None
 
 
-def required_columns(record: dict) -> Optional[dict[str, Any]]:
+def required_columns(record: dict) -> dict[str, Any] | None:
     if any(key not in record for key in REQUIRED_KEYS):
         return None
     timestamp = parse_ts(record.get(COL_TS))

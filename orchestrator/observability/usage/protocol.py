@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 
 TYPE = "type"
@@ -39,7 +38,7 @@ TOKENS_PER_MILLION = 1_000_000
 TokenBucket = dict[str, int]
 ClaudeRateMap = dict[str, float]
 ClaudeRateRow = tuple[re.Pattern[str], ClaudeRateMap]
-CodexRateMap = dict[str, Optional[float]]
+CodexRateMap = dict[str, float | None]
 CodexRateRow = tuple[str, CodexRateMap]
 CodexUsageEvent = tuple[str, TokenBucket]
 ModelPath = tuple[str, ...]

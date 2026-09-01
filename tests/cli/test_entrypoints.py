@@ -11,11 +11,10 @@ import tomllib
 import unittest
 from importlib import import_module
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import cli
 
-_LaunchForm = tuple[str, Optional[list[str]]]
+_LaunchForm = tuple[str, list[str] | None]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PACKAGE = "orchestrator"
 _MODULE_LAUNCH = f"{_PACKAGE}.__main__"
@@ -27,7 +26,7 @@ _HELP_TIMEOUT_SECONDS = 60
 _MISSING_SCRIPT_REASON = f"{_CONSOLE_SCRIPT} is not installed; run `uv sync`"
 
 
-def _console_script() -> Optional[str]:
+def _console_script() -> str | None:
     return shutil.which(
         _CONSOLE_SCRIPT,
         path=str(Path(sys.executable).parent),

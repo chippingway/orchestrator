@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any, Tuple
 
 from github.Issue import Issue
 
@@ -139,7 +139,7 @@ def _resume_developer_on_human_reply(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
     *,
     pause_guard: bool = False,
-) -> Optional[Tuple[Path, AgentResult, bool]]:
+) -> Tuple[Path, AgentResult, bool] | None:
     """Resume the developer's agent session with new issue-level comments.
 
     Returns (worktree, agent_result, paused) on resume, or None if there are no

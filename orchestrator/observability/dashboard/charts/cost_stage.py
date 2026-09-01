@@ -39,7 +39,7 @@ default install, which does not carry it.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from orchestrator.observability.analytics.query.run_models import StageBreakdown
 from orchestrator.observability.dashboard.charts.cost_horizontal import (
@@ -135,7 +135,7 @@ def stage_cost_sort_key(row: StageBreakdown) -> float:
 def cost_by_stage(
     rows: Sequence[StageBreakdown],
     *,
-    height: Optional[int] = None,
+    height: int | None = None,
 ) -> go.Figure:
     """Build stacked cache and no-cache cost bars per workflow stage."""
     from plotly import graph_objects as go

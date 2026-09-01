@@ -11,7 +11,7 @@ parent scan read once and several branches then ask about.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 from github.Issue import Issue
 
@@ -22,7 +22,7 @@ from orchestrator.git.worktrees import decomposition as _worktree_decomposition
 
 @dataclass
 class _DecomposerRunPlan:
-    agent_result: Optional[AgentResult]
+    agent_result: AgentResult | None
     keep_worktree: bool = False
 
 
@@ -46,7 +46,7 @@ class _DecomposerSession:
     spec: str
     backend: str
     extra_args: tuple[str, ...]
-    session_id: Optional[str]
+    session_id: str | None
 
 
 @dataclass
@@ -71,4 +71,4 @@ class _SplitPlan:
 class _ChildScan:
     children: list
     issues: dict[int, Issue]
-    labels: dict[int, Optional[str]]
+    labels: dict[int, str | None]

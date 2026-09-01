@@ -27,7 +27,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 _DISABLED_SENTINELS = ("off", "disabled", "none")
 
@@ -47,7 +47,7 @@ class Settings:
     holder: Any
 
     @property
-    def log_path(self) -> Optional[Path]:
+    def log_path(self) -> Path | None:
         return self.holder.ANALYTICS_LOG_PATH
 
     @property
@@ -55,7 +55,7 @@ class Settings:
         return self.holder.ANALYTICS_RETENTION_DAYS
 
     @property
-    def db_url(self) -> Optional[str]:
+    def db_url(self) -> str | None:
         return self.holder.ANALYTICS_DB_URL
 
     @property
@@ -63,7 +63,7 @@ class Settings:
         return self.holder.TRACK_SKILL_TRIGGERS
 
     @property
-    def trajectory_log_path(self) -> Optional[Path]:
+    def trajectory_log_path(self) -> Path | None:
         return self.holder.TRAJECTORY_LOG_PATH
 
     @property
@@ -71,7 +71,7 @@ class Settings:
         return self.holder.TRAJECTORY_RETENTION_DAYS
 
 
-def _explicit_path(raw: Optional[str]) -> Optional[Path]:
+def _explicit_path(raw: str | None) -> Path | None:
     """Read one path knob whose value is an operator's explicit opt-in.
 
     Disabled for an unset variable, an empty value, or a disable sentinel. The
@@ -86,7 +86,7 @@ def _explicit_path(raw: Optional[str]) -> Optional[Path]:
     return Path(stripped)
 
 
-def parse_log_path() -> Optional[Path]:
+def parse_log_path() -> Path | None:
     """Resolve `ANALYTICS_LOG_PATH` from the environment.
 
     Unset -> default under `config.LOG_DIR` (already covered by the `logs/`
@@ -118,7 +118,7 @@ def parse_retention_days() -> int:
     return int(os.environ.get("ANALYTICS_RETENTION_DAYS", "90"))
 
 
-def parse_db_url() -> Optional[str]:
+def parse_db_url() -> str | None:
     """Resolve `ANALYTICS_DB_URL` from the environment.
 
     Unset / empty value and the sentinels `off` / `disabled` / `none`
@@ -153,7 +153,7 @@ def parse_track_skill_triggers() -> bool:
     return raw.strip().lower() in _TRUTHY_SPELLINGS
 
 
-def parse_trajectory_log_path() -> Optional[Path]:
+def parse_trajectory_log_path() -> Path | None:
     """Resolve `TRAJECTORY_LOG_PATH` from the environment.
 
     Opt-in / default off: unlike `ANALYTICS_LOG_PATH` (which defaults to a
@@ -204,7 +204,7 @@ def live_settings() -> Settings:
     return settings_on(settings)
 
 
-def resolve_db_url(db_url: Optional[str]) -> Optional[str]:
+def resolve_db_url(db_url: str | None) -> str | None:
     """Resolve one read's database URL: the explicit argument, else the knob.
 
     Every read helper accepts a caller-supplied `db_url=` and falls back to

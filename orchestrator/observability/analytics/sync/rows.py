@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from orchestrator.observability.analytics.sync.columns import (
     JSONB_COLUMNS,
@@ -27,7 +27,7 @@ from orchestrator.observability.analytics.sync.records import (
 )
 
 
-def split_row(record: dict) -> Optional[tuple[dict, dict]]:
+def split_row(record: dict) -> tuple[dict, dict] | None:
     """Promote known columns and route the rest to `extras`.
 
     Returns (columns, extras), or None if a required key is missing
@@ -63,7 +63,7 @@ def build_insert_sql() -> str:
 class RowProvenance:
     """Source identity and stable dedup hash for one prepared row."""
 
-    source_path: Optional[str]
+    source_path: str | None
     source_line: int
     content_hash: str
 
@@ -98,7 +98,7 @@ class PreparedRecord:
 
 def prepare_record(
     raw_line: str,
-) -> tuple[Optional[PreparedRecord], Optional[str]]:
+) -> tuple[PreparedRecord | None, str | None]:
     stripped = raw_line.strip()
     if not stripped:
         return None, None

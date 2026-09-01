@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import threading
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Iterator
 
 from orchestrator.observability.analytics.config import resolve_db_url
 from orchestrator.observability.analytics.query.connections import (
@@ -40,7 +40,7 @@ from orchestrator.observability.analytics.query.connections import (
 thread_local = threading.local()
 
 
-def cached_entry(url: str) -> Optional[tuple[str, Any]]:
+def cached_entry(url: str) -> tuple[str, Any] | None:
     """Return this thread's matching cache entry, closing a stale one."""
     entry = getattr(thread_local, "entry", None)
     if entry is None:
@@ -94,8 +94,8 @@ def discard_broken_connection(exc: BaseException) -> None:
 @contextmanager
 def analytics_connection(
     *,
-    db_url: Optional[str] = None,
-    connect: Optional[Callable[[str], Any]] = None,
+    db_url: str | None = None,
+    connect: Callable[[str], Any] | None = None,
 ) -> Iterator[Any]:
     """Yield this thread's persistent analytics connection.
 

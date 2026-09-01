@@ -16,7 +16,7 @@ turn without rescanning the tuple per entry.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from orchestrator.observability.trajectory_viewer.models import TurnUsageView
 
@@ -38,7 +38,7 @@ def model(run: TrajectoryRun) -> str:
     return run.run_usage.models[0]
 
 
-def cost_usd(run: TrajectoryRun) -> Optional[float]:
+def cost_usd(run: TrajectoryRun) -> float | None:
     if run.run_usage is None:
         return None
     return run.run_usage.cost_usd
@@ -58,8 +58,8 @@ def total_tokens(run: TrajectoryRun) -> int:
 
 def usage_for_turn(
     run: TrajectoryRun,
-    turn: Optional[int],
-) -> Optional[TurnUsageView]:
+    turn: int | None,
+) -> TurnUsageView | None:
     if turn is None:
         return None
     return run._turn_map.get(turn)

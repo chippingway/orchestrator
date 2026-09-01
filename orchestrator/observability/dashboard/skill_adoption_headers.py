@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import html
 from dataclasses import dataclass
-from typing import Optional
 
 from orchestrator.observability.dashboard.skill_adoption_columns import (
     SKILL_ADOPTION_COLUMNS,
@@ -41,7 +40,7 @@ class SkillAdoptionHeaderState:
 
 def skill_adoption_header_state(
     column: SkillAdoptionColumn,
-    active_key: Optional[str],
+    active_key: str | None,
     descending: bool,
 ) -> SkillAdoptionHeaderState:
     """What a click on one heading offers, and the arrow it carries."""
@@ -56,7 +55,7 @@ def skill_adoption_header_state(
 
 def skill_adoption_header_cell(
     column: SkillAdoptionColumn,
-    active_key: Optional[str],
+    active_key: str | None,
     descending: bool,
 ) -> str:
     """Draw one heading as the link that writes its selection."""
@@ -75,7 +74,7 @@ def skill_adoption_header_cell(
 
 
 def skill_adoption_header_html(
-    active_key: Optional[str],
+    active_key: str | None,
     descending: bool,
 ) -> str:
     """Assemble the header row the table's sorts are clicked from."""

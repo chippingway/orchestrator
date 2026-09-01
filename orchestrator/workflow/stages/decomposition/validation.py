@@ -16,14 +16,14 @@ the agent is told and the number it is judged against cannot drift apart.
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 _MAX_CHILDREN = 10
 
 
 def _split_manifest_children(
     manifest: dict,
-) -> Tuple[Optional[list], Optional[str]]:
+) -> Tuple[list | None, str | None]:
     """Return the bounded, non-empty children list for a split decision."""
     children = manifest.get("children")
     if not isinstance(children, list) or not children:
@@ -33,7 +33,7 @@ def _split_manifest_children(
     return children, None
 
 
-def _manifest_umbrella_error(manifest: dict) -> Optional[str]:
+def _manifest_umbrella_error(manifest: dict) -> str | None:
     """Validate the optional umbrella flag without truthy coercion."""
     umbrella = manifest.get("umbrella")
     if umbrella is not None and not isinstance(umbrella, bool):
@@ -47,7 +47,7 @@ def _is_nonempty_text(text_value: object) -> bool:
 
 def _manifest_child_text_error(
     child: object, child_index: int,
-) -> Optional[str]:
+) -> str | None:
     """Validate one child object and its required text fields."""
     if not isinstance(child, dict):
         return f"child {child_index} is not an object"
@@ -60,7 +60,7 @@ def _manifest_child_text_error(
 
 def _manifest_child_dependencies(
     child: dict, child_index: int,
-) -> Tuple[Optional[list], Optional[str]]:
+) -> Tuple[list | None, str | None]:
     """Normalize null dependencies and reject every other non-list shape."""
     dependencies = child.get("depends_on")
     if dependencies is None:
@@ -88,7 +88,7 @@ def _is_valid_dependency(
 
 def _manifest_child_error(
     child: object, child_index: int, child_count: int,
-) -> Optional[str]:
+) -> str | None:
     """Return the first structural error for one split child."""
     text_error = _manifest_child_text_error(child, child_index)
     if text_error is not None:
@@ -143,7 +143,7 @@ def _has_dep_cycle(children: list[dict]) -> bool:
     )
 
 
-def _manifest_children_error(children: list) -> Optional[str]:
+def _manifest_children_error(children: list) -> str | None:
     """Validate every child and then the dependency graph as a whole."""
     for child_index, child in enumerate(children):
         child_error = _manifest_child_error(
@@ -156,7 +156,7 @@ def _manifest_children_error(children: list) -> Optional[str]:
     return None
 
 
-def _split_manifest_error(manifest: dict) -> Optional[str]:
+def _split_manifest_error(manifest: dict) -> str | None:
     """Return the first split-only manifest validation error."""
     children, children_error = _split_manifest_children(manifest)
     if children_error is not None:

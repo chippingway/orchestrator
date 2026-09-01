@@ -23,7 +23,7 @@ loadable in an install carrying no viewer dependencies at all.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from orchestrator.observability.trajectory_viewer.page_setup import (
     NO_TRAJECTORIES_MESSAGE,
@@ -40,7 +40,7 @@ from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 RUN_TABLE_LIMIT = 200
 
 
-def render_no_trajectories(st: Any, log_path: Optional[Path]) -> None:
+def render_no_trajectories(st: Any, log_path: Path | None) -> None:
     """Say that the file held no records, and name the file it read."""
     st.info(NO_TRAJECTORIES_MESSAGE)
     if log_path is not None:

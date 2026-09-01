@@ -57,7 +57,6 @@ one the sweep asks for, and the held observation covers the window until it is.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -231,7 +230,7 @@ def _finished_terminal(
         )
 
 
-def _withheld(issue: Issue) -> Optional[str]:
+def _withheld(issue: Issue) -> str | None:
     """Why this visit may mark the cancellation and do nothing more.
 
     Two reasons, and neither of them is about the cycle: it ended when the

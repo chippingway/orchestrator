@@ -36,7 +36,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -92,13 +91,13 @@ class _LateAdjudication:
     """
 
     verdict: LateVerdict
-    category: Optional[LateVerdictCategory] = None
+    category: LateVerdictCategory | None = None
     rationale: str = ""
     question: str = ""
     children: tuple[dict, ...] = ()
 
     @property
-    def child_count(self) -> Optional[int]:
+    def child_count(self) -> int | None:
         """How many children a split proposed, and nothing for the others.
 
         The verdict event's contract, answered where the manifest is: a child
@@ -132,12 +131,12 @@ class _LateRun:
     spec: str = ""
     backend: str = ""
     extra_args: tuple[str, ...] = ()
-    session_id: Optional[str] = None
+    session_id: str | None = None
     cycle_id: int = 0
     source_sha: str = ""
     generation: int = 0
-    verdict: Optional[LateVerdict] = None
-    category: Optional[LateVerdictCategory] = None
+    verdict: LateVerdict | None = None
+    category: LateVerdictCategory | None = None
     question: str = ""
     children: tuple[dict, ...] = ()
 
@@ -312,9 +311,9 @@ class _LateContext:
     issue: Issue
     state: PinnedState
     generation: LateGeneration
-    retired_park: Optional[str] = None
+    retired_park: str | None = None
     answering: bool = False
-    staged_park: Optional[_StagedPark] = None
+    staged_park: _StagedPark | None = None
     displaced_hold: bool = False
     already_published: bool = False
 
@@ -364,8 +363,8 @@ class _LateAdjudicationRun:
     disposition: _LateDisposition
     generation: LateGeneration
     run: _LateRun
-    adjudication: Optional[_LateAdjudication] = None
-    guarded_split: Optional[_GuardedSplit] = None
+    adjudication: _LateAdjudication | None = None
+    guarded_split: _GuardedSplit | None = None
 
 
 @dataclass(frozen=True)
@@ -386,7 +385,7 @@ class _LateFingerprint:
 
     title_body_hash: str
     comment_hash: str
-    comment_watermark_id: Optional[int] = None
+    comment_watermark_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -440,5 +439,5 @@ class _LateContentSettlement:
     it still owes a write.
     """
 
-    disposition: Optional[_LateDisposition] = None
+    disposition: _LateDisposition | None = None
     persisted: bool = False

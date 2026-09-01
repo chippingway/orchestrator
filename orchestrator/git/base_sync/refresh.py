@@ -16,7 +16,6 @@ coordinator has to keep the pushed head and the reviewer's SHA in step.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -54,7 +53,7 @@ _DECIDED_STAGE_LABELS: tuple[str, ...] = (
 )
 
 
-def _issue_worktree_number(worktree: Path) -> Optional[int]:
+def _issue_worktree_number(worktree: Path) -> int | None:
     """Return an issue number only for a valid issue worktree directory."""
     if not worktree.is_dir() or not worktree.name.startswith("issue-"):
         return None
@@ -66,7 +65,7 @@ def _issue_worktree_number(worktree: Path) -> Optional[int]:
 
 def _base_sync_issue(
     gh: _client.GitHubClient, issue_number: int,
-) -> Optional[Issue]:
+) -> Issue | None:
     """Return the issue for a worktree, or None when it is not retrievable."""
     try:
         return gh.get_issue(issue_number)
@@ -234,7 +233,7 @@ def _state_holds_the_branch(
 
 def _worktree_behind_base(
     spec: config.RepoSpec, worktree: Path, issue_number: int,
-) -> Optional[int]:
+) -> int | None:
     """Return the base lag, or None when the comparison cannot be read."""
     base_ref = f"{spec.remote_name}/{spec.base_branch}"
     behind_result = _commands._git(
@@ -295,7 +294,7 @@ def _sync_discovered_worktree(
     spec: config.RepoSpec,
     worktree: Path,
     issue_number: int,
-    scheduler: Optional[IssueScheduler],
+    scheduler: IssueScheduler | None,
 ) -> None:
     """Sync one discovered worktree unless its handler is still active."""
     if scheduler is not None and scheduler.is_active(
@@ -319,7 +318,7 @@ def _refresh_base_and_worktrees(
     gh: _client.GitHubClient,
     spec: config.RepoSpec,
     *,
-    scheduler: Optional[IssueScheduler] = None,
+    scheduler: IssueScheduler | None = None,
 ) -> None:
     """Fetch `origin/<base>` once for the spec and bring every existing
     per-issue worktree up to date.

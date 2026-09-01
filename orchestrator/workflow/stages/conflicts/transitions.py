@@ -20,7 +20,6 @@ re-reading the code.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git.measurement import commits as _measurement_commits
@@ -214,7 +213,7 @@ def _emit_conflict_round_incremented(
     pr_number: int,
     new_round: int,
     outcome: str,
-    sha: Optional[str] = None,
+    sha: str | None = None,
 ) -> None:
     """Record a `conflict_round` audit event when the counter ticks.
 
@@ -244,7 +243,7 @@ def _hand_resolved_round_to_validating(
     pr_number,
     *,
     outcome: str,
-    sha: Optional[str],
+    sha: str | None,
 ) -> None:
     """Record a pushed conflict-resolution round and hand back to `validating`.
 
@@ -272,7 +271,7 @@ def _hand_resolved_round_to_validating(
     ctx.gh.write_pinned_state(ctx.issue, ctx.state)
 
 
-def _settles_the_held_round(outcome: str, sha: Optional[str]):
+def _settles_the_held_round(outcome: str, sha: str | None):
     """The round a hold owes this stage, named for the gate to write it down.
 
     A hold ends the tick: the resolution is committed, the issue is on

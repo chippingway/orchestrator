@@ -59,7 +59,7 @@ remembered every time the payload grows.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.workflow import state as _workflow_state
 from orchestrator.workflow.late_split import events as _events
@@ -218,6 +218,6 @@ def _details_of(event: _events.LateEvent) -> dict[str, Any]:
     }
 
 
-def _name_of(member: Optional[StrEnum]) -> Optional[str]:
+def _name_of(member: StrEnum | None) -> str | None:
     """Return the wire spelling of a vocabulary member, or None."""
     return None if member is None else str(member)

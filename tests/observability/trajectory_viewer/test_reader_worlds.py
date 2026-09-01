@@ -13,7 +13,6 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.observability.trajectory_viewer import log_paths
 
@@ -22,7 +21,7 @@ from tests.observability.analytics.analytics_reload_helpers import reload_analyt
 _LOG_PATH_ENV = "TRAJECTORY_LOG_PATH"
 
 
-def _resolved(log_path: Path) -> Optional[Path]:
+def _resolved(log_path: Path) -> Path | None:
     """The file a read names once the holder is re-parsed against it."""
     _, reparsed = _reload({_LOG_PATH_ENV: str(log_path)})
     return log_paths.configured_path(reparsed)

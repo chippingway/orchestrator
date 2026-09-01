@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from inspect import Parameter, Signature
-from typing import TYPE_CHECKING, Any, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 from orchestrator.observability.dashboard.charts.cost_layout import (
     HorizontalCostLayout,
@@ -61,10 +61,10 @@ class HorizontalBarRequest:
     """One call to the builder, after its pinned signature is bound."""
 
     rows: Sequence[tuple[str, str, float, str]]
-    title: Optional[str]
-    accent: Optional[str]
+    title: str | None
+    accent: str | None
     preserve_order: bool
-    height: Optional[int]
+    height: int | None
 
 
 def reverse_horizontal_bars(bars: HorizontalBars) -> HorizontalBars:
@@ -80,7 +80,7 @@ def reverse_horizontal_bars(bars: HorizontalBars) -> HorizontalBars:
 
 def horizontal_bars_data(
     rows: Sequence[tuple[str, str, float, str]],
-    accent: Optional[str],
+    accent: str | None,
     preserve_order: bool,
 ) -> HorizontalBars:
     """Rank the rows, unless the caller ordered them, and flip them."""

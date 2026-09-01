@@ -27,7 +27,7 @@ default install, which does not carry it.
 from __future__ import annotations
 
 from datetime import date
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from orchestrator.observability.analytics.query.overview_models import (
     TimeSeriesPoint,
@@ -87,9 +87,9 @@ def add_token_stack_trace(
 
 def prepare_usage_data(
     points: Sequence[TimeSeriesPoint],
-    backend_rows_by_day: Optional[DailyTokenValues],
+    backend_rows_by_day: DailyTokenValues | None,
     mode: str,
-) -> Optional[UsageChartData]:
+) -> UsageChartData | None:
     """Shape the window into a figure's days, or nothing to draw."""
     if not points and not backend_rows_by_day:
         return None
@@ -153,7 +153,7 @@ def add_token_type_usage_traces(
 def add_usage_stack_traces(
     figure: go.Figure,
     usage: UsageChartData,
-    backend_rows_by_day: Optional[DailyTokenValues],
+    backend_rows_by_day: DailyTokenValues | None,
     mode: str,
 ) -> None:
     """Stack the window in the mode the page asked for, where it can."""

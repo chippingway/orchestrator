@@ -30,7 +30,6 @@ the analytics record exists even for the paths that park.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -57,7 +56,7 @@ def _run_reviewer_round(
     issue: Issue,
     state: PinnedState,
     pr_number,
-) -> Optional[_models._ReviewerRun]:
+) -> _models._ReviewerRun | None:
     round_n = int(state.get(_state._REVIEW_ROUND) or 0)
     if round_n >= config.MAX_REVIEW_ROUNDS:
         _requested_changes._park_review_cap(gh, issue, state, round_n)

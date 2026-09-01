@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from github.Issue import Issue
 from github.IssueComment import IssueComment
@@ -46,12 +46,12 @@ class PinnedState:
     attribute used throughout the workflow.
     """
 
-    comment_id: Optional[int] = None
+    comment_id: int | None = None
     state_data: dict = field(default_factory=dict)
 
     def __init__(
         self,
-        comment_id: Optional[int] = None,
+        comment_id: int | None = None,
         state_data: Any = _MISSING_STATE,
         **legacy_fields: Any,
     ) -> None:
@@ -102,9 +102,9 @@ def pinned_state_body(state_data: dict) -> str:
 def pinned_state_from_comment(
     issue_comment: IssueComment,
     *,
-    trusted_login: Optional[str],
+    trusted_login: str | None,
     issue_number: int,
-) -> Optional[PinnedState]:
+) -> PinnedState | None:
     """Parse one authenticated, state-only pinned comment candidate."""
     body = issue_comment.body or ""
     if PINNED_STATE_MARKER not in body:
@@ -168,7 +168,7 @@ class GitHubStateMixin(GitHubIssueMixin):
     def comments_after(
         self,
         issue: Issue,
-        after_id: Optional[int],
+        after_id: int | None,
     ) -> list[IssueComment]:
         """Return non-state issue comments newer than the watermark."""
         issue_comments: list[IssueComment] = []
@@ -179,9 +179,9 @@ class GitHubStateMixin(GitHubIssueMixin):
                 issue_comments.append(issue_comment)
         return issue_comments
 
-    def latest_comment_id(self, issue: Issue) -> Optional[int]:
+    def latest_comment_id(self, issue: Issue) -> int | None:
         """Return the largest issue-comment id, when any comment exists."""
-        latest_id: Optional[int] = None
+        latest_id: int | None = None
         for issue_comment in issue.get_comments():
             if latest_id is None or issue_comment.id > latest_id:
                 latest_id = issue_comment.id

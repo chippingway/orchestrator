@@ -21,7 +21,7 @@ scan that would have matched.
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Sequence
 
 AGENT_EXIT_CONDITION = "event = 'agent_exit'"
 
@@ -40,7 +40,7 @@ def prepend_where_condition(where: str, condition: str) -> str:
     return f" WHERE {condition}"
 
 
-def agent_event_excluded(events: Optional[Sequence[str]]) -> bool:
+def agent_event_excluded(events: Sequence[str] | None) -> bool:
     """True when the active event filter excludes `agent_exit` rows.
 
     Functions that query `analytics_agent_runs` cannot push an

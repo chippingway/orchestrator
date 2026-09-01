@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from orchestrator import config
 from orchestrator.git import commands
@@ -168,7 +168,7 @@ def _is_prefixed_subject(subject: str) -> bool:
     return bool(_PREFIXED_RE.match(subject or ""))
 
 
-def _subject_prefix(subject: str) -> Optional[str]:
+def _subject_prefix(subject: str) -> str | None:
     """Bare prefix token of a `<token>[(scope)][!]: ...` subject, or None."""
     prefix_match = _PREFIX_TOKEN_RE.match(subject or "")
     return prefix_match.group(1) if prefix_match else None

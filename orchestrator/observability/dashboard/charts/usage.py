@@ -27,7 +27,7 @@ the default install, which does not carry it.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from orchestrator.observability.analytics.query.cost_models import (
     BackendEfficiencyRow,
@@ -56,9 +56,9 @@ if TYPE_CHECKING:
 def usage_over_time(
     points: Sequence[TimeSeriesPoint],
     *,
-    backend_rows_by_day: Optional[DailyTokenValues] = None,
+    backend_rows_by_day: DailyTokenValues | None = None,
     mode: str = "type",
-    title: Optional[str] = "Spend & token usage over time",
+    title: str | None = "Spend & token usage over time",
 ) -> go.Figure:
     """Build stacked daily token usage with a cost-line overlay."""
     from plotly import graph_objects as go

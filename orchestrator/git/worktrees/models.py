@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 
@@ -43,7 +42,7 @@ class IssueArtifacts:
 
     spec: config.RepoSpec
     issue_number: int
-    worktree: Optional[Path]
+    worktree: Path | None
     branches: tuple[str, ...]
 
 

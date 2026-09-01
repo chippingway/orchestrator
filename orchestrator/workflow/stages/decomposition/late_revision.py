@@ -81,7 +81,6 @@ from __future__ import annotations
 import logging
 from dataclasses import replace
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -224,7 +223,7 @@ _UNANSWERED_PARK = (
 
 def _stranded_by_effects(
     context: _LateContext,
-) -> Optional[_LateContentSettlement]:
+) -> _LateContentSettlement | None:
     """Refuse to replace a candidate whose split has already acted outside.
 
     A revision ends in a NEW candidate under a new generation, and everything
@@ -375,7 +374,7 @@ def _resumed(
 
 def _latched_close(
     context: _LateContext,
-) -> Optional[_LateContentSettlement]:
+) -> _LateContentSettlement | None:
     """Whether a poll's own reading ends this revision instead of running it.
 
     The latch alone, like every barrier whose step is too tight for a request:

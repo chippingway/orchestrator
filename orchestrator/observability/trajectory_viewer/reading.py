@@ -27,7 +27,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.observability.trajectory_viewer import parsing
 from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
@@ -39,7 +38,7 @@ from orchestrator.observability.trajectory_viewer.runs import TrajectoryRun
 log = logging.getLogger("orchestrator.trajectory_reader")
 
 
-def parse_trajectory_line(line: str, *, sequence: int) -> Optional[TrajectoryRun]:
+def parse_trajectory_line(line: str, *, sequence: int) -> TrajectoryRun | None:
     if not line.strip():
         return None
     try:
@@ -59,7 +58,7 @@ def read_trajectory_file(path: Path) -> list[TrajectoryRun]:
     return runs
 
 
-def read_trajectories(log_path: Optional[Path]) -> list[TrajectoryRun]:
+def read_trajectories(log_path: Path | None) -> list[TrajectoryRun]:
     if log_path is None:
         return []
     try:

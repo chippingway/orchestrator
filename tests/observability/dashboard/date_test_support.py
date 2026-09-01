@@ -18,7 +18,7 @@ the same reason.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 
 # The region the bar's own card opens, and the five slots inside it, named as
@@ -76,7 +76,7 @@ class FakeStreamlit:
             self.session_state.preset = preset
         self.open_region = ""
         self.bordered: list[bool] = []
-        self.column_request: Optional[tuple] = None
+        self.column_request: tuple | None = None
         self.slots: list[RecordingRegion] = []
         self.drawn: list[tuple[str, str, Any]] = []
         self._chosen = chosen

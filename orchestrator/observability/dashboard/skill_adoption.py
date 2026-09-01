@@ -28,7 +28,7 @@ keep their own.
 from __future__ import annotations
 
 import html
-from typing import Optional, Sequence
+from typing import Sequence
 
 from orchestrator.observability.analytics.query.skill_models import (
     SkillAdoptionRow,
@@ -66,7 +66,7 @@ SKILL_ADOPTION_EXTRA_CSS = """
 def skill_adoption_html(
     rows: Sequence[SkillAdoptionRow],
     *,
-    sort_key: Optional[str] = None,
+    sort_key: str | None = None,
     descending: bool = False,
     empty_message: str = SKILL_ADOPTION_EMPTY_MESSAGE,
 ) -> str:

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional, Sequence
+from typing import Sequence
 
 from orchestrator.observability.dashboard.charts.usage_bands import (
     BACKEND_MODE,
@@ -80,7 +80,7 @@ def usage_stack_totals(
     days: Sequence[date],
     daily: DailyTokenValues,
     *,
-    backend_rows_by_day: Optional[DailyTokenValues],
+    backend_rows_by_day: DailyTokenValues | None,
     mode: str,
 ) -> list[float]:
     """Return each day's stack height, measured in the drawn mode."""

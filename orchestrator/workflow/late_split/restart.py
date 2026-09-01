@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import dataclasses
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split import identity as _identity
@@ -62,7 +62,7 @@ class LateRestartTarget(StrEnum):
     IMPLEMENTING = WorkflowLabel.IMPLEMENTING
 
 
-def restart_target(given: Any) -> Optional[LateRestartTarget]:
+def restart_target(given: Any) -> LateRestartTarget | None:
     """Return the label a restart may apply, or None for anything else."""
     try:
         return LateRestartTarget(given)

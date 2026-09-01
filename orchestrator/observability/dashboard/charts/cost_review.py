@@ -45,7 +45,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from orchestrator.observability.analytics.query.cost_models import (
     ReviewRoundBucketRow,
@@ -142,7 +142,7 @@ def reverse_review_cost_bars(bars: ReviewCostBars) -> ReviewCostBars:
 
 def review_cost_bars(
     rows: Sequence[ReviewRoundBucketRow],
-) -> Optional[ReviewCostBars]:
+) -> ReviewCostBars | None:
     """Order the rounds, label them, and flip them, or answer nothing."""
     by_bucket = {row.bucket: row for row in rows}
     ordered = [
@@ -228,7 +228,7 @@ def review_cost_traces(
 def cost_by_review_round(
     rows: Sequence[ReviewRoundBucketRow],
     *,
-    height: Optional[int] = None,
+    height: int | None = None,
 ) -> go.Figure:
     """Build grouped cache and no-cache cost bars by review round."""
     from plotly import graph_objects as go

@@ -10,7 +10,6 @@ cache, and the paired audit / analytics stage-enter hook.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github import Auth, Github, GithubException
 from github.Issue import Issue
@@ -55,11 +54,11 @@ class GitHubClient(
 
     def __init__(
         self,
-        token: Optional[str] = None,
-        repo_slug: Optional[str] = None,
-        repo_spec: Optional["config.RepoSpec"] = None,
+        token: str | None = None,
+        repo_slug: str | None = None,
+        repo_spec: config.RepoSpec | None = None,
         *,
-        bot_login: Optional[str] = None,
+        bot_login: str | None = None,
     ) -> None:
         slug = repo_slug or config.REPO if repo_spec is None else repo_spec.slug
         if token is None:
@@ -101,8 +100,8 @@ class GitHubClient(
         name: str,
         *,
         throttle_absent: bool = False,
-        absent_names: Optional[list[str]] = None,
-    ) -> Optional[Label]:
+        absent_names: list[str] | None = None,
+    ) -> Label | None:
         """Resolve and cache a label, while leaving failures retryable.
 
         Every failure is retried eventually; the only question is how soon.
@@ -144,7 +143,7 @@ class GitHubClient(
         name: str,
         error: GithubException,
         throttle_absent: bool,
-        absent_names: Optional[list[str]],
+        absent_names: list[str] | None,
     ) -> None:
         """Report a label the sweep could not resolve, and when to re-ask."""
         if throttle_absent and error.status == _HTTP_NOT_FOUND:

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.usage import protocol
 
@@ -38,13 +38,13 @@ def nested_value(payload: dict[str, Any], path: protocol.ModelPath) -> Any:
     return current
 
 
-def known_model(candidate: Any) -> Optional[str]:
+def known_model(candidate: Any) -> str | None:
     if isinstance(candidate, str) and candidate and candidate != protocol.UNKNOWN:
         return candidate
     return None
 
 
-def nonempty_string(candidate: Any) -> Optional[str]:
+def nonempty_string(candidate: Any) -> str | None:
     if isinstance(candidate, str) and candidate:
         return candidate
     return None
@@ -53,7 +53,7 @@ def nonempty_string(candidate: Any) -> Optional[str]:
 def first_model_at_paths(
     event: dict[str, Any],
     paths: tuple[protocol.ModelPath, ...],
-) -> Optional[str]:
+) -> str | None:
     for path in paths:
         model = known_model(nested_value(event, path))
         if model is not None:
@@ -64,7 +64,7 @@ def first_model_at_paths(
 def first_string_at_paths(
     event: dict[str, Any],
     paths: tuple[protocol.ModelPath, ...],
-) -> Optional[str]:
+) -> str | None:
     for path in paths:
         text = nonempty_string(nested_value(event, path))
         if text is not None:
@@ -78,7 +78,7 @@ def claude_model_name(event: dict[str, Any]) -> str:
 
 def codex_model_name(
     event: dict[str, Any],
-    usage: Optional[dict[str, Any]],
+    usage: dict[str, Any] | None,
 ) -> str:
     event_model = first_model_at_paths(event, CODEX_MODEL_PATHS)
     if event_model is not None:

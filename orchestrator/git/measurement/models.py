@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Optional
 
 
 class MeasurementFailure(StrEnum):
@@ -63,7 +62,7 @@ class FrozenCommit:
     """
 
     sha: str = ""
-    failure: Optional[MeasurementFailure] = None
+    failure: MeasurementFailure | None = None
 
     @property
     def is_frozen(self) -> bool:
@@ -92,8 +91,8 @@ class AdditionMeasurement:
 
     base_sha: str = ""
     candidate_sha: str = ""
-    additions: Optional[int] = None
-    failure: Optional[MeasurementFailure] = None
+    additions: int | None = None
+    failure: MeasurementFailure | None = None
 
     @property
     def is_measured(self) -> bool:

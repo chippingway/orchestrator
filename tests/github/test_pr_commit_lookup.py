@@ -25,7 +25,6 @@ pull requests on it, because only one of the two is safe to publish over.
 from __future__ import annotations
 
 import unittest
-from typing import Optional
 from unittest.mock import MagicMock
 
 from github import GithubException
@@ -71,7 +70,7 @@ class _CommitListPR:
         number: int = _PR_NUMBER,
         head_sha: str = _MOVED_HEAD_SHA,
         commit_shas: tuple = (),
-        error: Optional[Exception] = None,
+        error: Exception | None = None,
     ) -> None:
         self.number = number
         self.head = MagicMock(sha=head_sha)

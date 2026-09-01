@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from orchestrator.observability.usage import (
     codex_rows,
@@ -27,7 +27,7 @@ class CodexPrice:
     rates: protocol.CodexRateMap
     usage: protocol.TokenBucket
 
-    def estimate(self) -> Optional[float]:
+    def estimate(self) -> float | None:
         input_multiplier, output_multiplier = self._multipliers()
         input_cost = self._input_cost(input_multiplier)
         if input_cost is None:
@@ -44,7 +44,7 @@ class CodexPrice:
             self.rates.get(protocol.LONG_CONTEXT_OUTPUT_MULT) or 1.0,
         )
 
-    def _input_cost(self, multiplier: float) -> Optional[float]:
+    def _input_cost(self, multiplier: float) -> float | None:
         cached_tokens = self.usage[protocol.CACHED]
         cached_rate = self.rates[protocol.CACHED]
         if cached_tokens > 0 and cached_rate is None:
@@ -57,7 +57,7 @@ class CodexPrice:
 def estimate_cost(
     model: str,
     usage: protocol.TokenBucket,
-) -> Optional[float]:
+) -> float | None:
     rates = prices.codex_rates(model)
     billable_tokens = usage[protocol.INPUT] + usage[protocol.OUTPUT]
     if rates is None or billable_tokens <= 0:
@@ -65,8 +65,8 @@ def estimate_cost(
     return CodexPrice(rates, usage).estimate()
 
 
-def reported_turn_count(events: list[dict[str, Any]]) -> Optional[int]:
-    reported: Optional[int] = None
+def reported_turn_count(events: list[dict[str, Any]]) -> int | None:
+    reported: int | None = None
     for event in events:
         for payload in event_stream.walk_objects(event):
             turns_value = payload.get("num_turns")
@@ -75,7 +75,7 @@ def reported_turn_count(events: list[dict[str, Any]]) -> Optional[int]:
     return reported
 
 
-def completed_turn_count(events: list[dict[str, Any]]) -> Optional[int]:
+def completed_turn_count(events: list[dict[str, Any]]) -> int | None:
     count = 0
     for event in events:
         event_type = event.get(protocol.TYPE)
@@ -84,7 +84,7 @@ def completed_turn_count(events: list[dict[str, Any]]) -> Optional[int]:
     return count or None
 
 
-def turn_count(events: list[dict[str, Any]]) -> Optional[int]:
+def turn_count(events: list[dict[str, Any]]) -> int | None:
     reported = reported_turn_count(events)
     if reported is not None:
         return reported
@@ -96,13 +96,13 @@ class CodexUsageSummary:
     events: list[dict[str, Any]]
     usage_events: list[protocol.CodexUsageEvent]
     usage: protocol.TokenBucket
-    model: Optional[str]
+    model: str | None
 
     @classmethod
     def build(
         cls,
         events: list[dict[str, Any]],
-        fallback_model: Optional[str],
+        fallback_model: str | None,
     ) -> CodexUsageSummary:
         usage_events = codex_rows.codex_usage_events(events)
         last_model, usage = codex_rows.last_codex_usage(usage_events)

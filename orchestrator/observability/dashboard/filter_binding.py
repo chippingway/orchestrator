@@ -16,14 +16,14 @@ must match nothing.
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Sequence
 
 from orchestrator.observability.dashboard import scoped_reads
 
 
 def filter_list(
-    filter_values: Optional[Sequence[str]],
-) -> Optional[list[str]]:
+    filter_values: Sequence[str] | None,
+) -> list[str] | None:
     """Read a cached filter tuple back as the read model's list argument."""
     if filter_values is None:
         return None

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from github.Issue import Issue
 from github.IssueComment import IssueComment
@@ -192,8 +192,8 @@ def iter_new_non_pr_issues(
 def issue_query_options(
     *,
     issue_state: str,
-    since: Optional[datetime],
-    label: Optional[Label] = None,
+    since: datetime | None,
+    label: Label | None = None,
 ) -> dict[str, Any]:
     """Build common open/closed issue query options."""
     query_options: dict[str, Any] = {
@@ -211,7 +211,7 @@ def issue_query_options(
 def set_workflow_label(
     client: Any,
     issue: Issue,
-    new_label: Optional[str],
+    new_label: str | None,
     *,
     guarded: bool = True,
 ) -> None:
@@ -258,7 +258,7 @@ def set_workflow_label(
 _LABELED_EVENT = "labeled"
 
 
-def _last_workflow_labeling(issue: Issue, bot_login: str) -> Optional[str]:
+def _last_workflow_labeling(issue: Issue, bot_login: str) -> str | None:
     """The newest workflow label THIS orchestrator applied to the issue.
 
     The walk is oldest-first, which is the order the events endpoint serves,
@@ -282,7 +282,7 @@ def _last_workflow_labeling(issue: Issue, bot_login: str) -> Optional[str]:
     return latest
 
 
-def _workflow_label_applied(issue_event: Any, bot_login: str) -> Optional[str]:
+def _workflow_label_applied(issue_event: Any, bot_login: str) -> str | None:
     """The workflow label one event says this orchestrator applied, or None."""
     if getattr(issue_event, "event", None) != _LABELED_EVENT:
         return None
@@ -299,7 +299,7 @@ class GitHubIssueMixin:
     workflow_label = labels.WORKFLOW_LABEL_METHOD
     set_workflow_label = set_workflow_label
 
-    def last_workflow_label_applied(self, issue: Issue) -> Optional[str]:
+    def last_workflow_label_applied(self, issue: Issue) -> str | None:
         """The workflow label most recently APPLIED to this issue, or None.
 
         The one question about an issue's PAST this client answers, and it is
@@ -344,7 +344,7 @@ class GitHubIssueMixin:
 
     def list_pollable_issues(
         self,
-        since: Optional[datetime] = None,
+        since: datetime | None = None,
     ) -> Iterable[Issue]:
         """Yield open issues, plus the closed ones a sweep still owes a pass.
 
@@ -376,7 +376,7 @@ class GitHubIssueMixin:
         event: str,
         *,
         issue_number: int,
-        stage: Optional[str] = None,
+        stage: str | None = None,
         **extras: Any,
     ) -> None:
         """Record an event in memory and in the optional audit JSONL sink."""
@@ -421,7 +421,7 @@ class GitHubIssueMixin:
             labels=validated_labels,
         )
 
-    def find_issue_carrying(self, marker: str) -> Optional[Issue]:
+    def find_issue_carrying(self, marker: str) -> Issue | None:
         """Return the issue this orchestrator created carrying `marker`.
 
         The lookup a create that returned and a process that died a statement
@@ -460,7 +460,7 @@ class GitHubIssueMixin:
 
     def _iter_closed_sweep_issues(
         self,
-        since: Optional[datetime],
+        since: datetime | None,
         seen_numbers: set[int],
     ) -> Iterable[Issue]:
         """Yield the closed issues still carrying a swept workflow label.

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import contextlib
 import json
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from orchestrator.observability.usage import protocol
 
@@ -48,7 +48,7 @@ def walk_objects(node: Any) -> Iterable[dict[str, Any]]:
             yield from walk_objects(child)
 
 
-def coerce_reported_cost(raw_cost: Any) -> Optional[float]:
+def coerce_reported_cost(raw_cost: Any) -> float | None:
     if isinstance(raw_cost, (int, float)):
         return float(raw_cost)
     if not isinstance(raw_cost, str):
@@ -59,8 +59,8 @@ def coerce_reported_cost(raw_cost: Any) -> Optional[float]:
         return None
 
 
-def find_last_reported_cost(events: list[dict[str, Any]]) -> Optional[float]:
-    last_cost: Optional[float] = None
+def find_last_reported_cost(events: list[dict[str, Any]]) -> float | None:
+    last_cost: float | None = None
     for event in events:
         for payload in walk_objects(event):
             reported_cost = coerce_reported_cost(payload.get("total_cost_usd"))
@@ -78,10 +78,10 @@ def dedup_models(models: Iterable[str]) -> tuple[str, ...]:
 
 
 def select_cost(
-    reported: Optional[float],
-    estimated: Optional[float],
+    reported: float | None,
+    estimated: float | None,
     has_usage: bool,
-) -> tuple[Optional[float], str]:
+) -> tuple[float | None, str]:
     if reported is not None:
         return reported, "reported"
     if estimated is not None:

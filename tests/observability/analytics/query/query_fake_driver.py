@@ -19,13 +19,13 @@ from __future__ import annotations
 import contextlib
 import sys
 from types import SimpleNamespace
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Iterator
 from unittest.mock import patch
 
 _DRIVER = "psycopg"
 
 # One recorded dial: the URL asked for and the keywords it was asked with.
-_Dial = tuple[Optional[str], dict]
+_Dial = tuple[str | None, dict]
 
 # Canned rows, and the same keyed by a fragment of the scan that asks for them.
 _Rows = tuple[tuple, ...]
@@ -82,13 +82,13 @@ class FakeConnection:
     def __init__(
         self,
         rows: _Rows = (),
-        rows_for: Optional[_RoutedRows] = None,
+        rows_for: _RoutedRows | None = None,
     ) -> None:
         self.rows = rows
         self.rows_for = dict(rows_for or {})
         self.executed: list[tuple[str, tuple]] = []
-        self.raise_on_execute: Optional[Exception] = None
-        self.raise_on_close: Optional[Exception] = None
+        self.raise_on_execute: Exception | None = None
+        self.raise_on_close: Exception | None = None
         self.close_called = 0
 
     def rows_for_scan(self, sql: str) -> _Rows:
@@ -106,7 +106,7 @@ class FakeConnection:
         if self.raise_on_close is not None:
             raise self.raise_on_close
 
-    def as_connect(self, _url: Optional[str]) -> FakeConnection:
+    def as_connect(self, _url: str | None) -> FakeConnection:
         """Serve as the owner's `connect(db_url) -> conn` factory."""
         return self
 
@@ -129,7 +129,7 @@ class FakeConnect:
         self._pending = list(connections)
         self.calls: list[_Dial] = []
 
-    def __call__(self, url: Optional[str], **connect_kwargs: Any) -> Any:
+    def __call__(self, url: str | None, **connect_kwargs: Any) -> Any:
         self.calls.append((url, connect_kwargs))
         if not self._pending:
             raise AssertionError(f"connect was called again for {url!r}")
@@ -139,13 +139,13 @@ class FakeConnect:
         return opened
 
     @property
-    def urls(self) -> list[Optional[str]]:
+    def urls(self) -> list[str | None]:
         """The URLs it was asked for, in order."""
         return [url for url, _ in self.calls]
 
 
 @contextlib.contextmanager
-def patched_driver(connect: Optional[Callable[..., Any]] = None) -> Iterator[None]:
+def patched_driver(connect: Callable[..., Any] | None = None) -> Iterator[None]:
     """Answer the deferred `import psycopg` with a stand-in, or with nothing.
 
     An omitted `connect` installs no driver at all, which is the uninstalled

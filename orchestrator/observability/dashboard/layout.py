@@ -15,7 +15,7 @@ punched in the card around it.
 """
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.dashboard.palette import (
     CARD_BG,
@@ -36,7 +36,7 @@ _MARGIN_TOP = 32
 _MARGIN_TOP_COMPACT = 16
 
 
-def base_layout(title: Optional[str] = None) -> dict[str, Any]:
+def base_layout(title: str | None = None) -> dict[str, Any]:
     """Return the shared Plotly `layout` dict for a chart."""
     layout: dict[str, Any] = {
         "paper_bgcolor": CARD_BG,

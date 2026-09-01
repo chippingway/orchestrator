@@ -12,7 +12,6 @@ by afterwards.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git.measurement import commits as _measurement_commits
@@ -50,7 +49,7 @@ _DAMAGED_RECORD_PARK = (
 
 def _candidate_commit(
     gate: _records._Gate, recorded: LateGeneration,
-) -> Optional[FrozenCommit]:
+) -> FrozenCommit | None:
     """The commit this tick decides about, or None when the gate is off for it.
 
     `DECOMPOSE=off` is a decision about NEW work: it stops a candidate ever
@@ -211,7 +210,7 @@ def _reconciled_candidate(
 
 def _frozen_pair(
     gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
-) -> Optional[LateGeneration]:
+) -> LateGeneration | None:
     """Persist the exact pair a count is taken over, or park without one.
 
     The write is the point of the step. It goes out BEFORE the count, carrying
@@ -255,7 +254,7 @@ def _frozen_pair(
 
 def _refrozen_base(
     gate: _records._Gate, recorded: LateGeneration,
-) -> Optional[LateGeneration]:
+) -> LateGeneration | None:
     """Prove the recorded base is readable here, or park without re-reading it.
 
     The one question a reused pair still has to ask, because the pair is
@@ -283,7 +282,7 @@ def _refrozen_base(
 
 def _unusable_record(
     gate: _records._Gate, recorded: LateGeneration,
-) -> Optional[str]:
+) -> str | None:
     """Why a recorded measurement may not be acted on, or None if it may.
 
     Named rather than counted, because the park has to tell a human which

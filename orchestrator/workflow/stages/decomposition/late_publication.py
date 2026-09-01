@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -95,7 +94,7 @@ class _PublicationReading:
     """
 
     state: str = ""
-    head: Optional[str] = None
+    head: str | None = None
     refused: bool = False
     # Whether the caller's own receipt is already on this pull request's
     # thread. Asked inside the same guarded read as the other two, because it
@@ -110,7 +109,7 @@ class _PublicationReading:
     # THIS object, and closing a freshly fetched one instead spends the proof
     # on a change nobody looked at. None on a refusal, where there is nothing
     # to act on.
-    pull_request: Optional[object] = None
+    pull_request: object | None = None
 
 
 def _publication_undone(

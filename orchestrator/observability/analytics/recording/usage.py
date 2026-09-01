@@ -11,7 +11,6 @@ per-issue meter fold the same object the record was built from.
 
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator.observability.analytics import sink
 from orchestrator.observability.analytics.recording.models import AgentExitContext
@@ -20,7 +19,7 @@ from orchestrator.observability.usage import metrics as usage_metrics
 
 def parse_agent_exit_usage(
     context: AgentExitContext,
-) -> Optional[usage_metrics.UsageMetrics]:
+) -> usage_metrics.UsageMetrics | None:
     """Parse usage and attach it to the result, failing open on bad streams."""
     try:
         metrics = usage_metrics.parse_agent_usage(

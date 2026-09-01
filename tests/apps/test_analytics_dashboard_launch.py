@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from importlib import import_module
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import patch
 
 from tests.observability.dashboard.reload_helpers import (
@@ -111,7 +111,7 @@ class ScriptPathLaunchTest(unittest.TestCase):
     def _launched(
         self,
         parts: tuple[str, ...],
-        decoy_root: Optional[str] = None,
+        decoy_root: str | None = None,
     ) -> dict[str, Any]:
         """Run one target the way a launcher does, and read the shim back."""
         script = _REPO_ROOT.joinpath(*parts)

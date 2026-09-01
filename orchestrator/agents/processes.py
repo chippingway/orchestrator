@@ -18,7 +18,7 @@ import threading
 import time
 from contextlib import contextmanager, suppress
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator
 
 from orchestrator.agents import models as _agent_models
 
@@ -53,7 +53,7 @@ def registered(proc: subprocess.Popen) -> Iterator[subprocess.Popen]:
 def communicate_bounded(
     proc: subprocess.Popen,
     timeout: float,
-) -> Optional[tuple[str, str]]:
+) -> tuple[str, str] | None:
     """Communicate within a wall-clock cap, returning ``None`` on timeout."""
     try:
         stdout, stderr = proc.communicate(timeout=timeout)

@@ -29,7 +29,7 @@ import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator
 
 from orchestrator import config
 from orchestrator.git import commands, locks
@@ -61,7 +61,7 @@ class _GitAuthSession:
     env: dict[str, str]
 
 
-def _resolved_git_token(spec: config.RepoSpec, operation: str) -> Optional[str]:
+def _resolved_git_token(spec: config.RepoSpec, operation: str) -> str | None:
     """Resolve a per-repository token and log an operation-specific error."""
     token = config._resolve_github_token(spec.slug)
     if token:
@@ -284,7 +284,7 @@ def _authed_target_fetch(
 
 def _remote_branch_tip(
     spec: config.RepoSpec, worktree: Path, branch: str,
-) -> Optional[str]:
+) -> str | None:
     """Ask the REMOTE what `branch` is at, ignoring every local ref.
 
     For the caller that has to measure an agent's work against a base it
@@ -328,8 +328,8 @@ def _remote_branch_sha(
     worktree: Path,
     branch: str,
     ref: str,
-    force_with_lease: Optional[str],
-) -> Optional[str]:
+    force_with_lease: str | None,
+) -> str | None:
     """Return the expected remote SHA, or None when it cannot be read."""
     if force_with_lease is not None:
         return force_with_lease
@@ -357,7 +357,7 @@ def _push_with_auth(
     auth_session: _GitAuthSession,
     worktree: Path,
     branch: str,
-    force_with_lease: Optional[str],
+    force_with_lease: str | None,
     revision: str,
 ) -> bool:
     """Push one branch through an established askpass session."""
@@ -392,8 +392,8 @@ def _push_with_auth(
 def _push_branch(
     spec: config.RepoSpec, worktree: Path, branch: str,
     *,
-    force_with_lease: Optional[str] = None,
-    revision: Optional[str] = None,
+    force_with_lease: str | None = None,
+    revision: str | None = None,
 ) -> bool:
     """Push via GIT_ASKPASS so the token never appears in argv.
 
@@ -546,7 +546,7 @@ class _RefUpdate:
 
 def _remote_ref_sha(
     spec: config.RepoSpec, worktree: Path, ref: str,
-) -> Optional[str]:
+) -> str | None:
     """Ask the REMOTE what one fully-qualified ref resolves to.
 
     The read every snapshot decision is made on, and it is taken from the

@@ -18,7 +18,6 @@ live only on the approval by then.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git.measurement import commits as _measurement_commits
@@ -98,7 +97,7 @@ _UNPUBLISHED_DEBT_PARK = (
 
 
 def _owes_a_published_push(
-    label: Optional[WorkflowLabel], state: PinnedState,
+    label: WorkflowLabel | None, state: PinnedState,
 ) -> bool:
     """Whether a stage is holding an approval whose push never happened.
 
@@ -191,7 +190,7 @@ _MOVED_STAGE_DEBT_PARK = (
 
 
 def _moved_stage_debt(
-    gate: _records._Gate, label: Optional[WorkflowLabel],
+    gate: _records._Gate, label: WorkflowLabel | None,
 ) -> bool:
     """Stop a tick whose debt belongs to a stage the label has left.
 
@@ -236,7 +235,7 @@ def _moved_stage_debt(
 
 
 def _publishes_the_debt(
-    gate: _records._Gate, label: Optional[WorkflowLabel],
+    gate: _records._Gate, label: WorkflowLabel | None,
 ) -> bool:
     """Pay an approval the tick that took it never got to, before the stage.
 

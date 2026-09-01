@@ -68,7 +68,6 @@ after.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import pull_requests as _pull_requests
@@ -140,7 +139,7 @@ def _drain_plan_pr(run: _models._DiscussionRun) -> bool:
     return True
 
 
-def _plan_pr(run: _models._DiscussionRun) -> Optional[object]:
+def _plan_pr(run: _models._DiscussionRun) -> object | None:
     """The pull request the plan was published on, or None having said why not.
 
     None is a read that did not happen rather than a pull request that is not

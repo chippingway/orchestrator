@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from orchestrator.observability.dashboard.charts.primitives import (
     HORIZONTAL_BAR_EXTRA_HEIGHT,
@@ -49,10 +49,10 @@ class HorizontalCostLayout:
     """What one horizontal cost panel is framed and sized by."""
 
     row_count: int
-    height: Optional[int] = None
-    title: Optional[str] = None
-    barmode: Optional[str] = None
-    legend: Optional[dict[str, object]] = None
+    height: int | None = None
+    title: str | None = None
+    barmode: str | None = None
+    legend: dict[str, object] | None = None
     row_height: int = HORIZONTAL_BAR_ROW_HEIGHT
     extra_height: int = HORIZONTAL_BAR_EXTRA_HEIGHT
 
@@ -96,8 +96,8 @@ class CostBarTrace:
     y_ticks: Sequence[str]
     color: object
     hover_label: str
-    offsetgroup: Optional[str] = None
-    totals: Optional[Sequence[float]] = None
+    offsetgroup: str | None = None
+    totals: Sequence[float] | None = None
 
 
 def cost_bar_trace(options: CostBarTrace) -> go.Bar:

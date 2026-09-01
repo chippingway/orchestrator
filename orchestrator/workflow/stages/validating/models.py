@@ -37,7 +37,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from github.Issue import Issue
 
@@ -80,7 +80,7 @@ class _DevFixRun:
     worktree: Path
     agent_result: AgentResult
     before_sha: str
-    after_sha: Optional[str] = None
+    after_sha: str | None = None
     # The state this run belongs to, where the caller relabelled the issue
     # remotely in the same tick. PyGithub does not refresh a fetched issue's
     # labels after `set_labels`, so the size gate reading them back would
@@ -88,7 +88,7 @@ class _DevFixRun:
     # continues at whatever the record names. The reviewer's
     # `CHANGES_REQUESTED` route is the one that flips before it publishes;
     # every other reaches this with the label already current and names none.
-    stage: Optional[WorkflowLabel] = None
+    stage: WorkflowLabel | None = None
     # The round bookkeeping this route owes if the size gate HOLDS the fix.
     # The hold relabels to the adjudication, so a caller that counted after
     # the call would lose the count to a crash in that window -- and no later

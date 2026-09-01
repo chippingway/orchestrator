@@ -22,7 +22,7 @@ import os
 import subprocess
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping, Optional
+from typing import Mapping
 
 from orchestrator import config
 
@@ -111,7 +111,7 @@ def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess:
 def _git_hardened(
     *args: str,
     cwd: Path,
-    env_extra: Optional[Mapping[str, str]] = None,
+    env_extra: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess:
     """`_git` plus the agent-hostile-environment hardening from `_push_branch`.
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import FrozenInstanceError, fields
 from datetime import datetime
-from typing import Any, Optional, get_type_hints
+from typing import Any, get_type_hints
 
 from orchestrator.observability.dashboard import page_models, windows
 
@@ -39,8 +39,8 @@ _PAGE_STATE = (
 
 def _filters(
     *,
-    repo: Optional[str] = None,
-    issue_input: Optional[int] = None,
+    repo: str | None = None,
+    issue_input: int | None = None,
     end: datetime = _WINDOW_END,
 ) -> page_models.DashboardFilters:
     """One run's selections, over a window ending where the caller says."""

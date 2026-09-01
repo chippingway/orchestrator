@@ -29,7 +29,7 @@ work in the default install, which does not carry it.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from orchestrator.observability.dashboard.formatting import fmt_money
 from orchestrator.observability.dashboard.layout import base_layout
@@ -114,7 +114,7 @@ def reverse_lists(*sequences: Sequence) -> tuple[list, ...]:
 def horizontal_panel_height(
     row_count: int,
     *,
-    height: Optional[int],
+    height: int | None,
     row_height: int = HORIZONTAL_BAR_ROW_HEIGHT,
     extra_height: int = HORIZONTAL_BAR_EXTRA_HEIGHT,
 ) -> int:
@@ -124,7 +124,7 @@ def horizontal_panel_height(
     return row_height * max(row_count, 1) + extra_height
 
 
-def horizontal_legend(*, traceorder: Optional[str] = None) -> dict[str, object]:
+def horizontal_legend(*, traceorder: str | None = None) -> dict[str, object]:
     """Return the legend a horizontal-bar panel carries above its plot."""
     legend: dict[str, object] = {
         "orientation": "h",

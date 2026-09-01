@@ -3,7 +3,7 @@
 """Current-head review verdicts, feedback watermarks, and the client mixin."""
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from github.IssueComment import IssueComment
 from github.PullRequest import PullRequest
@@ -19,7 +19,7 @@ _ReviewStateForHead = tuple[str, tuple[int, str]]
 def review_state_for_head(
     review: Any,
     head_sha: str,
-) -> Optional[_ReviewStateForHead]:
+) -> _ReviewStateForHead | None:
     """Return a head review as ``(reviewer, (id, state))``, else ``None``."""
     if (getattr(review, "commit_id", "") or "") != head_sha:
         return None
@@ -69,7 +69,7 @@ def latest_review_states_for_head(
 
 def is_actionable_review_summary(
     review: Any,
-    after_id: Optional[int],
+    after_id: int | None,
 ) -> bool:
     """Return whether a review summary carries unread developer feedback."""
     review_state = (review.state or "").upper()
@@ -91,7 +91,7 @@ class GitHubReviewMixin:
     def pr_conversation_comments_after(
         self,
         pr: PullRequest,
-        after_id: Optional[int],
+        after_id: int | None,
     ) -> list[IssueComment]:
         """Return PR conversation comments newer than their watermark."""
         pr_comments: list[IssueComment] = []
@@ -106,7 +106,7 @@ class GitHubReviewMixin:
     def pr_inline_comments_after(
         self,
         pr: PullRequest,
-        after_id: Optional[int],
+        after_id: int | None,
     ) -> list:
         """Return inline review comments newer than their own watermark."""
         review_comments: list = []
@@ -121,7 +121,7 @@ class GitHubReviewMixin:
     def pr_reviews_after(
         self,
         pr: PullRequest,
-        after_id: Optional[int],
+        after_id: int | None,
     ) -> list:
         """Return actionable review summaries newer than their watermark."""
         review_summaries = [

@@ -17,7 +17,6 @@ import signal
 import subprocess
 from contextlib import suppress
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.agents import processes as _processes
 from orchestrator.git.verification import models as _models
@@ -109,7 +108,7 @@ def _completed_verify_result(
     drained: tuple[str, str],
     worktree: Path,
     head_before: str,
-) -> Optional[_models.VerifyResult]:
+) -> _models.VerifyResult | None:
     """Classify one completed command, returning None only when it passed."""
     combined_output = _combine_output(*drained)
     if proc.returncode != 0:

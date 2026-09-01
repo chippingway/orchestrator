@@ -46,7 +46,6 @@ one here.
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -311,7 +310,7 @@ def _recovery_followup_comment(
     state: PinnedState,
     park_reason: object,
     outcome: str,
-) -> Optional[str]:
+) -> str | None:
     """The follow-up a park that just healed itself owes the issue, or None.
 
     `last_action_comment_id` is the evidence that a HITL mention was posted:

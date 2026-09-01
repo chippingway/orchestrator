@@ -58,7 +58,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.git import commands as _commands
 
@@ -264,7 +263,7 @@ def _reported_paths(status_stdout: str) -> list[str]:
     return [path for path in paths if path]
 
 
-def _suppressed_index_paths(worktree: Path) -> Optional[tuple[str, ...]]:
+def _suppressed_index_paths(worktree: Path) -> tuple[str, ...] | None:
     """Index entries git has been told not to compare, or None if unreadable.
 
     The one way a clean status can be arranged without config and without

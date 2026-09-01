@@ -34,7 +34,6 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.observability.analytics.sync.models import SyncResult
 from orchestrator.observability.analytics.sync.run import sync_jsonl_to_postgres
@@ -121,7 +120,7 @@ def run_cli(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Parse `argv`, install the operator's logging, and run the replay."""
     args = cli_parser().parse_args(argv)
     configure_cli_logging(args.log_level)

@@ -50,7 +50,6 @@ issue waiting on a human costs no comment write per tick.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.engine import messages as _messages
@@ -200,7 +199,7 @@ def _undrifted(
     return _LateContentSettlement()
 
 
-def _park_answer(standing: Optional[str]):
+def _park_answer(standing: str | None):
     """The owner that reads a reply to the park this issue is standing on.
 
     None for an issue standing on nothing of this mode's -- including a park
@@ -323,7 +322,7 @@ def _consumed(
     context: _LateContext,
     signal: _LateContentSignal,
     *,
-    disposition: Optional[_LateDisposition] = None,
+    disposition: _LateDisposition | None = None,
 ) -> _LateContentSettlement:
     """Fold fresh trusted conversation into the baselines that cover it.
 
@@ -345,7 +344,7 @@ def _consumed(
     return _LateContentSettlement(disposition=disposition, persisted=True)
 
 
-def _standing_park(context: _LateContext) -> Optional[str]:
+def _standing_park(context: _LateContext) -> str | None:
     """The reason this issue is parked on right now, or None if it is not.
 
     Read off what the tick FOUND rather than off what it has staged: the

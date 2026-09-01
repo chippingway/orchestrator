@@ -21,7 +21,7 @@ the edited body is the operator's call, not ours.
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 from github.Issue import Issue
 
@@ -42,7 +42,7 @@ from orchestrator.workflow.stages.implementing import session as _dev_session
 
 def _read_decomposer_session(
     state: PinnedState,
-) -> Tuple[str, str, tuple[str, ...], Optional[str]]:
+) -> Tuple[str, str, tuple[str, ...], str | None]:
     """Return (spec, backend, extra_args, decomposer_session_id) for an issue.
 
     Mirrors `_read_dev_session`: `spec` is the full configured agent
@@ -75,7 +75,7 @@ def _read_decomposer_session(
 
 def _spawn_fresh_decomposer(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
-) -> Optional[AgentResult]:
+) -> AgentResult | None:
     """Consume a retry slot and spawn a fresh decomposer session.
 
     Returns the agent result, or None when the retry budget is exhausted
@@ -118,7 +118,7 @@ def _spawn_fresh_decomposer(
 
 def _decomposer_followup(
     gh: GitHubClient, issue: Issue, state: PinnedState,
-) -> Optional[str]:
+) -> str | None:
     comments = filter_trusted(
         gh.comments_after(issue, state.get(_state._LAST_ACTION_COMMENT_ID))
     )
@@ -136,7 +136,7 @@ def _decomposer_followup(
 
 def _resume_decomposer_on_human_reply(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
-) -> Optional[AgentResult]:
+) -> AgentResult | None:
     """Resume the decomposer's locked-backend session with new comments.
 
     Returns the agent result, or None if there are no new comments since

@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -72,7 +71,7 @@ class _DivergeDecision:
     the force-publish lease pinned to a validated orchestrator-produced PR
     head when an already-rebased worktree may be force-published instead."""
     parked: bool
-    publish_lease: Optional[str] = None
+    publish_lease: str | None = None
 
 
 @dataclass(frozen=True)

@@ -18,7 +18,6 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.github.pinned_state import PinnedState
@@ -257,7 +256,7 @@ def _worktree_path(spec: config.RepoSpec, issue_number: int) -> Path:
     return _repo_worktrees_root(spec) / f"issue-{issue_number}"
 
 
-def _issue_segment_number(segment: str) -> Optional[int]:
+def _issue_segment_number(segment: str) -> int | None:
     """The issue number an `issue-<n>` name segment carries, or None.
 
     The inverse of the tail `_branch_name` and `_worktree_path` build, kept

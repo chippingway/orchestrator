@@ -20,18 +20,17 @@ process configuration when it writes rather than when it imports.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.observability.analytics import config as analytics_config
 
-ANALYTICS_LOG_PATH: Optional[Path] = analytics_config.parse_log_path()
+ANALYTICS_LOG_PATH: Path | None = analytics_config.parse_log_path()
 
 ANALYTICS_RETENTION_DAYS: int = analytics_config.parse_retention_days()
 
-ANALYTICS_DB_URL: Optional[str] = analytics_config.parse_db_url()
+ANALYTICS_DB_URL: str | None = analytics_config.parse_db_url()
 
 TRACK_SKILL_TRIGGERS: bool = analytics_config.parse_track_skill_triggers()
 
-TRAJECTORY_LOG_PATH: Optional[Path] = analytics_config.parse_trajectory_log_path()
+TRAJECTORY_LOG_PATH: Path | None = analytics_config.parse_trajectory_log_path()
 
 TRAJECTORY_RETENTION_DAYS: int = analytics_config.parse_trajectory_retention_days()

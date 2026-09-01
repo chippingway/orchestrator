@@ -23,7 +23,6 @@ consuming it here as PR feedback would silently drop the retry intent.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.github.comments import filter_trusted
@@ -52,7 +51,7 @@ def _drop_orchestrator_comments(comments, orchestrator_ids) -> list:
     ]
 
 
-def _issue_side_watermark(state: PinnedState) -> Optional[int]:
+def _issue_side_watermark(state: PinnedState) -> int | None:
     """Resolve the issue / PR-conversation scan watermark.
 
     `or` would discard a legacy default of `pr_last_comment_id == 0` and fall

@@ -46,7 +46,7 @@ back.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from orchestrator.observability.analytics.query.overview_models import (
     DataExtent,
@@ -65,13 +65,13 @@ class DashboardModules:
 @dataclass(frozen=True)
 class DashboardFilters:
     window: windows.DateWindow
-    repo: Optional[str]
-    issue_input: Optional[int]
-    events: Optional[Sequence[str]]
-    stages: Optional[Sequence[str]]
+    repo: str | None
+    issue_input: int | None
+    events: Sequence[str] | None
+    stages: Sequence[str] | None
 
     @property
-    def issue(self) -> Optional[int]:
+    def issue(self) -> int | None:
         """Report the issue a read may be scoped to, once a repo names one."""
         if self.repo is None:
             return None

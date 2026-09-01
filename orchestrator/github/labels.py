@@ -15,7 +15,6 @@ keeps an issue routing on a repository the rename could not reach.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github import GithubException
 from github.Issue import Issue
@@ -113,7 +112,7 @@ def issue_has_label(issue: Issue, label_name: str) -> bool:
     )
 
 
-def hard_skip_control_label(issue: Issue) -> Optional[str]:
+def hard_skip_control_label(issue: Issue) -> str | None:
     """Return the first control label that suppresses issue processing."""
     for control_label in HARD_SKIP_CONTROL_LABELS:
         if issue_has_label(issue, control_label):
@@ -121,7 +120,7 @@ def hard_skip_control_label(issue: Issue) -> Optional[str]:
     return None
 
 
-def workflow_label(issue: Issue) -> Optional[WorkflowLabel]:
+def workflow_label(issue: Issue) -> WorkflowLabel | None:
     """Return an issue's workflow label, excluding control labels.
 
     The namespaced spelling wins over a pre-namespace one on the same issue,
@@ -152,7 +151,7 @@ class GitHubLabelMixin:
             ):
                 return
 
-    def _existing_labels(self) -> Optional[dict[str, Label]]:
+    def _existing_labels(self) -> dict[str, Label] | None:
         """Return the repository's labels by name, or None if unreadable."""
         try:
             return {

@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 import unittest
 from functools import partial
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import patch
 
 from orchestrator.observability.analytics.query.connections import (
@@ -140,7 +140,7 @@ class _LoadSupport(unittest.TestCase):
         self,
         plan: read_plan.DashboardReadPlan,
         drawn: Any = _CHROME,
-    ) -> Optional[tuple]:
+    ) -> tuple | None:
         return dispatch.run_read_waves(
             plan,
             st=self.st,

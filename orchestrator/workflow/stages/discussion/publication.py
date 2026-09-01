@@ -55,7 +55,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.git import authentication as _authentication
 from orchestrator.git.publication import (
@@ -177,7 +176,7 @@ def _plan_worktree(run: _models._DiscussionRun, branch: str) -> Path:
 
 def _publish_plan_if_committed(
     run: _models._DiscussionRun,
-) -> Optional[_models._PlanArtifact]:
+) -> _models._PlanArtifact | None:
     """Publish the plan a round of this stage just committed, or refuse it.
 
     `None` means the tick is finished here: the plan is on a PR, or the push
@@ -851,7 +850,7 @@ def _hold_unreadable_plan_pr(
 
 def _permitted_lease(
     run: _models._DiscussionRun, artifact: _models._PlanArtifact,
-) -> Optional[str]:
+) -> str | None:
     """What this push may overwrite on the remote, or None having said why not.
 
     The tip it returns becomes the push's lease, which is what makes the answer

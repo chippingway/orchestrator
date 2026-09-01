@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git import commands as _git_commands
@@ -134,7 +133,7 @@ def _push_recovered_commits(
     sync: _models._WorktreeSync,
     conflict_round: int,
     pr_number,
-    publish_lease: Optional[str],
+    publish_lease: str | None,
 ) -> bool:
     """Push crash-recovered commits ahead of the remote PR head.
 

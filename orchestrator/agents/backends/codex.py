@@ -7,7 +7,7 @@ import os
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional, Unpack
+from typing import Iterator, Unpack
 
 from orchestrator import config
 from orchestrator.agents import environment as _agent_environment
@@ -80,7 +80,7 @@ def run_codex(
     prompt: str,
     cwd: Path,
     *,
-    options: Optional[_agent_models.AgentRunOptions] = None,
+    options: _agent_models.AgentRunOptions | None = None,
     **option_fields: Unpack[_agent_models.AgentRunOptionFields],
 ) -> _agent_models.AgentResult:
     """Run Codex through the shared process owner."""

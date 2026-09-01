@@ -49,7 +49,6 @@ from __future__ import annotations
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git import authentication, commands, locks
@@ -420,7 +419,7 @@ def _local_ref_absent(worktree: Path, ref: str) -> bool:
     return ref not in (listed.stdout or "").split()
 
 
-def _local_ref_sha(worktree: Path, ref: str) -> Optional[str]:
+def _local_ref_sha(worktree: Path, ref: str) -> str | None:
     """Resolve a fetched snapshot ref in this checkout, or None.
 
     Hardened for the reason every read of an agent-writable worktree is, and

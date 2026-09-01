@@ -19,7 +19,7 @@ because a throughput chart is read left to right.
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from orchestrator.observability.analytics.query.activity_models import ThroughputDayRow
 from orchestrator.observability.analytics.query.conditions import prepend_where_condition
@@ -35,7 +35,7 @@ THROUGHPUT_RESOLVED_STAGES: tuple[str, ...] = ("done", "rejected")
 
 
 def selected_throughput_stages(
-    stages: Optional[Sequence[str]],
+    stages: Sequence[str] | None,
 ) -> tuple[str, ...]:
     """Narrow a caller's stage selection to the terminals this read counts."""
     if stages is None:

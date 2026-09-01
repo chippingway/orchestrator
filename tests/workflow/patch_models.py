@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 from orchestrator.agents import AgentResult
@@ -26,7 +26,7 @@ class _AgentResultSeed:
     timed_out: bool = False
     interrupted: bool = False
     stderr: str = ""
-    exit_code: Optional[int] = None
+    exit_code: int | None = None
 
 
 @dataclass(frozen=True)
@@ -57,8 +57,8 @@ class _WorkflowRunContext:
     # says otherwise, and the plan publication refuses on it.
     head_on_branch: bool = True
     branch_tip_sha: str = ""
-    remote_base_tip: Optional[str] = BASE_TIP_SHA
-    remote_branch_tip: Optional[str] = ""
+    remote_base_tip: str | None = BASE_TIP_SHA
+    remote_branch_tip: str | None = ""
     # What `<remote>/<branch>` is at once a stage has FETCHED it, which is the
     # head an ahead/behind proof was taken against and what the push that
     # proof licenses is pinned to. The default is the head the fake pull
@@ -71,9 +71,9 @@ class _WorkflowRunContext:
     # here rather than seeding counts nobody could have taken.
     branch_divergence_readable: bool = True
     commit_contains: Any = True
-    unpushed_branch: Optional[str] = None
+    unpushed_branch: str | None = None
     first_commit_subject: str = ""
-    fallback_prefix: Optional[str] = None
+    fallback_prefix: str | None = None
     # What the squash-and-publish hands back. A tuple is the historical
     # spelling every case here was written in -- `(success, sha, count,
     # error)` -- and it is widened to the record the owner now returns, so a

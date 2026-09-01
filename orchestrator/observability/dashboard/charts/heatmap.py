@@ -26,7 +26,7 @@ default install, which does not carry it.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from orchestrator.observability.analytics.query.activity_models import (
     HourlyHeatmapPoint,
@@ -78,7 +78,7 @@ def heatmap_matrix(
     return matrix
 
 
-def heatmap_layout(title: Optional[str]) -> dict[str, object]:
+def heatmap_layout(title: str | None) -> dict[str, object]:
     """The page's shared layout, retuned for a grid of square cells."""
     layout = base_layout(title=title)
     top_margin = layout["margin"]["t"]
@@ -94,7 +94,7 @@ def heatmap_layout(title: Optional[str]) -> dict[str, object]:
 def hour_weekday_heatmap(
     points: Sequence[HourlyHeatmapPoint],
     *,
-    title: Optional[str] = None,
+    title: str | None = None,
     tz_label: str = "UTC",
 ) -> go.Figure:
     """7x24 weekday-by-hour token-volume heatmap.

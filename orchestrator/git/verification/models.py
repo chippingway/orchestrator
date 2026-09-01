@@ -9,7 +9,6 @@ the other would publish output the model documents as post-budget.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 _VERIFY_OUTPUT_BUDGET = 4096
 
@@ -49,9 +48,9 @@ class VerifyResult:
     """
 
     status: str
-    command: Optional[str] = None
-    exit_code: Optional[int] = None
+    command: str | None = None
+    exit_code: int | None = None
     output: str = ""
     dirty_files: tuple[str, ...] = ()
-    head_before: Optional[str] = None
-    head_after: Optional[str] = None
+    head_before: str | None = None
+    head_after: str | None = None

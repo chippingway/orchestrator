@@ -28,7 +28,7 @@ are told apart from two sized to their own.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Mapping, Sequence
 
 # The two columns every section here is split across, named as the owners' own
 # locals are.
@@ -47,7 +47,7 @@ class ChartRequest:
 
     builder: str
     rows: Sequence[Any]
-    height: Optional[int]
+    height: int | None
 
 
 @dataclass(frozen=True)
@@ -84,7 +84,7 @@ class RecordingCharts:
         self,
         rows: Sequence[Any],
         *,
-        height: Optional[int] = None,
+        height: int | None = None,
     ) -> ChartRequest:
         return self._record("cost_by_stage", rows, height)
 
@@ -92,7 +92,7 @@ class RecordingCharts:
         self,
         rows: Sequence[Any],
         *,
-        height: Optional[int] = None,
+        height: int | None = None,
     ) -> ChartRequest:
         return self._record("cost_by_review_round", rows, height)
 
@@ -100,7 +100,7 @@ class RecordingCharts:
         self,
         builder: str,
         rows: Sequence[Any],
-        height: Optional[int],
+        height: int | None,
     ) -> ChartRequest:
         request = ChartRequest(builder, rows, height)
         self.requests.append(request)
@@ -111,7 +111,7 @@ class CostPanelStreamlit:
     """Fake `st` recording what each column of a cost section was drawn."""
 
     def __init__(self) -> None:
-        self.column_request: Optional[tuple] = None
+        self.column_request: tuple | None = None
         self.open_column = ""
         self.borders: list[tuple[str, Any]] = []
         self.markdowns: list[Drawn] = []

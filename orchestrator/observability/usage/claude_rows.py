@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.usage import (
     event_stream,
@@ -48,7 +48,7 @@ def claude_usage_record(usage: dict[str, Any]) -> protocol.TokenBucket:
 def claude_assistant_usage_row(
     index: int,
     event: dict[str, Any],
-) -> Optional[tuple[str, ClaudeUsageRow]]:
+) -> tuple[str, ClaudeUsageRow] | None:
     if event.get(protocol.TYPE) != protocol.ASSISTANT:
         return None
     message = event.get(protocol.MESSAGE)
@@ -69,7 +69,7 @@ def claude_assistant_usage_row(
 def claude_result_usage_row(
     index: int,
     event: dict[str, Any],
-) -> Optional[ClaudeUsageRow]:
+) -> ClaudeUsageRow | None:
     if event.get(protocol.TYPE) != protocol.RESULT_KEY:
         return None
     usage = event.get(protocol.USAGE)

@@ -29,7 +29,6 @@ import logging
 from collections.abc import Mapping, Sequence
 from itertools import chain
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git.worktrees import attribution, paths, probes
@@ -47,7 +46,7 @@ log = logging.getLogger("orchestrator.worktree_lifecycle")
 CloneGroups = dict[Path, tuple[config.RepoSpec, ...]]
 
 
-def _resolved_root(spec: config.RepoSpec) -> Optional[Path]:
+def _resolved_root(spec: config.RepoSpec) -> Path | None:
     """The clone this spec configures, as the one path its spellings agree on.
 
     `None` when the path cannot be resolved at all, which is a failure worth

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import Optional
 from unittest.mock import patch
 
 from orchestrator import config
@@ -72,7 +71,7 @@ _BRANCH_HAS_UNPUSHED_COMMITS = "_branch_has_unpushed_commits"
 
 
 def _seed_relabeled_discussion(
-    issue_number: int, park_reason: Optional[str], **extra,
+    issue_number: int, park_reason: str | None, **extra,
 ):
     """An issue an operator moved to `implementing` while discussion held it.
 

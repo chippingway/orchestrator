@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Optional
 
 from orchestrator.observability.trajectory_viewer import timeline_views, usage_views
 from orchestrator.observability.trajectory_viewer.models import (
@@ -41,8 +40,8 @@ class TrajectoryRun:
     agent_role: str = ""
     backend: str = ""
     session_id: str = ""
-    review_round: Optional[int] = None
-    retry_count: Optional[int] = None
+    review_round: int | None = None
+    retry_count: int | None = None
     user_input: str = ""
     system_prompt: str = ""
     output: str = ""
@@ -50,7 +49,7 @@ class TrajectoryRun:
     skills_triggered: tuple[str, ...] = ()
     skills_available: tuple[str, ...] = ()
     steps: tuple[TrajectoryStepView, ...] = ()
-    run_usage: Optional[RunUsageView] = None
+    run_usage: RunUsageView | None = None
     turns: tuple[TurnUsageView, ...] = ()
     truncated: bool = False
 

@@ -16,13 +16,12 @@ first: a restart the loop asked for, or the signal that stopped the run.
 """
 from __future__ import annotations
 
-from typing import Optional
 
 from orchestrator.runtime import logs, loop, shutdown, startup
 from orchestrator.runtime.state import RuntimeState
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Run the polling loop and return its process exit code."""
     options = startup.parse_options(argv)
     logs.configure_logging(options.log_level)

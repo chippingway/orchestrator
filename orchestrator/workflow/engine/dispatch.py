@@ -104,7 +104,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping
 
 from github.Issue import Issue
 
@@ -190,7 +190,7 @@ _CLEANUP_SWEEP_TARGET = (
 # Keyed by the member rather than the label string so the table cannot drift
 # from the vocabulary it routes: a relabeled state is a lookup miss here, and a
 # lookup miss is an issue nobody handles.
-_STAGE_HANDLER_TARGETS: Mapping[Optional[str], tuple[str, str]] = MappingProxyType({
+_STAGE_HANDLER_TARGETS: Mapping[str | None, tuple[str, str]] = MappingProxyType({
     None: ("orchestrator.workflow.engine.pickup", "_handle_pickup"),
     WorkflowLabel.DECOMPOSING: (f"{_DECOMPOSITION_PACKAGE}.run", "_handle_decomposing"),
     WorkflowLabel.READY: (f"{_DECOMPOSITION_PACKAGE}.blocked", "_handle_ready"),
@@ -234,7 +234,7 @@ def _pinned_state_refuses(
     gh: GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     *,
     observed_closed: bool = False,
 ) -> bool:
@@ -357,7 +357,7 @@ def _record_stops_the_tick(
     gh: GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     state,
 ) -> bool:
     """The three the read answers once a live cycle has been established.
@@ -391,7 +391,7 @@ def _record_stops_the_tick(
 def _greeted_already(
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     state: PinnedState,
 ) -> bool:
     """True when an unlabeled issue is one this orchestrator has already met.
@@ -430,7 +430,7 @@ def _cycle_stops_the_tick(
     gh: GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     state: PinnedState,
 ) -> bool:
     """Whether a late cycle's own business is the whole of this dispatch.
@@ -483,7 +483,7 @@ def _parked_past_the_mark(spec: config.RepoSpec, issue: Issue) -> bool:
     return True
 
 
-def _cleanup_sweep_only(issue: Issue, label: Optional[str]) -> bool:
+def _cleanup_sweep_only(issue: Issue, label: str | None) -> bool:
     """True when this issue is here for its ledger and nothing else.
 
     A closed issue on one of the four cleanup-routed labels reaches a tick
@@ -513,7 +513,7 @@ def _route_issue_to_handler(
     gh: GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     *,
     reading: _PollReading = _POLLED_OPEN,
 ) -> None:
@@ -645,7 +645,7 @@ def _process_polled_issue(
         )
 
 
-def _cleanup_routed(label: Optional[str], *, closed: bool) -> bool:
+def _cleanup_routed(label: str | None, *, closed: bool) -> bool:
     """Whether this tick's own path has to treat the issue as a cleanup.
 
     The two an adjudication RUNS under answer yes whatever the issue reads
@@ -754,7 +754,7 @@ class _PollablePartition:
     spawns, so both are submitted cap-exempt.
     """
     family_numbers: list[int]
-    family_labels: list[Optional[str]]
+    family_labels: list[str | None]
     fanout_numbers: list[int]
     fanout_closed: set[int]
     cleanup_numbers: set[int] = field(default_factory=set)
@@ -776,7 +776,7 @@ class _PollablePartitionBuilder:
     """
 
     family_numbers: list[int] = field(default_factory=list)
-    family_labels: list[Optional[str]] = field(default_factory=list)
+    family_labels: list[str | None] = field(default_factory=list)
     fanout_numbers: list[int] = field(default_factory=list)
     fanout_closed: set[int] = field(default_factory=set)
     cleanup_numbers: set[int] = field(default_factory=set)
@@ -788,7 +788,7 @@ class _PollablePartitionBuilder:
         """Whether an earlier poll's held observation decides this route."""
         return issue_number in self.deferred
 
-    def add(self, issue_number: int, label: Optional[str], closed: bool) -> None:
+    def add(self, issue_number: int, label: str | None, closed: bool) -> None:
         owed = self.owed(issue_number)
         self.yielded.add(issue_number)
         if not owed and _drains_in_family_bucket(label, closed):
@@ -824,7 +824,7 @@ class _PollablePartitionBuilder:
         )
 
 
-def _drains_in_family_bucket(label: Optional[str], closed: bool) -> bool:
+def _drains_in_family_bucket(label: str | None, closed: bool) -> bool:
     """Whether this issue belongs in the serialized, all-or-nothing bucket.
 
     Every family-aware label does, with one exception: a CLOSED issue on a
@@ -841,7 +841,7 @@ def _drains_in_family_bucket(label: Optional[str], closed: bool) -> bool:
 
 def _read_issue_routing(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue,
-) -> tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """Return ``(skip, label)`` from the issue's control / workflow labels.
 
     The label is reported whether or not the issue is skipped, because a
@@ -856,7 +856,7 @@ def _read_issue_routing(
 def _hard_skipped(
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[str],
+    label: str | None,
     reading: _PollReading,
 ) -> bool:
     """Whether a control label parks this issue outside the state machine.
@@ -897,7 +897,7 @@ def _hard_skipped(
 
 def _classify_pollable_issue(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue,
-) -> tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """Read one pollable issue's workflow label for the family / fanout split.
 
     Returns ``(skip, label)``. ``skip=True`` marks a hard-skip control label
@@ -927,7 +927,7 @@ def _classify_pollable_issue(
 def _partition_pollable_issues(
     gh: GitHubClient,
     spec: config.RepoSpec,
-    deferred: Optional[frozenset[int]] = None,
+    deferred: frozenset[int] | None = None,
 ) -> _PollablePartition:
     """Split this tick's pollable issues into the family and fanout buckets.
 
@@ -1073,7 +1073,7 @@ def _refetched_close(
         yield
 
 
-def _family_bucket_cap_exempt(family_labels: list[Optional[str]]) -> bool:
+def _family_bucket_cap_exempt(family_labels: list[str | None]) -> bool:
     """True when a family bucket may skip the per-repo / global caps.
 
     A bucket is cap-exempt only when EVERY issue in it this tick runs a
@@ -1101,7 +1101,7 @@ def _refetch_and_process(
     spec: config.RepoSpec,
     issue_number: int,
     *,
-    semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
+    semaphore_cm: contextlib.AbstractContextManager | None = None,
     reading: _PollReading = _POLLED_OPEN,
 ) -> None:
     """Mint a per-worker client, refetch the Issue, and run its handler.
@@ -1346,7 +1346,7 @@ def _fanout_task(
     issue_number: int,
     *,
     reading: _PollReading,
-    semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
+    semaphore_cm: contextlib.AbstractContextManager | None = None,
 ) -> Callable[[], None]:
     """The callable one fan-out submit hands the scheduler.
 
@@ -1381,7 +1381,7 @@ def _closed_ordinary_pass(
     spec: config.RepoSpec,
     issue_number: int,
     *,
-    semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
+    semaphore_cm: contextlib.AbstractContextManager | None = None,
 ) -> None:
     """Run a closed issue's ordinary pass, keeping the reading if it fails.
 
@@ -1424,7 +1424,7 @@ def _swept_for_cleanup(
     spec: config.RepoSpec,
     issue_number: int,
     *,
-    semaphore_cm: Optional[contextlib.AbstractContextManager] = None,
+    semaphore_cm: contextlib.AbstractContextManager | None = None,
 ) -> None:
     """Take one latched close, and settle it only if the pass lands.
 

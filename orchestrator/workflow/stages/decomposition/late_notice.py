@@ -52,7 +52,6 @@ rather than from what the pinned comment claims.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from orchestrator.workflow.stages.decomposition import (
     late_session as _late_session,
@@ -87,7 +86,7 @@ _REASON = "reason"
 _MESSAGE = "message"
 
 
-def _owed_notice(context: _LateContext) -> Optional[_StagedPark]:
+def _owed_notice(context: _LateContext) -> _StagedPark | None:
     """The sentence this issue's standing park has still to say, if any.
 
     Read back as the same staged park the release takes, so a notice owed by
@@ -146,7 +145,7 @@ def _notice_settled(context: _LateContext) -> None:
     context.state.data.pop(PARK_NOTICE, None)
 
 
-def _delivered_id(context: _LateContext, message: str) -> Optional[int]:
+def _delivered_id(context: _LateContext, message: str) -> int | None:
     """The id of this notice's own comment on the thread, if it is there.
 
     The receipt a park notice has, since the post and the write that records

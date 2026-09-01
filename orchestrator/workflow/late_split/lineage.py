@@ -48,7 +48,6 @@ import re
 from dataclasses import dataclass, replace
 from typing import Any
 
-from typing import Optional
 
 from orchestrator.git.snapshots import namespace as _namespace
 from orchestrator.github.pinned_state import PinnedState
@@ -92,7 +91,7 @@ class LateAncestry:
     """
 
     root_issue: int = 0
-    lineage_depth: Optional[int] = None
+    lineage_depth: int | None = None
     parent_issue: int = 0
     cycle_id: int = 0
     generation: int = 0
@@ -213,7 +212,7 @@ def child_marker(
     )
 
 
-def child_lineage(body: Any) -> Optional[LateAncestry]:
+def child_lineage(body: Any) -> LateAncestry | None:
     """The lineage a child's own body claims, or None when it claims none.
 
     The one reading of a child that costs nothing and survives everything. A
@@ -318,7 +317,7 @@ def clear_late_ancestry(state: PinnedState) -> None:
 
 def contradicted_lineage(
     state: PinnedState, generation: LateGeneration,
-) -> Optional[str]:
+) -> str | None:
     """Why this generation's lineage disagrees with the ancestry, or None.
 
     The one production reading of an ancestry, and it is a refusal rather than
@@ -353,7 +352,7 @@ def contradicted_lineage(
 
 def vouched_lineage(
     claimed: LateAncestry, consumer: int, generation: LateGeneration,
-) -> Optional[LateAncestry]:
+) -> LateAncestry | None:
     """The lineage a body claims, as the owner's own generation vouches for it.
 
     The body marker is the one lineage claim in this workflow that comes out

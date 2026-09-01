@@ -3,7 +3,7 @@
 """Issue, pinned-state, and event services for the fake GitHub client."""
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from orchestrator import config
 from orchestrator.github import events as _events
@@ -35,8 +35,8 @@ _STATE_CLOSED = "closed"
 
 def _workflow_label(
     owner_or_issue,
-    issue: Optional[FakeIssue] = None,
-) -> Optional[WorkflowLabel]:
+    issue: FakeIssue | None = None,
+) -> WorkflowLabel | None:
     target_issue = issue or owner_or_issue
     return issue_workflow_label(label.name for label in target_issue.labels)
 
@@ -44,7 +44,7 @@ def _workflow_label(
 def _set_workflow_label(
     client,
     issue: FakeIssue,
-    new_label: Optional[str],
+    new_label: str | None,
     *,
     guarded: bool = True,
 ) -> None:
@@ -152,7 +152,7 @@ class _IssueService:
         self.created_child_issues.append(child)
         return child
 
-    def find_issue_carrying(self, marker: str) -> Optional[FakeIssue]:
+    def find_issue_carrying(self, marker: str) -> FakeIssue | None:
         """The issue this client created carrying `marker`, in any state.
 
         Unscoped like the real one: the window this lookup exists for is a
@@ -173,7 +173,7 @@ class _WorkflowStateService:
 
     def last_workflow_label_applied(
         self, issue: FakeIssue,
-    ) -> Optional[WorkflowLabel]:
+    ) -> WorkflowLabel | None:
         """The workflow label most recently applied to this issue.
 
         The double's ORDERED history is the timeline the real client walks:
@@ -220,7 +220,7 @@ class _WorkflowStateService:
         event: str,
         *,
         issue_number: int,
-        stage: Optional[str] = None,
+        stage: str | None = None,
         **extras: Any,
     ) -> None:
         record = _events.build_event_record(
@@ -284,7 +284,7 @@ class _IssueCommentService:
     def comments_after(
         self,
         issue: FakeIssue,
-        after_id: Optional[int],
+        after_id: int | None,
     ) -> list[FakeComment]:
         return [
             comment
@@ -293,7 +293,7 @@ class _IssueCommentService:
             and (after_id is None or comment.id > after_id)
         ]
 
-    def latest_comment_id(self, issue: FakeIssue) -> Optional[int]:
+    def latest_comment_id(self, issue: FakeIssue) -> int | None:
         return max(
             (comment.id for comment in issue.comments),
             default=None,

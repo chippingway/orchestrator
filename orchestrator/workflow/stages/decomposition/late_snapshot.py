@@ -47,7 +47,6 @@ from __future__ import annotations
 import logging
 from dataclasses import replace
 from types import MappingProxyType
-from typing import Optional
 
 from orchestrator.git.snapshots import namespace as _namespace
 from orchestrator.git.snapshots import refs as _snapshot_refs
@@ -110,7 +109,7 @@ _REASONS = MappingProxyType({
 })
 
 
-def _snapshot_for_split(context: _LateContext) -> Optional[str]:
+def _snapshot_for_split(context: _LateContext) -> str | None:
     """Preserve this generation's candidate, and name the ref that holds it.
 
     Answers the ref on success and None on every failure, having already
@@ -141,7 +140,7 @@ def _snapshot_for_split(context: _LateContext) -> Optional[str]:
     return ref if _retained(context, ref) else None
 
 
-def _intended_ref(context: _LateContext) -> Optional[str]:
+def _intended_ref(context: _LateContext) -> str | None:
     """The ref this generation's snapshot is written under, or a park.
 
     Built from the identities rather than from anything a human wrote, and

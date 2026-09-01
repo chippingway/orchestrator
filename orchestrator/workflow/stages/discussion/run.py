@@ -59,7 +59,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from orchestrator.git import authentication as _authentication
 from orchestrator.git.verification import probes as _verification_probes
@@ -124,7 +123,7 @@ def _stranded_worktree_state(
     return _verification_probes._worktree_status(worktree)
 
 
-def _round_anchor_moved(run: _models._DiscussionRun) -> Optional[bool]:
+def _round_anchor_moved(run: _models._DiscussionRun) -> bool | None:
     """True when the checkout no longer sits where the last round opened it.
 
     The anchor is what makes this answerable: it is written before the spawn

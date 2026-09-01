@@ -26,7 +26,7 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from orchestrator.agents import AgentResult
@@ -40,7 +40,7 @@ RESULT_FIELD = "result"
 class StageEvaluationRequest:
     repo: str
     issue: int
-    stage: Optional[str]
+    stage: str | None
     duration_s: float
     evaluation_result: str
 
@@ -54,15 +54,15 @@ class AgentExitContext:
     stage: str
     agent_role: str
     backend: str
-    agent_spec: Optional[str]
-    resume_session_id: Optional[str]
+    agent_spec: str | None
+    resume_session_id: str | None
     agent_result: AgentResult
     duration_s: float
-    review_round: Optional[int]
-    retry_count: Optional[int]
-    fallback_model: Optional[str]
-    prompt: Optional[str]
-    cwd: Optional[Path]
+    review_round: int | None
+    retry_count: int | None
+    fallback_model: str | None
+    prompt: str | None
+    cwd: Path | None
 
 
 @dataclass
@@ -74,9 +74,9 @@ class CodexCatalog:
     for a name the same enumeration produced.
     """
 
-    available_skills: Optional[list[str]] = None
-    skill_levels: Optional[dict[str, str]] = None
-    tools: Optional[list[str]] = None
+    available_skills: list[str] | None = None
+    skill_levels: dict[str, str] | None = None
+    tools: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -93,13 +93,13 @@ class AgentExitSkillFields:
     nothing to report keeps today's record shape.
     """
 
-    skills_triggered: Optional[list[str]] = None
-    skills_triggered_count: Optional[int] = None
-    skills_available: Optional[list[str]] = None
-    skill_levels: Optional[dict[str, str]] = None
-    skills_evidence: Optional[dict[str, str]] = None
-    skills_incidental: Optional[list[str]] = None
-    skills_incidental_count: Optional[int] = None
+    skills_triggered: list[str] | None = None
+    skills_triggered_count: int | None = None
+    skills_available: list[str] | None = None
+    skill_levels: dict[str, str] | None = None
+    skills_evidence: dict[str, str] | None = None
+    skills_incidental: list[str] | None = None
+    skills_incidental_count: int | None = None
 
 
 def _parameter(

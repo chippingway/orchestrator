@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from typing import Optional
 from unittest.mock import patch
 
 from orchestrator.workflow.engine import dispatch as _dispatch
@@ -47,7 +46,7 @@ MISSING_CHILDREN_PARENT_NUMBER = 66
 
 def _make_umbrella_children(
     parent_number: int,
-    child_labels: list[Optional[str]],
+    child_labels: list[str | None],
 ) -> list[FakeIssue]:
     return [
         make_issue(parent_number * 10 + child_offset, label=label)
@@ -58,8 +57,8 @@ def _make_umbrella_children(
 def _seed_umbrella_with_children(
     *,
     parent_number: int,
-    child_labels: list[Optional[str]],
-    dep_graph: Optional[dict] = None,
+    child_labels: list[str | None],
+    dep_graph: dict | None = None,
     **extra_state,
 ) -> tuple[FakeGitHubClient, FakeIssue, list[FakeIssue]]:
     gh = FakeGitHubClient()

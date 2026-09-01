@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable, Optional
+from typing import Iterable
 
 from github import GithubException
 from github.IssueComment import IssueComment
@@ -57,7 +57,7 @@ def pr_has_label(pr: PullRequest, label_name: str) -> bool:
     )
 
 
-def _pr_carries_commit(pr: PullRequest, head_sha: str) -> Optional[bool]:
+def _pr_carries_commit(pr: PullRequest, head_sha: str) -> bool | None:
     """Whether `head_sha` is one of the commits this pull request is made of.
 
     The head is checked first because it is free and answers the ordinary case:
@@ -100,7 +100,7 @@ def pr_state(pr: PullRequest) -> str:
     return _ISSUE_STATE_OPEN
 
 
-def pr_is_mergeable(pr: PullRequest) -> Optional[bool]:
+def pr_is_mergeable(pr: PullRequest) -> bool | None:
     """Refresh a lazily-computed mergeable field once when needed."""
     if pr.mergeable is None:
         try:
@@ -159,7 +159,7 @@ class GitHubPullRequestMixin(GitHubStateMixin):
         *,
         notice: str,
         marker: str,
-        carries_marker: Optional[bool] = None,
+        carries_marker: bool | None = None,
     ) -> bool:
         """Say once on a pull request that it is superseded, and close it.
 
@@ -216,7 +216,7 @@ class GitHubPullRequestMixin(GitHubStateMixin):
         *,
         branch: str,
         base: str,
-    ) -> Optional[PullRequest]:
+    ) -> PullRequest | None:
         """Return an open PR for the repository-owned head branch."""
         owner_login = self.repo.owner.login
         head = f"{owner_login}:{branch}"
@@ -340,7 +340,7 @@ class GitHubPullRequestMixin(GitHubStateMixin):
         pr: PullRequest,
         notice: str,
         marker: str,
-        carries_marker: Optional[bool],
+        carries_marker: bool | None,
     ) -> None:
         """Post the notice this thread does not carry, then close it."""
         if carries_marker is None:

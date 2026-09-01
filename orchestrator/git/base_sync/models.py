@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -34,8 +33,8 @@ class _AutoRebaseContext:
     worktree: Path
     pr_number: int
     behind: int
-    label: Optional[WorkflowLabel]
-    pending_pre_rebase_sha: Optional[str]
+    label: WorkflowLabel | None
+    pending_pre_rebase_sha: str | None
 
 
 @dataclass(frozen=True)
@@ -78,7 +77,7 @@ class _AutoRebaseRecoveryContext:
     label: str
     pending_pre_rebase_sha: str
     behind: int = 0
-    unparking_consumed_max: Optional[int] = None
+    unparking_consumed_max: int | None = None
 
 
 @dataclass(frozen=True)
@@ -97,7 +96,7 @@ class _AutoRebaseDecision:
     """Whether the coordinator should continue its normal rebase flow."""
 
     should_continue: bool
-    consumed_comment_id: Optional[int] = None
+    consumed_comment_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -112,4 +111,4 @@ class _ConflictRouteContext:
     label: str
     behind: int
     conflicted_files: list[str]
-    pr_head_sha: Optional[str]
+    pr_head_sha: str | None

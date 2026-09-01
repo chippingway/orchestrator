@@ -14,7 +14,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib import import_module
-from typing import Optional
 from unittest import mock
 
 from orchestrator import workflow
@@ -80,7 +79,7 @@ class DispatchContext:
 
 
 @contextmanager
-def dispatch_context(slugs: list[str], state: Optional[RuntimeState] = None):
+def dispatch_context(slugs: list[str], state: RuntimeState | None = None):
     """Pair a live scheduler with one client per slug for a single pass."""
     scheduler = IssueScheduler(
         global_cap=_DISPATCH_CAP,

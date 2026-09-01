@@ -44,7 +44,7 @@ adjudication's rationale is refused with the record it came with.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.github.client import GitHubClient
 from orchestrator.observability.analytics import recording
@@ -65,7 +65,7 @@ def emit_late_event(
     event: _events.LateEvent,
     generation: LateGeneration,
     *,
-    stage: Optional[str] = None,
+    stage: str | None = None,
 ) -> dict[str, Any]:
     """Write one late event to the audit and analytics sinks, and return it.
 
@@ -136,7 +136,7 @@ def _reported(refused: Exception) -> str:
 def _recordable(
     event: _events.LateEvent,
     generation: LateGeneration,
-    stage: Optional[str],
+    stage: str | None,
 ) -> tuple:
     """The payload and the stage tag, or the refusal one of them raises."""
     return (
@@ -144,7 +144,7 @@ def _recordable(
     )
 
 
-def _stage_tag(stage: Optional[str]) -> Optional[str]:
+def _stage_tag(stage: str | None) -> str | None:
     """Return the bare stage tag a caller named, or refuse anything else.
 
     Resolved through the label vocabulary rather than trusted, so the closed
@@ -166,7 +166,7 @@ def _emit_audit(
     gh: GitHubClient,
     family: str,
     issue_number: int,
-    stage: Optional[str],
+    stage: str | None,
     payload: dict[str, Any],
 ) -> None:
     try:
@@ -188,7 +188,7 @@ def _emit_analytics(
     gh: GitHubClient,
     family: str,
     issue_number: int,
-    stage: Optional[str],
+    stage: str | None,
     payload: dict[str, Any],
 ) -> None:
     try:

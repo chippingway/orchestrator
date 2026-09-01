@@ -59,7 +59,7 @@ import os
 import stat
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping, Optional
+from typing import Mapping
 
 from orchestrator import config
 from orchestrator.git import commands
@@ -349,7 +349,7 @@ def _planted_attributes(worktree: Path) -> str:
     return f"the attributes in {attributes_path}" if planted.st_size else ""
 
 
-def _added_lines(numstat_stdout: str) -> Optional[int]:
+def _added_lines(numstat_stdout: str) -> int | None:
     """Total the added lines a numstat report names, or None if one is unread.
 
     None on the first record that cannot be accounted for, rather than a total
@@ -368,7 +368,7 @@ def _added_lines(numstat_stdout: str) -> Optional[int]:
     return total
 
 
-def _record_additions(record: str) -> Optional[int]:
+def _record_additions(record: str) -> int | None:
     """The lines one numstat record adds, 0 for binary, None if unreadable.
 
     Binary is a real answer and zero is the right count for it: the path is in

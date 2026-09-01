@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from orchestrator.observability.usage import (
     claude_rows,
@@ -22,13 +22,13 @@ class UsageMetrics:
 
     backend: str
     models: tuple[str, ...] = ()
-    turns: Optional[int] = None
+    turns: int | None = None
     input_tokens: int = 0
     output_tokens: int = 0
     cached_tokens: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
-    cost_usd: Optional[float] = None
+    cost_usd: float | None = None
     cost_source: str = "no-usage"
 
     def to_dict(self) -> dict[str, Any]:
@@ -66,7 +66,7 @@ def parse_claude_usage(stdout: str) -> UsageMetrics:
 
 def parse_codex_usage(
     stdout: str,
-    fallback_model: Optional[str] = None,
+    fallback_model: str | None = None,
 ) -> UsageMetrics:
     """Extract usage and cost from a Codex JSON run."""
     events = event_stream.iter_events(stdout)
@@ -79,7 +79,7 @@ def parse_agent_usage(
     backend: str,
     stdout: str,
     *,
-    fallback_model: Optional[str] = None,
+    fallback_model: str | None = None,
 ) -> UsageMetrics:
     """Dispatch usage parsing by agent backend."""
     if backend == protocol.CLAUDE:

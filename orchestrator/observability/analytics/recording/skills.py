@@ -11,7 +11,7 @@ so a parser failure costs the skill keys rather than the baseline event.
 
 from __future__ import annotations
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 from orchestrator.observability.analytics import config as analytics_config
 from orchestrator.observability.analytics import sink
@@ -26,8 +26,8 @@ from orchestrator.observability.usage import skills as usage_skills
 class OfferedSkills(NamedTuple):
     """An offered-skills set and the provenance, if any, that produced it."""
 
-    names: Optional[list[str]] = None
-    levels: Optional[dict[str, str]] = None
+    names: list[str] | None = None
+    levels: dict[str, str] | None = None
 
 
 def offered_skill_fields(

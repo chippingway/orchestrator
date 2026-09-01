@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.git import authentication, commands, locks
@@ -292,7 +291,7 @@ def _pr_branch_start_point(
 
 def _anchor_pr_worktree(
     spec: config.RepoSpec, issue_number: int, *, branch: str, head_sha: str,
-) -> Optional[str]:
+) -> str | None:
     """Bring the per-issue branch, and its checkout, onto a PR's own head.
 
     For the one handoff where the remote is ahead of everything local for a
@@ -341,7 +340,7 @@ def _anchor_pr_worktree(
 
 def _anchor_target(
     spec: config.RepoSpec, issue_number: int, branch: str, head_sha: str,
-) -> Optional[str]:
+) -> str | None:
     """The commit the branch has to end up on, or None when nothing says which.
 
     A caller that names no head at all has said the pull request is finished,
@@ -397,7 +396,7 @@ def _anchor_target(
     return head_sha
 
 
-def _unanchorable_branch_reading(remote_tip: Optional[str]) -> str:
+def _unanchorable_branch_reading(remote_tip: str | None) -> str:
     """Say which of the three the remote gave, since the remedy differs.
 
     A branch that moved is a head to re-read next tick; one the remote could
@@ -418,7 +417,7 @@ def _unanchorable_branch_reading(remote_tip: Optional[str]) -> str:
 
 def _base_anchor(
     spec: config.RepoSpec, issue_number: int, branch: str,
-) -> Optional[str]:
+) -> str | None:
     """The base tip, freshly fetched, as the commit a finished PR ends on.
 
     Fetched here rather than trusted, and the fetch DECIDES, because this is the

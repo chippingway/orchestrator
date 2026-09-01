@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import contextlib
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Sequence
 
 from orchestrator.observability.analytics.config import resolve_db_url
 from orchestrator.observability.analytics.query.connections import (
@@ -39,15 +39,15 @@ from orchestrator.observability.analytics.query.connections import (
 class ReadQuery:
     """Resolved connection inputs shared by one public read operation."""
 
-    db_url: Optional[str]
+    db_url: str | None
     connect_fn: Callable[[str], Any]
     conn: Any
 
     @classmethod
     def resolve(
         cls,
-        db_url: Optional[str],
-        connect: Optional[Callable[[str], Any]],
+        db_url: str | None,
+        connect: Callable[[str], Any] | None,
         conn: Any,
     ) -> ReadQuery:
         return cls(
@@ -96,7 +96,7 @@ def execute_select(
 
 def connect_for_read(
     connect_fn: Callable[[str], Any],
-    db_url: Optional[str],
+    db_url: str | None,
 ) -> Any:
     """Open a fresh read connection, normalizing failures.
 
@@ -114,7 +114,7 @@ def connect_for_read(
 
 
 @contextlib.contextmanager
-def read_connection(connect_fn: Callable[[str], Any], db_url: Optional[str]):
+def read_connection(connect_fn: Callable[[str], Any], db_url: str | None):
     """Open a fresh read connection and close it (best-effort) on exit, so a
     query that raises mid-stream never leaks the descriptor."""
     opened = connect_for_read(connect_fn, db_url)
@@ -126,7 +126,7 @@ def read_connection(connect_fn: Callable[[str], Any], db_url: Optional[str]):
 
 def select_rows(
     connect_fn: Callable[[str], Any],
-    db_url: Optional[str],
+    db_url: str | None,
     sql: str,
     bindings: Sequence[Any] = (),
     *,

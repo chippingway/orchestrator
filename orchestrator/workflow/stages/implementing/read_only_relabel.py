@@ -80,7 +80,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -123,7 +122,7 @@ _UNSAFE_RELABEL_SUFFIX = "_unsafe_relabel"
 _MERGED_PR_STATE = "merged"
 
 
-def _parked_read_only_stage(state: PinnedState) -> Optional[str]:
+def _parked_read_only_stage(state: PinnedState) -> str | None:
     """Return the conversation stage whose unfinished work this issue carries.
 
     A park is the ordinary form of it, and the flags are what say so. An
@@ -262,7 +261,7 @@ class _ReviewedPlan:
 
 def _reviewed_plan(
     gh: GitHubClient, issue: Issue, state: PinnedState,
-) -> Optional[_ReviewedPlan]:
+) -> _ReviewedPlan | None:
     """Read the plan PR this issue records, or answer that it could not be.
 
     `None` is the read that failed, and it ends the tick rather than falling
@@ -282,7 +281,7 @@ def _reviewed_plan(
 
 def _read_plan_pr(
     gh: GitHubClient, issue: Issue, pr_number,
-) -> Optional[_ReviewedPlan]:
+) -> _ReviewedPlan | None:
     """Ask GitHub what one recorded plan PR is on, and whether it landed.
 
     Split from the reading above because two callers decide differently that
@@ -367,7 +366,7 @@ def _reconcile_open_plan_handoff(
     return False
 
 
-def _accepted_handoff_baseline(state: PinnedState) -> Optional[str]:
+def _accepted_handoff_baseline(state: PinnedState) -> str | None:
     """The tip an accepted plan handoff recorded, while its records stand.
 
     All three are the one state: the baseline says a relabel was accepted and
@@ -388,7 +387,7 @@ def _handoff_unspent(
     issue: Issue,
     state: PinnedState,
     baseline: str,
-) -> Optional[bool]:
+) -> bool | None:
     """Whether no developer has committed on this branch yet, or None unread.
 
     A move still marked in flight answers before the branch is asked at all,
@@ -485,7 +484,7 @@ def _uncertified_commits(
     issue: Issue,
     state: PinnedState,
     reviewed: _ReviewedPlan,
-) -> Optional[str]:
+) -> str | None:
     """The per-issue branch carrying commits the conversation stage did not vouch for.
 
     Ahead-of-base is the question by default, because for most of these parks
@@ -587,7 +586,7 @@ def _read_only_relabel_hazard(
     issue: Issue,
     state: PinnedState,
     reviewed: _ReviewedPlan,
-) -> Optional[_ReadOnlyRelabelHazard]:
+) -> _ReadOnlyRelabelHazard | None:
     unpushed = _uncertified_commits(spec, issue, state, reviewed)
     triggers = _unfinished_publication_triggers(state) + _checkout_triggers(
         spec, issue.number, state, reviewed,
@@ -816,7 +815,7 @@ def _clear_stale_read_only_park(
     issue: Issue,
     state: PinnedState,
     reviewed_sha: str,
-    inherited_sha: Optional[str],
+    inherited_sha: str | None,
 ) -> None:
     state.set(_state._AWAITING_HUMAN, False)
     state.set(_state._PARK_REASON, None)
@@ -874,7 +873,7 @@ class _HandoffTip:
     that follows read their head off the remote as its own lease.
     """
 
-    sha: Optional[str] = None
+    sha: str | None = None
     pending: bool = False
 
 

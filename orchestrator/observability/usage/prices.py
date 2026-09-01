@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from orchestrator.observability.usage import protocol
 
@@ -116,7 +115,7 @@ CODEX_RATES: tuple[protocol.CodexRateRow, ...] = (
 )
 
 
-def claude_rates(model: str) -> Optional[protocol.ClaudeRateMap]:
+def claude_rates(model: str) -> protocol.ClaudeRateMap | None:
     if not model or model == protocol.UNKNOWN:
         return None
     lowered = model.lower()
@@ -129,7 +128,7 @@ def claude_rates(model: str) -> Optional[protocol.ClaudeRateMap]:
 def claude_estimate_cost(
     model: str,
     bucket: protocol.TokenBucket,
-) -> Optional[float]:
+) -> float | None:
     rates = claude_rates(model)
     if rates is None:
         return None
@@ -142,7 +141,7 @@ def claude_estimate_cost(
     ) / protocol.TOKENS_PER_MILLION
 
 
-def codex_rates(model: str) -> Optional[protocol.CodexRateMap]:
+def codex_rates(model: str) -> protocol.CodexRateMap | None:
     if not model or model == protocol.UNKNOWN:
         return None
     lowered = model.lower()

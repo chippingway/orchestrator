@@ -23,7 +23,6 @@ of its own axis.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 from orchestrator.observability.dashboard.charts.usage_bands import (
     COST_BAND,
@@ -69,7 +68,7 @@ def nice_axis_max(data_max: float, steps: int) -> float:
 
 def usage_axis_ranges(
     usage: UsageChartData,
-    backend_rows_by_day: Optional[DailyTokenValues],
+    backend_rows_by_day: DailyTokenValues | None,
     mode: str,
 ) -> UsageAxisRanges:
     """Scale each axis to the series that is drawn against it."""
@@ -92,9 +91,9 @@ def usage_axis_ranges(
 
 def usage_layout(
     usage: UsageChartData,
-    backend_rows_by_day: Optional[DailyTokenValues],
+    backend_rows_by_day: DailyTokenValues | None,
     mode: str,
-    title: Optional[str],
+    title: str | None,
 ) -> dict[str, object]:
     """Lay the page's shared layout out over the two usage axes."""
     layout = base_layout(title=title)

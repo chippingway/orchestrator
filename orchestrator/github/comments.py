@@ -39,7 +39,7 @@ the marker alone, which is the same fallback the pinned-state read takes.
 """
 from __future__ import annotations
 
-from typing import Any, Iterable, List, Optional, TypeVar
+from typing import Any, Iterable, List, TypeVar
 
 from orchestrator import config
 
@@ -52,7 +52,7 @@ _CommentT = TypeVar("_CommentT")
 RECEIPT_MARKER_PREFIX = "<!--orchestrator-"
 
 
-def _allowed_logins(allowed: Optional[Iterable[str]]) -> set[str]:
+def _allowed_logins(allowed: Iterable[str] | None) -> set[str]:
     """Lower-cased allowlist set, defaulting to `config.ALLOWED_ISSUE_AUTHORS`.
 
     Falsy entries are dropped so a stray empty string in the configured
@@ -64,7 +64,7 @@ def _allowed_logins(allowed: Optional[Iterable[str]]) -> set[str]:
 
 
 def is_trusted_author(
-    user: Any, *, allowed: Optional[Iterable[str]] = None
+    user: Any, *, allowed: Iterable[str] | None = None
 ) -> bool:
     """True if `user` may supply workflow-driving content.
 
@@ -86,7 +86,7 @@ def is_trusted_author(
 
 
 def filter_trusted(
-    comments: Iterable[_CommentT], *, allowed: Optional[Iterable[str]] = None
+    comments: Iterable[_CommentT], *, allowed: Iterable[str] | None = None
 ) -> List[_CommentT]:
     """Keep only comments whose author is trusted (see `is_trusted_author`).
 
@@ -123,7 +123,7 @@ def carries_reserved_marker(written: Any) -> bool:
 
 
 def carries_own_marker(
-    comments: Iterable[Any], marker: str, *, bot_login: Optional[str],
+    comments: Iterable[Any], marker: str, *, bot_login: str | None,
 ) -> bool:
     """Whether one of these comments is OURS and carries `marker`.
 

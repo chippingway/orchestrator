@@ -16,7 +16,6 @@ from __future__ import annotations
 import argparse
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
@@ -37,7 +36,7 @@ class PollingOptions:
     log_level: str
 
 
-def parse_options(argv: Optional[list[str]]) -> PollingOptions:
+def parse_options(argv: list[str] | None) -> PollingOptions:
     """Parse single-tick and log-level command-line options."""
     parser = argparse.ArgumentParser(
         description="chipping-orchestrator polling loop.",

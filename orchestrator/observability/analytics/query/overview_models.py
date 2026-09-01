@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -47,8 +46,8 @@ class DataExtent:
     state.
     """
 
-    min_ts: Optional[datetime] = None
-    max_ts: Optional[datetime] = None
+    min_ts: datetime | None = None
+    max_ts: datetime | None = None
 
 
 @dataclass(frozen=True)

@@ -20,7 +20,6 @@ has since left.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from github.Issue import Issue
 
@@ -96,7 +95,7 @@ def _reconciles_published_work(
     gh: GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    label: Optional[WorkflowLabel],
+    label: WorkflowLabel | None,
     state: PinnedState,
 ) -> bool:
     """Answer a pair this issue froze and never counted, before anything else.
@@ -166,7 +165,7 @@ def _reconciles_published_work(
 def _answers_the_frozen_pair(
     gate: _records._Gate,
     recorded: LateGeneration,
-    label: Optional[WorkflowLabel],
+    label: WorkflowLabel | None,
 ) -> bool:
     """Take the reading a pair frozen and never counted is owed, or refuse it.
 
@@ -317,7 +316,7 @@ def _holds_absent_checkout(
 def _stranded_reading(
     gate: _records._Gate,
     recorded: LateGeneration,
-    label: Optional[WorkflowLabel],
+    label: WorkflowLabel | None,
 ) -> bool:
     """Stop a tick whose frozen pair belongs to a stage the issue has left.
 
