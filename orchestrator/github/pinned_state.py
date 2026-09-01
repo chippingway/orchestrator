@@ -21,8 +21,22 @@ PINNED_STATE_RE = re.compile(
     r"<!--orchestrator-state\s+(\{.*?\})\s*-->",
     re.DOTALL,
 )
+# What a body has to be for the comment carrying it to be the pinned state:
+# the marker and nothing else, anchored at both ends, so an ordinary
+# bot-authored comment that merely embeds the marker is not mistaken for state.
+#
+# The payload alternates for a reason. The object form is matched first and
+# spans anything, because a recorded field can legitimately contain `-->` --
+# a preserved pull-request body does -- and that is a live payload this has
+# always read back. Everything else is matched by a form that may not cross a
+# `-->`, since without that guard a forged marker followed by the ordinary
+# comment marker would backtrack onto the trailing `-->` and be adopted as the
+# state comment. What the second form buys is that `[]`, `7`, or `null` from
+# the bot is IDENTIFIED as a corrupted state comment rather than passed over
+# as no state at all -- the parser then refuses it, and a caller that would
+# have read the miss as "this issue recorded nothing" is told otherwise.
 PINNED_STATE_BODY_RE = re.compile(
-    r"\A\s*<!--orchestrator-state\s+(\{.*?\})\s*-->\s*\Z",
+    r"\A\s*<!--orchestrator-state\s+(\{.*?\}|(?:(?!-->).)*?)\s*-->\s*\Z",
     re.DOTALL,
 )
 PINNED_STATE_TEMPLATE = "<!--orchestrator-state {payload}-->"
@@ -44,15 +58,27 @@ class PinnedState:
     ``state_data`` is the descriptive constructor keyword. The custom adapter
     retains the historical ``data=`` keyword and the ``.data`` instance
     attribute used throughout the workflow.
+
+    ``parsed`` is whether the payload this carries came out of the comment or
+    stood in for one that would not parse. It is a field of its own because
+    the substitute is indistinguishable from the real thing: a corrupted
+    pinned comment reads back as ``{}``, which is exactly what an issue the
+    orchestrator has not recorded anything for reads back as. A caller
+    rewriting the comment wants that -- an empty payload is what it is about
+    to replace -- but a caller DECIDING on the absence of a recorded branch or
+    pull request would be deciding on a record it never read.
     """
 
     comment_id: int | None = None
     state_data: dict = field(default_factory=dict)
+    parsed: bool = True
 
     def __init__(
         self,
         comment_id: int | None = None,
         state_data: Any = _MISSING_STATE,
+        *,
+        parsed: bool = True,
         **legacy_fields: Any,
     ) -> None:
         legacy_state = legacy_fields.pop("data", _MISSING_STATE)
@@ -69,6 +95,7 @@ class PinnedState:
             selected_state = {}
         self.comment_id = comment_id
         self.state_data = selected_state
+        self.parsed = parsed
 
     def __getattr__(self, attribute_name: str) -> Any:
         if attribute_name == "data":
@@ -105,7 +132,16 @@ def pinned_state_from_comment(
     trusted_login: str | None,
     issue_number: int,
 ) -> PinnedState | None:
-    """Parse one authenticated, state-only pinned comment candidate."""
+    """Parse one authenticated, state-only pinned comment candidate.
+
+    A payload that is not a workflow state -- one that will not parse, and one
+    that parses into an array, a string, a number, or `null` -- still resolves
+    to the comment carrying it, with an empty state and `parsed` withheld. The
+    comment id is what lets the next write overwrite the corruption in place
+    rather than leave a second pinned comment beside it; the flag is what
+    keeps a reader from spending that empty payload as a record of an issue
+    with nothing pinned.
+    """
     body = issue_comment.body or ""
     if PINNED_STATE_MARKER not in body:
         return None
@@ -119,15 +155,38 @@ def pinned_state_from_comment(
     state_match = PINNED_STATE_BODY_RE.match(body)
     if state_match is None:
         return None
-    try:
-        parsed_state = json.loads(state_match.group(1))
-    except json.JSONDecodeError:
-        log.warning("issue=#%s pinned state JSON unparseable", issue_number)
-        parsed_state = {}
+    payload = _state_payload(state_match.group(1), issue_number)
+    if payload is None:
+        return PinnedState(comment_id=issue_comment.id, parsed=False)
     return PinnedState(
         comment_id=issue_comment.id,
-        state_data=parsed_state,
+        state_data=payload,
     )
+
+
+def _state_payload(payload: str, issue_number: int) -> dict | None:
+    """The workflow state one pinned payload carries, or None if it carries none.
+
+    Two ways to carry none, answered the same: JSON that does not parse, and
+    JSON that parses into something no state can be read out of. An array, a
+    string, a number, and `null` are all valid JSON the bot could have written
+    -- a truncated write, a hand-edited comment -- and none of them has the
+    `get` every reader of a state calls. Handing one back would move the
+    failure from here, where it can be reported, to whichever reader touched
+    it first.
+    """
+    try:
+        parsed_state = json.loads(payload)
+    except json.JSONDecodeError:
+        log.warning("issue=#%s pinned state JSON unparseable", issue_number)
+        return None
+    if isinstance(parsed_state, dict):
+        return parsed_state
+    log.warning(
+        "issue=#%s pinned state is a %s rather than an object",
+        issue_number, type(parsed_state).__name__,
+    )
+    return None
 
 
 class GitHubStateMixin(GitHubIssueMixin):

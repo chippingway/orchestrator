@@ -116,6 +116,18 @@ class CommitPinnedLookupTest(_LookupTestCase):
             base=_BASE,
         )
 
+    def test_an_unnamed_base_is_left_off(self) -> None:
+        # A caller measuring whether GitHub holds this commit at all -- rather
+        # than which thread it would push onto -- must see a pull request
+        # retargeted onto another base, so the filter is left out of the query.
+        self.gh.repo.get_pulls.return_value = iter([])
+
+        self.gh.find_pr_for_commit(branch=_BRANCH, head_sha=_HEAD_SHA)
+
+        self.gh.repo.get_pulls.assert_called_once_with(
+            state=_STATE_ALL, head=f"{_OWNER_LOGIN}:{_BRANCH}",
+        )
+
     def test_a_carried_commit_survives_a_moved_head(self) -> None:
         # What a human pushing onto the plan branch leaves, and what a merge
         # of that branch leaves after them: the head is theirs, the published

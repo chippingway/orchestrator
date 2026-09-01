@@ -63,8 +63,20 @@ class _PullCreationService:
             pull_request.issue_comments.append(new_comment)
         return new_comment
 
-    def find_open_pr(self, *, branch: str, base: str) -> FakePR | None:
-        return self.existing_open_pr.get(branch)
+    def find_open_pr(
+        self, *, branch: str, base: str | None = None,
+    ) -> FakePR | None:
+        """The open pull request on this head branch, filtered as GitHub does.
+
+        `base` is honored rather than ignored, because omitting it is what a
+        caller asking whether anybody is still standing on the branch does --
+        and a double that answered the same either way would report that
+        widening as working while the real query still narrowed.
+        """
+        found = self.existing_open_pr.get(branch)
+        if found is None or base in (None, found.base_branch):
+            return found
+        return None
 
     def iter_open_prs(self) -> Iterable[FakePR]:
         return [
@@ -92,7 +104,7 @@ class _PullStatusService:
     pr_combined_check_state = _pr_combined_check_state
 
     def find_pr_for_commit(
-        self, *, branch: str, base: str, head_sha: str,
+        self, *, branch: str, head_sha: str, base: str | None = None,
     ) -> FakePR | None:
         """The PR on this branch carrying `head_sha`, whatever state it is in.
 
@@ -114,7 +126,7 @@ class _PullStatusService:
             return _pull_requests.PR_LOOKUP_UNREADABLE
         unreadable = False
         for pull_request in self.pulls.values():
-            carries = self._pr_carries(pull_request, branch, head_sha)
+            carries = self._pr_carries(pull_request, branch, head_sha, base)
             if carries:
                 return pull_request
             unreadable = unreadable or carries is None
@@ -184,10 +196,18 @@ class _PullStatusService:
         )
 
     def _pr_carries(
-        self, pr: FakePR, branch: str, head_sha: str,
+        self, pr: FakePR, branch: str, head_sha: str, base: str | None,
     ) -> bool | None:
-        """Whether one PR carries the commit, or None when it cannot be read."""
+        """Whether one PR carries the commit, or None when it cannot be read.
+
+        Filtered by base only when the caller named one, which is the query
+        the real client builds: a caller asking whether GitHub holds this
+        commit at all names none, and a pull request retargeted onto another
+        base still carries it.
+        """
         if pr.head_branch != branch:
+            return False
+        if base is not None and pr.base_branch != base:
             return False
         if pr.head.sha == head_sha:
             return True

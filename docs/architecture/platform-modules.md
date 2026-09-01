@@ -49,7 +49,7 @@ last is held by the loader itself rather than by a check.
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/authentication.py`,
   `git/snapshots/refs.py`, and the two `git/measurement/` owners that log, which all report on the same `ls-remote`,
   fetch, push, and diff plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the seven `git/worktrees/`
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the nine `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
   `tests/git/test_authentication.py`, `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`, and
@@ -118,7 +118,10 @@ orchestrator/
                         evidence, and an unreadable walk all answer alike
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
     pinned_state.py     the pinned durable-state model, the comment body it is written as and the length GitHub
-                        takes, its parser, and the comment watermarks beside it
+                        takes, its parser -- which identifies a state-only comment whatever payload it carries
+                        and keeps the one carrying no readable state, whether it would not parse or parsed into
+                        something with no fields, apart from an issue that recorded nothing, since both read back
+                        as `{}` -- and the comment watermarks beside it
     pull_requests.py    PR lookup by open state, by commit, and when GitHub could not be asked at all, plus creation,
                         comments, body, labels, SHA-pinned merge, remote-branch delete, and the supersession that
                         says once on a thread of ours that this change is not to be merged and then closes it --
@@ -252,11 +255,13 @@ orchestrator/
       output.py         the redact-then-truncate pass over captured verify output
       probes.py         the HEAD reads, the porcelain status in both its answers (the paths, whether git could be
                         asked, and the `is_clean` a caller whose next step is a push asks instead of truth-testing
-                        the list), and the two a named commit is judged by
+                        the list) -- taken without optional locks, so asking what a tree holds does not refresh
+                        and rewrite its index -- and the two a named commit is judged by
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
-    worktrees/          the per-issue checkouts an agent runs in, and the read-only inventory of which issues they
-                        and the branches beside them name
+    worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
+                        and the branches beside them name, and the classification of which of those may be
+                        reclaimed
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
                         resolution, the exact set of names one issue's branch can be published under, and the
                         `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
@@ -269,8 +274,10 @@ orchestrator/
                         compared against
       decomposition.py  the decomposer scratch path, its detached creation, and its best-effort removal
       terminal.py       question-stage teardown and terminal local and remote branch cleanup
-      models.py         one issue's local artifacts, and the whole answer a scan gives -- the issues it attributed
-                        beside the repositories it will not answer for
+      models.py         one issue's local artifacts and the whole answer a scan gives -- the issues it attributed
+                        beside the repositories it will not answer for -- plus what a classification over them
+                        says: the three answers a fail-closed read has, the ref reading that carries a commit
+                        with them, and the reasons, subjects, and verdict a retained candidate is reported as
       probes.py         the two local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
                         per-issue checkout directories -- a real directory under the exact name, never a symlink
                         into a tree the creators never wrote, read through the `lstat` that reports what the
@@ -286,6 +293,37 @@ orchestrator/
                         derives, or whose read failed left out of the answer rather than reported empty -- and
                         still put to the attribution, since a repository this scan will not answer for is one the
                         flat branch on its clone could equally belong to
+      evidence.py       the six hardened reads a candidate is judged by -- a checkout that is a worktree of this
+                        clone and on one of this issue's own branch names, a tree that PROVED it carries nothing
+                        loose, a local branch tip, the commit the checkout's own HEAD stands on and which branch
+                        that HEAD is, what the REMOTE
+                        says a branch is at, and whether the base the remote named already contains a given tip
+                        -- each answering "could not read" apart from git's own no, and a base nobody named
+                        counted as the first. The two remote questions go over the authenticated `ls-remote`
+                        rather than to `refs/remotes/...`, which is a local ref the per-issue worktrees can write:
+                        a base mirror repointed at an agent's own tip would otherwise read as a base that carries
+                        its work. That read spawns processes, so it is behind a boundary of its own -- a probe
+                        with three answers may not have a fourth -- which is why the status read is behind one
+                        too, since naming the tree it reports on resolves a path an agent can turn into a
+                        symlink loop. Nothing here writes or fetches on either side
+      claims.py         the GitHub side of the same question: the issue fetch, the authenticated pinned read and
+                        the two checks that its payload is a state at all, the exactly-one-terminal-label rule an
+                        ending has to pass, the open pull requests still standing on a branch or on the recorded
+                        number, and whether a terminal pull request carries a tip the base does not. The branch
+                        claims are asked of both layouts this orchestrator publishes an issue under whether or
+                        not the host still holds them, and neither they nor the commit accounting name a base,
+                        since a thread retargeted onto another base stands on the branch and holds the commit
+                        just as squarely. Every read is behind its own boundary, the lazy fields included, and
+                        every boundary answers with a retention rather than a default
+      eligibility.py    the side-effect-free classifier over both: the remote gates that settle a candidate on
+                        their own, then one tip proof run over every commit an artifact holds, with the base
+                        established once for the whole candidate. The checkout owes that proof as a branch does
+                        -- a worktree whose branch was deleted under it holds its commit through its own HEAD and
+                        reflog alone -- and is excused only when a reported branch is standing on that same
+                        commit, so the three shapes one issue can be reported in reach one verdict. Inside the
+                        proof the remote is asked before the base ancestry can release anything, since a merged
+                        tip can still sit under a branch the remote has been pushed past. Reported as one verdict
+                        per candidate carrying every reason it is kept for
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends
@@ -316,7 +354,11 @@ off a facade:
   scan sits on the same owners: `inventory` calls `probes` and `attribution`, and `paths` itself for the checkout
   path it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against, and only
   `probes` reaches `commands` and `locks`. `models` carries only data. Nothing in the scan writes, fetches, or names
-  GitHub, which is what lets a caller take it at any point in a tick.
+  GitHub, which is what lets a caller take it at any point in a tick. The classification over it keeps that split
+  visible: `evidence` calls `commands`, `locks`, `paths`, the `git/verification/` status probe, and
+  `authentication` for the one question a local ref may not answer — what the remote says a branch is at;
+  `claims` names GitHub and reads no path; `eligibility` calls both and nothing else. None of the three writes
+  anything, on the host or on GitHub.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,
