@@ -59,7 +59,8 @@ Flake8 does not duplicate Ruff's checks; dev tools are declared in `[dependency-
 config is [`../../.flake8`](../../.flake8), which scopes `WPS412` and `WPS410` per-file ignores to
 `orchestrator/config/__init__.py` because the package initializer deliberately invokes the `environment` resolver and
 binds its results at import time (so a reload re-runs resolution) and publishes its narrow public surface through an
-explicit `__all__` there.
+explicit `__all__` there. Every other entry in that file is a per-file scope like this one, bar the single
+repository-wide setting sorted imports leave it carrying — the `max-import-from-members` ceiling read below.
 
 The agents package adds a second scope: `orchestrator/agents/__init__.py` (`WPS412`, `WPS410`) is the API an agent run
 is driven through. It re-exports the model types, the runner owner's `run_agent`, and the process owner's
