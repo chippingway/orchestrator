@@ -43,8 +43,10 @@ cannot cover is the local artifact that went before the teardown reached it --
 a human deleting the branch a moment earlier -- since then there is nothing
 left to keep back, and a remote deletion that fails afterwards is a leftover
 nothing here names any more. So the deletion is written down in
-``obligations`` before it is attempted, and let go once it has happened or
-stopped being owed; a deletion that could not be written down first is not
+``obligations`` before the remote is asked anything at all -- the reads are
+among the things that fail, and a record written after them is one the
+failures needing it never reach -- and let go only once the branch is gone
+from the remote; a deletion that could not be written down first is not
 attempted at all. Finishing those records is this module's second entry point,
 and it needs no candidate: it reads what this host wrote down rather than what
 it still holds.
@@ -58,6 +60,7 @@ exactly as within one process.
 from __future__ import annotations
 
 import logging
+import subprocess
 from collections.abc import Mapping
 from itertools import chain
 from pathlib import Path
@@ -431,21 +434,56 @@ def _reclaimed_remote_branch(
     in the store every per-issue worktree shares, and this step's next move is
     a deletion on somebody's repository.
 
+    The record goes down before any of that, because the reads are one of the
+    things it has to cover. A remote that would not answer and a remote that
+    has moved on both end this step with the branch still standing there, and
+    by then the local artifacts may already be gone -- so a record written
+    only once the remote had confirmed would be a record exactly the failures
+    that need it never reach.
+
+    Nothing is written for a branch nothing cleared. A record is the note that
+    a deletion of one commit is owed, and an artifact no verdict handed a
+    commit for is not one this may delete, now or on any later pass.
+
+    Taken as a commit and a name rather than as a candidate, so the pass that
+    reads a record back spends it through exactly these steps.
+    """
+    if cleared_sha is None:
+        log.warning(
+            "issue=#%d keeping %r on the remote: nothing cleared a commit "
+            "for it", issue_number, branch,
+        )
+        return SurfaceOutcome.FAILED
+    if not obligations._record_obligation(spec, branch, cleared_sha):
+        log.warning(
+            "issue=#%d keeping %r on the remote: what this host would owe "
+            "afterwards could not be written down first",
+            issue_number, branch,
+        )
+        return SurfaceOutcome.FAILED
+    return _recorded_deletion(spec, issue_number, branch, cleared_sha)
+
+
+def _recorded_deletion(
+    spec: config.RepoSpec, issue_number: int, branch: str, cleared_sha: str,
+) -> SurfaceOutcome:
+    """What the remote says about one branch, and the deletion that allows.
+
+    Everything here runs with the record already down, so each way out is one
+    a later pass can pick up. Only two of them let it go: the branch is gone
+    from the remote, or this is what took it.
+
     A branch the remote does not carry is the ordinary terminal shape -- a
     merged pull request's head branch is deleted there -- and it is success.
 
     A branch the remote carries at some other commit is nobody's to delete on
-    the strength of what was cleared, and it keeps every record standing that
-    was written for it. Letting one go there would be quietest exactly where
-    quiet is wrong: the branch is still on the remote, this host may have
-    nothing left that names its issue, and a pass that dropped the record
-    would come back empty about a leftover that is still there. It is not
-    stale, either -- what it says is which commit this host was cleared to
-    delete, and that stays true however far the remote moves. The branch going
-    from the remote is what finally settles it.
-
-    Taken as a commit and a name rather than as a candidate, so the pass that
-    reads a record back spends it through exactly these steps.
+    the strength of what was cleared, and it keeps the record standing.
+    Letting one go there would be quietest exactly where quiet is wrong: the
+    branch is still on the remote, this host may have nothing left that names
+    its issue, and a pass that dropped the record would come back empty about
+    a leftover that is still there. The record is not stale either -- what it
+    says is which commit this host was cleared to delete, and that stays true
+    however far the remote moves. The branch going is what settles it.
     """
     published = evidence._published_tip(spec, branch)
     if published.answer is ProbeAnswer.REFUTED:
@@ -458,31 +496,9 @@ def _reclaimed_remote_branch(
             "cleared is %r", issue_number, branch, published.sha, cleared_sha,
         )
         return SurfaceOutcome.FAILED
-    return _recorded_deletion(spec, issue_number, branch, published.sha)
-
-
-def _recorded_deletion(
-    spec: config.RepoSpec, issue_number: int, branch: str, expected: str,
-) -> SurfaceOutcome:
-    """The deletion, written down before it runs and let go once it has.
-
-    The record is what a later pass finds this by, and it is written first
-    because the failure worth surviving is the one that takes the process with
-    it. A record that could not be written stops the deletion rather than
-    letting it run uncovered: a push that fails leaves a branch on the remote,
-    and without the note nothing on this host may still name the issue it
-    belonged to.
-    """
-    if not obligations._record_obligation(spec, branch, expected):
-        log.warning(
-            "issue=#%d keeping %r on the remote: what this host would owe "
-            "afterwards could not be written down first",
-            issue_number, branch,
-        )
-        return SurfaceOutcome.FAILED
-    if not _deleted_remote_branch(spec, issue_number, branch, expected):
-        return SurfaceOutcome.FAILED
-    return _discharged(spec, branch, SurfaceOutcome.CLEANED)
+    if _deleted_remote_branch(spec, issue_number, branch, cleared_sha):
+        return _discharged(spec, branch, SurfaceOutcome.CLEANED)
+    return SurfaceOutcome.FAILED
 
 
 def _deleted_remote_branch(
@@ -675,14 +691,40 @@ def _deleted_local_branch(
                 "update-ref", "-d", _branch_ref(branch), expected,
                 cwd=artifacts.spec.target_root,
             )
+            if deleted.returncode == 0:
+                return SurfaceOutcome.CLEANED
+            return _refused_delete(artifacts, branch, deleted)
     except Exception:
         log.exception(
             "issue=#%d deleting the local branch %r raised",
             artifacts.issue_number, branch,
         )
         return SurfaceOutcome.FAILED
-    if deleted.returncode == 0:
-        return SurfaceOutcome.CLEANED
+
+
+def _refused_delete(
+    artifacts: IssueArtifacts,
+    branch: str,
+    deleted: subprocess.CompletedProcess,
+) -> SurfaceOutcome:
+    """What a refused deletion left, once the ref is asked about again.
+
+    Stating the old value makes git refuse two things that are nothing alike.
+    A branch that MOVED is work somebody made and this must not take, which is
+    the whole reason the value is stated. A branch that WENT is the deletion
+    this was for, done by somebody else in the window between the reading and
+    the update -- and git refuses that one too, because the value it was told
+    to expect is not there any more.
+
+    Reported apart for what the second costs: the branch is what a later scan
+    would have found the candidate by, so an issue reported as failed over an
+    artifact that is already gone is one nothing will ever settle. Asked again
+    under the same lock, so what answers is the ref store this deletion just
+    ran against rather than one another thread has since moved on.
+    """
+    tip = evidence._local_branch_tip(artifacts.spec, branch)
+    if tip.answer is ProbeAnswer.REFUTED:
+        return SurfaceOutcome.ABSENT
     log.warning(
         "issue=#%d local branch %r delete failed: %s",
         artifacts.issue_number, branch, (deleted.stderr or "").strip(),

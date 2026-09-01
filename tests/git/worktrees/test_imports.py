@@ -132,7 +132,8 @@ _OWNER_ONLY_NAMES = (
 # verdict that clears nothing gets, and the pass that finishes what an earlier
 # one wrote down -- with the ledger under it: the namespace, the repository's
 # own room inside it, the ref one branch is recorded at, the write, the
-# read-back and the parse beneath it, and the discharge. Naming the whole surface makes a helper added to an owner
+# read-back and the parse beneath it, and the discharge -- and the second
+# reading a refused branch deletion is told apart by. Naming the whole surface makes a helper added to an owner
 # an edit here rather than a definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
@@ -257,6 +258,7 @@ _OWNER_DEFINED = (
     ("_record_obligation", obligations),
     ("_recorded_deletion", reclamation),
     ("_recorded_obligations", obligations),
+    ("_refused_delete", reclamation),
     ("_records_prefix", obligations),
     ("_recorded_pull_request", claims),
     ("_removal_under_lock", reclamation),

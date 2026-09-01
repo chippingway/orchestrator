@@ -347,7 +347,9 @@ orchestrator/
                         and still on the commit that was cleared before a `worktree remove` that does not force,
                         the local branch deleted through an `update-ref -d` naming the old value and refused
                         while any live worktree of the clone is still standing on it, since that one protection
-                        `branch -D` has and the ref update does not, and the remote branch through the same
+                        `branch -D` has and the ref update does not -- and a refusal read a second time, because
+                        the stated value is refused for a branch that MOVED and for one that WENT alike, and
+                        only the first of those is a failure -- and the remote branch through the same
                         lease-pinned delete the snapshot namespace is reclaimed under. Ownership is re-derived
                         for every ref, so only the two names this issue publishes under and the one path its
                         creators derive can be touched. Already-absent is success; the checkout comes down
@@ -355,12 +357,14 @@ orchestrator/
                         artifacts are what the scan finds a half-finished teardown back by. What that ordering
                         cannot cover -- a local artifact somebody took before the teardown reached it, leaving
                         nothing to hold back -- is covered by the record beneath: every remote deletion is
-                        written down before it is attempted and let go only once the branch is gone from the
-                        remote, one that could not be written down is not attempted, and the second entry point
-                        here finishes the records rather than the candidates, which is the pass a restart
-                        reaches for. A remote that moved past what was cleared deletes nothing and keeps its
-                        record: the branch is still standing there, and the record is the only thing that would
-                        lead anybody back to it
+                        written down before the remote is asked anything at all, since the reads are among the
+                        things that fail and a record written after them is one those failures never reach. It
+                        is let go only once the branch is gone from the remote; one that could not be written
+                        down stops the deletion, a branch no verdict cleared a commit for is neither deleted nor
+                        recorded, and the second entry point here finishes the records rather than the
+                        candidates, which is the pass a restart reaches for. A remote that moved past what was
+                        cleared deletes nothing and keeps its record: the branch is still standing there, and
+                        the record is the only thing that would lead anybody back to it
       obligations.py    the ledger those records live in: one ref per branch under
                         `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
                         classification cleared, so what a later pass may spend it on is a deletion of exactly

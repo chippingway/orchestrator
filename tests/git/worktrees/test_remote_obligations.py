@@ -21,9 +21,16 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.git import authentication
-from orchestrator.git.worktrees import inventory, obligations, reclamation
+from orchestrator.git.worktrees import (
+    evidence,
+    inventory,
+    obligations,
+    reclamation,
+)
 from orchestrator.git.worktrees.models import (
     ArtifactSurface,
+    BranchTip,
+    ProbeAnswer,
     ProvenTip,
     SurfaceOutcome,
 )
@@ -199,6 +206,65 @@ class ObligationSweepTest(_ReclaimTestCase):
             ((ArtifactSurface.REMOTE_BRANCH, self.branch, CLEANED),),
         )
         self.assertFalse(self.standing()[2])
+
+    def test_a_remote_that_would_not_answer_is_owed(self) -> None:
+        # Both halves failing at once, which is the shape nothing else
+        # carries: the branch is gone from this clone, so the local surface is
+        # rightly a success and the scan has no candidate left to report --
+        # and the remote would not say what it holds, so the deletion did not
+        # happen. The record went down before that question was even put, so
+        # the pass after this one still finds the leftover and finishes it.
+        tip = self.published()
+        cleared = self.verdict()
+        _branch_at(self.clone, self.branch)
+        unread = BranchTip(answer=ProbeAnswer.UNREADABLE)
+
+        with patch.object(evidence, "_published_tip", return_value=unread):
+            stopped = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(stopped), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertEqual(
+            inventory._local_issue_inventory((self.spec,)).issues, (),
+        )
+        self.assertEqual(
+            obligations._recorded_obligations(self.spec),
+            (ProvenTip(self.branch, tip),),
+        )
+        self.assertEqual(
+            _settled(_swept(self.spec)),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, CLEANED),),
+        )
+
+    def test_a_remote_that_moved_under_it_is_owed(self) -> None:
+        # The same shape with the other remote failure: nothing local names
+        # the issue any more and the branch on the remote carries work nobody
+        # cleared, so this deletes nothing -- and the record it wrote first is
+        # what has a later pass report the leftover rather than nothing.
+        tip = self.published()
+        cleared = self.verdict()
+        ahead = f"{self.branch}-ahead"
+        self.world.commit_on(self.clone, ahead, start=self.branch)
+        _branch_at(self.clone, self.branch)
+        self.world.publish(self.clone, self.branch, ahead)
+
+        stopped = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(stopped), _surfaces(None, FAILED, ABSENT),
+        )
+        self.assertEqual(
+            inventory._local_issue_inventory((self.spec,)).issues, (),
+        )
+        self.assertEqual(
+            obligations._recorded_obligations(self.spec),
+            (ProvenTip(self.branch, tip),),
+        )
+        self.assertEqual(
+            _settled(_swept(self.spec)),
+            ((ArtifactSurface.REMOTE_BRANCH, self.branch, FAILED),),
+        )
 
     def test_a_remote_gone_since_is_let_go(self) -> None:
         # Absent is success here as everywhere: the deletion the record was

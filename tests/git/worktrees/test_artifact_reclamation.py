@@ -21,7 +21,13 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.git import authentication, commands
-from orchestrator.git.worktrees import eligibility, evidence, inventory
+from orchestrator.git.worktrees import (
+    eligibility,
+    evidence,
+    inventory,
+    obligations,
+    reclamation,
+)
 from orchestrator.git.worktrees.models import (
     ArtifactSurface,
     ArtifactVerdict,
@@ -35,6 +41,7 @@ from tests.git.worktrees.artifact_test_support import (
     WIDGET_SLUG,
     _namespaced_branch,
 )
+from tests.git.worktrees.candidate_host_test_support import _branch_at
 from tests.git.worktrees.eligibility_test_support import (
     ISSUE_NUMBER,
     _candidate,
@@ -148,6 +155,34 @@ class WholeCandidateTest(_ReclaimTestCase):
         )
         self.assertTrue(again.settled)
 
+    def dropped(self, artifacts, branch: str) -> bool:
+        """Take the branch away where another actor would, standing on nothing.
+
+        Installed in place of the live-checkout read, which is the last thing
+        that runs before the deletion: the window between the reading that
+        named the tip and the update that states it back.
+        """
+        _branch_at(self.clone, branch)
+        return False
+
+    def test_a_branch_taken_at_the_last_moment_goes(self) -> None:
+        # Somebody else deletes the ref inside the window the stated old value
+        # exists to close, so git refuses the update -- over a branch that is
+        # not there rather than one that moved. Read as a failure it would
+        # keep the issue in a report over an artifact nobody can find, and
+        # nothing would ever settle it: the branch was what a later scan
+        # would have found the candidate by.
+        self.published()
+        cleared = self.verdict()
+
+        with patch.object(reclamation, "_checkouts_holding", self.dropped):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, CLEANED, ABSENT),
+        )
+        self.assertTrue(reclaimed.settled)
+
     def test_the_order_keeps_a_failure_findable(self) -> None:
         # The checkout before the branch it stands on, which is git's rule,
         # and the remote branch before the local one, which is this domain's:
@@ -196,6 +231,24 @@ class RefusedVerdictTest(_ReclaimTestCase):
         with patch.object(evidence, "_local_branch_tip") as read:
             self.spend(kept)
             read.assert_not_called()
+
+    def test_a_branch_nothing_cleared_is_left(self) -> None:
+        # An eligible verdict that hands over no commit for a branch it names
+        # authorizes nothing about it. There is no deletion to run and none to
+        # write down: a record is the note that a deletion of one commit is
+        # owed, and no commit was ever cleared here.
+        self.published()
+        proofless = ArtifactVerdict(
+            _candidate(self.spec, ISSUE_NUMBER, branches=self.branches),
+        )
+
+        reclaimed = self.spend(proofless)
+
+        self.assertEqual(
+            self.outcomes(reclaimed), _surfaces(None, FAILED, FAILED),
+        )
+        self.assertEqual(self.standing()[1:], (True, True))
+        self.assertEqual(obligations._recorded_obligations(self.spec), ())
 
 
 class ArtifactOwnershipTest(_ReclaimTestCase):
