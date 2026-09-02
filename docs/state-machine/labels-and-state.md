@@ -788,7 +788,10 @@ anyway, so a tick that dies between the two leaves the budget as it found it.
   reply that resumes the session instead. What the step grants is a single attempt: it reopens the window at that
   moment and clears the park with its stage and notice, and the caller retires the locked session in the same write,
   keeping the agent spec — a fresh spawn is what was bought, and the spawn pins an id of its own only when the run
-  hands one back, so an id left standing is one the next reply would resume. A whole fresh day would let one reply
+  hands one back, so an id left standing is one the next reply would resume. On `workflow:implementing` the gate
+  asks that again for every spawn a grant pays for, since a grant outlives the tick that took it and the budget is
+  shared: a restart, or a continuation bought on a `decomposing` park, reaches the spawn with a session no
+  `implementing` park ever saw. A whole fresh day would let one reply
   spend the cap over again with nobody watching. The
   attempt is written down as itself — `retry_cap_continued`, a count of granted spawns nobody has spent — rather than
   as a counter to compare against the setting when the spawn is finally asked for, which would make it worth nothing

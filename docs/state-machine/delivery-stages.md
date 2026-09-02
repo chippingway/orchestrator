@@ -1027,7 +1027,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        one. The same write retires the pinned dev session (`_drop_poisoned_dev_session`, keeping `dev_agent`), because
        a fresh attempt is what was bought and nothing downstream can be relied on to make it one: `_spawn_implementer`
        replaces `dev_session_id` only when the run hands an id back, so a run that returns none would leave the
-       transcript the cap stopped pinned for the next human reply to resume. Nothing on either road touches the
+       transcript the cap stopped pinned for the next human reply to resume. The gate asks the same question again
+       for **every** spawn a grant pays for (`spawn._charge_fresh_spawn`), because that write is not always the one
+       this spawn follows: a process that dies before it comes back to an unparked issue still owing the attempt,
+       and the budget is shared, so an issue can reach this spawn carrying a grant taken out on a `decomposing` park
+       with a `dev_session_id` from an earlier cycle still on it. Nothing on either road touches the
        candidate, the pull request, or the late generation. `workflow:decomposing` holds the same park the same way,
        against the three roads it has instead of these
        ([its handler section](#_handle_decomposing-label-workflowdecomposing)). See
@@ -1079,7 +1083,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      counted spawn. Only fresh spawns count. An exhausted budget parks the issue durably as `retry_cap`, and that
      park is asked before the cap and the window both, so the notice that asked for a human is not answered by the
      clock or by a retuned cap. An issue a continuation has bought attempts for is answered from those attempts and
-     from nothing else, so the spawn this step allows on that road is the one the human paid for — see
+     from nothing else, so the spawn this step allows on that road is the one the human paid for — and the pinned
+     dev session is retired here as it is charged (`_charge_fresh_spawn`), since what the human bought is a fresh
+     conversation and this step runs on grants the tick before it did not take out. See
      [the retry budget](labels-and-state.md#the-retry-budget).
   5. Else build the implementer prompt (issue body + recent comments + "commit, do not push"), persist `dev_agent`
      BEFORE invoking `run_agent`, then spawn.
