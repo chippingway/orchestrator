@@ -451,6 +451,33 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   reconciling is what stops anything coming back, and for a closed owner this pass is the only thing that would. A
   refused delete tells nobody.
 
+## The agent-run-limit hold (every dispatch, ahead of every handler)
+- **Trigger**: `_route_issue_to_handler` on any OPEN issue whose pinned comment carries `awaiting_human` with
+  `park_reason="agent_run_limit"` — the durable state an issue is left in once it has spent every agent run its
+  lifetime ceiling (`MAX_AGENT_RUNS_PER_ISSUE`) allows. It shares the pinned read the guards beside it take, so it
+  costs no extra comment walk. The park itself, the sentence it owes, and the fields behind both are in
+  [`labels-and-state.md`](labels-and-state.md#pinned-state); no stage handler turns an agent run away against the
+  ledger, so nothing hands the park an exhausted reading to take.
+- **Why here and not in a stage**: the issue this is about is one *every* handler below would touch, and each in a
+  way that is right about some other park. `awaiting_human` routes `implementing` to a resume on the next trusted
+  reply, the conversation stages to the answer their agent asked for, and the spent-budget holds to a command that
+  buys another attempt. None of those buys back a run, and a lifetime total is spent once — no window elapses under
+  this park and no command reopens it — so it is held once, ahead of the table, rather than taught to thirteen
+  handlers.
+- **Where in the order**: behind the two guards that RUN rather than merely answer — a cancelled cycle's own ending
+  and the restart an operator authorized — because both are endings rather than work, and a park that outranked them
+  would leave each owed for as long as the issue is stopped. Ahead of everything else, including the
+  live-adjudication and reuse guards.
+- **What it does**: replays the sentence the park still owes (nothing below it runs to say one, so a notice a refused
+  post or an unreadable thread left owed would otherwise stay owed for good), logs the hold once a tick, records a
+  `standing` phase on the `agent_run_limit` event stream, and returns before the label's handler is reached. A park
+  already explained says nothing more, however many ticks meet it.
+- **The one exemption is a CLOSED issue.** What a close reaches below is a terminal — the merged, rejected, and
+  human-closed finalizers, and the cleanup sweep that settles a generation ledger — and each of those ENDS the issue
+  rather than spending anything on it, so refusing them would leave a spent issue permanently mid-ending: a pull
+  request nothing finalizes, a receipt nobody posts, a ledger no sweep settles. The poll's own closed reading counts
+  beside the object's, since an issue closed when it was enumerated is one the tick was routed on the strength of.
+
 ## The reuse guard (every dispatch, ahead of every handler)
 - **Trigger**: `_route_issue_to_handler` on any issue whose pinned ancestry still names a snapshot ref. It shares its
   pinned read with the live-adjudication guard beside it, so it costs no extra comment walk. Both step aside for
