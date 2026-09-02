@@ -204,7 +204,14 @@ examples.
   count goes on running while this setting is `0`, so turning the ceiling on reads a real lifetime total rather than
   zero. The charge is taken *before* the spawn, so a run that crashed, timed out, or was killed mid-flight is still
   spent — which is also why this count can sit above the `issue_agent_runs` figure the terminal receipt reports,
-  since that one records only the runs whose usage parsed. No stage handler turns an agent run away against any of it.
+  since that one records only the runs whose usage parsed. Where an issue that has spent it all STOPS is the park on
+  [`workflow/engine/run_limit.py`](../orchestrator/workflow/engine/run_limit.py): `awaiting_human` with a stable
+  `agent_run_limit` reason, a notice recorded before it is posted and said once per park, and a hold in the
+  dispatcher that keeps such an issue off every stage handler — behind only an authorized restart and a cancelled
+  cycle's own cleanup, and stepping aside for a closed issue so a terminal arc still finishes. Unlike the daily
+  budget there is no renewal: nothing here reopens a lifetime. That park is handed the ledger reading rather than
+  taking one, so it quotes the numbers a refusal was made on — and no stage handler turns an agent run away against
+  any of it, so nothing hands it one.
 - `MAX_ADDED_LINES` — default `4000`. size ceiling a pull request may publish under, counted in the
   textual lines it **adds**: the frozen remote base commit against the exact committed
   candidate commit, across every path. It is applied to the first publication and to every dev fix pushed onto a

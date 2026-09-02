@@ -42,14 +42,15 @@ an issue a human closed, or walk a dependency graph and activate children under
 it. So the cleanup route is taken FIRST, ahead of the table and ahead of the
 pinned-state guards, and the issue never reaches either.
 
-Past that route, one read of the issue's own pinned comment answers five
+Past that route, one read of the issue's own pinned comment answers six
 questions that can stop the tick outright: a live late adjudication the label
 was moved out from under, a child of a split whose snapshot the remote no
 longer has, an owner whose cancelled cycle is still holding something on the
 remote, the restart an operator authorizes by taking that cycle's `rejected`
-back off, and an unlabeled issue that already carries a pinned comment. The
-last three are asked here rather than in a stage precisely because the issues
-they are about are ones nothing below would touch safely -- a consumer that
+back off, an issue that has spent every agent run it is allowed, and an
+unlabeled issue that already carries a pinned comment. Most of them are asked
+here rather than in a stage precisely because the issues they are about are
+ones nothing below would touch safely -- a consumer that
 ended wears `done` or `rejected`, reopening leaves the label where it was, and
 both are terminal no-ops; a reopened cancelled owner wears a label whose
 handler would spawn the decomposer or activate children over a cycle a close
@@ -71,6 +72,16 @@ its children is a mutex over handlers that ACTIVATE, and this one reads its
 consumers and writes only issues it has proved terminal. The fan-out lane
 already runs those consumers' own closed-sweep finalizers concurrently, so the
 bucket would not have protected against them either.
+
+The spent lifetime agent-run ledger is on that list for the opposite reason:
+the issue it is about is one EVERY stage below would touch, and each in a way
+that is right about some other park. An `awaiting_human` flag routes one stage
+to a resume on the next reply and another to a hold waiting on words, and
+neither is an answer to an issue that has run out of the agent runs it may
+ever spend. So the park is held once, ahead of the table, rather than taught
+to thirteen handlers -- and it is the one question here that steps aside for a
+CLOSED issue, since what a close reaches below is a terminal that ends the
+issue rather than a road that spends anything on it.
 
 Only issue NUMBERS cross the thread boundary. PyGithub's `Issue` and the
 `GitHubClient` / `Repository` / `Requester` chain behind it hold mutable
@@ -119,7 +130,7 @@ from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.observability.analytics import recording
 from orchestrator.scheduler import IssueScheduler
-from orchestrator.workflow.engine import observations
+from orchestrator.workflow.engine import observations, run_limit as _run_limit
 from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 log = logging.getLogger("orchestrator.workflow")
@@ -240,7 +251,7 @@ def _pinned_state_refuses(
 ) -> bool:
     """True when what this issue's own pinned comment records stops the tick.
 
-    ONE read, six questions, because the read is what costs -- a comment
+    ONE read, seven questions, because the read is what costs -- a comment
     walk per labelled issue per tick, on top of the one that issue's own
     handler makes.
 
@@ -325,6 +336,17 @@ def _pinned_state_refuses(
     the freeze a resumable step rather than a window; scoped by the record's
     own source stage, so it is answered on the stage it was entered on and
     nowhere else.
+
+    The spent agent-run ledger is asked between those two groups, and the
+    place is the whole point of it. Behind the pair that RUN, because a
+    cancelled cycle still holding a branch and a restart an operator
+    authorized are endings rather than work, and a park that outranked them
+    would leave both owed for as long as the issue is stopped -- which here is
+    for good. Ahead of everything else, because every road below is a stage's,
+    and a stage reading `awaiting_human` answers it with the park it was
+    written against: a resume on the next reply, a hold waiting on guidance, a
+    classifier that refuses a command carrying none. None of those is an
+    answer to an issue that has spent every run it may ever have.
     """
     late_relabel = importlib.import_module(_LATE_RELABEL_OWNER)
     state = late_relabel._dispatch_state(gh, issue)
@@ -339,6 +361,10 @@ def _pinned_state_refuses(
         late_cancellation._mark_observed_close(gh, issue, state)
     if _cycle_stops_the_tick(gh, spec, issue, label, state):
         return True
+    if _run_limit_holds_the_tick(
+        gh, spec, issue, state, observed_closed=observed_closed,
+    ):
+        return True
     if label == WorkflowLabel.DECOMPOSING and late_relabel._adjudicating(state):
         # The adjudication steps past the guards below because they are the
         # other stages' -- but not past the one that asks whether its own
@@ -351,6 +377,63 @@ def _pinned_state_refuses(
             _LATE_RECONCILE_OWNER,
         )._reconciles_published_work(gh, spec, issue, label, state)
     return _record_stops_the_tick(gh, spec, issue, label, state)
+
+
+def _run_limit_holds_the_tick(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+    *,
+    observed_closed: bool,
+) -> bool:
+    """Whether this issue has spent every agent run it is allowed to.
+
+    True is the whole tick: no handler is called, so nothing is spawned,
+    nothing is relabelled, and everything the issue was carrying when it ran
+    out -- a locked session, a pull request, a branch, a manifest, a
+    generation's record -- is left exactly where the park found it. A lifetime
+    total is spent once and no clock returns it, so unlike every other park in
+    this repository there is nothing to wait for here and no road below that
+    could be right about the wait.
+
+    Held once, here, rather than taught to each stage. The park is a claim
+    about the ISSUE and not about any stage's road, while `awaiting_human`
+    means something different on every one of those roads: `implementing`
+    resumes a locked developer on the next trusted reply, the conversation
+    stages read one as the answer their agent asked for, and the spent-budget
+    holds wait on a command that buys another attempt. Each is right about the
+    park it was written against; none of them buys back a run.
+
+    A CLOSED issue is let past, and that exemption is the reason this is a
+    question rather than a filter above the partition. What a close reaches
+    below is a terminal -- the merged, rejected, and human-closed finalizers,
+    and the cleanup sweep that settles a generation ledger -- and every one of
+    those ENDS the issue rather than spending anything on it. Refusing them
+    would leave a spent issue permanently mid-ending: a pull request nothing
+    finalizes, a receipt nobody posts, a ledger no sweep settles. The poll's
+    own reading counts as closed beside the object's, since an issue closed
+    when it was enumerated is one this tick was routed on the strength of.
+
+    The sentence the park owes the thread is replayed before the hold
+    returns, because this is the road that strands it: nothing below runs, so
+    a notice a refused post or an unreadable thread left owed would be owed
+    for as long as the issue is parked. The refusal is recorded either way --
+    a park nobody can see going on refusing is one an operator reads as a
+    workflow that stopped for no reason.
+    """
+    if not _run_limit._park_stands(state):
+        return False
+    if observed_closed or issue_is_closed(issue):
+        return False
+    log.info(
+        "repo=%s issue=#%s has spent every agent run it is allowed; holding "
+        "it for a human rather than dispatching it",
+        spec.slug, issue.number,
+    )
+    _run_limit._replay_owed_notice(gh, issue, state)
+    _run_limit._emit_phase(gh, issue, _run_limit.RunLimitPhase.STANDING)
+    return True
 
 
 def _record_stops_the_tick(

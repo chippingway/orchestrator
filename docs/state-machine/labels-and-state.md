@@ -520,7 +520,9 @@ The keys that matter for the state machine fall into a few groups:
   `auto_base_rebase_push_failed`) are owned by the per-tick
   base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`. The
   exhausted retry budget re-sets `retry_cap` for the same kind of reason — a park nothing can recognize is one the
-  next tick re-decides from scratch (see [The retry budget](#the-retry-budget)). The late
+  next tick re-decides from scratch (see [The retry budget](#the-retry-budget)), and the spent lifetime agent-run
+  ledger re-sets `agent_run_limit` for the same reason again, since the dispatcher's hold over it reads that flag and
+  nothing else (see the **agent-run-limit park** bullet below). The late
   size gate re-sets its own reasons for the same kind of reason: `late_measurement_failed`,
   `late_candidate_moved`, `late_evidence_missing`, `late_plan_pr_hold_failed`,
   `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,
@@ -737,6 +739,32 @@ The keys that matter for the state machine fall into a few groups:
   timed out, or was killed mid-flight is still spent; settling a reservation drops only the claim that a launch is
   outstanding, never the charge. This owner decides nothing and posts nothing — no stage handler turns an agent run
   away against it.
+- **The agent-run-limit park.** `awaiting_human` + `park_reason="agent_run_limit"` + `agent_run_limit_notice`, owned
+  by [`orchestrator/workflow/engine/run_limit.py`](../../orchestrator/workflow/engine/run_limit.py), which is handed
+  the ledger reading rather than taking one — so the park quotes the numbers the refusal was made on rather than
+  whatever the setting has become since. It is the human-intervention state a spent lifetime ledger leaves, and
+  unlike the retry cap beside it there is no window under it to elapse: a lifetime total is spent once and no clock
+  returns it, so the park IS the ending rather than a pause in it. The durable half goes down before a word of it is
+  said, for the reason the retry cap's does — a notice on a thread no pinned state backs is one nothing would ever
+  reconcile. `agent_run_limit_notice` is a record rather than a bare sentence: the message, the `allowance` in force,
+  and the runs `spent` against it. The reason under this park never varies, so the pair of counts is the only thing
+  that can tell one exhaustion from another — a recorded sentence about the reading the ledger still shows is kept
+  **verbatim** (the thread is searched for exactly that text, so rewording it would find nothing and say it twice),
+  and one about any other reading is replaced, since it quotes an allowance or a spend the issue has moved off.
+  Before it is said again the thread is read for it, and only a comment **this orchestrator wrote** above the
+  `last_action_comment_id` watermark counts as the receipt (`github.comments.authored_by_us`, the same author check
+  every park-notice reconciliation gates on); a thread that could not be READ is its own answer and the tick says
+  nothing, since the sentence it may already carry is the one about to go out. The park is held by the DISPATCHER
+  (`_run_limit_holds_the_tick`), one step behind the pair that run — an authorized restart and a cancelled cycle's
+  own cleanup — and ahead of everything else, because every road below it is a stage's and each answers
+  `awaiting_human` with the park it was written against: a resume on the next trusted reply, a hold waiting on
+  guidance, a classifier that refuses a command carrying none. None of those buys back a run. The hold replays the
+  sentence the park still owes before it returns, since nothing below it runs to say one, and it is the one guard
+  there that steps aside for a CLOSED issue — what a close reaches below is a terminal that ends the issue rather
+  than a road that spends anything on it, and refusing it would leave the issue permanently mid-ending. A later tick
+  that meets the same explained park says nothing and records `standing`. Both fields are additive and default safe:
+  an issue recorded before them, or hand-edited into a shape neither fits, reads back as unparked and owing nothing
+  rather than as a tick that raises.
 - **Terminal usage verdict.** `_format_issue_usage_verdict` renders those counters into one visible receipt line
   (`:receipt: this issue: N agent runs · T tokens · $X.XX`, `(est.)` appended when any `estimated` contributed,
   `unknown` in place of the figure when an `unknown-price` run leaves the total incomplete). It returns nothing when
@@ -1473,7 +1501,9 @@ rather than preserving.
   the fresh generation's own identity. Everything else goes — every session id, `pr_number` and `branch`, `children` /
   `dep_graph` / `expected_children_count` / `split_ledger_sealed`, the whole `late_ancestry_*` group and the
   exemption beside it, `awaiting_human` / `park_reason`, `user_content_hash`, the retry, review-round and park
-  counters, `agent_run_reservation` (a launch, not a fact about the issue — the fresh cycle has none), and every
+  counters, `agent_run_reservation` (a launch, not a fact about the issue — the fresh cycle has none),
+  `agent_run_limit_notice` beside the park it explains (an obligation is a claim about one park, and the sentence it
+  carries quotes a spend the fresh cycle will re-read for itself), and every
   timestamp.
 
 ### The late run
