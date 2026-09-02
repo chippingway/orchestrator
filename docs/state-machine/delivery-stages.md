@@ -40,8 +40,9 @@ The allowlist, both routes, and the order they publish the comment, hash, label,
 The drift-sensitive handlers — `_handle_decomposing`, `_handle_ready`, `_handle_blocked`, `_handle_umbrella`,
 `_handle_implementing`, `_handle_validating`, `_handle_documenting`, `_handle_in_review`, `_handle_resolving_conflict`
 — run `_detect_user_content_change` somewhere in their flow. The hash covers the issue title, body, and every
-human-authored *issue-thread* comment body (PR-conversation comments are not in the hash). The hash, the six filters
-below, and the routes a detected drift is handed to all live in `workflow/engine/drift.py`.
+human-authored *issue-thread* comment body (PR-conversation comments are not in the hash). The hash, the seven
+filters below, and the routes a detected drift is handed to all live in `workflow/engine/drift.py` (the two
+bare-operator-command filters are read off the owners of those commands).
 
 `_handle_in_review` is the exception in ordering: it runs the four-surface fresh-feedback ID scan FIRST and routes any
 unread human comment past those watermarks to `workflow:fixing`, so the drift check that follows reacts only to
@@ -53,7 +54,7 @@ refreshes `user_content_hash` itself once it has consumed the PR-side feedback; 
 `_handle_discussion` run their own conversation flows on an operator-applied label nothing routes into, so rerouting
 an edited issue to `workflow:decomposing` would take it out of the conversation a human deliberately put it in.
 
-Non-human content is filtered six ways:
+Non-human content is filtered seven ways:
 
 - pinned-state comments by `PINNED_STATE_MARKER`;
 - orchestrator-posted comments by `_ORCH_COMMENT_MARKER` (an HTML comment embedded via `_with_orch_marker`, invisible in
@@ -64,6 +65,12 @@ Non-human content is filtered six ways:
   requirements content, so it must not shift the hash and route the nudge through drift handling instead of the stage's
   intentional session-limit retry (a comment carrying the command *alongside* genuine guidance is not bare, so it still
   shifts the hash);
+- a bare `/orchestrator add-agent-runs N` command via `run_grant._is_bare_command`, for the same reason and one of its
+  own: the dispatcher answers that command and then hands the **same tick** to the stage below, so a hash counting it
+  would meet the handler as a body edit nobody made — `validating` would resume the developer on "the human edited the
+  issue" instead of running the reviewer round the issue stopped mid-way through. Filtered in **both** hashing modes,
+  since the legacy algorithm the flag below reproduces predates the command entirely; guidance beside the command is
+  requirements here too, so it is not bare, it shifts the hash, and the drift road carries those words to the agent;
 - untrusted authors via `github.comments.is_trusted_author` when `ALLOWED_ISSUE_AUTHORS` is set (opt-in; empty
   allowlist trusts everyone), so an outsider's comment cannot shift the hash and re-trigger drift on a public repo.
   The same trust helpers filter the conversation text fed to agent prompts: `_recent_comments_text` (implement /
@@ -462,8 +469,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   way that is right about some other park. `awaiting_human` routes `implementing` to a resume on the next trusted
   reply, the conversation stages to the answer their agent asked for, and the spent-budget holds to a command that
   buys another attempt. None of those buys back a run, and a lifetime total is spent once — no window elapses under
-  this park and no command reopens it — so it is held once, ahead of the table, rather than taught to thirteen
-  handlers.
+  this park — so it is held once, ahead of the table, rather than taught to thirteen handlers. The one command that
+  answers it is asked in the same place and for the same reason: the ledger is spent by every role at every stage,
+  so there is no one handler a human would say it on.
 - **Where in the order**: behind the two guards that RUN rather than merely answer — a cancelled cycle's own ending
   and the restart an operator authorized — because both are endings rather than work, and a park that outranked them
   would leave each owed for as long as the issue is stopped. Ahead of everything else, including the
@@ -472,6 +480,17 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   post or an unreadable thread left owed would otherwise stay owed for good), logs the hold once a tick, records a
   `standing` phase on the `agent_run_limit` event stream, and returns before the label's handler is reached. A park
   already explained says nothing more, however many ticks meet it.
+- **The one thing that lifts it** is a trusted `/orchestrator add-agent-runs N` (`workflow/engine/run_grant.py`),
+  read off the unread thread once the park's own sentence has been said and nowhere else. Valid — an exact positive
+  whole number no larger than `MAX_RUNS_PER_COMMAND` — it persists an allowance of exactly `used + N`, clears this
+  park alone, consumes the batch it read plus the acknowledgement it posts (and nothing that arrived in between —
+  the boundary is derived from ids this tick observed, never re-read off the thread), records `granted`, and lets the
+  SAME tick
+  reach the stage handler, since the run a human just paid for is the one the issue was stopped for. Anything else
+  leaves both counts untouched: a malformed, zero, negative, or excessive request earns one marker-scoped receipt
+  and a `refused` phase under a park that still stands, and an untrusted one is answered with nothing at all. The
+  fields, the marker, and the ordering are in
+  [`labels-and-state.md`](labels-and-state.md#pinned-state).
 - **The one exemption is a CLOSED issue.** What a close reaches below is a terminal — the merged, rejected, and
   human-closed finalizers, and the cleanup sweep that settles a generation ledger — and each of those ENDS the issue
   rather than spending anything on it, so refusing them would leave a spent issue permanently mid-ending: a pull

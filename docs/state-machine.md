@@ -84,11 +84,14 @@ scheduler lifecycle around them are in
 [`architecture.md#per-tick-flow-workflowtick`](architecture.md#per-tick-flow-workflowtick).
 
 One park is answered by the dispatcher rather than by a stage. An issue standing on `agent_run_limit` has spent every
-agent run it will ever be allowed, and every stage below reads `awaiting_human` as the park it was written against —
+agent run it is allowed, and every stage below reads `awaiting_human` as the park it was written against —
 a resume on the next trusted reply, a hold waiting on guidance, a classifier that refuses a command carrying none —
 none of which buys back a run. So it is held once, ahead of the handler table and behind only the two guards that
 have to RUN (an authorized restart and a cancelled cycle's cleanup); the hold says the sentence the park still owes,
-since nothing below it would, and it steps aside for a CLOSED issue so a terminal arc can finish.
+since nothing below it would, and it steps aside for a CLOSED issue so a terminal arc can finish. The one reading of
+a thread that lifts it is answered in the same place: a trusted `/orchestrator add-agent-runs N`, bounded per
+command, which persists an allowance of exactly `used + N` and lets that tick go on to the stage its label names —
+what it widens is what the issue may still spend, since nothing returns a run already taken.
 
 ### Base refresh
 
@@ -160,8 +163,9 @@ The drift-sensitive handlers hash the issue title, body, and every human-authore
 once to a change: `workflow:decomposing` re-spawns inline, `workflow:ready` / `workflow:blocked` /
 `workflow:umbrella` route back to `workflow:decomposing`, the dev stages resume the locked dev session, and
 `workflow:documenting` unwinds to `workflow:validating`. `_handle_fixing`, `_handle_question`, and
-`_handle_discussion` deliberately skip the check. The six non-human filters (including the untrusted-author filter and
-the bare `/orchestrator continue` exclusion), the legacy-hash normalization, and the per-stage result routing are in
+`_handle_discussion` deliberately skip the check. The seven non-human filters (including the untrusted-author filter
+and the bare-operator-command exclusions, `/orchestrator continue` and `/orchestrator add-agent-runs N`), the
+legacy-hash normalization, and the per-stage result routing are in
 [`state-machine/delivery-stages.md#user-content-drift-detection`][drift].
 
 ### `_handle_decomposing` (label `workflow:decomposing`)

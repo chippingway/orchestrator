@@ -230,6 +230,14 @@ where you put it rather than greeted a second time, so nothing runs again until 
   is another command.
 - `/orchestrator add-review-rounds N` — post this on its own line with a positive `N` on an issue parked at
   `MAX_REVIEW_ROUNDS`. It grants up to `N` more reviewer rounds, capped at the configured maximum.
+- `/orchestrator add-agent-runs N` — post this on its own line with a positive `N` on an issue that has spent its
+  whole lifetime agent-run allowance (`MAX_AGENT_RUNS_PER_ISSUE`); the park comment says so and quotes the numbers.
+  It is the only reply that park acts on — no window reopens a lifetime, and an ordinary comment, an edited body, or
+  a widened setting moves nothing. `N` has to be a whole number from 1 to 50, and what it buys is a new ceiling of
+  exactly *runs already spent + N*, recorded on the issue: it widens what this issue may still spend rather than
+  giving back a run, so the issue stops on the same park again once it reaches the new ceiling. A request outside
+  that range gets one reply saying so and changes nothing. The tick that reads a valid one goes straight on to the
+  work, so the run you paid for is the next thing that happens.
 
 Some parks unstick themselves and say so. A push that failed on a network blip, a dev or reviewer agent that timed
 out or crashed, or a review the provider refused to serve, is retried quietly on the next tick; when the retry works

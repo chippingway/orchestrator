@@ -384,12 +384,15 @@ The security posture:
 - **Visible, not deleted.** An untrusted comment stays on the GitHub thread for humans to read; the orchestrator never
   hides, edits, or deletes it. What changes is only its *use as workflow input* — it is omitted from agent prompts,
   the `user_content_hash` drift signal, every awaiting-human resume signal (including the base-sync auto-rebase
-  retry-unpark, the `/orchestrator add-review-rounds` review-cap command, and the `/orchestrator continue` that
-  renews a spent per-issue spawn budget under `workflow:decomposing` or `workflow:implementing`), and the
+  retry-unpark, the `/orchestrator add-review-rounds` review-cap command, the `/orchestrator continue` that
+  renews a spent per-issue spawn budget under `workflow:decomposing` or `workflow:implementing`, and the
+  `/orchestrator add-agent-runs N` that widens a spent lifetime agent-run allowance), and the
   `in_review` / `fixing`
   PR-feedback loop. So an outsider on a public repo cannot inject instructions into an agent, resume a parked session,
-  retry a parked rebase, buy an agent run out of an exhausted budget, route `in_review` to `workflow:fixing`, or shift
-  the drift hash, while the audit trail of what they said stays intact.
+  retry a parked rebase, buy an agent run out of an exhausted budget or off a spent lifetime ceiling, route
+  `in_review` to `workflow:fixing`, or shift the drift hash, while the audit trail of what they said stays intact. An
+  untrusted request for more agent runs is not even answered: a receipt is a comment somebody else's word paid for,
+  and posting one would spend the watermark a trusted operator's own command is read against.
 - **One retention, and it is the orchestrator's own words.** The `discussion` stage rebuilds the whole conversation
   into a prompt whenever a round has no session to resume, and it is itself half of that conversation: with the
   allowlist naming the maintainers and not the account the token belongs to — the shape an operator lands on by

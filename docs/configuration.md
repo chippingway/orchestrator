@@ -209,9 +209,13 @@ examples.
   `agent_run_limit` reason, a notice recorded before it is posted and said once per park, and a hold in the
   dispatcher that keeps such an issue off every stage handler — behind only an authorized restart and a cancelled
   cycle's own cleanup, and stepping aside for a closed issue so a terminal arc still finishes. Unlike the daily
-  budget there is no renewal: nothing here reopens a lifetime. That park is handed the ledger reading rather than
-  taking one, so it quotes the numbers a refusal was made on — and no stage handler turns an agent run away against
-  any of it, so nothing hands it one.
+  budget nothing here reopens on a clock: what lifts that park is one trusted
+  [`/orchestrator add-agent-runs N`](../README.md#holding-and-unsticking-an-issue) on the thread, bounded per
+  command by `MAX_RUNS_PER_COMMAND` (50) in
+  [`workflow/engine/run_grant.py`](../orchestrator/workflow/engine/run_grant.py), which records
+  `agent_run_allowance` = `used + N` on the issue and so takes it off this setting for good. That park is handed the
+  ledger reading rather than taking one, so it quotes the numbers a refusal was made on — and no stage handler turns
+  an agent run away against any of it, so nothing hands it one.
 - `MAX_ADDED_LINES` — default `4000`. size ceiling a pull request may publish under, counted in the
   textual lines it **adds**: the frozen remote base commit against the exact committed
   candidate commit, across every path. It is applied to the first publication and to every dev fix pushed onto a

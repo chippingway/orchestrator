@@ -346,16 +346,25 @@ than a second source of truth: where the two disagree, the handler pages are aut
        the issue is OPEN           The issue has spent every agent run
                                    MAX_AGENT_RUNS_PER_ISSUE allows, and a
                                    lifetime total is spent once -- no window
-                                   elapses under this park and no command
-                                   reopens it, so every stage road below
-                                   (a resume on the next reply, a hold
-                                   waiting on words, a continue classifier)
-                                   would answer a park it was not written
-                                   for. A CLOSED issue is let past instead:
-                                   what it reaches below is a terminal that
-                                   ENDS it rather than a road that spends
-                                   anything, and the poll's own closed
-                                   reading counts beside the object's
+                                   elapses under this park, so every stage
+                                   road below (a resume on the next reply, a
+                                   hold waiting on words, a continue
+                                   classifier) would answer a park it was not
+                                   written for. A CLOSED issue is let past
+                                   instead: what it reaches below is a
+                                   terminal that ENDS it rather than a road
+                                   that spends anything, and the poll's own
+                                   closed reading counts beside the object's
+       + a trusted, bounded    ─► allowance = used + N, this park alone
+       /orchestrator               cleared, the command consumed with the
+       add-agent-runs N on         receipt that acknowledges it, a granted
+       the unread thread           phase, and the tick goes on to the stage
+                                   its label names. Every other request --
+                                   malformed, zero, negative, past the
+                                   per-command maximum -- keeps the park and
+                                   earns one marker-scoped receipt; an
+                                   untrusted one is answered with nothing.
+                                   Neither ending returns a spent run
      no workflow label, a      ─► nothing, logged once a tick. Pickup GREETS
        pinned comment already      an issue and mints its pinned comment, so a
        on the issue, and no        second greeting writes a second one every

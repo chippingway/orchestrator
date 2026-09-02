@@ -738,7 +738,7 @@ The keys that matter for the state machine fall into a few groups:
   not yet spawned) and `started` (the spawn happened). The charge is taken before the spawn, so a run that crashed,
   timed out, or was killed mid-flight is still spent; settling a reservation drops only the claim that a launch is
   outstanding, never the charge. This owner decides nothing and posts nothing — no stage handler turns an agent run
-  away against it.
+  away against it, and the one writer of `agent_run_allowance` is the operator command below.
 - **The agent-run-limit park.** `awaiting_human` + `park_reason="agent_run_limit"` + `agent_run_limit_notice`, owned
   by [`orchestrator/workflow/engine/run_limit.py`](../../orchestrator/workflow/engine/run_limit.py), which is handed
   the ledger reading rather than taking one — so the park quotes the numbers the refusal was made on rather than
@@ -765,6 +765,36 @@ The keys that matter for the state machine fall into a few groups:
   that meets the same explained park says nothing and records `standing`. Both fields are additive and default safe:
   an issue recorded before them, or hand-edited into a shape neither fits, reads back as unparked and owing nothing
   rather than as a tick that raises.
+- **The one command that lifts it.** `/orchestrator add-agent-runs N`, owned by
+  [`orchestrator/workflow/engine/run_grant.py`](../../orchestrator/workflow/engine/run_grant.py) and asked by the
+  same dispatcher hold, because the ledger is spent by every role at every stage and no one handler is where a human
+  would say it. It is read only while THIS park stands (a command on any other park, or on a running issue, is a
+  ceiling nobody was held to), only past `last_action_comment_id` from an author `ALLOWED_ISSUE_AUTHORS` trusts, only
+  once the park's own sentence has been said (the delivery moves the response boundary, so a command read before it
+  would be bought and then consumed by the notice explaining the park), and only as an exact positive whole number no
+  larger than `MAX_RUNS_PER_COMMAND` (50) — leading zeros are dropped first, so `007` is seven and a digit string too
+  long to be inside the bound is turned away *before* `int()` sees it, since the interpreter refuses to convert one
+  past its own limit and a request that raised would be neither granted nor refused. The last command in the unread
+  batch is the request. A valid one writes
+  `agent_run_allowance` = `used + N` — an absolute ceiling rather than an increment, so a tick that dies between the
+  receipt and the write buys the same runs again rather than a second `N` on top of them — clears `awaiting_human`
+  and `park_reason` and drops any `agent_run_limit_notice` record beside them, ratchets the watermark past both the
+  command and its own acknowledgement, records `granted`, and returns the tick to the stage handler its label names.
+  That watermark is derived from what the tick actually read — the last comment of the batch the command came out of,
+  walked forward only over comments this orchestrator wrote (by recorded `orchestrator_comment_ids`, else by
+  `_ORCH_COMMENT_MARKER` + author) and stopped by the first that is not. A comment posted between the batch read and
+  the receipt is therefore left above the mark for the next tick, since a watermark is how every stage decides what
+  is unread and a comment swept under it is lost rather than delayed.
+  Every other request leaves `agent_runs_used` and `agent_run_allowance` exactly as it found them, keeps the park,
+  and posts one receipt carrying `<!--orchestrator-add-agent-runs-refused:issue=N:comment=M-->`. Both answers are
+  marked that way — the acknowledgement carries `<!--orchestrator-add-agent-runs-granted:issue=N:comment=M-->`; each
+  is scoped to the comment that asked and checked for on the thread (author included) before it is written again,
+  so a write that failed after a post that landed is recognized rather than answered twice. An untrusted request is
+  answered with nothing at all: a reply is a comment somebody else's word paid for, and consuming the thread for one
+  would spend the watermark a trusted operator's command is read against. A bare command is also kept out of the
+  `user_content_hash` (`run_grant._is_bare_command`, one of the filters in
+  [the drift hash](delivery-stages.md#user-content-drift-detection)), since the tick that answers it is the tick the
+  stage handler runs on. Nothing here returns a spent run.
 - **Terminal usage verdict.** `_format_issue_usage_verdict` renders those counters into one visible receipt line
   (`:receipt: this issue: N agent runs · T tokens · $X.XX`, `(est.)` appended when any `estimated` contributed,
   `unknown` in place of the figure when an `unknown-price` run leaves the total incomplete). It returns nothing when
