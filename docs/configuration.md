@@ -177,8 +177,11 @@ examples.
   unbounded budget keeps no counters — it drops the window it finds, so turning it back on opens a fresh one). An
   exhausted budget parks the issue as `retry_cap`, and that park outlives both the window elapsing and a later change
   to this setting: the notice asked for a human, and neither the clock nor a wider cap is one. Where a stage routes
-  the park to a resume a reply on the thread lifts it; on the initial decomposition and on `workflow:implementing`
-  only a trusted `/orchestrator continue` does, and the issue holds everything it carries until one arrives. Either
+  the park to a resume a reply on the thread lifts it; on the three roads that spend this budget — the initial
+  decomposition, the late size adjudication running under the same `workflow:decomposing` label, and
+  `workflow:implementing` — only a trusted `/orchestrator continue` does, and the issue holds everything it carries
+  until one arrives: the manifest and the children on the first, the frozen candidate and the pull request it stands
+  under on the second, the developer's commits and their pull request on the third. Either
   renewal buys exactly one
   spawn, recorded on the issue as the attempt itself, so moving this setting between the word and the spawn neither
   swallows that attempt nor multiplies it

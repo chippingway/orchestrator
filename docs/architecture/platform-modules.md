@@ -102,9 +102,12 @@ orchestrator/
     checks.py           status / check-run normalization, failure-before-pending folding, and the fail-closed check
                         reads
     comments.py         the `ALLOWED_ISSUE_AUTHORS` trust policy a caller filters a thread or gates one author
-                        through, whether a marker on a thread is one of ours, and the reserved prefix every receipt
-                        this orchestrator hides shares -- so content somebody else wrote can be refused before it is
-                        embedded; the low-level comment and review readers stay raw
+                        through, whether a comment on a thread was written by US -- the author check the marker
+                        lookup here and both park-notice reconciliations gate on, since a receipt recognized by a
+                        hidden marker and one recognized by its whole sentence are alike text anybody may post and
+                        so alike text anybody may use to suppress what it stands for -- and the reserved prefix
+                        every receipt this orchestrator hides shares, so content somebody else wrote can be refused
+                        before it is embedded; the low-level comment and review readers stay raw
     events.py           audit event record construction and the optional JSONL sink
     issues.py           issue polling and writes, the query options, the wire issue-state vocabulary,
                         the closed predicate every reader of it asks through, the every-state, no-label walk

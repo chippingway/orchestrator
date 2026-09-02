@@ -93,8 +93,12 @@ per-stage behavior is in
   a session opened against the commit it replaced would hand the agent a transcript about work nobody is adjudicating.
   Both halves are proved rather than assumed: the caller says it is carrying an answer, and the record says its
   session really ran against this cycle, generation, and commit. The id is pinned at the two exits that persist, a
-  timeout and a completed reply. The run happens in the issue's OWN worktree rather than a scratch checkout of the
-  base branch, because the diff
+  timeout and a completed reply. A spent spawn budget parks this road too, on the same terms as the two above and
+  under the same `retry_cap` reason — a reply resumes nothing there, and only a trusted `/orchestrator continue` buys
+  another adjudication. It is the one of the three that retires no session as it buys one: the pre-spawn record
+  already drops `late_session_id` for every run that is not continuing a question a human has answered, so what the
+  command pays for is a fresh conversation before the agent starts rather than a retirement taken beside the grant.
+  The run happens in the issue's OWN worktree rather than a scratch checkout of the base branch, because the diff
   it is asked about is between two commits nothing has pushed. What reaches the coordinator is the first thing a
   `decomposing` tick asks (`_late_adjudication_owns_the_tick` on `stages/decomposition/run.py`): an issue whose record
   carries a live generation belongs to it entire, and no step of the initial decomposition runs for it. It is asked on

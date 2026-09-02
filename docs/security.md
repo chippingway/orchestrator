@@ -210,10 +210,11 @@ The late size gate preserves a superseded candidate under
   before anything is created, and an issue a receipt lookup returns is checked for carrying exactly one receipt of
   that kind — otherwise one issue could be adopted as two children of the same split, each seeded with the other's
   scope. The comment-side check is the author one: a receipt on a thread counts only when this orchestrator wrote it
-  (`github.comments.authored_by_us`, the single owner every thread-side receipt is read through). That covers the
-  receipts with no marker as well as the ones with: a park notice whose whole sentence is its identity is plain text
-  anybody can paste back, and read from anybody it would mark a park explained that nobody ever explained — leaving
-  an `awaiting_human` standing over a thread that was told nothing, on a park no later attempt supersedes.
+  (`github.comments.authored_by_us`, the author check the marker lookup and both park-notice reconciliations gate on).
+  That covers the receipts with no marker as well as the ones with: a park notice whose whole sentence is its identity
+  is plain text anybody can paste back, and read from anybody it would mark a park explained that nobody ever
+  explained — leaving an `awaiting_human` standing over a thread that was told nothing, on a park no later attempt
+  supersedes.
 
 The refs hold objects, so they hold *content*: a snapshot is a copy of a candidate that was never published. It
 lives in the same repository under the same visibility as the branch it came from, and it is deleted once every
