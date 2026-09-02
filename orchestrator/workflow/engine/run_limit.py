@@ -6,8 +6,9 @@ The ledger beside this one answers what an issue may spend and what it has
 spent. This owner is what happens when those two meet: the issue stops, a
 human is told once, and nothing but a human moves it again. A lifetime total
 is spent once and no clock returns it, so unlike the day's spawn budget there
-is no window here to elapse and nothing to wait for -- which makes the park
-the whole of the ending rather than a pause in it.
+is no window here to elapse: what the park waits for is one bounded command
+from a trusted operator (`workflow/engine/run_grant.py`) widening the ceiling
+this issue is held to, and nothing else on the thread is an answer to it.
 
 The park is durable so that it can be RECOGNIZED. `awaiting_human` alone is
 every stage's park, and a tick reading that flag has no way to tell an issue
@@ -17,7 +18,8 @@ string on live issues, and it is what lets the dispatcher hold an exhausted
 issue ahead of every stage's own awaiting-human road -- each of which is right
 about the park it was written against and wrong about this one. A reply is the
 answer to a question an agent asked; it buys no runs an issue has already
-spent.
+spent, and neither does the command that lifts this park -- what that widens
+is what the issue may still spend.
 
 What the thread is owed is written down rather than assumed said. The comment
 and the write that records it cannot be made one operation, and the two
@@ -44,9 +46,10 @@ about to spend a run, and this owner is handed the reading -- so a park is
 taken on the numbers the refusal was actually made on, and the sentence under
 it quotes those rather than whatever the setting has become since.
 
-The three audit phases are the same story from outside: what was said first,
-what the thread was found to already carry, and which ticks the park went on
-holding.
+The five audit phases are the same story from outside: what was said first,
+what the thread was found to already carry, which ticks the park went on
+holding, and how the command beside it ended -- one ceiling wider, or one
+request this park could not act on.
 """
 from __future__ import annotations
 
@@ -105,16 +108,20 @@ _UNREADABLE_THREAD = object()
 class RunLimitPhase(StrEnum):
     """Which step of an agent-run-limit park one audit record describes.
 
-    The three are deliberately distinguishable. A delivery and a
+    The five are deliberately distinguishable. A delivery and a
     reconciliation both end with the thread carrying the notice, but only one
     of them paid a comment for it; a park that holds a later tick is neither,
     and it is the record that keeps an operator from reading a workflow
-    stopped for good as one that stopped for no reason.
+    stopped for good as one that stopped for no reason. A grant and a refusal
+    are the two endings of the one command that answers this park, and only
+    one of them lets an agent run again.
     """
 
     DELIVERED = "delivered"
     RECONCILED = "reconciled"
     STANDING = "standing"
+    GRANTED = "granted"
+    REFUSED = "refused"
 
 
 class NoticeReading(StrEnum):

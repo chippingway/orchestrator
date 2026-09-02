@@ -130,7 +130,11 @@ from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.observability.analytics import recording
 from orchestrator.scheduler import IssueScheduler
-from orchestrator.workflow.engine import observations, run_limit as _run_limit
+from orchestrator.workflow.engine import (
+    observations,
+    run_grant as _run_grant,
+    run_limit as _run_limit,
+)
 from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 log = logging.getLogger("orchestrator.workflow")
@@ -415,6 +419,14 @@ def _run_limit_holds_the_tick(
     own reading counts as closed beside the object's, since an issue closed
     when it was enumerated is one this tick was routed on the strength of.
 
+    The one thing that lifts it is asked here too, and asked nowhere else:
+    a trusted `/orchestrator add-agent-runs N` widening what this issue may
+    spend (`run_grant.py`). It belongs to the hold rather than to a stage for
+    the same reason the park does -- the ledger is spent by every role at
+    every stage, so no one handler is the place a human would say it -- and a
+    command that lifts the park lets the tick go on to the stage its label
+    names, which is the run the human just paid for.
+
     The sentence the park owes the thread is replayed before the hold
     returns, because this is the road that strands it: nothing below runs, so
     a notice a refused post or an unreadable thread left owed would be owed
@@ -425,6 +437,8 @@ def _run_limit_holds_the_tick(
     if not _run_limit._park_stands(state):
         return False
     if observed_closed or issue_is_closed(issue):
+        return False
+    if _run_grant._lifts_the_park(gh, issue, state):
         return False
     log.info(
         "repo=%s issue=#%s has spent every agent run it is allowed; holding "

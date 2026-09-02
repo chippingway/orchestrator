@@ -12,6 +12,10 @@ the table.
 The exemption is the other half of it. What a CLOSED issue reaches below is a
 terminal that ends it rather than a road that spends anything on it, so the
 hold steps aside and lets the ending finish.
+
+The command that buys an issue out of the park is asked by the same hold, for
+the same reason it is held there: the ledger is spent by every role at every
+stage, so no one handler is where a human would say it.
 """
 from __future__ import annotations
 
@@ -22,10 +26,15 @@ from unittest.mock import Mock, patch
 
 from orchestrator.workflow.engine import dispatch
 from tests.support.fakes import FakeGitHubClient, make_issue
-from tests.workflow.engine import run_limit_test_support as support
+from tests.workflow.engine import (
+    run_grant_test_support as grant,
+    run_limit_test_support as support,
+)
 from tests.workflow.fixtures import LABEL_IMPLEMENTING
 
 _SPEC = SimpleNamespace(slug="acme/widget")
+
+_ADD_RUNS = "/orchestrator add-agent-runs 2"
 
 
 class _HoldCase:
@@ -52,6 +61,9 @@ class _HoldCase:
             dispatch._route_issue_to_handler(
                 self.gh, _SPEC, issue, LABEL_IMPLEMENTING, reading=reading,
             )
+
+    def _seed(self, state) -> None:
+        self.gh.seed_state(support.ISSUE_NUMBER, **state.data)
 
 
 class RunLimitHoldTest(_HoldCase, unittest.TestCase):
@@ -101,9 +113,6 @@ class RunLimitHoldTest(_HoldCase, unittest.TestCase):
 
         self.reached.assert_called_once_with(self.gh, _SPEC, issue)
 
-    def _seed(self, state) -> None:
-        self.gh.seed_state(support.ISSUE_NUMBER, **state.data)
-
 
 class RunLimitNoticeTest(_HoldCase, unittest.TestCase):
     """The sentence the hold says, and the ticks that say nothing more."""
@@ -140,10 +149,64 @@ class RunLimitNoticeTest(_HoldCase, unittest.TestCase):
 
     def _parked_issue(self):
         issue = self._issue()
-        self.gh.seed_state(
-            support.ISSUE_NUMBER, **support.parked_state(owing=True).data,
-        )
+        self._seed(support.parked_state(owing=True))
         return issue
+
+
+class BoughtRunTest(_HoldCase, unittest.TestCase):
+    """The one command the hold answers, and where its answer lands.
+
+    A trusted `/orchestrator add-agent-runs N` is the only reading of a thread
+    that lifts this park, and lifting it is worth nothing a poll later: the
+    run a human just paid for is the one the issue was stopped for, so the
+    tick goes on to the stage its label names.
+    """
+
+    def test_a_bought_run_reaches_the_handler(self) -> None:
+        issue = self._issue()
+        self._seed(grant.spent_state())
+        issue.comments.append(grant.command(_ADD_RUNS))
+
+        self._route(issue)
+
+        self.reached.assert_called_once_with(self.gh, _SPEC, issue)
+        recorded = self.gh.pinned_data(support.ISSUE_NUMBER)
+        self.assertEqual(
+            recorded[support.ALLOWANCE_FIELD], support.ALLOWANCE + 2,
+        )
+        self.assertEqual(support.phases(self.gh), [support.GRANTED])
+
+    def test_a_refused_request_still_holds_the_tick(self) -> None:
+        issue = self._issue()
+        self._seed(grant.spent_state())
+        issue.comments.append(grant.command("/orchestrator add-agent-runs 0"))
+
+        self._route(issue)
+
+        self.reached.assert_not_called()
+        self.assertNotIn(
+            support.ALLOWANCE_FIELD, self.gh.pinned_data(support.ISSUE_NUMBER),
+        )
+        self.assertEqual(
+            support.phases(self.gh), [support.REFUSED, support.STANDING],
+        )
+
+    def test_the_command_answers_no_other_park(self) -> None:
+        # It is read only where the park it lifts stands: on any other one it
+        # would be answering a question it was not asked.
+        issue = self._issue()
+        self._seed(support.state_with(**{
+            support.AWAITING_HUMAN: True, support.PARK_REASON: "retry_cap",
+        }))
+        issue.comments.append(grant.command(_ADD_RUNS))
+
+        self._route(issue)
+
+        self.reached.assert_called_once_with(self.gh, _SPEC, issue)
+        self.assertEqual(self.gh.posted_comments, [])
+        self.assertNotIn(
+            support.ALLOWANCE_FIELD, self.gh.pinned_data(support.ISSUE_NUMBER),
+        )
 
 
 class HoldPlacementTest(unittest.TestCase):

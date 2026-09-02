@@ -91,17 +91,24 @@ file is the durable record.
   beside is every other stage's refusal on the same per-issue day of tokens, not the `late_verdict` and
   `late_failure` records a generation reports. Its `delivered` and `reconciled` are emitted where that mode's own
   notice reaches the thread, so a park whose comment GitHub refused records neither until the redelivery lands.
-- `agent_run_limit` — the spent lifetime agent-run ledger's park, emitted by `workflow/engine/run_limit.py`; extras:
+- `agent_run_limit` — the spent lifetime agent-run ledger's park, emitted through `workflow/engine/run_limit.py`
+  (the two command phases by `workflow/engine/run_grant.py`, which shares this stream because what they answer is
+  this park); extras:
   `stage` (the workflow label the issue is wearing, which is the whole of what this park can say about where the
   issue stopped — the ledger is spent by every role at every stage, so no one stage ran out of it), `phase` —
   `delivered` (the notice said for the first time), `reconciled` (the thread was found already carrying it, so it
   was recorded as said rather than repeated), `standing` (a later tick met the same explained park and said nothing
   — emitted by the dispatcher's own hold, which stops the tick before any handler is reached, so it reports once per
   tick that REACHES it: a `paused` / `backlog` hard skip runs no dispatch at all, a closed issue is let past to its
-  terminal, and a guard ahead of the hold can own the tick itself). The `park_awaiting_human` record with
-  `reason="agent_run_limit"` is emitted beside the `delivered` one, by the shared park the delivery goes through.
-  There is no `continued` phase here and there is nothing for one to renew: a lifetime total is spent once, and no
-  window reopens under this park.
+  terminal, and a guard ahead of the hold can own the tick itself), `granted` (a trusted
+  `/orchestrator add-agent-runs N` widened the allowance and the park came down, so the tick went on to the stage its
+  label names), `refused` (a request the park could not act on — malformed, zero, negative, or past the per-command
+  maximum — left both counts where they were and earned its one receipt; emitted on the replay that recognizes a
+  receipt already on the thread too, since what the phase records is the tick's own answer). The
+  `park_awaiting_human` record with `reason="agent_run_limit"` is emitted beside the `delivered` one, by the shared
+  park the delivery goes through. There is no `continued` phase here and nothing for one to renew: a lifetime total
+  is spent once and no window reopens under this park — what `granted` records is a wider ceiling, not a returned
+  run.
 - `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The
   `discussion` stage's plan publication emits the same event with `stage="discussion"` when it opens (never when it
   reuses) a plan PR; it carries no `retry_count`, having no retry budget of its own.

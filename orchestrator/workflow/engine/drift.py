@@ -7,9 +7,12 @@ wrote is the whole definition. Everything the orchestrator itself put on the
 thread is filtered out first -- the pinned-state comment, the hidden marker
 every posted comment carries, the legacy ids from before that marker existed,
 third-party bots, authors outside the configured allowlist, and a bare
-`/orchestrator continue` -- because each of them would otherwise shift the hash
-on a tick where the requirements did not move and re-fire the resume or
-re-decompose the drift routes drive. The filters and the hash sit together for
+operator command (`/orchestrator continue`, `/orchestrator add-agent-runs N`)
+-- because each of them would otherwise shift the hash on a tick where the
+requirements did not move and re-fire the resume or re-decompose the drift
+routes drive. The add-agent-runs command is the sharpest of those: the tick
+that reads it is the tick the park comes down on, so a hash counting it would
+hand the stage below a body nobody edited and call it changed requirements. The filters and the hash sit together for
 that reason: the hash is only as stable as the narrowest of them.
 
 The routes are the other half of the same decision. A drift found mid-implementation
@@ -32,7 +35,12 @@ from github.IssueComment import IssueComment
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import is_trusted_author
 from orchestrator.github.pinned_state import PINNED_STATE_MARKER, PinnedState
-from orchestrator.workflow.engine import comments as _comments, messages as _messages, prompts as _prompts
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    messages as _messages,
+    prompts as _prompts,
+    run_grant as _run_grant,
+)
 from orchestrator.workflow.state import WorkflowLabel
 
 _USER_CONTENT_HASH = "user_content_hash"
@@ -66,6 +74,13 @@ def _comment_body_for_hash(
     if _is_hidden_comment(issue_comment, orchestrator_ids):
         return None
     body = issue_comment.body or ""
+    # Asked in both modes, unlike the continue below it. The legacy algorithm
+    # the flag reproduces predates this command, so a thread carrying one was
+    # never hashed with it either way -- and a baseline recomputed WITH it
+    # would fail to recognize itself and report the operator's control as the
+    # edit it is not.
+    if _run_grant._is_bare_command(issue_comment):
+        return None
     if include_bare_continue:
         return body
     if _messages._is_bare_orchestrator_continue(issue_comment):
@@ -89,7 +104,7 @@ def _compute_user_content_hash(
     a baseline written by the old algorithm and absorb the one-time delta instead
     of firing false drift. Default False (the current algorithm).
 
-    Non-human content is filtered six ways:
+    Non-human content is filtered seven ways:
 
     * pinned-state comment by `PINNED_STATE_MARKER`;
     * orchestrator-posted comments by `_ORCH_COMMENT_MARKER` embedded in
@@ -115,6 +130,15 @@ def _compute_user_content_hash(
       instead of the stage's intentional session-limit retry (issue #729).
       A comment carrying the command ALONGSIDE genuine guidance is NOT bare,
       so it still shifts the hash and drives the normal drift/resume path.
+    * a bare `/orchestrator add-agent-runs N` command by
+      `run_grant._is_bare_command`, for the same reason and one of its own:
+      the dispatcher answers that command and then hands the SAME tick to the
+      stage below, so a hash counting it would meet the handler as a body
+      edit that never happened -- resuming a developer where the stage owed a
+      reviewer. It is filtered in both hashing modes, since the legacy
+      algorithm the flag reproduces predates the command entirely. Guidance
+      beside the command is guidance here too: not bare, still shifting the
+      hash, so the drift road carries those words to the agent.
 
     The orchestrator's OWN comments are dropped by marker/id (above),
     never by login, so a PAT shared with a human reviewer's account does

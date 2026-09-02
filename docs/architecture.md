@@ -31,8 +31,9 @@ comment is the resume signal for the parked agent session. The exhausted retry c
 comment does not answer under `workflow:decomposing` or `workflow:implementing`: what stopped the issue there is a
 spent spawn budget rather than a question, so the tick holds everything it carries until a trusted
 `/orchestrator continue` renews the budget for one more attempt. A spent lifetime agent-run ledger
-(`MAX_AGENT_RUNS_PER_ISSUE`) parks the same way and answers to nothing at all: the dispatcher holds such an issue
-off every stage handler, and no window and no command reopens a lifetime.
+(`MAX_AGENT_RUNS_PER_ISSUE`) parks the same way and answers to one thing only: the dispatcher holds such an issue
+off every stage handler until a trusted, bounded `/orchestrator add-agent-runs N` widens the ceiling it is held to.
+No window reopens a lifetime, and nothing returns a run it has already spent.
 
 The workflow is deliberately fixed instead of planner-selected: decomposition, implementation, validation, and
 acceptance are mandatory phases. Routing is explicit and label-driven.
@@ -271,8 +272,8 @@ it owes — the restart an operator authorizes by taking that `rejected` back of
 which projects a fresh cycle onto the same pinned comment and puts the issue back on the label `DECOMPOSE` chooses,
 an issue standing on `agent_run_limit` because it has spent every agent run its lifetime ceiling allows — held
 behind that pair and ahead of everything else, since each stage below reads `awaiting_human` as the park it was
-written against and none of those buys back a run, and stepping aside only for a CLOSED issue so a terminal arc can
-still finish
+written against and none of those buys back a run, lifted only by the bounded operator command the same hold reads
+off the thread, and stepping aside only for a CLOSED issue so a terminal arc can still finish
 ([`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#the-agent-run-limit-hold-every-dispatch-ahead-of-every-handler))
 — and, last, an unlabeled issue that already carries a pinned comment, which is one this orchestrator has met
 before: the pickup handler behind it *greets* an issue and mints its pinned comment, so a second greeting writes a

@@ -104,9 +104,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the hold an issue that has spent its whole lifetime agent-run allowance gets, taken
                             once here rather than taught to thirteen handlers because `awaiting_human` means a
                             different road on each of them and none of those buys back a run (it replays the
-                            sentence the park still owes, since nothing below it runs to say one, and it is the one
-                            question here that steps aside for a CLOSED issue, whose handler is a terminal that
-                            ends it rather than a road that spends anything) -- and the timed dispatch
+                            sentence the park still owes, since nothing below it runs to say one, it reads the
+                            thread for the one trusted command that widens the ceiling -- which lets the tick go on
+                            to the stage its label names, since the run a human just paid for is the one the issue
+                            was stopped for -- and it is the one question here that steps aside for a CLOSED issue,
+                            whose handler is a terminal that ends it rather than a road that spends anything)
+                            -- and the timed dispatch
     observations.py         the closes a poll saw and could hand to no worker: the process-wide latch the run
                             holding the issue asks before every step the remote keeps (a close and a reopen inside
                             one of its own steps is the reading GitHub cannot give back), the settle a pass that
@@ -124,8 +127,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             once-per-owner-per-process claim that bounds the thread scan recovering an observation
                             a DEAD process was holding, held for the length of the walk and handed back where it
                             raised
-    drift.py                the user-content hash and the six filters that keep content nobody wrote out of it, the
-                            dev resume a drift earns, and the decomposition reset the pre-implementation route takes
+    drift.py                the user-content hash and the seven filters that keep content nobody wrote out of it --
+                            the two bare operator commands among them, since answering one edits nothing -- the dev
+                            resume a drift earns, and the decomposition reset the pre-implementation route takes
                             -- manifest, session, and every claim that manifest made about the children it created
     guards.py               what a finished agent run may leave behind: the shutdown-interruption and freshly-read
                             pause refusals, and the awaiting-human park
@@ -146,6 +150,19 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             four audit phases over them. The late adjudication is decided by the same gate and
                             renewed by the same step, and owns its park's delivery itself, since what a refusal
                             leaves standing there is a generation's whole record
+    run_grant.py            the one command that answers the spent-ledger park below: a trusted
+                            `/orchestrator add-agent-runs N`, read only while that park stands and only as an exact
+                            positive count no larger than `MAX_RUNS_PER_COMMAND`. It persists an allowance of
+                            exactly `used + N` -- absolute rather than additive, so the same command read twice
+                            buys the same ceiling -- clears that park alone, consumes the batch it read and the
+                            answer it wrote under it (never a comment that arrived between the two: the boundary is
+                            built from ids this tick observed rather than re-read off the thread), and lets the tick
+                            reach the stage its label names. Every other request leaves both
+                            counts where they were and earns one receipt; an untrusted one earns nothing at all.
+                            Both answers are marked with the comment that asked, so a post whose write never landed
+                            is recognized rather than said twice, and the bare-command reading the drift hash filters
+                            on lives here too -- the tick that answers the command is the tick the stage below runs
+                            on, so a hash counting it would call a body nobody edited changed requirements
     run_ledger.py           the lifetime agent-run ledger one issue is read against: the allowance in force -- the
                             issue's own where it carries one, the configured ceiling everywhere else -- the
                             monotonic count of runs it has spent, seeded and floored by the legacy `issue_agent_runs`
@@ -159,8 +176,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             replaced rather than said -- the persist-before-post composition that takes the park and
                             says it once, the reconciliation that reads a bot-authored notice back off the thread
                             before repeating it, the replay the dispatcher's hold makes when nothing ever said it,
-                            and the three audit phases over them. Nothing here decides an issue is out: the ledger
-                            reading is handed in, so the park quotes the numbers the refusal was made on
+                            and the five audit phases over them -- the two the command beside it ends on included.
+                            Nothing here decides an issue is out: the ledger reading is handed in, so the park
+                            quotes the numbers the refusal was made on
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the

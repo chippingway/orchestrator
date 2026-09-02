@@ -150,6 +150,102 @@ class FirstTimeHashSeedingIsDurableTest(
         self.assertIsNotNone(state.get(support.KEY_USER_CONTENT_HASH))
 
 
+class BareAddAgentRunsIsNotDriftTest(
+    unittest.TestCase, support._PatchedWorkflowMixin,
+):
+    """The command that buys an issue more agent runs is a control, not an edit.
+
+    The dispatcher answers it and hands the SAME tick to the stage below, so a
+    hash that counted the command would meet the handler as a body edit
+    nobody made: `validating` would resume the developer on "the human edited
+    the issue" instead of running the reviewer round the issue was stopped
+    mid-way through.
+    """
+
+    def test_validating_runs_the_reviewer_not_the_dev(self) -> None:
+        gh, issue = self._parked_and_bought()
+
+        mocks = self._run(
+            lambda: _validating._handle_validating(
+                gh, support._TEST_SPEC, issue,
+            ),
+            run_agent=support._agent(
+                last_message=support.REVIEW_APPROVED_MESSAGE,
+            ),
+        )
+
+        prompt = mocks[support.RUN_AGENT].call_args.args[1]
+        self.assertNotIn("The human edited the issue", prompt)
+        # An approved round routes on for the docs pass, which is the whole
+        # proof that the reviewer -- and not the drift resume -- ran.
+        self.assertIn(
+            (support._ADD_AGENT_RUNS_ISSUE_NUMBER, support.LABEL_DOCUMENTING),
+            gh.label_history,
+        )
+
+    def test_guidance_beside_the_command_still_drifts(self) -> None:
+        # Words beside the command are requirements, and the drift road is how
+        # they reach the agent that has to act on them.
+        gh, issue = self._parked_and_bought(
+            guidance="also handle the empty input case",
+        )
+
+        mocks = self._run(
+            lambda: _validating._handle_validating(
+                gh, support._TEST_SPEC, issue,
+            ),
+            run_agent=support._agent(
+                session_id=support.DEV_SESSION,
+                last_message="ACK: covered already",
+            ),
+            has_new_commits=False,
+            dirty_files=(),
+            head_shas=[support.SAME_SHA, support.SAME_SHA],
+        )
+
+        prompt = mocks[support.RUN_AGENT].call_args.args[1]
+        self.assertIn("The human edited the issue", prompt)
+
+    def _parked_and_bought(self, *, guidance: str = ""):
+        """A validating issue whose thread carries the operator's command.
+
+        The baseline is the hash of the thread WITHOUT it, which is what the
+        stage recorded before the park: the command is written while the issue
+        is stopped, and the tick that reads it is the one the handler runs on.
+        """
+        issue_number = support._ADD_AGENT_RUNS_ISSUE_NUMBER
+        issue = support.make_issue(
+            issue_number, label=support.LABEL_VALIDATING,
+        )
+        baseline = drift._compute_user_content_hash(issue, set())
+        issue.comments.append(support.FakeComment(
+            id=support._ADD_AGENT_RUNS_COMMENT_ID,
+            body="\n\n".join(
+                part for part in (support.ADD_AGENT_RUNS_COMMAND, guidance)
+                if part
+            ),
+            user=support.FakeUser(support.TRUSTED_AUTHOR),
+        ))
+        branch = f"orchestrator/chippingway__orchestrator/issue-{issue_number}"
+        gh = support.FakeGitHubClient()
+        gh.add_issue(issue)
+        gh.add_pr(support.FakePR(
+            number=support._ADD_AGENT_RUNS_PR_NUMBER, head_branch=branch,
+        ))
+        gh.seed_state(
+            issue_number,
+            pr_number=support._ADD_AGENT_RUNS_PR_NUMBER,
+            branch=branch,
+            dev_agent=support.BACKEND_CLAUDE,
+            dev_session_id=support.DEV_SESSION,
+            user_content_hash=baseline,
+            agent_run_allowance=support._ADD_AGENT_RUNS_ALLOWANCE,
+            agent_runs_used=support._ADD_AGENT_RUNS_SPENT,
+            review_round=1,
+        )
+        return gh, issue
+
+
 class NoCommitAckDoesNotParkTest(
     unittest.TestCase, support._PatchedWorkflowMixin,
 ):

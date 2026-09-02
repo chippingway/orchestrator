@@ -11,7 +11,11 @@ from __future__ import annotations
 
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import run_limit as _run_limit
-from orchestrator.workflow.engine.run_ledger import AgentRunLedger
+from orchestrator.workflow.engine.run_ledger import (
+    AGENT_RUN_ALLOWANCE,
+    AGENT_RUNS_USED,
+    AgentRunLedger,
+)
 from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow.fixtures import LABEL_IMPLEMENTING
 
@@ -27,6 +31,10 @@ RECONCILED = _run_limit.RunLimitPhase.RECONCILED
 
 STANDING = _run_limit.RunLimitPhase.STANDING
 
+GRANTED = _run_limit.RunLimitPhase.GRANTED
+
+REFUSED = _run_limit.RunLimitPhase.REFUSED
+
 WATERMARK = 900
 
 AWAITING_HUMAN = "awaiting_human"
@@ -36,6 +44,10 @@ PARK_REASON = "park_reason"
 LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 
 NOTICE = _run_limit.AGENT_RUN_LIMIT_NOTICE
+
+ALLOWANCE_FIELD = AGENT_RUN_ALLOWANCE
+
+USED_FIELD = AGENT_RUNS_USED
 
 # The login the fake client posts under, and so the only author a receipt this
 # orchestrator reads back off a thread may carry.
