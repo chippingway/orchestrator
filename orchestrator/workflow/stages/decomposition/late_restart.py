@@ -109,7 +109,10 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    run_ledger as _run_ledger,
+)
 from orchestrator.workflow.late_split import (
     events as _events,
     lineage as _lineage,
@@ -169,6 +172,15 @@ _RETAINED_KEYS = (
     "issue_total_tokens",
     "issue_total_cost_usd",
     "issue_cost_sources",
+    # What the issue may spend and what it has spent of it, named by the
+    # ledger owner rather than copied here, so a field that group grows is
+    # kept by this projection without a second edit. A lifetime ceiling a
+    # restart handed back would be no lifetime ceiling at all -- a cancelled
+    # cycle would be the way to buy another one -- and the allowance travels
+    # beside the count for the same reason the receipt's counters do: dropping
+    # the ceiling an issue was granted while keeping its spend parks it on the
+    # first run of the fresh cycle.
+    *_run_ledger.PROJECTED_KEYS,
 )
 
 

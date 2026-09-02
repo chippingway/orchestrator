@@ -723,6 +723,20 @@ The keys that matter for the state machine fall into a few groups:
   handler's existing single `write_pinned_state`, so an `interrupted` run that returns without writing never accrues.
   The decomposer / question / discussion stages additionally skip the fold for `interrupted` runs, so even
   their dirty/commits inspection park (which does write pinned state) records no counter.
+- **Agent-run ledger.** `agent_run_allowance` + `agent_runs_used` + `agent_run_reservation`, owned by
+  [`orchestrator/workflow/engine/run_ledger.py`](../../orchestrator/workflow/engine/run_ledger.py) and read back as
+  one typed `AgentRunLedger` snapshot (the configured ceiling, the allowance in force, the count spent, the launch
+  outstanding, and what is left of the allowance). `agent_run_allowance` is the ceiling this issue is held to; absent
+  — which is every issue nobody decided anything special about — `MAX_AGENT_RUNS_PER_ISSUE` governs and is read live,
+  and a recorded `0` says unlimited exactly as a configured `0` does. `agent_runs_used` is monotonic: it is charged
+  upward and never decremented, zeroed, or rolled over, it goes on counting while the ceiling is off (an unlimited
+  setting stops nothing turning runs away, not the runs), and a missing one starts from the `issue_agent_runs` meter
+  above rather than from zero — the two count the same unit, so the larger of the pair is what a read answers.
+  `agent_run_reservation` is the launch currently holding a charge, as one of two stable phases: `reserved` (charged,
+  not yet spawned) and `started` (the spawn happened). The charge is taken before the spawn, so a run that crashed,
+  timed out, or was killed mid-flight is still spent; settling a reservation drops only the claim that a launch is
+  outstanding, never the charge. This owner decides nothing and posts nothing — no stage handler turns an agent run
+  away against it.
 - **Terminal usage verdict.** `_format_issue_usage_verdict` renders those counters into one visible receipt line
   (`:receipt: this issue: N agent runs · T tokens · $X.XX`, `(est.)` appended when any `estimated` contributed,
   `unknown` in place of the figure when an `unknown-price` run leaves the total incomplete). It returns nothing when
@@ -1452,11 +1466,15 @@ rather than preserving.
   The retirement's own write is the **projection**, and it is a whitelist rather than a list of deletions: every
   stage shares this comment and each adds keys of its own, so naming what to drop would carry whatever the naming
   was not written for. What survives is the pinned comment's own identity (the payload is rewritten in place rather
-  than a second comment minted), `orchestrator_comment_ids`, the four cumulative `issue_*` usage counters, and the
-  fresh generation's own identity. Everything else goes — every session id, `pr_number` and `branch`, `children` /
+  than a second comment minted), `orchestrator_comment_ids`, the four cumulative `issue_*` usage counters, the two
+  agent-run ledger fields the `run_ledger.py` owner names as its projected group (`agent_run_allowance` and
+  `agent_runs_used` — a lifetime ceiling a restart handed back would be no lifetime ceiling at all, and the allowance
+  travels beside the count so a fresh cycle is not parked on its first run by a ceiling the projection dropped), and
+  the fresh generation's own identity. Everything else goes — every session id, `pr_number` and `branch`, `children` /
   `dep_graph` / `expected_children_count` / `split_ledger_sealed`, the whole `late_ancestry_*` group and the
   exemption beside it, `awaiting_human` / `park_reason`, `user_content_hash`, the retry, review-round and park
-  counters, and every timestamp.
+  counters, `agent_run_reservation` (a launch, not a fact about the issue — the fresh cycle has none), and every
+  timestamp.
 
 ### The late run
 

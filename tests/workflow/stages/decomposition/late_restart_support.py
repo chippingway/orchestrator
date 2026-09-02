@@ -9,7 +9,7 @@ the dispatcher's own, because the guard under test runs BEFORE a label becomes
 a handler call and whether that handler was reached is what a case asserts on.
 
 The pinned comment a case seeds is described here too: one key from every
-family a restart drops beside the five it keeps, so the projection is asserted
+family a restart drops beside the ones it keeps, so the projection is asserted
 against a comment a live issue could really be carrying rather than against
 the handful of keys the assertion happens to name.
 """
@@ -109,8 +109,8 @@ CANCELLED = replace(
 
 # One pinned key from every family a restart drops: the sessions, the pull
 # request and branch, the children and the dependency graph, the snapshot this
-# issue was cut from, the parks, the drift baseline, the counters, and the
-# timestamps.
+# issue was cut from, the parks, the drift baseline, the counters, the launch
+# a charge was taken for, and the timestamps.
 CARRIED_OVER = MappingProxyType({
     "dev_session_id": "dev-sess",
     "decomposer_session_id": "dec-sess",
@@ -135,6 +135,7 @@ CARRIED_OVER = MappingProxyType({
     "pickup_comment_id": 900,
     "created_at": "2026-01-01T00:00:00+00:00",
     "last_agent_action_at": "2026-05-04T08:00:00+00:00",
+    "agent_run_reservation": "started",
 })
 
 # The comment ids this issue's thread already carried, and what the projection
@@ -147,6 +148,8 @@ KEPT = MappingProxyType({
     "issue_total_tokens": 45200,
     "issue_total_cost_usd": 0.87,
     "issue_cost_sources": ["reported"],
+    "agent_run_allowance": 60,
+    "agent_runs_used": 5,
 })
 
 
