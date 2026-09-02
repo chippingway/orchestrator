@@ -134,7 +134,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             answers and posts nothing for, the durable `retry_cap` park and the stage that ran out,
                             the sentence that park owes the thread until the thread is shown to carry it -- and the
                             replay that says it at stage entry, since a park routes the tick past the gate that
-                            took it -- the one bounded renewal, and the four audit phases over them
+                            took it -- the one bounded renewal, whether an attempt it granted is still owed, which
+                            is what tells a stage's other roads to an agent to stand down for the gate, and the
+                            four audit phases over them
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the
@@ -773,7 +775,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       spawn.py              awaiting-human vs active, the restorer the checkout comes back from, the
                             recovered-worktree shortcut and the certified baseline it stands down for -- which
                             an unread head cannot spend, since that comparison is what a retirement rests on --
-                            and the retry-gated fresh spawn
+                            and the retry-gated fresh spawn, which retires the pinned session wherever a
+                            continuation is what paid for it: the grant is durable and the budget is shared, so the
+                            tick that spends one is not always the tick -- or even the stage -- that granted it
       session.py            the four session retirements -- the fourth being the continuation that buys a spent
                             budget one more attempt, which is a fresh spawn by definition -- the parking form of the
                             shared spawn budget the stages
