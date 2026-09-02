@@ -61,6 +61,14 @@ incomplete. The PR merged / rejected finalizers and the closed-`question` termin
 comment; the `umbrella` close comment appends it. It is a read-only summary — nothing gates on the figure — and it is
 skipped when no run was ever counted.
 
+`issue_agent_runs` has one reader outside that receipt: the lifetime agent-run ledger on
+`workflow/engine/run_ledger.py` seeds a missing `agent_runs_used` from it and never reads below it, so an issue
+already in flight keeps what it has already spent. The two count the same unit but not the same set — the ledger
+charges the launch and so also holds the runs whose usage never parsed, while this meter counts the parsed exits —
+which is why the ledger's total is the larger of the pair. Nothing turns an agent run away against either of them;
+see [`configuration.md`](../configuration.md#cadence-and-budgets) for `MAX_AGENT_RUNS_PER_ISSUE` and
+[state-machine/labels-and-state.md][pinned-state] for the ledger's own keys.
+
 **Skill-trigger extractor (opt-in).** A sibling trio mirrors the usage parsers' two-parsers-one-dispatcher shape and
 resilience contract to record which agent *skills* a run loaded, gated behind `TRACK_SKILL_TRIGGERS` (default off;
 see [`agent_exit` records](event-streams.md#agent_exit-records)). The result is a names-only

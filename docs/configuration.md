@@ -189,21 +189,22 @@ examples.
   durable state (issue body + recent comments + the committed branch), so a growing `--resume` transcript cannot creep
   into a `Prompt is too long` context overflow. `0` = resume forever. The reactive overflow handler still recovers a
   session that blows the window in fewer resumes.
-- `MAX_AGENT_RUNS_PER_ISSUE` — default `50`. lifetime ceiling on the agent runs one issue may spend, counted on the
-  `issue_agent_runs` total the usage accounting folds onto pinned state: every real agent exit charged to that issue,
-  in every role and at every stage — decomposer, developer, reviewer, and the conversation agents — not only the
-  implementer spawns `MAX_RETRIES_PER_DAY` meters. It is the backstop *under* the per-stage budgets rather than one
-  more of them: each of those bounds how often a single road may be retried, and an issue that walks enough of those
-  roads in turn spends more than any one of them ever sees. Unlike the daily retry budget this one never reopens — a
-  lifetime total is spent once, and no clock returns it. `0` = unlimited. A negative or non-integer value aborts at
-  import, like the parallelism caps: a ceiling under zero is one no run could ever come in under. What the setting
-  carries is the ceiling itself — validated at import and published on `orchestrator.config` — and the accounting it
-  is judged against is the per-issue ledger on
+- `MAX_AGENT_RUNS_PER_ISSUE` — default `50`. lifetime ceiling on the agent runs one issue may spend: every agent run
+  charged to that issue, in every role and at every stage — decomposer, developer, reviewer, and the conversation
+  agents — not only the implementer spawns `MAX_RETRIES_PER_DAY` meters. It is the backstop *under* the per-stage
+  budgets rather than one more of them: each of those bounds how often a single road may be retried, and an issue
+  that walks enough of those roads in turn spends more than any one of them ever sees. Unlike the daily retry budget
+  this one never reopens — a lifetime total is spent once, and no clock returns it. `0` = unlimited. A negative or
+  non-integer value aborts at import, like the parallelism caps: a ceiling under zero is one no run could ever come
+  in under. What the setting carries is the ceiling itself — validated at import and published on
+  `orchestrator.config` — and the accounting it is judged against is the per-issue ledger on
   [`workflow/engine/run_ledger.py`](../orchestrator/workflow/engine/run_ledger.py): the allowance in force (this
   setting, unless the issue records one of its own), the monotonic `agent_runs_used` count seeded and floored by the
   `issue_agent_runs` meter, and the `reserved` / `started` phases of the launch currently holding a charge. That
   count goes on running while this setting is `0`, so turning the ceiling on reads a real lifetime total rather than
-  zero. No stage handler turns an agent run away against any of it.
+  zero. The charge is taken *before* the spawn, so a run that crashed, timed out, or was killed mid-flight is still
+  spent — which is also why this count can sit above the `issue_agent_runs` figure the terminal receipt reports,
+  since that one records only the runs whose usage parsed. No stage handler turns an agent run away against any of it.
 - `MAX_ADDED_LINES` — default `4000`. size ceiling a pull request may publish under, counted in the
   textual lines it **adds**: the frozen remote base commit against the exact committed
   candidate commit, across every path. It is applied to the first publication and to every dev fix pushed onto a
