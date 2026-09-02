@@ -768,8 +768,9 @@ The keys that matter for the state machine fall into a few groups:
 - **The one command that lifts it.** `/orchestrator add-agent-runs N`, owned by
   [`orchestrator/workflow/engine/run_grant.py`](../../orchestrator/workflow/engine/run_grant.py) and asked by the
   same dispatcher hold, because the ledger is spent by every role at every stage and no one handler is where a human
-  would say it. It is read only while THIS park stands (a command on any other park, or on a running issue, is a
-  ceiling nobody was held to), only past `last_action_comment_id` from an author `ALLOWED_ISSUE_AUTHORS` trusts, only
+  would say it. It is read only while THIS park stands on an OPEN issue (a command on any other park, or on a running
+  issue, is a ceiling nobody was held to; a closed one is let past to its terminal before the read is taken), only
+  past `last_action_comment_id` from an author `ALLOWED_ISSUE_AUTHORS` trusts, only
   once the park's own sentence has been said (the delivery moves the response boundary, so a command read before it
   would be bought and then consumed by the notice explaining the park), and only as an exact positive whole number no
   larger than `MAX_RUNS_PER_COMMAND` (50) — leading zeros are dropped first, so `007` is seven and a digit string too
