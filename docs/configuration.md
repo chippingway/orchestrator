@@ -176,9 +176,9 @@ examples.
 - `MAX_RETRIES_PER_DAY` — default `3`. fresh implementer spawns per issue per 24h window (`0` = unbounded, and an
   unbounded budget keeps no counters — it drops the window it finds, so turning it back on opens a fresh one). An
   exhausted budget parks the issue as `retry_cap`, and that park outlives both the window elapsing and a later change
-  to this setting: the notice asked for a human, and neither the clock nor a wider cap is one. The continuation that
-  clears it buys one spawn, recorded on the issue as the attempt itself, so moving this setting between the word and
-  the spawn neither swallows that attempt nor multiplies it
+  to this setting: the notice asked for a human, and neither the clock nor a wider cap is one. A reply on the thread
+  lifts it; the renewal a caller can grant instead buys exactly one spawn, recorded on the issue as the attempt
+  itself, so moving this setting between the word and the spawn neither swallows that attempt nor multiplies it
 - `DEV_SESSION_MAX_RESUMES` — default `10`. resumes of one dev session before it is retired and respawned fresh from
   durable state (issue body + recent comments + the committed branch), so a growing `--resume` transcript cannot creep
   into a `Prompt is too long` context overflow. `0` = resume forever. The reactive overflow handler still recovers a

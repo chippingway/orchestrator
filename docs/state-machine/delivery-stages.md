@@ -156,16 +156,19 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - **Trigger**: each tick while the label is `workflow:decomposing`.
 - **Input**: issue + comments + pinned state (`decomposer_agent` / `decomposer_session_id`, retry-budget keys,
   `children`, `dep_graph`, `expected_children_count`, `umbrella`).
-- **Internal flow**:
-  0. **Late adjudication route.** Before anything else, the tick asks which of the two questions wearing this label it
-     is about (`_late_adjudication_owns_the_tick`). An issue whose record carries a live late generation is not
-     waiting to be decomposed — its implementation is committed and was measured past the ceiling — so the whole tick
-     belongs to the late coordinator (`late_coordinator.py`) and no step below runs, no scratch worktree is created,
-     and the initial decomposer is never spawned. The coordinator is asked on *every* tick rather than only on the
-     ones that look late, because its own first steps are the reconciliations an earlier tick left owed — a park
-     notice a refused comment stranded, an owner read nobody could take — and those are owed by exactly the records
-     the gates below would route past. On an issue that never entered the size gate it costs one pinned read that has
-     already happened and answers immediately. What it does under that label is
+- **Internal flow**: a `retry_cap` park whose sentence was never said is replayed at entry, ahead of every step
+  below and of the late route among them (`_replay_owed_notice` — see
+  [the retry budget](labels-and-state.md#the-retry-budget)); it says what the park is for and writes, and the tick
+  carries on.
+  0. **Late adjudication route.** Behind only that replay, and before every step below it, the tick asks which of the
+     two questions wearing this label it is about (`_late_adjudication_owns_the_tick`). An issue whose record carries
+     a live late generation is not waiting to be decomposed — its implementation is committed and was measured past
+     the ceiling — so the whole tick belongs to the late coordinator (`late_coordinator.py`) and no step below runs,
+     no scratch worktree is created, and the initial decomposer is never spawned. The coordinator is asked on *every*
+     tick rather than only on the ones that look late, because its own first steps are the reconciliations an earlier
+     tick left owed — a park notice a refused comment stranded, an owner read nobody could take — and those are owed
+     by exactly the records the gates below would route past. On an issue that never entered the size gate it costs
+     one pinned read that has already happened and answers immediately. What it does under that label is
      [`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer).
 
      "Not an adjudication" is not the same answer as "never entered the gate", so one more question stands between
@@ -208,11 +211,12 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      reaches this handler — or any other — at all: the dispatcher puts the label back first. See
      [`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen).
   4. **Awaiting-human resume OR fresh spawn.** Resume on a new comment; otherwise gate on the per-issue retry budget
-     (shared with `implementing`), ensure a read-only worktree, resolve the spec via `_read_decomposer_session`, persist
-     `decomposer_agent` BEFORE invoking `run_agent`, and spawn the decomposer. A mid-run `paused` / `backlog` re-check
-     (`_paused_during_agent_run`) right after the run returns short-circuits both branches BEFORE the usage fold,
-     timeout / read-only park, manifest parse, child creation, or relabel, so the next tick re-runs the decomposer from
-     durable state.
+     (shared with `implementing`; an exhausted one parks the issue durably as `retry_cap` and says so once — see [the
+     retry budget](labels-and-state.md#the-retry-budget)), ensure a read-only worktree, resolve the spec via
+     `_read_decomposer_session`, persist `decomposer_agent` BEFORE invoking `run_agent`, and spawn the decomposer. A
+     mid-run `paused` / `backlog` re-check (`_paused_during_agent_run`) right after the run returns short-circuits
+     both branches BEFORE the usage fold, timeout / read-only park, manifest parse, child creation, or relabel, so the
+     next tick re-runs the decomposer from durable state.
   5. **Read-only check.** If the worktree now has commits or dirty files, park awaiting human and KEEP the worktree for
      operator inspection. The decomposer is read-only — without this guard, `_handle_implementing`'s recovery path
      would later push decomposer-authored work as implementation.
@@ -573,7 +577,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
     own gates and the one step that puts an agent on somebody's repository. What the record then claims is an
     attempt nobody made, which the next tick reconciles for free; an agent that ran is what nothing takes back. Both
     are asked with the retry accounting handed back, since the cancellation a latch takes is itself a write and a
-    run nobody started may not cost the issue a counted attempt — or the one a `/orchestrator continue` bought;
+    run nobody started may not cost the issue a counted attempt — or the one a continuation bought;
   - **the developer revision** (`late_revision`), three times: as the tick is entered, again right against the
     resume — the revising notice it posts in between is a request the poll runs beside — and once more when the run
     comes back, which stops the remeasure that would write a fresh candidate over a cycle a close already ended.
@@ -903,7 +907,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 ## `_handle_implementing` (label `workflow:implementing`)
 - **Trigger**: each tick while the label is `workflow:implementing`.
 - **Input**: issue + comments + pinned state.
-- **Internal flow**:
+- **Internal flow**: a `retry_cap` park whose sentence was never said is replayed at entry, ahead of every step below
+  (`_replay_owed_notice` — see [the retry budget](labels-and-state.md#the-retry-budget)); it says what the park is
+  for and writes, and the tick carries on.
   0. **External-merge / closed-issue short-circuit.** `_finalize_if_pr_merged` flips a merged PR to `done`
      (`merge_method="external"`); `_finalize_if_issue_closed` flips a closed issue to `rejected` and emits
      `pr_closed_without_merge` + cleans up the branch only when the linked PR is also closed (an open PR with a

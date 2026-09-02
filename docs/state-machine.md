@@ -195,7 +195,7 @@ Spawns (or resumes) the locked dev session in the per-issue worktree at
 `<WORKTREES_DIR>/<owner>__<name>/issue-<n>` on branch `orchestrator/<owner>__<name>/issue-<n>`. Only a fresh spawn is
 gated by the 24h retry budget (`MAX_RETRIES_PER_DAY`, shared with decomposing) — an awaiting-human resume and a
 recovered worktree, which skips the agent entirely, are carry-over work rather than retries. An exhausted budget
-parks the issue as `retry_cap`, says so once, and stands until it is explicitly cleared. New commits on a clean
+parks the issue as `retry_cap`, says so once, and stands until a human answers it. New commits on a clean
 tree are measured by the late size gate and then push the branch, open or reuse a PR, and set `workflow:validating`;
 a candidate strictly past `MAX_ADDED_LINES` is held unpublished and routed to `workflow:decomposing` instead, and one
 that could not be measured parks rather than publishing. So does a checkout that cannot name the commit it is on:
