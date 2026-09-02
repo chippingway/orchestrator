@@ -10,14 +10,22 @@ says. That lock is what makes an env flip safe to do while issues are in
 flight, and writing it early is what keeps a backend that returned no session
 id from leaving the issue unattributed.
 
-Two things end a session. A human reply resumes it with the new comments
-quoted. A user-content edit retires it: the manifest tracking it produced is
-wiped so recovery cannot mistake the reroute for a crash, the session id is
-dropped so the next tick starts a fresh conversation against the new body --
-and only the session id, because the locked spec must outlive the reset for
-the same reason it exists. Children the wiped manifest tracked stay open on
-GitHub and are named as orphans in the notice; which of them still apply to
-the edited body is the operator's call, not ours.
+A human reply resumes the session with the new comments quoted, and two
+things retire it instead. A user-content edit does: the manifest tracking it
+produced is wiped so recovery cannot mistake the reroute for a crash, and the
+session id is dropped so the next tick starts a fresh conversation against the
+new body. Children the wiped manifest tracked stay open on GitHub and are
+named as orphans in the notice; which of them still apply to the edited body
+is the operator's call, not ours. The continuation that lifts a spent-budget
+park does too, and there a reply resumes nothing at all: what a trusted
+`/orchestrator continue` buys is the fresh spawn the budget refused, so the
+conversation that ran out is not the one it pays for.
+
+Both retire through one step, and only the session id. The locked spec must
+outlive either reset for the same reason it exists, and the retirement is
+separate from the run that follows it because that run cannot do it: a spawn
+records an id only where the backend hands one back, so a question or a
+timeout that surfaced none would leave the retired conversation resumable.
 """
 from __future__ import annotations
 
@@ -182,8 +190,25 @@ def _decomposition_drift_notice(orphans: list) -> str:
     )
 
 
-def _clear_decomposition_manifest(state: PinnedState) -> None:
+def _retire_decomposer_session(state: PinnedState) -> None:
+    """Drop the session id, so the next spawn opens a conversation of its own.
+
+    The spec (`decomposer_agent`) is deliberately left where it is: what is
+    retired here is a transcript, not the backend choice locked on this issue,
+    and a fresh spawn has to land on the same CLI the pinned session id was
+    written by.
+
+    Every caller that decides the NEXT run is a fresh one calls this, and it
+    is separate from that run because the run cannot do it: a spawn records an
+    id only when the backend hands one back, so a timeout or a question that
+    surfaced none would leave the retired id standing and the resume after it
+    replaying the conversation this issue was moved on from.
+    """
     state.set("decomposer_session_id", None)
+
+
+def _clear_decomposition_manifest(state: PinnedState) -> None:
+    _retire_decomposer_session(state)
     state.set(_state._CHILDREN, [])
     state.set("dep_graph", {})
     state.set("expected_children_count", None)

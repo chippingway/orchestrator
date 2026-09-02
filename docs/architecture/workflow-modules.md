@@ -273,15 +273,25 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             named by
     decomposition/          `workflow:decomposing`, `workflow:ready`, `workflow:blocked`, and `workflow:umbrella`
       run.py                one `decomposing` tick: the retry-cap notice a stranded park still owes replayed at
-                            entry, the late route asked before anything else after it, the drift / recovery /
+                            entry, the late route asked before anything else after it, the spent-budget park held
+                            behind that and ahead of every road that would walk past one, the drift / recovery /
                             kill-switch order before the agent, and the pause, dirty-worktree, and interruption
                             checks after it
+      retry_cap.py          the standing spent-budget park an initial decomposition meets: the hold that ends the
+                            tick having written, spawned, and said nothing -- so the manifest, the children, the
+                            locked session, the pull request, and the late record stay as they were -- the refusal
+                            it still records, the sentence it waits to have said before any thread is read for an
+                            answer, and the trusted `/orchestrator continue` that retires the session and renews the
+                            budget for exactly one spawn, written down before the spawn it pays for
       handoff.py            the two ways this label hands an issue to implementation -- the kill switch and a
                             candidate the size gate settled, the latter releasing the hold and moving
                             `pr_number` onto the pull request the measured commit is on first -- and the re-read
                             the inline handler is given
       session.py            the locked decomposer session: the spec read, the fresh spawn that pins it, the
-                            human-reply resume, and the drift reset that retires it
+                            human-reply resume, and the retirement the drift reset and the continuation both take
+                            -- the id dropped and the spec kept, since a spawn records an id only where the backend
+                            hands one back and the resume after one that did not would replay the conversation the
+                            issue was moved on from
       manifest.py           the fenced-block envelope rules both modes are held to, the JSON decode, and the parse entry
                             point the stage routes on
       validation.py         what a `split` payload must satisfy: the child cap, each child's shape, and the acyclicity

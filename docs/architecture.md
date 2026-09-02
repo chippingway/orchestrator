@@ -27,7 +27,9 @@ reconstructing hidden local state.
 
 The orchestrator is not fully autonomous. When a stage hits uncertainty, an unsafe repository state, a malformed agent
 response, or an exhausted retry cap, it parks with `awaiting_human` and mentions `HITL_HANDLE`; a later human issue
-comment is the resume signal for the parked agent session.
+comment is the resume signal for the parked agent session. The exhausted retry cap is the one park a comment does not
+answer under `workflow:decomposing`: what stopped the issue there is a spent spawn budget rather than a question, so
+the tick holds everything it carries until a trusted `/orchestrator continue` renews the budget for one more attempt.
 
 The workflow is deliberately fixed instead of planner-selected: decomposition, implementation, validation, and
 acceptance are mandatory phases. Routing is explicit and label-driven.

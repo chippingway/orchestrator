@@ -53,6 +53,7 @@ _OWNERS = (
     "outcomes",
     "parents",
     "recovery",
+    "retry_cap",
     "run",
     "session",
     "split",
