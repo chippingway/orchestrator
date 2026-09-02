@@ -747,9 +747,10 @@ anyway, so a tick that dies between the two leaves the budget as it found it.
   against.
 - **The park.** `awaiting_human` + `park_reason="retry_cap"` + `retry_cap_stage` (the stage whose spawn ran out; the
   budget is shared, so the flag alone cannot say what the human is being asked about). The gate asks that park before
-  it asks anything else, and while it stands nothing but an explicit continuation gets past it — not the clock
-  reaching the end of the window, and not an operator widening `MAX_RETRIES_PER_DAY` or turning it off, which is a
-  setting change rather than an answer to the notice.
+  it asks anything else, and while it stands nothing gets past it that is not a human — not the clock reaching the
+  end of the window, and not an operator widening `MAX_RETRIES_PER_DAY` or turning it off, which is a setting change
+  rather than an answer to the notice. What ends it is a reply on the thread: the resume it drives takes the flag
+  down as its own side effect, and the renewal below is the explicit form of the same answer.
 - **The notice.** `retry_cap_notice` — the sentence the park still owes the thread, written **before** a word of it is
   said and dropped only by a post that landed or by the park ending. The order is the point: a notice on a thread that
   no pinned state backs is one nothing would ever reconcile, and the window under it would roll over a day later with
@@ -765,17 +766,20 @@ anyway, so a tick that dies between the two leaves the budget as it found it.
   distinct from one read and found empty: the notice stays owed and the tick says nothing, because a request that
   failed inside the window where the sentence is already posted would otherwise produce exactly the duplicate this
   protocol exists to stop.
-- **The renewal.** One explicit step, and what it grants is a single attempt: it reopens the window at that moment
-  and clears the park with its stage and notice. A whole fresh day would let one reply spend the cap over again with
-  nobody watching. The attempt is written down as itself — `retry_cap_continued`, a count of granted spawns nobody
-  has spent — rather than as a counter to compare against the setting when the spawn is finally asked for, which
-  would make it worth nothing once an operator turns `MAX_RETRIES_PER_DAY` off and several attempts once they widen
-  it. An issue carrying that count is answered from it and from nothing else: no window is renewed under it and no
-  cap is read, and a grant with nothing left refuses like any other exhausted budget, so the next attempt is a human's
-  word again. The count is dropped where the rest of the budget is — the publication that moves the issue on
-  (`_reset_implementing_counters`) — and refunded with the counters by the one write that goes out before an agent
-  starts: the late adjudication's pre-spawn record (`_ACCOUNTING_FIELDS`), so a run the close latch, a pause, or a
-  shutdown declines leaves the attempt there to be taken again.
+- **The renewal.** One explicit step on this owner, and the only thing that renews a budget while its park stands — no
+  comment is routed into it, so it is what a caller answering a trusted `/orchestrator continue` has to call, and
+  until one does a park is lifted by the reply that resumes the session rather than by a command of its own. What the
+  step grants is a single attempt: it reopens the window at that moment and clears the park with its stage and notice.
+  A whole fresh day would let one reply spend the cap over again with nobody watching. The attempt is written down as
+  itself — `retry_cap_continued`, a count of granted spawns nobody has spent — rather than as a counter to compare
+  against the setting when the spawn is finally asked for, which would make it worth nothing once an operator turns
+  `MAX_RETRIES_PER_DAY` off and several attempts once they widen it. An issue carrying that count is answered from it
+  and from nothing else: no window is renewed under it and no cap is read, and a grant with nothing left refuses like
+  any other exhausted budget, so the next attempt is a human's word again. The count is dropped where the rest of the
+  budget is — the publication that moves the issue on (`_reset_implementing_counters`) — and refunded with the
+  counters by the one write that goes out before an agent starts: the late adjudication's pre-spawn record
+  (`_ACCOUNTING_FIELDS`), so a run the close latch, a pause, or a shutdown declines leaves the attempt there to be
+  taken again.
 - **The audit.** One `retry_cap` event per step, `phase` distinguishing them — see
   [`observability/event-streams.md`](../observability/event-streams.md#audit-event-log-event_log_path).
 

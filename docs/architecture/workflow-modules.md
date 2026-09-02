@@ -132,8 +132,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             assembled from, and the single-decision comment
     retry_budget.py         the per-issue daily spawn budget every stage's gate is decided by: the decision it
                             answers and posts nothing for, the durable `retry_cap` park and the stage that ran out,
-                            the sentence that park owes the thread until the thread is shown to carry it, the one
-                            bounded renewal, and the four audit phases over them
+                            the sentence that park owes the thread until the thread is shown to carry it -- and the
+                            replay that says it at stage entry, since a park routes the tick past the gate that
+                            took it -- the one bounded renewal, and the four audit phases over them
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the
@@ -763,7 +764,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             recovered-worktree shortcut and the certified baseline it stands down for -- which
                             an unread head cannot spend, since that comparison is what a retirement rests on --
                             and the retry-gated fresh spawn
-      session.py            the three session retirements, the per-issue 24h spawn cap, and the fresh-spawn prompt
+      session.py            the three session retirements, the parking form of the shared spawn budget the stages
+                            with no notice delivery of their own are gated by -- the budget itself is
+                            `engine/retry_budget.py`'s -- and the fresh-spawn prompt
       session_read.py       the locked session read plus the stale / overflow / quota classifiers and the blockquote
                             they quote with
       resume.py             the two resume entry points and the historical call shape they keep
