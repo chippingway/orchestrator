@@ -82,11 +82,13 @@ Non-human content is filtered six ways:
   auto-rebase retry-unpark — the filter runs on the whole `comments_after` batch up front, so it gates the non-empty
   check, the quoted follow-up, the consumed-watermark advance, and — in `workflow:validating` — the `/orchestrator
   add-review-rounds` review-cap command and the reviewer-respawn nudge; an untrusted comment resumes none of those
-  sessions and does not advance the watermark (it is re-filtered on each later tick, never marked consumed). An
-  untrusted comment therefore neither shifts the drift hash, sets a pending-fix bookmark, routes `in_review` to
-  `workflow:fixing`, resumes an awaiting-human decomposer / developer / reviewer / question / documenting session,
-  retries a parked auto-rebase, satisfies the `/orchestrator add-review-rounds` review-cap command, nor reaches any
-  agent prompt.
+  sessions and does not advance the watermark (it is re-filtered on each later tick, never marked consumed). The
+  `/orchestrator continue` that renews a spent spawn budget on a `retry_cap`-parked `workflow:decomposing` issue is
+  read through the same filter (`filter_trusted` in `retry_cap._trusted_replies`), so what buys an agent run there is
+  a trusted account's word and nothing else. An untrusted comment therefore neither shifts the drift hash, sets a
+  pending-fix bookmark, routes `in_review` to `workflow:fixing`, resumes an awaiting-human decomposer / developer /
+  reviewer / question / documenting session, retries a parked auto-rebase, satisfies the `/orchestrator
+  add-review-rounds` review-cap command, renews an exhausted spawn budget, nor reaches any agent prompt.
 
 `_detect_user_content_change` durably persists the baseline on its FIRST encounter via `gh.write_pinned_state`, so an
 early-return tick cannot silently absorb a later edit as the new baseline. It also carries a **legacy-hash
