@@ -141,6 +141,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             four audit phases over them. The late adjudication is decided by the same gate and
                             renewed by the same step, and owns its park's delivery itself, since what a refusal
                             leaves standing there is a generation's whole record
+    run_ledger.py           the lifetime agent-run ledger one issue is read against: the allowance in force -- the
+                            issue's own where it carries one, the configured ceiling everywhere else -- the
+                            monotonic count of runs it has spent, seeded and floored by the legacy `issue_agent_runs`
+                            meter and kept running while the ceiling is off, the `reserved` / `started` phases of the
+                            launch currently holding a charge, the typed snapshot carrying what is left of the
+                            allowance, and the two fields an issue-state projection keeps of the group. It decides
+                            nothing and posts nothing: what to do about a spent ledger is the reader's
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the
