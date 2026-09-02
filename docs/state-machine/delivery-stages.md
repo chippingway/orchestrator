@@ -83,9 +83,10 @@ Non-human content is filtered six ways:
   check, the quoted follow-up, the consumed-watermark advance, and — in `workflow:validating` — the `/orchestrator
   add-review-rounds` review-cap command and the reviewer-respawn nudge; an untrusted comment resumes none of those
   sessions and does not advance the watermark (it is re-filtered on each later tick, never marked consumed). The
-  `/orchestrator continue` that renews a spent spawn budget on a `retry_cap`-parked `workflow:decomposing` issue is
-  read through the same filter (`filter_trusted` in `retry_cap._trusted_replies`), so what buys an agent run there is
-  a trusted account's word and nothing else. An untrusted comment therefore neither shifts the drift hash, sets a
+  `/orchestrator continue` that renews a spent spawn budget on a `retry_cap`-parked `workflow:decomposing` or
+  `workflow:implementing` issue is read through the same filter (`filter_trusted` in each stage's
+  `retry_cap._trusted_replies`), so what buys an agent run there is a trusted account's word and nothing else. An
+  untrusted comment therefore neither shifts the drift hash, sets a
   pending-fix bookmark, routes `in_review` to `workflow:fixing`, resumes an awaiting-human decomposer / developer /
   reviewer / question / documenting session, retries a parked auto-rebase, satisfies the `/orchestrator
   add-review-rounds` review-cap command, renews an exhausted spawn budget, nor reaches any agent prompt.
@@ -114,7 +115,12 @@ the action depends on lifecycle position:
   exists and possibly a PR) — post a `:pencil2: issue body changed; resuming dev session` notice (on the issue for
   implementing/validating, on the PR for in_review/resolving_conflict), advance `last_action_comment_id` past every
   visible comment, resume the locked dev session with `_build_user_content_change_prompt`, and route the result
-  through `_post_user_content_change_result`.
+  through `_post_user_content_change_result`. On `workflow:implementing` an **unspent `retry_cap_continued`** outranks
+  the recorded session and sends the edit down the no-session road instead (hash persisted, park cleared, fall through
+  to the gated fresh spawn, which builds its prompt from the body the human just wrote): an issue parked on a spent
+  budget sits there for as long as it takes somebody to answer, so the requirements move under it, and what the
+  continuation bought is one fresh spawn — the only run the budget counts. Resumed, the agent would run on the
+  human's attempt while the grant stayed on the issue, ready to buy a second run nothing charged.
 - **`workflow:documenting`** — route back to `workflow:validating` (no docs spawn) — see the handler section below.
 
 Result routing in `_post_user_content_change_result`:
@@ -966,7 +972,10 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      because falling through would ask GitHub the same question a second time and a request that failed once and
      succeeded next would finalize the plan the first answer existed to protect.
   1. Awaiting-human resume: on a new human comment past `last_action_comment_id`, resume the dev session via
-     `run_agent(dev_agent, ...)`. The full spec persisted in `dev_agent` is re-parsed via `_read_dev_session` and
+     `run_agent(dev_agent, ...)`. A `retry_cap` park is the one awaiting-human state this road never sees: the
+     spent-budget bullet below owns the tick before it, because a resume is not a fresh spawn and nothing charges it,
+     so any reply at all would take that park down and hand the issue an unbudgeted session. The full spec persisted
+     in `dev_agent` is re-parsed via `_read_dev_session` and
      reused; flipping `DEV_AGENT` in env does not migrate in-flight issues. When parked on `agent_timeout` with **no**
      new comment, first attempt `_try_recover_implementing_timeout_park` (the implementing counterpart to validating's
      transient-park recovery): on a clean worktree whose HEAD advanced past the persisted `pre_implement_sha` **and
@@ -988,6 +997,41 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      commit a descendant the timeout cleanup raced finishes *after* the park is recorded (the observed `#77` shape:
      commit timestamp landed after the timeout event) without needing a human "push it" comment. A real human comment
      takes precedence and drives the normal resume.
+     - **A spent spawn budget** (`implementing/retry_cap.py`'s `_park_owns_the_tick`, the question
+       `_handle_parked_continue_command` opens with — so ahead of the classifier below it, and ahead of the drift
+       check and the resume, but BEHIND every step of the preflight above: the terminals still finalize a merged
+       pull request or a closed issue over a parked one, and a `paused` / `backlog` issue never reaches a handler at
+       all). Once the tick does reach it with `awaiting_human` + `park_reason=retry_cap`
+       standing, this park owns it: nothing under this stage can pay for a spawn, so the tick returns having
+       written nothing and said nothing (the sentence was said when the park was taken, and is replayed at stage
+       entry until the thread carries it), reporting the refusal as one `retry_cap` audit record with
+       `phase=standing`. Neither the clock reaching the end of the 24h window, nor a comment from outside
+       `ALLOWED_ISSUE_AUTHORS`, nor words that ask for nothing lifts it — the first two answer nobody and the third
+       is guidance for a developer this issue can no longer pay to run. The one reply that does is a **trusted
+       `/orchestrator continue`**, looked for anywhere in the unread batch and taken with whatever else its comment
+       carries: a decision that arrives with an explanation is still the decision, the explanation reaches the fresh
+       spawn through the implement prompt's own comment context, and a refused tick consumes nothing — so a rule
+       wanting the command alone would let one "on it, give me an hour" sit unread above the watermark refusing
+       every command written after it. A park that still owes its notice is held ahead of all of that
+       (`_park_is_explained`): the delivery moves the response boundary past everything written under the old
+       sentence, so until it lands a command on the thread predates the question and buying an attempt with it would
+       also clear the notice the human was owed. What the command buys is what `_grant_continuation`
+       grants: one attempt (`retry_cap_continued`), a window reopened at that moment, and the park cleared with its
+       stage and notice. The batch it was read out of is consumed in the same durable write that lifts the park —
+       read again next tick it would buy a second attempt nobody asked for — up to the last TRUSTED comment, so an
+       untrusted one above it stays unread for the next tick to filter out again. The
+       tick then carries on to the fresh spawn below, which spends exactly that attempt. While the grant is unspent
+       that spawn is the ONLY agent run this stage will make: the body-edit resume stands down for it (see the drift
+       routing above), since a resume passes no gate and would leave the attempt on the issue with a run already
+       made against it — and the grant is durable, so a process that dies before the spawn comes back owing the same
+       one. The same write retires the pinned dev session (`_drop_poisoned_dev_session`, keeping `dev_agent`), because
+       a fresh attempt is what was bought and nothing downstream can be relied on to make it one: `_spawn_implementer`
+       replaces `dev_session_id` only when the run hands an id back, so a run that returns none would leave the
+       transcript the cap stopped pinned for the next human reply to resume. Nothing on either road touches the
+       candidate, the pull request, or the late generation. `workflow:decomposing` holds the same park the same way,
+       against the three roads it has instead of these
+       ([its handler section](#_handle_decomposing-label-workflowdecomposing)). See
+       [the retry budget](labels-and-state.md#the-retry-budget).
      - **`/orchestrator continue` operator command** (`_handle_parked_continue_command`, run BEFORE the drift check so
        the bare command is never mis-read as requirement drift). On a retryable session-failure park (`park_reason` in
        `_CONTINUE_PARK_REASONS` = `agent_silent` / `agent_timeout`) a content-free continue retries the dev
@@ -1034,7 +1078,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   4. Else gate the run on the per-issue retry budget (`MAX_RETRIES_PER_DAY`, default 3); a 24h window opens at the first
      counted spawn. Only fresh spawns count. An exhausted budget parks the issue durably as `retry_cap`, and that
      park is asked before the cap and the window both, so the notice that asked for a human is not answered by the
-     clock or by a retuned cap — see [the retry budget](labels-and-state.md#the-retry-budget).
+     clock or by a retuned cap. An issue a continuation has bought attempts for is answered from those attempts and
+     from nothing else, so the spawn this step allows on that road is the one the human paid for — see
+     [the retry budget](labels-and-state.md#the-retry-budget).
   5. Else build the implementer prompt (issue body + recent comments + "commit, do not push"), persist `dev_agent`
      BEFORE invoking `run_agent`, then spawn.
   6. Branch on result:

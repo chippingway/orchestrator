@@ -19,7 +19,10 @@ true of is one a read-only relabel just let through
 -- a discussion may be held on the branch its PR is open against, so the
 commits there predate this stage entirely, and the guard records the tip it
 certified for exactly this read. Then the retry budget
-gates the spawn, and the agent spec is
+gates the spawn -- retiring the pinned session where a continuation is what
+paid for it, since what a human bought is a fresh conversation and the run
+records an id of its own only when the backend hands one back -- and the
+agent spec is
 persisted BEFORE the run -- so a spawn that commits but returns no session id
 still leaves the durable role identity behind and a later `DEV_AGENT` flip
 cannot retarget the next resume at a backend that never ran on this issue.
@@ -50,6 +53,7 @@ from orchestrator.workflow.engine import (
     comments as _comments,
     guards as _guards,
     prompts as _prompts,
+    retry_budget as _retry_budget,
     usage as _usage,
 )
 from orchestrator.workflow.stages.implementing import (
@@ -82,7 +86,7 @@ def _spawn_implementer(
     state: PinnedState,
     worktree: Path,
 ) -> tuple[AgentResult, bool] | None:
-    if not _session._check_and_increment_retry_budget(gh, issue, state):
+    if not _charge_fresh_spawn(gh, issue, state):
         gh.write_pinned_state(issue, state)
         return None
     session = _models._DevSession(*_session_read._read_dev_session(state))
@@ -110,6 +114,40 @@ def _spawn_implementer(
         state.set(_state._DEV_SESSION_ID, agent_result.session_id)
         state.set(_state._DEV_RESUME_COUNT, 0)
     return agent_result, _guards._paused_during_agent_run(gh, issue)
+
+
+def _charge_fresh_spawn(
+    gh: GitHubClient, issue: Issue, state: PinnedState,
+) -> bool:
+    """Gate one fresh spawn, and make it a fresh SESSION where a grant pays.
+
+    The budget refuses or charges as it always has. What is here is the other
+    half of what a continuation buys: an attempt a human paid for is a fresh
+    spawn, so the transcript that ran the budget out may not still be pinned
+    when it finishes.
+
+    Asked on this road rather than only where the command is read, because
+    the grant is DURABLE and the tick that spends it need not be the tick
+    that granted it. A process that dies in between comes back to an unparked
+    issue with the attempt still owed, and the budget is shared with
+    decomposing, so an issue can reach this spawn carrying a grant taken out
+    on a park this stage never saw -- with a `dev_session_id` from an earlier
+    cycle still on it. Left there, it survives a run that hands back no id of
+    its own (`_spawn_implementer` records one only when the backend returns
+    it), and the next ordinary reply resumes the conversation the cap
+    stopped.
+
+    The grant is read BEFORE the charge and the retirement taken after it,
+    because the gate is what spends the grant: read the other way round there
+    would be nothing left to recognize. A refused tick retires nothing, since
+    nothing ran.
+    """
+    granted = _retry_budget._grant_is_unspent(state)
+    if not _session._check_and_increment_retry_budget(gh, issue, state):
+        return False
+    if granted:
+        _session._drop_poisoned_dev_session(state)
+    return True
 
 
 def _recovered_work_present(

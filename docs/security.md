@@ -380,7 +380,8 @@ The security posture:
   hides, edits, or deletes it. What changes is only its *use as workflow input* — it is omitted from agent prompts,
   the `user_content_hash` drift signal, every awaiting-human resume signal (including the base-sync auto-rebase
   retry-unpark, the `/orchestrator add-review-rounds` review-cap command, and the `/orchestrator continue` that
-  renews a spent per-issue spawn budget under `workflow:decomposing`), and the `in_review` / `fixing`
+  renews a spent per-issue spawn budget under `workflow:decomposing` or `workflow:implementing`), and the
+  `in_review` / `fixing`
   PR-feedback loop. So an outsider on a public repo cannot inject instructions into an agent, resume a parked session,
   retry a parked rebase, buy an agent run out of an exhausted budget, route `in_review` to `workflow:fixing`, or shift
   the drift hash, while the audit trail of what they said stays intact.

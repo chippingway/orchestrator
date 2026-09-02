@@ -4,13 +4,17 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from unittest import mock
 
 from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
+from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
+from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.stages.implementing import (
     resume as _implementing_resume,
+    retry_cap as _implementing_retry_cap,
     session as _implementing_session,
 )
 from tests.support import fakes
@@ -22,6 +26,8 @@ patch = mock.patch
 
 FakeComment = fakes.FakeComment
 FakeGitHubClient = fakes.FakeGitHubClient
+FakeLabel = fakes.FakeLabel
+FakePR = fakes.FakePR
 FakeUser = fakes.FakeUser
 make_issue = fakes.make_issue
 IssueScenario = implementing_fixing_test_cases.IssueScenario
@@ -29,6 +35,7 @@ IssueScenario = implementing_fixing_test_cases.IssueScenario
 BACKEND_CLAUDE = fixtures.BACKEND_CLAUDE
 BACKEND_CODEX = fixtures.BACKEND_CODEX
 LABEL_DOCUMENTING = fixtures.LABEL_DOCUMENTING
+LABEL_DONE = fixtures.LABEL_DONE
 LABEL_IMPLEMENTING = fixtures.LABEL_IMPLEMENTING
 LABEL_RESOLVING_CONFLICT = fixtures.LABEL_RESOLVING_CONFLICT
 LABEL_VALIDATING = fixtures.LABEL_VALIDATING
@@ -45,11 +52,15 @@ KEY_CODEX_SESSION_ID = "codex_session_id"
 KEY_DEV_AGENT = "dev_agent"
 KEY_DEV_RESUME_COUNT = "dev_resume_count"
 KEY_DEV_SESSION_ID = "dev_session_id"
+KEY_LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 KEY_PARK_REASON = "park_reason"
+KEY_RETRY_CAP_CONTINUED = "retry_cap_continued"
 KEY_RETRY_CAP_NOTICE = "retry_cap_notice"
+KEY_RETRY_CAP_STAGE = "retry_cap_stage"
 KEY_RETRY_COUNT = "retry_count"
 KEY_SILENT_PARK_COUNT = "silent_park_count"
 
+COMMENTS_AFTER = "comments_after"
 ENSURE_WORKTREE = "_ensure_worktree"
 RUN_AGENT = "run_agent"
 
@@ -58,6 +69,10 @@ RUN_AGENT = "run_agent"
 agent_runner = _agent_runner
 session = _implementing_session
 worktree_creation = _worktree_creation
+# The two a test drives directly: the dispatch a hard-skipped issue is refused
+# by, and the park handler the stage answers a spent budget with.
+dispatch = _dispatch
+retry_cap = _implementing_retry_cap
 RESUME_SESSION_ID = "resume_session_id"
 
 POISONED_SESSION = "poisoned-sess"
@@ -98,9 +113,47 @@ RETRY_CAP_TICKS = 3
 # The audit phases one retry-cap park reports, in the spellings a record
 # carries them under.
 RETRY_CAP_EVENT = "retry_cap"
+PHASE_CONTINUED = "continued"
 PHASE_DELIVERED = "delivered"
 PHASE_RECONCILED = "reconciled"
 PHASE_STANDING = "standing"
+
+PARK_RETRY_CAP = "retry_cap"
+STAGE_IMPLEMENTING = "implementing"
+CONTINUE_COMMAND = "/orchestrator continue"
+GUIDANCE_REPLY = "use sqlite for the cache"
+TRUSTED_AUTHOR = "geserdugarov"
+OUTSIDE_AUTHOR = "stranger"
+ALLOWED_AUTHORS = "ALLOWED_ISSUE_AUTHORS"
+# The two replies these scenarios are written out of: the operator's command,
+# and words that are not one.
+TRUSTED_COMMAND = (CONTINUE_COMMAND, TRUSTED_AUTHOR)
+TRUSTED_GUIDANCE = (GUIDANCE_REPLY, TRUSTED_AUTHOR)
+RETRY_CAP_CONTINUE_ISSUE = 11
+# The two control labels that park an issue outside the state machine, so none
+# of this stage's handlers runs while one of them is on.
+HARD_SKIP_LABELS = (BACKLOG_LABEL, PAUSED_LABEL)
+CONTINUE_PR_NUMBER = 4711
+PARKED_WATERMARK = 9000
+FIRST_REPLY_ID = 9100
+GRANTED_ATTEMPTS = 1
+# The sentence a park took and an unreadable thread left unsaid.
+OWED_NOTICE = "hit retry cap (3/day) for implementing; manual intervention"
+STALE_CONTENT_HASH = "stale-hash"
+STUCK_MESSAGE = "still stuck"
+# What the fake reports for a pull request a human already merged.
+PR_CLOSED = "closed"
+DRIFT_RESUME_NOTICE = "issue body changed; resuming dev session"
+
+# Records this park may not spend: the commit an approval still owes a push
+# for, the pull request the work already has, and a live generation.
+UNTOUCHED_RECORDS = MappingProxyType({
+    "pr_number": CONTINUE_PR_NUMBER,
+    "late_approved_sha": "candidate-sha",
+    "late_cycle_id": 3,
+    "late_generation": 2,
+    "late_phase": "measuring",
+})
 
 
 class _RetryCapFixtureMixin(_PatchedWorkflowMixin):
@@ -143,11 +196,86 @@ class _RetryCapParkMixin(_PatchedWorkflowMixin):
         return allowed
 
     def _phases(self, gh) -> list:
+        """The audit trail this park has left, in the order it left it."""
         return [
             record["phase"]
             for record in gh.recorded_events
             if record["event"] == RETRY_CAP_EVENT
         ]
+
+
+class _RetryCapContinueMixin(_RetryCapParkMixin):
+    """The same park one tick on: the replies a human writes on it.
+
+    The park is seeded rather than reached through the gate, because what
+    these cover is every tick AFTER the one that took it -- which is all of
+    them until somebody answers -- and they read the same audit trail.
+    """
+
+    def _parked(self, *replies, window_hours: int = 1, **records):
+        gh = FakeGitHubClient()
+        issue = make_issue(RETRY_CAP_CONTINUE_ISSUE, label=LABEL_IMPLEMENTING)
+        issue.comments.extend(
+            FakeComment(
+                id=FIRST_REPLY_ID + offset, body=body, user=FakeUser(author),
+            )
+            for offset, (body, author) in enumerate(replies)
+        )
+        gh.add_issue(issue)
+        gh.add_pr(FakePR(
+            number=CONTINUE_PR_NUMBER,
+            head_branch=_issue_branch(RETRY_CAP_CONTINUE_ISSUE),
+        ))
+        gh.seed_state(RETRY_CAP_CONTINUE_ISSUE, **{
+            "awaiting_human": True,
+            "park_reason": PARK_RETRY_CAP,
+            "retry_cap_stage": STAGE_IMPLEMENTING,
+            "retry_count": RETRY_CAP_TICKS,
+            "retry_window_start": _iso_hours_ago(window_hours),
+            "last_action_comment_id": PARKED_WATERMARK,
+        } | records)
+        return gh, issue
+
+    def _granted(self, **records):
+        """The same issue after a restart, with the grant already durable.
+
+        What a continuation left behind and nothing has spent: no park, one
+        attempt owed, and a window opened at the grant.
+        """
+        return self._parked(
+            awaiting_human=False,
+            park_reason=None,
+            retry_cap_stage=None,
+            retry_cap_continued=GRANTED_ATTEMPTS,
+            retry_count=0,
+            **records,
+        )
+
+    def _pinned(self, gh) -> dict:
+        return gh.pinned_data(RETRY_CAP_CONTINUE_ISSUE)
+
+    def _only_trusted(self):
+        """Narrow the allowlist, so an outsider's copy of a command is one."""
+        return patch.object(config, ALLOWED_AUTHORS, (TRUSTED_AUTHOR,))
+
+    def _decide(self, gh, issue) -> bool:
+        """Whether one tick's answer to the park is that it still stands."""
+        state = gh.read_pinned_state(issue)
+        with self._only_trusted():
+            return retry_cap._park_owns_the_tick(gh, issue, state)
+
+    def _assert_fresh_run(self, mocks):
+        """The one call this tick made, proved not to be a resume.
+
+        A resume is the failure every grant-funded road is watched for: it
+        runs an agent without passing the gate, so the counter it never
+        touched and the grant it never spent would let the issue run again
+        for free.
+        """
+        spawn = mocks[RUN_AGENT]
+        spawn.assert_called_once()
+        self.assertIsNone(spawn.call_args.kwargs.get(RESUME_SESSION_ID))
+        return spawn
 
 
 class _SilentSessionFixtureMixin(_PatchedWorkflowMixin):

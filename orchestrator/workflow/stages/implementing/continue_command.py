@@ -15,6 +15,16 @@ refresh-time auto-rebase parks own their own retry comment, so this declines
 them outright, and a continue that arrives ALONGSIDE genuine guidance is left
 to the normal resume path, which feeds that guidance to the dev.
 
+The spent spawn budget is the park asked ahead of all of that, and the one
+where the command is the ONLY thing on a thread that means anything: what
+stopped the issue is a budget rather than a missing answer, so words beside
+the command are guidance for a developer nothing here can pay to run -- taken
+with it rather than read instead of it -- and the classifier below would
+refuse the one command that can lift the park as carrying no guidance. It is
+also the one park that holds the tick with no command on the thread at all --
+falling through, an ordinary reply would reach the resume, which takes the
+flag down as a side effect and starts a session no budget was charged for.
+
 The retry itself does not hand the command text to the agent: the poisoned
 session already carries the issue context in its transcript, or the resume
 rotates it to a re-grounded fresh spawn. The command comments are marked
@@ -49,6 +59,7 @@ from orchestrator.workflow.stages.implementing import (
     disposition as _disposition,
     models as _models,
     resume as _resume,
+    retry_cap as _retry_cap,
     state as _state,
 )
 
@@ -129,7 +140,16 @@ def _handle_parked_continue_command(
     belongs to the refresh-time rebase loop, there is no new comment, no
     continue command is present, or the command arrived alongside genuine
     guidance (which the normal resume / drift path feeds to the dev).
+
+    The spent-budget park is asked first and answers for its own command, so
+    the classifier below never sees one: it would read a continue there as a
+    nudge at a park waiting for guidance and refuse it, which is the wrong
+    thing to tell an operator whose command is the only reply that park can
+    act on. That question also holds the tick whenever the park stands
+    unanswered, so False past it is an issue this budget is not stopping.
     """
+    if _retry_cap._park_owns_the_tick(gh, issue, state):
+        return True
     decision = _parked_continue_decision(gh, issue, state)
     if decision is None:
         return False

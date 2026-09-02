@@ -11,10 +11,11 @@ terminal here may finalize on. A merged PR or a closed issue ends the issue, so
 both are read next, before anything spends tokens. A stale read-only park
 (`question_*` or `discussion_*`) has to be cleared or refused before the
 fresh-spawn path's recovered-worktree shortcut can publish that agent's commits
-as a dev implementation. An operator's `/orchestrator continue` has to be
-recognized before drift handling mistakes the bare command for changed
-requirements. Only then is a body edit considered, and only if that does not own
-the tick does the run get prepared.
+as a dev implementation. A spent spawn budget has to answer for itself before
+the resume below lifts its park on a reply that pays for nothing, and an
+operator's `/orchestrator continue` has to be recognized before drift handling
+mistakes the bare command for changed requirements. Only then is a body edit
+considered, and only if that does not own the tick does the run get prepared.
 
 After the run the order matters just as much: the interruption and live-pause
 refusals both come BEFORE the disposition, and both return without writing
@@ -233,6 +234,12 @@ def _terminal_or_relabel_holds(
     rebuild the checkout at base and pay for a second developer over work the
     first one already finished. It is asked before the spawn because that is
     the only place it can be.
+
+    The command handler that ends this is the last thing asked before the
+    drift check, and it answers two parks rather than one: the spent spawn
+    budget it opens with holds the tick outright, since the resume below
+    would otherwise lift that park on any reply at all and start a session
+    nothing charges.
     """
     if _terminals._finalize_if_issue_closed(gh, spec, issue, state):
         return True

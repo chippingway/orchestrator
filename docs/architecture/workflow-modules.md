@@ -774,7 +774,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             recovered-worktree shortcut and the certified baseline it stands down for -- which
                             an unread head cannot spend, since that comparison is what a retirement rests on --
                             and the retry-gated fresh spawn
-      session.py            the three session retirements, the parking form of the shared spawn budget the stages
+      session.py            the four session retirements -- the fourth being the continuation that buys a spent
+                            budget one more attempt, which is a fresh spawn by definition -- the parking form of the
+                            shared spawn budget the stages
                             with no notice delivery of their own are gated by -- the budget itself is
                             `engine/retry_budget.py`'s -- and the fresh-spawn prompt
       session_read.py       the locked session read plus the stale / overflow / quota classifiers and the blockquote
@@ -986,9 +988,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       parks.py              the session-limit, provider-unavailable, question, silent-failure, dirty-tree, and
                             unreadable-tree parks, the last two behind one seam so the caller asks whether the
                             tree is PROVABLY clean
-      drift.py              a body edit mid-implementation: the resume it earns and the `ACK:` that answers it
+      drift.py              a body edit mid-implementation: the resume it earns -- withheld while a continuation
+                            has bought an attempt, since a resume passes no gate and the attempt is owed as a fresh
+                            spawn -- and the `ACK:` that answers it
       drift_preflight.py    a pre-session edit and the quiet timeout recovery
-      continue_command.py   `/orchestrator continue` on a parked issue
+      continue_command.py   `/orchestrator continue` on a parked issue, opening with the one park below that the
+                            classifier here would refuse the right command on
+      retry_cap.py          the same standing park on this stage's road, held against the three that would read it
+                            as an ordinary one -- the continue classifier, the drift check, and the resume -- so the
+                            tick ends having written, spawned, and said nothing, and the pinned session, the pull
+                            request, an approval's unpushed commit, and the late record stay as they were. The
+                            refusal it still records, the sentence it waits to have said before any thread is read
+                            for an answer, and the trusted `/orchestrator continue` -- looked for anywhere in the
+                            unread batch, taken with whatever else its comment carries -- that retires the session
+                            and renews the budget for exactly one spawn, written down before the spawn it pays for
       read_only_relabel.py  the `question` / `discussion` relabel guards, and the reconcile that keeps an accepted
                             plan handoff in step with its PR
       models.py             the frozen records the owners hand each other

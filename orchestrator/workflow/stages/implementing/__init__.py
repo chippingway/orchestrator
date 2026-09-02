@@ -55,11 +55,13 @@ takes ahead of every handler for a pair this issue froze and never counted is
 where a crash past the write that granted one left no record to reconcile
 from, is `late_debt`; and what a pinned record CLAIMS about either -- and the
 claims nothing may act on, since every field here is read fail-closed and a
-group missing a member parses as no group -- is `late_claims`. The last four
+group missing a member parses as no group -- is `late_claims`. The last five
 own the signals that arrive between runs -- a body edit (`drift`), a body edit
 before any session existed plus the quiet timeout recovery
 (`drift_preflight`), an operator's `/orchestrator continue` (`continue_command`),
-and a `question` / `discussion` -> `implementing` relabel (`read_only_relabel`)
+the park a spent spawn budget leaves and the one command that lifts it
+(`retry_cap`), and a `question` / `discussion` -> `implementing` relabel
+(`read_only_relabel`)
 -- over the records they hand each other (`models`) and the pinned-state keys
 and CLI markers they share (`state`).
 

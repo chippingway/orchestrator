@@ -53,7 +53,11 @@ per-stage behavior is in
 
 - **Dev session reuse.** The implementer session is spawned once in `_handle_implementing` and then resumed by
   `_handle_documenting`, `_handle_validating`, `_handle_fixing`, and `_handle_resolving_conflict` whenever they need
-  the dev to make a change. The locked `(backend, args)` spec is re-parsed on every resume from pinned `dev_agent` so
+  the dev to make a change — with one park excepted, on the same terms as the decomposer's below: an
+  `implementing` issue stopped on its spent spawn budget (`retry_cap`) resumes on no reply at all, and the trusted
+  `/orchestrator continue` that renews the budget retires the session as it buys the attempt (`dev_agent` kept), so
+  what a human pays for is a fresh conversation rather than a replay of the one that ran out. The locked
+  `(backend, args)` spec is re-parsed on every resume from pinned `dev_agent` so
   a config flip mid-flight cannot retarget the session. `_resume_dev_with_text` on
   `workflow/stages/implementing/resume.py` is the one module every one of those resumes goes through; it declares the
   call signature its callers were written against, then binds those arguments into a typed request/context before

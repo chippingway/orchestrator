@@ -62,11 +62,11 @@ Three non-workflow **control labels** modify behavior without occupying the work
   issue back up from durable state; there is no un-pause command. This is distinct from `/orchestrator continue`
   ([`_handle_fixing`](delivery-stages.md#_handle_fixing-label-workflowfixing)'s `_handle_continue_command`, plus
   the shared implementing / documenting handling), which retries
-  only specific `awaiting_human` session-failure parked *retry* flows — and, on a `decomposing` issue parked under
-  [the retry budget](#the-retry-budget), renews that budget for one more spawn: pausing is never a `park_reason`, so
-  a continue command is not an un-pause and does not clear `paused`. It is unrelated to un-pausing, but not exempt
-  from it — the hard skip fires in `_process_issue` before any handler, so a continue comment posted on a paused
-  issue is deferred with everything else until the label is removed.
+  only specific `awaiting_human` session-failure parked *retry* flows — and, on a `decomposing` or `implementing`
+  issue parked under [the retry budget](#the-retry-budget), renews that budget for one more spawn: pausing is never a
+  `park_reason`, so a continue command is not an un-pause and does not clear `paused`. It is unrelated to un-pausing,
+  but not exempt from it — the hard skip fires in `_process_issue` before any handler, so a continue comment posted
+  on a paused issue is deferred with everything else until the label is removed.
 - `workflow:community_contribution` is applied by the per-tick open-PR sweep (on the `workflow/engine/tick.py` owner,
   which drives it before per-issue dispatch) when `ALLOWED_ISSUE_AUTHORS` is configured: any open PR whose author is
   not in the allowlist is labeled and `HITL_HANDLE` is @-mentioned once per PR. Bot-authored PRs
@@ -753,11 +753,15 @@ anyway, so a tick that dies between the two leaves the budget as it found it.
   it asks anything else, and while it stands nothing gets past it that is not a human — not the clock reaching the
   end of the window, and not an operator widening `MAX_RETRIES_PER_DAY` or turning it off, which is a setting change
   rather than an answer to the notice. What ends it depends on which stage the parked issue is in. Where a stage
-  routes the park to a resume, a reply on the thread takes the flag down as its own side effect. The initial
-  decomposition instead holds the park ahead of every road that would walk past one — the drift reset, the kill
-  switch, and the resume — so there nothing but the renewal below lifts it, and the issue keeps its manifest, its
-  children, its locked decomposer session, its `pr_number`, and its late record untouched while it waits
-  ([delivery-stages.md](delivery-stages.md#_handle_decomposing-label-workflowdecomposing)).
+  routes the park to a resume, a reply on the thread takes the flag down as its own side effect. The two stages that
+  spend this budget hold it instead, each ahead of every road of its own that would walk past a park — the drift
+  reset, the kill switch and the resume on `workflow:decomposing`; the parked-continue classifier, the drift check
+  and the resume on `workflow:implementing`, the last of which would take the flag down on any reply at all and start
+  a session nothing charges. On both, nothing but the renewal below lifts it, and the issue keeps untouched
+  everything the tick never reached: the manifest, the children, the locked session and its spec, the `pr_number`,
+  the frozen candidate, and a late generation's whole record
+  ([decomposing](delivery-stages.md#_handle_decomposing-label-workflowdecomposing),
+  [implementing](delivery-stages.md#_handle_implementing-label-workflowimplementing)).
 - **The notice.** `retry_cap_notice` — the sentence the park still owes the thread, written **before** a word of it is
   said and dropped only by a post that landed or by the park ending. The order is the point: a notice on a thread that
   no pinned state backs is one nothing would ever reconcile, and the window under it would roll over a day later with
@@ -778,21 +782,27 @@ anyway, so a tick that dies between the two leaves the budget as it found it.
   protocol exists to stop.
 - **The renewal.** One explicit step on this owner, and the only thing that renews a budget while its park stands. It
   routes no comment itself: a caller establishes that the park stands and that the words it is answering are a
-  trusted `/orchestrator continue`, and then calls it. The initial decomposition is the caller that does
-  (`retry_cap._park_owns_the_tick`, which takes the command with whatever else its comment carries and consumes the
-  batch it read); under a stage that has no such caller a park is lifted by the reply that resumes the session
-  instead. What the step grants is a single attempt: it reopens the window at that moment and clears the park with
-  its stage and notice. A whole fresh day would let one reply spend the cap over again with nobody watching. The
+  trusted `/orchestrator continue`, and then calls it. The two `retry_cap` owners are the callers that do
+  (`_park_owns_the_tick` under `decomposition/` and `implementing/`, each taking the command with whatever else its
+  comment carries and consuming the batch it read); under a stage that has no such caller a park is lifted by the
+  reply that resumes the session instead. What the step grants is a single attempt: it reopens the window at that
+  moment and clears the park with its stage and notice, and the caller retires the locked session in the same write,
+  keeping the agent spec — a fresh spawn is what was bought, and the spawn pins an id of its own only when the run
+  hands one back, so an id left standing is one the next reply would resume. A whole fresh day would let one reply
+  spend the cap over again with nobody watching. The
   attempt is written down as itself — `retry_cap_continued`, a count of granted spawns nobody has spent — rather than
   as a counter to compare against the setting when the spawn is finally asked for, which would make it worth nothing
   once an operator turns `MAX_RETRIES_PER_DAY` off and several attempts once they widen it. An issue carrying that
   count is answered from it and from nothing else: no window is renewed under it and no cap is read, and a grant with
-  nothing left refuses like any other exhausted budget, so the next attempt is a human's word again. The count is
+  nothing left refuses like any other exhausted budget, so the next attempt is a human's word again. Until it is
+  spent, the stage's other roads to an agent stand down for the gate — on `workflow:implementing`, the body-edit
+  resume — since a resume passes no gate and would run the attempt while leaving it on the issue to be bought again.
+  The count is
   dropped where the rest of the budget is — the publication that moves the issue on
   (`_reset_implementing_counters`) — and refunded with the counters by the one write that goes out before an agent
   starts: the late adjudication's pre-spawn record (`_ACCOUNTING_FIELDS`), so a run the close latch, a pause, or a
-  shutdown declines leaves the attempt there to be taken again. The initial decomposition needs no refund for that
-  case: its grant is written before the spawn and the spend rides the tick's own later write, which a mid-run
+  shutdown declines leaves the attempt there to be taken again. Neither `retry_cap` owner needs a refund for that
+  case: the grant is written before the spawn and the spend rides the tick's own later write, which a mid-run
   `paused` or a shutdown never makes.
 - **The audit.** One `retry_cap` event per step, `phase` distinguishing them — see
   [`observability/event-streams.md`](../observability/event-streams.md#audit-event-log-event_log_path).
