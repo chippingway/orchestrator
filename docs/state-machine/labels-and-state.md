@@ -705,12 +705,13 @@ The keys that matter for the state machine fall into a few groups:
   before the post-push write, and `_recover_pending_auto_base_rebase` keys off it to either no-op, push the recovered
   head, or park as `auto_base_rebase_push_failed`.
 - **Counters / timestamps.** `retry_window_start` + `retry_count` (24h fresh-spawn budget shared between implementing
-  and decomposing, with `retry_cap_stage`, `retry_cap_notice`, and `retry_cap_continued` beside them once it runs out
-  — see [The retry budget](#the-retry-budget)), `silent_park_count` (dev-session silent-park counter),
-  `dev_resume_count` (per-dev-session resume budget; once it reaches `DEV_SESSION_MAX_RESUMES` the session is retired
-  and respawned fresh from durable state, reset to 0 on every fresh spawn), `merged_at` / `closed_without_merge_at`
-  terminal stamps, and the per-round stamps `last_question_at` / `last_discussion_at` the two operator-applied
-  conversation stages set on every run they settle.
+  and decomposing, with `retry_cap_stage`, `retry_cap_continued`, and the sentence the park owes the thread beside
+  them once it runs out — `retry_cap_notice`, or `late_park_notice` where a late adjudication is what ran out, since
+  that park is taken by the late owner and rides its write; see [The retry budget](#the-retry-budget)),
+  `silent_park_count` (dev-session silent-park counter), `dev_resume_count` (per-dev-session resume budget; once it
+  reaches `DEV_SESSION_MAX_RESUMES` the session is retired and respawned fresh from durable state, reset to 0 on every
+  fresh spawn), `merged_at` / `closed_without_merge_at` terminal stamps, and the per-round stamps `last_question_at` /
+  `last_discussion_at` the two operator-applied conversation stages set on every run they settle.
 - **Usage meter.** `issue_agent_runs` + `issue_total_tokens` + `issue_total_cost_usd` + `issue_cost_sources` are
   per-issue cumulative counters folded in by `_accumulate_issue_usage` at each developer (implementing), reviewer
   (validating), decomposer (decomposing), question, and discussion run site from the `UsageMetrics` that
@@ -797,7 +798,7 @@ the budget never sees, which is the late adjudication and its live generation.
   as said rather than repeated — and only a comment **this orchestrator wrote** counts as that receipt, since the
   sentence is plain text anybody on a public thread can copy (the comment-side receipt rule in
   [`security.md`](../security.md#the-snapshot-ref-namespace); the author is read through
-  `github.comments.authored_by_us`, the one owner every receipt this repository reads off a thread goes through). A
+  `github.comments.authored_by_us`, the author check the marker lookup and both park-notice reconciliations gate on). A
   thread that could not be READ is its own answer, distinct from one read and found empty: the notice stays owed and
   the tick says nothing, because a request that failed inside the window where the sentence is already posted would
   otherwise produce exactly the duplicate this protocol exists to stop.

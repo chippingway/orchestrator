@@ -573,12 +573,21 @@ than a second source of truth: where the two disagree, the handler pages are aut
                  wait for new human comment ──► resume locked
                                                  session (backend + args)
                  except a spent spawn budget under decomposing
-                 or implementing:
+                 or implementing (three holds: the initial
+                 decomposition, the late adjudication under the
+                 same label, and implementing):
                    no reply resumes it ──► held, keeping the manifest,
                                            children, session, commits,
-                                           and PR, until a trusted
+                                           and PR -- and, on the late
+                                           road, the frozen candidate and
+                                           the hold on the pull request it
+                                           stands under -- until a trusted
                                            /orchestrator continue renews
                                            the budget for one fresh spawn
-                                           (the old session is retired,
-                                            not replayed)
+                                           (a fresh conversation either
+                                            way: the two initial roads
+                                            retire the locked session as
+                                            they buy the attempt, and the
+                                            late one's pre-spawn record
+                                            opens a new one)
 ```
