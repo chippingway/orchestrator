@@ -189,6 +189,14 @@ examples.
   durable state (issue body + recent comments + the committed branch), so a growing `--resume` transcript cannot creep
   into a `Prompt is too long` context overflow. `0` = resume forever. The reactive overflow handler still recovers a
   session that blows the window in fewer resumes.
+- `MAX_AGENT_RUNS_PER_ISSUE` — default `50`. lifetime ceiling on the agent runs one issue may spend, counted on the
+  `issue_agent_runs` total the usage accounting folds onto pinned state: every real agent exit charged to that issue,
+  in every role and at every stage — decomposer, developer, reviewer, and the conversation agents — not only the
+  implementer spawns `MAX_RETRIES_PER_DAY` meters. It is the backstop *under* the per-stage budgets rather than one
+  more of them: each of those bounds how often a single road may be retried, and an issue that walks enough of those
+  roads in turn spends more than any one of them ever sees. Unlike the daily retry budget this one never reopens — a
+  lifetime total is spent once, and no clock returns it. `0` = unlimited. A negative or non-integer value aborts at
+  import, like the parallelism caps: a ceiling under zero is one no run could ever come in under.
 - `MAX_ADDED_LINES` — default `4000`. size ceiling a pull request may publish under, counted in the
   textual lines it **adds**: the frozen remote base commit against the exact committed
   candidate commit, across every path. It is applied to the first publication and to every dev fix pushed onto a
