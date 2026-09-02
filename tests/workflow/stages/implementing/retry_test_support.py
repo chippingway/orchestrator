@@ -9,7 +9,10 @@ from unittest import mock
 from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
-from orchestrator.workflow.stages.implementing import resume as _implementing_resume
+from orchestrator.workflow.stages.implementing import (
+    resume as _implementing_resume,
+    session as _implementing_session,
+)
 from tests.support import fakes
 from tests.workflow import fixtures
 from tests.workflow.stages import implementing_fixing_test_cases
@@ -37,10 +40,13 @@ _agent = fixtures._agent
 _issue_branch = fixtures._issue_branch
 _iso_hours_ago = fixtures._iso_hours_ago
 
+KEY_AWAITING_HUMAN = "awaiting_human"
 KEY_CODEX_SESSION_ID = "codex_session_id"
 KEY_DEV_AGENT = "dev_agent"
 KEY_DEV_RESUME_COUNT = "dev_resume_count"
 KEY_DEV_SESSION_ID = "dev_session_id"
+KEY_PARK_REASON = "park_reason"
+KEY_RETRY_CAP_NOTICE = "retry_cap_notice"
 KEY_RETRY_COUNT = "retry_count"
 KEY_SILENT_PARK_COUNT = "silent_park_count"
 
@@ -50,6 +56,7 @@ RUN_AGENT = "run_agent"
 # The owners the checkout and the spawn answer on, so a sibling module patches
 # the module the stage calls.
 agent_runner = _agent_runner
+session = _implementing_session
 worktree_creation = _worktree_creation
 RESUME_SESSION_ID = "resume_session_id"
 
@@ -85,6 +92,15 @@ HUMAN_REPLY_ID = 1100
 ACTION_COMMENT_ID = 900
 EXPIRED_WINDOW_HOURS = 25
 HIGH_RESUME_COUNT = 99
+RETRY_CAP_PARK_ISSUE = 10
+RETRY_CAP_TICKS = 3
+
+# The audit phases one retry-cap park reports, in the spellings a record
+# carries them under.
+RETRY_CAP_EVENT = "retry_cap"
+PHASE_DELIVERED = "delivered"
+PHASE_RECONCILED = "reconciled"
+PHASE_STANDING = "standing"
 
 
 class _RetryCapFixtureMixin(_PatchedWorkflowMixin):
@@ -95,6 +111,43 @@ class _RetryCapFixtureMixin(_PatchedWorkflowMixin):
         if state:
             gh.seed_state(8, **state)
         return gh, issue
+
+
+class _RetryCapParkMixin(_PatchedWorkflowMixin):
+    """One issue whose budget is spent, and the ticks that refuse it."""
+
+    def _exhausted(self):
+        gh = FakeGitHubClient()
+        issue = fakes.make_issue(
+            RETRY_CAP_PARK_ISSUE, label=LABEL_IMPLEMENTING,
+        )
+        gh.add_issue(issue)
+        gh.seed_state(
+            RETRY_CAP_PARK_ISSUE,
+            retry_count=RETRY_CAP_TICKS,
+            retry_window_start=_iso_hours_ago(1),
+        )
+        return gh, issue
+
+    def _refuse(
+        self, gh, issue, *, persist: bool = True, cap: int = RETRY_CAP_TICKS,
+    ) -> bool:
+        """One tick's gate, read from and written back to durable state."""
+        state = gh.read_pinned_state(issue)
+        with patch.object(config, "MAX_RETRIES_PER_DAY", cap):
+            allowed = _implementing_session._check_and_increment_retry_budget(
+                gh, issue, state,
+            )
+        if persist:
+            gh.write_pinned_state(issue, state)
+        return allowed
+
+    def _phases(self, gh) -> list:
+        return [
+            record["phase"]
+            for record in gh.recorded_events
+            if record["event"] == RETRY_CAP_EVENT
+        ]
 
 
 class _SilentSessionFixtureMixin(_PatchedWorkflowMixin):

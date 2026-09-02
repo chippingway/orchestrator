@@ -42,7 +42,11 @@ from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import creation as _worktree_creation, decomposition as _worktree_decomposition
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import guards as _guards, usage as _usage
+from orchestrator.workflow.engine import (
+    guards as _guards,
+    retry_budget as _retry_budget,
+    usage as _usage,
+)
 from orchestrator.workflow.stages.decomposition import (
     handoff as _handoff,
     late_coordinator as _late_coordinator,
@@ -223,6 +227,10 @@ def _late_adjudication_owns_the_tick(
 
 def _handle_decomposing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
     state = gh.read_pinned_state(issue)
+    # Ahead of the late route as well as the gates below it: a retry-cap park
+    # is this budget's, not the size gate's, and the sentence it owes is owed
+    # whichever of the two questions wearing this label the tick is about.
+    _retry_budget._replay_owed_notice(gh, issue, state)
     if _late_adjudication_owns_the_tick(gh, spec, issue, state):
         return
     cleanup = _DecomposerCleanup(

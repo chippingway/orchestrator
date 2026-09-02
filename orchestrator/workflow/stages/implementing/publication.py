@@ -54,7 +54,11 @@ from orchestrator.git.publication import (
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import client as _client, pinned_state as _pinned_state
-from orchestrator.workflow.engine import comments as _comments, guards as _guards
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    guards as _guards,
+    retry_budget as _retry_budget,
+)
 from orchestrator.workflow.stages.discussion.state import (
     _PLAN_SHA as _DISCUSSION_PLAN_SHA,
 )
@@ -356,6 +360,11 @@ def _reset_implementing_counters(state: _pinned_state.PinnedState) -> None:
     # later stage) starts with a fresh window.
     state.set(_state._RETRY_COUNT, 0)
     state.set(_state._RETRY_WINDOW_START, None)
+    # The attempts a continuation left go with the accounting they replaced:
+    # they are what a human bought this issue under the budget just reset, and
+    # kept past that they would hold a shipped issue to the grant rather than
+    # to the budget it now has again.
+    state.set(_retry_budget.RETRY_CAP_CONTINUED, None)
     # The session just produced commits, so it isn't poisoned -- reset the
     # silent-park streak so a future blip doesn't tip an otherwise-healthy
     # session past the fresh-session threshold.

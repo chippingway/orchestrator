@@ -57,6 +57,12 @@ SILENT_FAILURE_ISSUE_NUMBER = 115
 RESUME_ISSUE_NUMBER = 16
 FILTERED_RESUME_ISSUE_NUMBER = 17
 RETRY_CAP_ISSUE_NUMBER = 18
+KEY_RETRY_CAP_NOTICE = "retry_cap_notice"
+PARK_RETRY_CAP = "retry_cap"
+STAGE_DECOMPOSING = "decomposing"
+
+# The sentence a park took and an unreadable thread left unsaid.
+STRANDED_NOTICE = "hit retry cap (3/day) for decomposing; manual intervention"
 HUMAN_REPLY_COMMENT_ID = 1100
 OUTSIDER_REPLY_COMMENT_ID = 1101
 PRIOR_ACTION_COMMENT_ID = 900
@@ -220,6 +226,32 @@ class HandleDecomposingResumeTest(
         self.assertEqual(
             mocks[RUN_AGENT].call_args.kwargs.get("resume_session_id"),
             DECOMPOSER_SESSION,
+        )
+
+    def test_decompose_says_a_stranded_notice(self) -> None:
+        # A park routes this tick to the resume path, which never reaches the
+        # gate that took it -- so a sentence an unreadable thread left owed is
+        # said at stage entry or never said at all.
+        gh = FakeGitHubClient()
+        issue = make_issue(RETRY_CAP_ISSUE_NUMBER, label=LABEL_DECOMPOSING)
+        gh.add_issue(issue)
+        gh.seed_state(
+            RETRY_CAP_ISSUE_NUMBER,
+            awaiting_human=True,
+            park_reason=PARK_RETRY_CAP,
+            retry_cap_stage=STAGE_DECOMPOSING,
+            retry_cap_notice=STRANDED_NOTICE,
+            retry_count=config.MAX_RETRIES_PER_DAY,
+            retry_window_start=_iso_hours_ago(1),
+        )
+
+        mocks = self._run_decomposing(gh, issue, run_agent=_agent())
+
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertEqual(len(gh.posted_comments), 1)
+        self.assertIn(STRANDED_NOTICE, gh.posted_comments[0][1])
+        self.assertNotIn(
+            KEY_RETRY_CAP_NOTICE, gh.pinned_data(RETRY_CAP_ISSUE_NUMBER),
         )
 
     def test_decompose_retry_cap_parks(self) -> None:

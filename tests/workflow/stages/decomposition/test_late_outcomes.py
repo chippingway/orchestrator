@@ -34,6 +34,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     THRESHOLD,
     generation_state,
     late_generation,
+    seed_late_issue,
 )
 
 PAUSED_LABEL = "paused"
@@ -94,6 +95,21 @@ class DeclinedRunTest(LateCase, unittest.TestCase):
         self.assertNotIn(KEYS.verdict, self._pinned())
         self.assertNotIn(KEYS.session_id, self._pinned())
         self.assertNotIn(KEYS.retry_count, self._pinned())
+
+    def test_a_declined_run_keeps_a_granted_attempt(self) -> None:
+        # The attempt a human bought is spent by the same gate the counters
+        # are, and refunded by the same pre-spawn write: a run a mid-run pause
+        # declines leaves the continuation to be taken again rather than
+        # charging somebody's one word for an answer nobody got.
+        self.issue = seed_late_issue(
+            self.github, late_generation(), retry_cap_continued=1,
+        )
+        paused = _PausedDuringRun(self.issue, agent_reply(SINGLE_REPLY))
+
+        outcome, _ = self._adjudicate(paused)
+
+        self.assertEqual(outcome.disposition, _LateDisposition.DEFERRED)
+        self.assertEqual(self._pinned().get(KEYS.retry_grant), 1)
 
     def test_an_interrupted_run_is_not_read(self) -> None:
         outcome, _ = self._adjudicate(

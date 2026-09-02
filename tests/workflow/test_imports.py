@@ -27,6 +27,7 @@ _ENGINE_OWNERS = (
     "messages",
     "pickup",
     "prompts",
+    "retry_budget",
     "terminals",
     _TICK,
     "usage",

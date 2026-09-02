@@ -133,11 +133,16 @@ _DECOMPOSING_STAGE = "decomposing"
 
 _LAST_AGENT_ACTION_AT = "last_agent_action_at"
 
-# The per-issue accounting the pre-spawn write leaves exactly as it found it.
-# Both fields move together -- an expired window is reopened at zero before it
-# is incremented -- so a write that carried one without the other would record
-# a count against a window nothing opened.
-_ACCOUNTING_FIELDS = ("retry_count", "retry_window_start")
+# The per-issue accounting the pre-spawn write leaves exactly as it found it:
+# every field the shared gate charges a fresh spawn against, which is what
+# this has to mirror rather than a subset of. They move together -- an expired
+# window is reopened at zero before the count is incremented, and the attempt
+# a continuation bought is decremented beside that same count -- so a set
+# missing one of them refunds half a spend: the run this tick then declines
+# would cost the issue a human's continuation while handing its counters back.
+_ACCOUNTING_FIELDS = (
+    "retry_count", "retry_window_start", "retry_cap_continued",
+)
 
 _HOLD_FAILED_PARK = (
     "could not put the adjudication hold on the pull request this issue's "
@@ -506,7 +511,9 @@ def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
     the poll runs beside all of it, so the reading it took may not have
     existed when this tick started nor when the first of those two asked. The
     latch costs nothing, and what it is asked against is the one step that
-    puts an agent on somebody's repository.
+    puts an agent on somebody's repository. It is asked with the retry
+    accounting handed back, because the cancellation it takes is a write and
+    a run nobody started may not be one the issue paid for.
     """
     if context.displaced_hold:
         _late_outcome._emit_failure(context, LateFailure.PLAN_PR_HOLD_FAILED)
@@ -530,7 +537,7 @@ def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
     ):
         _late_outcome._persist(context)
         return _late_outcome._finished(context, _LateDisposition.PARKED)
-    stopped = _late_owner._latch_stops(context)
+    stopped = _latched_stop(context, unspent)
     if stopped is not None:
         return _late_outcome._finished(context, stopped)
     return _spawned(context, unspent, worktree)
@@ -551,7 +558,7 @@ def _spawned(
         context.state, context.generation, resuming=context.answering,
     )
     _begin(context, started, unspent)
-    stopped = _late_owner._latch_stops(context)
+    stopped = _latched_stop(context, unspent)
     if stopped is not None:
         return _late_outcome._finished(context, stopped)
     return _settle(
@@ -559,6 +566,32 @@ def _spawned(
         _late_session._spawn_late_adjudicator(context, started, worktree),
         worktree,
     )
+
+
+def _latched_stop(
+    context: _LateContext, unspent: dict,
+) -> _LateDisposition | None:
+    """Ask the close latch with the retry accounting handed back.
+
+    The latch is asked twice on the way to a spawn, and both times the slot
+    this tick charged is sitting in memory: the gate takes it before the
+    first, and `_begin` puts it back on after the write it holds it out of.
+    A latch that fires ends the cycle with a write of its own -- and what
+    that write would carry is a spend for an agent that never started, which
+    is the one thing a declined run may not leave behind. The attempt a
+    continuation bought is spent by the same gate, so it is handed back by
+    the same move.
+
+    Put on again only where the tick goes on to spawn. Where it stops, the
+    accounting stays as the issue had it and the cancellation records exactly
+    that.
+    """
+    spent = _accounting(context.state)
+    _apply_accounting(context.state, unspent)
+    stopped = _late_owner._latch_stops(context)
+    if stopped is None:
+        _apply_accounting(context.state, spent)
+    return stopped
 
 
 def _begin(

@@ -515,7 +515,9 @@ The keys that matter for the state machine fall into a few groups:
   (see [`delivery-stages.md`](delivery-stages.md), **Recovery follow-up**). Park reasons that route via
   `_park_auto_rebase_failure` (`auto_base_rebase_failed` / `auto_base_rebase_dirty` /
   `auto_base_rebase_push_failed`) are owned by the per-tick
-  base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`. The late
+  base-sync flow — every PR-stage handler short-circuits when `park_reason in _AUTO_REBASE_PARK_REASONS`. The
+  exhausted retry budget re-sets `retry_cap` for the same kind of reason — a park nothing can recognize is one the
+  next tick re-decides from scratch (see [The retry budget](#the-retry-budget)). The late
   size gate re-sets its own reasons for the same kind of reason: `late_measurement_failed`,
   `late_candidate_moved`, `late_evidence_missing`, `late_plan_pr_hold_failed`,
   `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,
@@ -686,10 +688,12 @@ The keys that matter for the state machine fall into a few groups:
   before the post-push write, and `_recover_pending_auto_base_rebase` keys off it to either no-op, push the recovered
   head, or park as `auto_base_rebase_push_failed`.
 - **Counters / timestamps.** `retry_window_start` + `retry_count` (24h fresh-spawn budget shared between implementing
-  and decomposing), `silent_park_count` (dev-session silent-park counter), `dev_resume_count` (per-dev-session resume
-  budget; once it reaches `DEV_SESSION_MAX_RESUMES` the session is retired and respawned fresh from durable state, reset
-  to 0 on every fresh spawn), `merged_at` / `closed_without_merge_at` terminal stamps, and the per-round stamps
-  `last_question_at` / `last_discussion_at` the two operator-applied conversation stages set on every run they settle.
+  and decomposing, with `retry_cap_stage`, `retry_cap_notice`, and `retry_cap_continued` beside them once it runs out
+  — see [The retry budget](#the-retry-budget)), `silent_park_count` (dev-session silent-park counter),
+  `dev_resume_count` (per-dev-session resume budget; once it reaches `DEV_SESSION_MAX_RESUMES` the session is retired
+  and respawned fresh from durable state, reset to 0 on every fresh spawn), `merged_at` / `closed_without_merge_at`
+  terminal stamps, and the per-round stamps `last_question_at` / `last_discussion_at` the two operator-applied
+  conversation stages set on every run they settle.
 - **Usage meter.** `issue_agent_runs` + `issue_total_tokens` + `issue_total_cost_usd` + `issue_cost_sources` are
   per-issue cumulative counters folded in by `_accumulate_issue_usage` at each developer (implementing), reviewer
   (validating), decomposer (decomposing), question, and discussion run site from the `UsageMetrics` that
@@ -725,6 +729,65 @@ The keys that matter for the state machine fall into a few groups:
 
 The legacy `codex_session_id` key (written before `dev_agent` existed) is still honored on read by `_read_dev_session`:
 it round-trips to `spec="codex"` with no args so an older orchestrator's pin keeps running on codex.
+
+### The retry budget
+
+Fresh agent spawns are charged to one per-issue budget — implementing and decomposing share it, because both spend
+the same issue's day of tokens — and it is decided on
+[`orchestrator/workflow/engine/retry_budget.py`](../../orchestrator/workflow/engine/retry_budget.py), which every
+stage's gate reads and none of them re-implements. The gate answers a decision and posts nothing: what a refusal
+implies durably is staged into the caller's own pinned state and rides the write that caller was going to make
+anyway, so a tick that dies between the two leaves the budget as it found it.
+
+- **The accounting.** `retry_window_start` + `retry_count`, against the bound `MAX_RETRIES_PER_DAY` sets. The window
+  opens at the first counted attempt and reopens once 24h have elapsed. Only fresh spawns count: a resume on a human
+  reply and a recovered worktree's push are an unblock signal and carry-over work. An unbounded budget (`0`) counts
+  nothing and drops the pair as it passes, so turning the budget off is not a pause on a window — turning it back on
+  opens a fresh one rather than refusing out of a count nobody could spend while there was no budget to spend it
+  against.
+- **The park.** `awaiting_human` + `park_reason="retry_cap"` + `retry_cap_stage` (the stage whose spawn ran out; the
+  budget is shared, so the flag alone cannot say what the human is being asked about). The gate asks that park before
+  it asks anything else, and while it stands nothing but an explicit continuation gets past it — not the clock
+  reaching the end of the window, and not an operator widening `MAX_RETRIES_PER_DAY` or turning it off, which is a
+  setting change rather than an answer to the notice.
+- **The notice.** `retry_cap_notice` — the sentence the park still owes the thread, written **before** a word of it is
+  said and dropped only by a post that landed or by the park ending. The order is the point: a notice on a thread that
+  no pinned state backs is one nothing would ever reconcile, and the window under it would roll over a day later with
+  the issue running again beneath a comment saying it had stopped. What the park routes the tick past is what makes
+  the record load-bearing, so the sentence is replayed at stage entry (`_replay_owed_notice`, called by
+  `_handle_implementing` and `_handle_decomposing` ahead of every gate) until the thread carries it. Spelled without
+  the mention the delivery prefixes, and kept verbatim for as long as the park stands: the thread is searched for
+  exactly that text, so a later refusal under another stage or a retuned cap may not reword it. Before it is said
+  again the thread is read for it, so a comment that landed under a pinned write that then failed is recorded as said
+  rather than repeated — and only a comment **this orchestrator wrote** counts as that receipt, since the sentence is
+  plain text anybody on a public thread can copy (the comment-side receipt rule in
+  [`security.md`](../security.md#the-snapshot-ref-namespace)). A thread that could not be READ is its own answer,
+  distinct from one read and found empty: the notice stays owed and the tick says nothing, because a request that
+  failed inside the window where the sentence is already posted would otherwise produce exactly the duplicate this
+  protocol exists to stop.
+- **The renewal.** One explicit step, and what it grants is a single attempt: it reopens the window at that moment
+  and clears the park with its stage and notice. A whole fresh day would let one reply spend the cap over again with
+  nobody watching. The attempt is written down as itself — `retry_cap_continued`, a count of granted spawns nobody
+  has spent — rather than as a counter to compare against the setting when the spawn is finally asked for, which
+  would make it worth nothing once an operator turns `MAX_RETRIES_PER_DAY` off and several attempts once they widen
+  it. An issue carrying that count is answered from it and from nothing else: no window is renewed under it and no
+  cap is read, and a grant with nothing left refuses like any other exhausted budget, so the next attempt is a human's
+  word again. The count is dropped where the rest of the budget is — the publication that moves the issue on
+  (`_reset_implementing_counters`) — and refunded with the counters by the one write that goes out before an agent
+  starts: the late adjudication's pre-spawn record (`_ACCOUNTING_FIELDS`), so a run the close latch, a pause, or a
+  shutdown declines leaves the attempt there to be taken again.
+- **The audit.** One `retry_cap` event per step, `phase` distinguishing them — see
+  [`observability/event-streams.md`](../observability/event-streams.md#audit-event-log-event_log_path).
+
+`retry_cap_stage`, `retry_cap_notice`, and `retry_cap_continued` are additive and default safe: an issue recorded
+before they existed, or hand-edited into a shape none of them fits, reads back as no park stage, nothing owed, and no
+spawn handed out — never as a tick that raises. The grant is the strictest of the three, since it is the one field
+that hands out a spawn, and it is the one whose ABSENCE is the safe reading rather than its content. Absent — never
+continued, or cleared back to null by the publication reset — the issue is answered by the configured budget, as
+every issue that never hit the cap is. Present, it governs: a number is read into the range a continuation writes (a
+bigger one buys the same single attempt, a negative buys nothing), and a value that is not a number at all proves no
+attempt and hands out none, which parks the issue and asks a human rather than falling through to a whole window's
+worth of spawns off the strength of something somebody typed.
 
 ### Late generation state
 

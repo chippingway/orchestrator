@@ -223,9 +223,17 @@ MAX_REVIEW_ROUNDS: int = _RESOLVED["MAX_REVIEW_ROUNDS"]
 # indefinitely.
 MAX_CONFLICT_ROUNDS: int = _RESOLVED["MAX_CONFLICT_ROUNDS"]
 # Cap on how many fresh implementing-codex spawns one issue can use within a
-# 24h window opened at the first counted attempt. The window resets once 24h
-# elapses since that start. Resumes on human reply do not count. 0 = unbounded
-# (matches MAX_REVIEW_ROUNDS's implied semantics).
+# 24h window opened at the first counted attempt. The window reopens once 24h
+# elapses since that start -- but not while the exhausted budget has the issue
+# parked: a `retry_cap` park asked for a human, and neither the clock nor a
+# later change to this setting is one, so only an explicit continuation renews
+# it. That continuation buys one spawn and records it on the issue as the
+# attempt itself, so an issue running on a grant is answered from the grant
+# and moving this setting in between neither swallows it nor multiplies it.
+# Resumes on human reply do not count. 0 = unbounded (matches
+# MAX_REVIEW_ROUNDS's implied semantics), and an unbounded budget keeps no
+# counters: it drops the window it finds, so turning it back on opens a fresh
+# one rather than refusing out of what was charged before it went off.
 MAX_RETRIES_PER_DAY: int = _RESOLVED["MAX_RETRIES_PER_DAY"]
 # Proactive dev-session rotation: after a single `dev_session_id` has been
 # resumed this many times, retire it and start a fresh spawn from durable

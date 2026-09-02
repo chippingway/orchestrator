@@ -34,6 +34,7 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     drift as _engine_drift,
     guards as _guards,
+    retry_budget as _retry_budget,
     terminals as _terminals,
     usage as _usage,
 )
@@ -255,6 +256,10 @@ def _handle_detected_implementing_drift(
 
 def _handle_implementing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
     state = gh.read_pinned_state(issue)
+    # A retry-cap park whose sentence was never said, first of all: the park
+    # routes this tick to a resume or to nothing, and neither road passes the
+    # gate that took it, so a notice left owed here is owed forever.
+    _retry_budget._replay_owed_notice(gh, issue, state)
     if _implementing_preflight(gh, spec, issue, state):
         return
 
