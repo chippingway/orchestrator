@@ -13,11 +13,13 @@ the walk that waits on them belong in one package rather than one per label.
 The owners divide by what each is responsible for rather than by label:
 `manifest` and `validation` decide what the agent's reply is allowed to be,
 `session` owns the decomposer session an issue is locked to and every spawn
-or resume under it, `run` owns the order one tick asks the others in and
-`outcomes` the three dispositions its reply earns, `recovery` owns what a tick
-that died mid-split left behind, `split` owns the crash-safe order children are
-created in, and `parents`, `activation`, `blocked`, and `umbrella` own the
-parent-side polling that drives the tree to completion.
+or resume under it, `retry_cap` owns the park a spent spawn budget leaves --
+held ahead of every road that would walk past one, and lifted only by the
+command that renews the budget -- `run` owns the order one tick asks the
+others in and `outcomes` the three dispositions its reply earns, `recovery`
+owns what a tick that died mid-split left behind, `split` owns the crash-safe
+order children are created in, and `parents`, `activation`, `blocked`, and
+`umbrella` own the parent-side polling that drives the tree to completion.
 
 The `late_*` owners are an additive second mode under the same `decomposing`
 label, for the issue whose implementation is already committed and turns out

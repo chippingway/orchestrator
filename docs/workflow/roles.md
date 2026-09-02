@@ -61,7 +61,14 @@ per-stage behavior is in
 - **Reviewer freshness.** `_handle_validating` spawns a fresh reviewer subprocess every round with no resume, so
   `REVIEW_AGENT` changes take effect on the next validating tick. The current value is recorded in `review_agent` for
   traceability only.
-- **Decomposer reuse.** `_handle_decomposing` spawns the decomposer once and resumes it on every awaiting-human reply.
+- **Decomposer reuse.** `_handle_decomposing` spawns the decomposer once and resumes it on every awaiting-human
+  reply — with one park excepted. An issue stopped on its spent spawn budget (`retry_cap`) is waiting on a human
+  deciding to spend more of this issue's day on it rather than on words for the agent, so a reply resumes nothing
+  there: the tick holds until a trusted `/orchestrator continue` renews the budget, and what that buys is the fresh
+  spawn the budget refused. The locked session is retired as it is bought, `decomposer_agent` kept, so the run it
+  pays for is a new conversation rather than a replay of the one that ran out. What the park holds, what the command
+  lifts, and what one lifts it to are in
+  [state-machine/delivery-stages.md](../state-machine/delivery-stages.md#_handle_decomposing-label-workflowdecomposing).
   The `question` stage reads `DECOMPOSE_AGENT` only as the *fallback* on the first-ever question spawn, then pins what
   it ran under to `question_agent` (a separate key) so a multi-turn Q&A keeps its own lock independent of any
   decomposing session on the same issue. The `discussion` stage borrows the same role on the same terms and pins to

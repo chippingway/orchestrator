@@ -451,8 +451,10 @@ The keys that matter for the state machine fall into a few groups:
   purpose: each seeds from `DECOMPOSE_AGENT` on its own first spawn and is then locked independently of the others on
   the same issue, so a flip of `DECOMPOSE_AGENT` between two rounds can neither move a conversation onto a backend
   that never ran it nor hand that backend a session id it never issued. The three conversation pairs also *resume*
-  their own session id on a human reply, and the late pair resumes on exactly one: a substantive trusted answer to the
-  categorized question the adjudicator asked, which is a reply to the agent that asked it. Every other late run is a
+  their own session id on a human reply — with the decomposer pair excepted on an issue stopped by its spawn budget,
+  where no reply resumes anything and the renewal that lifts the park retires the session it would have replayed
+  ([The retry budget](#the-retry-budget)) — and the late pair resumes on exactly one: a substantive trusted answer to
+  the categorized question the adjudicator asked, which is a reply to the agent that asked it. Every other late run is a
   fresh conversation against the frozen candidate — see [the late run](#the-late-run) for the two conditions a resume
   takes.
 - **Decomposition.** `children`, `dep_graph` (`{child_idx_str: [child_idx, ...]}` — GitHub has no first-class blocks
@@ -749,14 +751,21 @@ anyway, so a tick that dies between the two leaves the budget as it found it.
   budget is shared, so the flag alone cannot say what the human is being asked about). The gate asks that park before
   it asks anything else, and while it stands nothing gets past it that is not a human — not the clock reaching the
   end of the window, and not an operator widening `MAX_RETRIES_PER_DAY` or turning it off, which is a setting change
-  rather than an answer to the notice. What ends it is a reply on the thread: the resume it drives takes the flag
-  down as its own side effect, and the renewal below is the explicit form of the same answer.
+  rather than an answer to the notice. What ends it depends on which stage the parked issue is in. Where a stage
+  routes the park to a resume, a reply on the thread takes the flag down as its own side effect. The initial
+  decomposition instead holds the park ahead of every road that would walk past one — the drift reset, the kill
+  switch, and the resume — so there nothing but the renewal below lifts it, and the issue keeps its manifest, its
+  children, its locked decomposer session, its `pr_number`, and its late record untouched while it waits
+  ([delivery-stages.md](delivery-stages.md#_handle_decomposing-label-workflowdecomposing)).
 - **The notice.** `retry_cap_notice` — the sentence the park still owes the thread, written **before** a word of it is
   said and dropped only by a post that landed or by the park ending. The order is the point: a notice on a thread that
   no pinned state backs is one nothing would ever reconcile, and the window under it would roll over a day later with
   the issue running again beneath a comment saying it had stopped. What the park routes the tick past is what makes
   the record load-bearing, so the sentence is replayed at stage entry (`_replay_owed_notice`, called by
-  `_handle_implementing` and `_handle_decomposing` ahead of every gate) until the thread carries it. Spelled without
+  `_handle_implementing` and `_handle_decomposing` ahead of every gate) until the thread carries it — and a stage
+  that answers a command on this park waits for that sentence before it reads the thread at all, since a delivery
+  moves the response boundary past everything written under the old one and words that predate the question are no
+  answer to it. Spelled without
   the mention the delivery prefixes, and kept verbatim for as long as the park stands: the thread is searched for
   exactly that text, so a later refusal under another stage or a retuned cap may not reword it. Before it is said
   again the thread is read for it, so a comment that landed under a pinned write that then failed is recorded as said
@@ -766,20 +775,24 @@ anyway, so a tick that dies between the two leaves the budget as it found it.
   distinct from one read and found empty: the notice stays owed and the tick says nothing, because a request that
   failed inside the window where the sentence is already posted would otherwise produce exactly the duplicate this
   protocol exists to stop.
-- **The renewal.** One explicit step on this owner, and the only thing that renews a budget while its park stands — no
-  comment is routed into it, so it is what a caller answering a trusted `/orchestrator continue` has to call, and
-  until one does a park is lifted by the reply that resumes the session rather than by a command of its own. What the
-  step grants is a single attempt: it reopens the window at that moment and clears the park with its stage and notice.
-  A whole fresh day would let one reply spend the cap over again with nobody watching. The attempt is written down as
-  itself — `retry_cap_continued`, a count of granted spawns nobody has spent — rather than as a counter to compare
-  against the setting when the spawn is finally asked for, which would make it worth nothing once an operator turns
-  `MAX_RETRIES_PER_DAY` off and several attempts once they widen it. An issue carrying that count is answered from it
-  and from nothing else: no window is renewed under it and no cap is read, and a grant with nothing left refuses like
-  any other exhausted budget, so the next attempt is a human's word again. The count is dropped where the rest of the
-  budget is — the publication that moves the issue on (`_reset_implementing_counters`) — and refunded with the
-  counters by the one write that goes out before an agent starts: the late adjudication's pre-spawn record
-  (`_ACCOUNTING_FIELDS`), so a run the close latch, a pause, or a shutdown declines leaves the attempt there to be
-  taken again.
+- **The renewal.** One explicit step on this owner, and the only thing that renews a budget while its park stands. It
+  routes no comment itself: a caller establishes that the park stands and that the words it is answering are a
+  trusted `/orchestrator continue`, and then calls it. The initial decomposition is the caller that does
+  (`retry_cap._park_owns_the_tick`, which takes the command with whatever else its comment carries and consumes the
+  batch it read); under a stage that has no such caller a park is lifted by the reply that resumes the session
+  instead. What the step grants is a single attempt: it reopens the window at that moment and clears the park with
+  its stage and notice. A whole fresh day would let one reply spend the cap over again with nobody watching. The
+  attempt is written down as itself — `retry_cap_continued`, a count of granted spawns nobody has spent — rather than
+  as a counter to compare against the setting when the spawn is finally asked for, which would make it worth nothing
+  once an operator turns `MAX_RETRIES_PER_DAY` off and several attempts once they widen it. An issue carrying that
+  count is answered from it and from nothing else: no window is renewed under it and no cap is read, and a grant with
+  nothing left refuses like any other exhausted budget, so the next attempt is a human's word again. The count is
+  dropped where the rest of the budget is — the publication that moves the issue on
+  (`_reset_implementing_counters`) — and refunded with the counters by the one write that goes out before an agent
+  starts: the late adjudication's pre-spawn record (`_ACCOUNTING_FIELDS`), so a run the close latch, a pause, or a
+  shutdown declines leaves the attempt there to be taken again. The initial decomposition needs no refund for that
+  case: its grant is written before the spawn and the spend rides the tick's own later write, which a mid-run
+  `paused` or a shutdown never makes.
 - **The audit.** One `retry_cap` event per step, `phase` distinguishing them — see
   [`observability/event-streams.md`](../observability/event-streams.md#audit-event-log-event_log_path).
 

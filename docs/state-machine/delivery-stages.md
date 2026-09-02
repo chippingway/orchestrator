@@ -99,7 +99,10 @@ the action depends on lifecycle position:
 
 - **`workflow:decomposing`** — handled inline at the top of `_handle_decomposing`: drop `decomposer_session_id`, wipe
   `children` / `dep_graph` / `expected_children_count` / `umbrella`, clear park flags, post a `:pencil2: issue content
-  changed` notice, then fall through in the same tick so the decomposer re-spawns against the updated body.
+  changed` notice, then fall through in the same tick so the decomposer re-spawns against the updated body. An issue
+  standing on a `retry_cap` park is held one step ahead of this (see that handler's step 1): the re-spawn it falls
+  through to is exactly the spawn that park refused, so the edit waits with everything else the issue carries until
+  a human continues it.
 - **`workflow:ready` / `workflow:blocked` / `workflow:umbrella`** (no implementation has started) — route back to
   `workflow:decomposing` via `_route_drift_to_decomposing`: same state-wipe + notice, plus a label flip to
   `workflow:decomposing`. `decomposer_agent` is preserved across this transition so a mid-flight `DECOMPOSE_AGENT` env
@@ -191,8 +194,38 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      push it licenses — which is where the freeze on the base refresh and the live-cycle reading a close is answered
      against both end. A restart's fresh cycle is deliberately not this case: it carries an identity and no
      candidate at all, and it really is waiting to be decomposed.
-  1. **User-content drift check** (inline) — see drift section above.
-  2. **Half-finished decomposition recovery.** If `expected_children_count` is set OR `children` is non-empty (a prior
+  1. **The spent spawn budget's own park** (`retry_cap._park_owns_the_tick`), asked behind the late route and ahead
+     of every step below it. An issue standing on `awaiting_human` + `park_reason="retry_cap"` is stopped on its
+     budget, and each of the three steps below would walk past that park for a reason of its own: the drift reset
+     clears park flags and wipes the manifest, the kill switch clears the same flags and routes the issue to
+     implementation, and the awaiting-human resume reads any trusted reply as the answer. None of them is the answer
+     this park asked for, so while it stands the tick ends here having written nothing, spawned nothing, and said
+     nothing — which leaves the manifest, the children already open on GitHub, the locked decomposer session and its
+     `decomposer_agent` spec, `pr_number`, and a late generation's whole record exactly as the park found them. Each
+     held tick emits the `standing` audit phase, so a park that goes on refusing is visible as that rather than as a
+     workflow that went quiet.
+
+     A park that still owes the thread its sentence (`retry_cap_notice`) is held before the thread is read for an
+     answer at all. The entry replay above is what says that sentence, and saying it moves the response boundary
+     past everything written under the old one — so while the obligation stands, a command on the thread is one
+     written before the question was asked. The replay leaves it standing for exactly one reason, a thread it could
+     not read, and a second read taken here is as likely to succeed as the first was to fail: read clean, it would
+     buy an attempt with words nobody wrote in reply and consume the notice they were owed on the way out.
+
+     What lifts it is a trusted `/orchestrator continue` on the thread past `last_action_comment_id`
+     (`_grant_continuation` — see [the retry budget](labels-and-state.md#the-retry-budget)): the renewal the park's
+     own notice asks for. The command is taken with whatever else its comment carries, since a decision that arrives
+     with an explanation is still the decision and the explanation reaches the fresh decomposer through the prompt it
+     is spawned on; an untrusted account's copy of it buys nothing. The grant clears the park, retires
+     `decomposer_session_id` while keeping the `decomposer_agent` spec — what the attempt buys is the fresh
+     conversation the budget refused, and a spawn pins an id of its own only where the backend hands one back, so an
+     id left standing would be replayed by the reply to a question or a timeout that surfaced none — and is written
+     down BEFORE the spawn it pays for, so a tick that dies (or a run a mid-run `paused` or a shutdown declines)
+     leaves the attempt where the human put it. What it buys is one attempt, spent at the same gate in step 5 that
+     refused the last one. A thread this tick could not read hands out nothing and holds the park, since a grant
+     made on a read that established nothing spends an attempt no human asked for.
+  2. **User-content drift check** (inline) — see drift section above.
+  3. **Half-finished decomposition recovery.** If `expected_children_count` is set OR `children` is non-empty (a prior
      tick crashed mid-split), the handler cannot safely respawn the decomposer. When `expected_children_count` is set
      and `len(children) < expected_children_count`, park with `decomposition_crash`. Otherwise repair any child whose
      pinned `parent_number` was never seeded, then finalize to `workflow:umbrella` (when the flag is true) or
@@ -200,27 +233,31 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      human, and one carrying a live late generation — the split transaction writes the same two markers and resumes
      from its own durable facts, so finalizing on its behalf would hand a parent on before its snapshot, its
      supersession, or what the remote is owed had been settled. Either way the tick ends having changed nothing.
-  3. **DECOMPOSE kill switch.** If `config.DECOMPOSE` is off when this handler runs, clear decomposer-side park flags,
+  4. **DECOMPOSE kill switch.** If `config.DECOMPOSE` is off when this handler runs, clear decomposer-side park flags,
      ratchet `last_action_comment_id` past every visible comment, flip the label to `workflow:implementing`, and fall
-     into `_handle_implementing`. Step 2 runs first so orphan children are not abandoned. An issue carrying a live
-     late generation — recorded, not cancelled, and either oversized or still owing the post-agent owner read — takes
-     neither branch: the tick returns leaving it exactly where it is, because the legacy route would publish a
-     committed candidate measured past the ceiling as though a `single` verdict had been recorded for it. The owed
+     into `_handle_implementing`. Step 3 runs first so orphan children are not abandoned. An issue parked on
+     `retry_cap` never reaches this step at all (step 1 holds it), so the switch cannot clear a park a human was
+     asked to answer — and it loses nothing by waiting, since no decomposition runs while that park stands; the tick
+     after a continuation routes it here as usual. An issue carrying a live late generation — recorded, not
+     cancelled, and either oversized or still owing the post-agent owner read — takes neither branch: the tick
+     returns leaving it exactly where it is, because the legacy route would publish a committed candidate measured
+     past the ceiling as though a `single` verdict had been recorded for it. The owed
      read is the half a size-keyed gate misses: a revision that came back UNDER the ceiling is no longer oversized,
      and nobody has established that the issue it belongs to is still open. The same issue relabelled by hand never
      reaches this handler — or any other — at all: the dispatcher puts the label back first. See
      [`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen).
-  4. **Awaiting-human resume OR fresh spawn.** Resume on a new comment; otherwise gate on the per-issue retry budget
-     (shared with `implementing`; an exhausted one parks the issue durably as `retry_cap` and says so once — see [the
-     retry budget](labels-and-state.md#the-retry-budget)), ensure a read-only worktree, resolve the spec via
-     `_read_decomposer_session`, persist `decomposer_agent` BEFORE invoking `run_agent`, and spawn the decomposer. A
+  5. **Awaiting-human resume OR fresh spawn.** Resume on a new comment; otherwise gate on the per-issue retry budget
+     (shared with `implementing`; an exhausted one parks the issue durably as `retry_cap`, says so once, and is held
+     by step 1 from there on — see [the retry budget](labels-and-state.md#the-retry-budget)), ensure a read-only
+     worktree, resolve the spec via `_read_decomposer_session`, persist `decomposer_agent` BEFORE invoking
+     `run_agent`, and spawn the decomposer. A
      mid-run `paused` / `backlog` re-check (`_paused_during_agent_run`) right after the run returns short-circuits
      both branches BEFORE the usage fold, timeout / read-only park, manifest parse, child creation, or relabel, so the
      next tick re-runs the decomposer from durable state.
-  5. **Read-only check.** If the worktree now has commits or dirty files, park awaiting human and KEEP the worktree for
+  6. **Read-only check.** If the worktree now has commits or dirty files, park awaiting human and KEEP the worktree for
      operator inspection. The decomposer is read-only — without this guard, `_handle_implementing`'s recovery path
      would later push decomposer-authored work as implementation.
-  6. **Parse the manifest** via `_parse_manifest` (regex captures the fenced ` ```orchestrator-manifest ` block):
+  7. **Parse the manifest** via `_parse_manifest` (regex captures the fenced ` ```orchestrator-manifest ` block):
      - invalid manifest → park with the parse error.
      - no fenced block → treat as a question; park.
      - `decision == "single"` → post the collected-context comment (rationale plus the manifest's optional

@@ -164,7 +164,10 @@ decomposition: the decomposer runs read-only in a scratch worktree and its fence
 parsed, where `single` posts the collected-context comment and flips to `workflow:ready`, and `split` creates children
 labeled `workflow:blocked` and leaves the parent on `workflow:blocked` or `workflow:umbrella`. Half-finished splits
 recover rather than re-spawn, a `DECOMPOSE` kill switch falls through to `workflow:implementing`, and commits or a
-dirty tree park with the worktree kept. Full flow: [`state-machine/delivery-stages.md`][decomposing].
+dirty tree park with the worktree kept. An issue standing on a `retry_cap` park is held ahead of all of that — the
+drift reset, the kill switch, and the human-reply resume each answer a park that is not this one — so it keeps
+everything it carries until a trusted `/orchestrator continue` buys it one more attempt. Full flow:
+[`state-machine/delivery-stages.md`][decomposing].
 
 ### `_handle_ready` (label `workflow:ready` → `workflow:implementing`)
 

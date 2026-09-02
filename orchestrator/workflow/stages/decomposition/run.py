@@ -9,6 +9,13 @@ the ceiling, and waiting on a verdict, so the whole tick belongs to the late
 coordinator and nothing below runs. Everything else is the initial
 decomposition this owner has always driven.
 
+An initial decomposition standing on a spent spawn budget is asked next, and
+it is asked before the tick has a road to walk down at all: the drift reset,
+the kill switch, and the human-reply resume each clear or answer a park that
+is not this one, and this one is lifted only by the human its notice asked
+for. What holding it costs is nothing, and what it keeps is everything the
+issue arrived with.
+
 The order in `_prepare_decomposer_run` is the contract. Drift goes first, so a
 body edited during a crash window clears the manifest markers before recovery
 can read them and finalize a split the human no longer wants. Recovery goes
@@ -52,6 +59,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_coordinator as _late_coordinator,
     outcomes as _outcomes,
     recovery as _recovery,
+    retry_cap as _retry_cap,
     session as _session,
     state as _state,
 )
@@ -232,6 +240,12 @@ def _handle_decomposing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -
     # whichever of the two questions wearing this label the tick is about.
     _retry_budget._replay_owed_notice(gh, issue, state)
     if _late_adjudication_owns_the_tick(gh, spec, issue, state):
+        return
+    # The spent-budget park, ahead of every road below that would walk past
+    # one: the drift reset and the kill switch both clear park flags, and the
+    # resume reads a reply as the answer -- and this park is answered by a
+    # human buying another attempt, not by an edit, a setting, or a comment.
+    if _retry_cap._park_owns_the_tick(gh, issue, state):
         return
     cleanup = _DecomposerCleanup(
         spec=spec,
