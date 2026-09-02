@@ -69,7 +69,8 @@ file is the durable record.
   clean rebase left, the head it started from, the head a body-edit resume begins at, or the head recovered commits
   leave the branch on — so the push behind it would carry neither a lease nor a named candidate),
   `reviewer_timeout`, `verify_failed` / `verify_timeout` / `verify_dirty` /
-  `verify_head_changed`, `question_*`, `discussion_*`, ...). `dirty_worktree` carries `dirty_files` (how many paths
+  `verify_head_changed`, `agent_run_limit` (the issue has spent every agent run its lifetime ceiling allows),
+  `question_*`, `discussion_*`, ...). `dirty_worktree` carries `dirty_files` (how many paths
   git named); `unreadable_worktree` carries none, since naming a count there would report a failed read as an empty
   tree.
 - `retry_cap` — the per-issue spawn budget's park, emitted by `workflow/engine/retry_budget.py`; extras: `stage`
@@ -90,6 +91,17 @@ file is the durable record.
   beside is every other stage's refusal on the same per-issue day of tokens, not the `late_verdict` and
   `late_failure` records a generation reports. Its `delivered` and `reconciled` are emitted where that mode's own
   notice reaches the thread, so a park whose comment GitHub refused records neither until the redelivery lands.
+- `agent_run_limit` — the spent lifetime agent-run ledger's park, emitted by `workflow/engine/run_limit.py`; extras:
+  `stage` (the workflow label the issue is wearing, which is the whole of what this park can say about where the
+  issue stopped — the ledger is spent by every role at every stage, so no one stage ran out of it), `phase` —
+  `delivered` (the notice said for the first time), `reconciled` (the thread was found already carrying it, so it
+  was recorded as said rather than repeated), `standing` (a later tick met the same explained park and said nothing
+  — emitted by the dispatcher's own hold, which stops the tick before any handler is reached, so it reports once per
+  tick that REACHES it: a `paused` / `backlog` hard skip runs no dispatch at all, a closed issue is let past to its
+  terminal, and a guard ahead of the hold can own the tick itself). The `park_awaiting_human` record with
+  `reason="agent_run_limit"` is emitted beside the `delivered` one, by the shared park the delivery goes through.
+  There is no `continued` phase here and there is nothing for one to renew: a lifetime total is spent once, and no
+  window reopens under this park.
 - `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The
   `discussion` stage's plan publication emits the same event with `stage="discussion"` when it opens (never when it
   reuses) a plan PR; it carries no `retry_count`, having no retry budget of its own.

@@ -101,7 +101,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             stage's handler, the reading owed for a size-gate pair frozen and never counted --
                             taken ahead of the handler that would otherwise run against a pull request still
                             standing where the gate froze it, and only on the stage the record itself names --
-                            and the timed dispatch
+                            the hold an issue that has spent its whole lifetime agent-run allowance gets, taken
+                            once here rather than taught to thirteen handlers because `awaiting_human` means a
+                            different road on each of them and none of those buys back a run (it replays the
+                            sentence the park still owes, since nothing below it runs to say one, and it is the one
+                            question here that steps aside for a CLOSED issue, whose handler is a terminal that
+                            ends it rather than a road that spends anything) -- and the timed dispatch
     observations.py         the closes a poll saw and could hand to no worker: the process-wide latch the run
                             holding the issue asks before every step the remote keeps (a close and a reopen inside
                             one of its own steps is the reading GitHub cannot give back), the settle a pass that
@@ -148,6 +153,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             launch currently holding a charge, the typed snapshot carrying what is left of the
                             allowance, and the two fields an issue-state projection keeps of the group. It decides
                             nothing and posts nothing: what to do about a spent ledger is the reader's
+    run_limit.py            what a spent lifetime ledger leaves: the durable `agent_run_limit` park, the sentence it
+                            owes the thread scoped to the exhaustion that minted it -- the allowance in force and
+                            the runs spent against it, so a notice quoting numbers the issue has moved off is
+                            replaced rather than said -- the persist-before-post composition that takes the park and
+                            says it once, the reconciliation that reads a bot-authored notice back off the thread
+                            before repeating it, the replay the dispatcher's hold makes when nothing ever said it,
+                            and the three audit phases over them. Nothing here decides an issue is out: the ledger
+                            reading is handed in, so the park quotes the numbers the refusal was made on
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the

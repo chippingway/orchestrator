@@ -29,6 +29,7 @@ _ENGINE_OWNERS = (
     "prompts",
     "retry_budget",
     "run_ledger",
+    "run_limit",
     "terminals",
     _TICK,
     "usage",

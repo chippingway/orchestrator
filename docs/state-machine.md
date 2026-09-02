@@ -83,6 +83,13 @@ what each step reads and writes are in [`state-machine/labels-and-state.md`][per
 scheduler lifecycle around them are in
 [`architecture.md#per-tick-flow-workflowtick`](architecture.md#per-tick-flow-workflowtick).
 
+One park is answered by the dispatcher rather than by a stage. An issue standing on `agent_run_limit` has spent every
+agent run it will ever be allowed, and every stage below reads `awaiting_human` as the park it was written against —
+a resume on the next trusted reply, a hold waiting on guidance, a classifier that refuses a command carrying none —
+none of which buys back a run. So it is held once, ahead of the handler table and behind only the two guards that
+have to RUN (an authorized restart and a cancelled cycle's cleanup); the hold says the sentence the park still owes,
+since nothing below it would, and it steps aside for a CLOSED issue so a terminal arc can finish.
+
 ### Base refresh
 
 Before any issue is dispatched the tick fetches `<remote>/<base>` once and rebases each existing per-issue worktree
@@ -112,6 +119,7 @@ trusted as state only when the orchestrator's own account authored it and its wh
 into agent identity, decomposition, PR / branch, the drift baseline, the HITL park, the in-review watermarks, the
 final-docs handoff, fix routing, the crash-recovery anchors, counters and timestamps, the per-issue usage meter, the
 lifetime agent-run ledger beside it — what the issue is allowed, what it has spent, and the launch holding a charge —
+the `agent_run_limit` park a spent one leaves and the sentence that park owes the thread,
 the additive `late_*` group a late generation is adjudicated under, the one commit an accepted candidate publishes
 under, and the `decomposing` stage's own record of the run that adjudicates one.
 Every key, what writes it, what spends it, and the legacy `codex_session_id` still honored on read are in

@@ -30,7 +30,9 @@ response, or an exhausted retry cap, it parks with `awaiting_human` and mentions
 comment is the resume signal for the parked agent session. The exhausted retry cap is the one park an ordinary
 comment does not answer under `workflow:decomposing` or `workflow:implementing`: what stopped the issue there is a
 spent spawn budget rather than a question, so the tick holds everything it carries until a trusted
-`/orchestrator continue` renews the budget for one more attempt.
+`/orchestrator continue` renews the budget for one more attempt. A spent lifetime agent-run ledger
+(`MAX_AGENT_RUNS_PER_ISSUE`) parks the same way and answers to nothing at all: the dispatcher holds such an issue
+off every stage handler, and no window and no command reopens a lifetime.
 
 The workflow is deliberately fixed instead of planner-selected: decomposition, implementation, validation, and
 acceptance are mandatory phases. Routing is explicit and label-driven.
