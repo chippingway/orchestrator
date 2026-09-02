@@ -177,8 +177,9 @@ examples.
   unbounded budget keeps no counters — it drops the window it finds, so turning it back on opens a fresh one). An
   exhausted budget parks the issue as `retry_cap`, and that park outlives both the window elapsing and a later change
   to this setting: the notice asked for a human, and neither the clock nor a wider cap is one. Where a stage routes
-  the park to a resume a reply on the thread lifts it; on the initial decomposition only a trusted `/orchestrator
-  continue` does, and the issue holds everything it carries until one arrives. Either renewal buys exactly one
+  the park to a resume a reply on the thread lifts it; on the initial decomposition and on `workflow:implementing`
+  only a trusted `/orchestrator continue` does, and the issue holds everything it carries until one arrives. Either
+  renewal buys exactly one
   spawn, recorded on the issue as the attempt itself, so moving this setting between the word and the spawn neither
   swallows that attempt nor multiplies it
 - `DEV_SESSION_MAX_RESUMES` — default `10`. resumes of one dev session before it is retired and respawned fresh from
@@ -511,8 +512,8 @@ agent spec pinned into an in-flight session — are in
   to resume where it left off. Removing the label is the whole resume action, honored on the next poll; there is no
   un-pause command, and `/orchestrator continue` is unrelated — it retries a specific `awaiting_human` session-failure
   park (`agent_silent` / `agent_timeout`) across the dev stages (`implementing`, `documenting`, `validating`,
-  `fixing`, `resolving_conflict`), and renews a spent spawn budget on a `retry_cap`-parked `workflow:decomposing`
-  issue, but never a `paused` hold. Applying `paused` while a developer agent is mid-run also
+  `fixing`, `resolving_conflict`), and renews a spent spawn budget on a `retry_cap`-parked `workflow:decomposing` or
+  `workflow:implementing` issue, but never a `paused` hold. Applying `paused` while a developer agent is mid-run also
   takes effect: every stage that resumes a dev agent (`implementing`, `validating`, `documenting`, `in_review`,
   `fixing`, `resolving_conflict`) re-reads the label after the run returns, before any post-agent side effect, and
   discards the result rather than pushing, opening a PR, relabeling, advancing watermarks, or posting comments, so the

@@ -47,6 +47,7 @@ _OWNERS = (
     "publication",
     "read_only_relabel",
     "resume",
+    "retry_cap",
     "session",
     "session_read",
     "spawn",

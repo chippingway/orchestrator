@@ -503,6 +503,26 @@ def _granted_attempts(state: PinnedState) -> int | None:
     return min(max(granted, 0), _GRANTED_ATTEMPTS)
 
 
+def _grant_is_unspent(state: PinnedState) -> bool:
+    """Whether a continuation has bought an attempt nothing has taken yet.
+
+    A claim about the ROAD the next agent run has to take, which is why it is
+    asked outside this owner at all. What a continuation buys is a fresh
+    spawn -- the only run the budget counts and the only one this gate is
+    consulted for -- so every seam that would instead resume a locked session
+    has to stand down while one is outstanding. A resume there would run the
+    agent the human paid for and leave the grant on the issue unspent, ready
+    to buy a second.
+
+    Absent and exhausted answer the same way, since neither is an attempt
+    somebody is still owed: an issue with no grant is decided by the
+    configured budget, and one whose grant is spent is back to being decided
+    by it at the next window.
+    """
+    granted = _granted_attempts(state)
+    return granted is not None and granted > 0
+
+
 def _bound_in_force(state: PinnedState) -> int:
     """How many fresh spawns this issue is allowed at all, for the record.
 

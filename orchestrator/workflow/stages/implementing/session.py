@@ -3,12 +3,14 @@
 """When the locked dev session is kept, retired, or refused a spawn at all.
 
 One session is pinned per issue and every resume replays its whole transcript,
-so the interesting decisions are all about when to stop replaying. Three
+so the interesting decisions are all about when to stop replaying. Four
 conditions retire it -- the resume budget (`DEV_SESSION_MAX_RESUMES`), the
-silent-park streak, and a poisoned-session marker the run itself returned --
-and all three end in the same `_drop_poisoned_dev_session`, because the fresh
-spawn that follows must keep the pinned `dev_agent` spec (a transcript problem
-is not a backend-selection problem) while clearing the id and both counters.
+silent-park streak, a poisoned-session marker the run itself returned, and the
+continuation a human buys a spent spawn budget out of (`retry_cap`), whose
+whole purchase is a fresh attempt -- and all four end in the same
+`_drop_poisoned_dev_session`, because the fresh spawn that follows must keep
+the pinned `dev_agent` spec (neither a transcript problem nor a spent budget is
+a backend-selection problem) while clearing the id and both counters.
 Retirement drops the id BEFORE the spawn so a spawn that returns no id of its
 own cannot leave the next tick resuming the session this one just retired.
 
@@ -65,6 +67,11 @@ def _is_poisoned_session_failure(
 
 def _drop_poisoned_dev_session(state: PinnedState) -> None:
     """Clear the pinned dev session id (and legacy `codex_session_id`).
+
+    One retirement for every reason there is to stop replaying a transcript:
+    the three the callers here decide, plus the continuation that buys a spent
+    budget one more attempt, which is a fresh spawn by definition and so may
+    not leave the retired session pinned for the next reply to resume.
 
     Preserves the stored `dev_agent` spec when one is already pinned --
     a poisoned session is a transcript problem, not a backend-selection

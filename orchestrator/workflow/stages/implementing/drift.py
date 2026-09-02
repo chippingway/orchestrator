@@ -34,6 +34,7 @@ from orchestrator.workflow.engine import (
     drift as _engine_drift,
     guards as _guards,
     messages as _messages,
+    retry_budget as _retry_budget,
     usage as _usage,
 )
 from orchestrator.workflow.stages.implementing import (
@@ -69,13 +70,22 @@ def _handle_user_content_drift(
       * Without a dev session and without recovered commits -> clear any park
         and return False so the caller falls through to the fresh-spawn path,
         which builds the implement prompt from the current `issue.body`.
+      * With a dev session but an UNSPENT continuation on the issue -> the
+        pre-session road as well, whatever the transcript could have said. An
+        issue parked on a spent budget sits there for as long as it takes a
+        human to answer, so the requirements move under it -- and what that
+        human bought is one FRESH spawn, the only run this stage charges.
+        Resumed here the agent would run against the edit with the grant
+        still sitting on the issue, ready to buy a second run the budget
+        never saw.
 
     The issue spec ("don't re-decompose mid-implementation -- too disruptive")
     rules out routing back to `decomposing`; the locked session decides what to
     do with the new body instead.
     """
     state.set("user_content_hash", new_hash)
-    if state.get(_state._DEV_AGENT) or state.get(_state._CODEX_SESSION_ID):
+    session = state.get(_state._DEV_AGENT) or state.get(_state._CODEX_SESSION_ID)
+    if session and not _retry_budget._grant_is_unspent(state):
         _resume_dev_on_implementing_drift(gh, spec, issue, state)
         return True
     return _drift_preflight._handle_pre_session_drift(gh, spec, issue, state)

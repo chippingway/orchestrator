@@ -11,30 +11,64 @@ from tests.workflow.stages.implementing import retry_test_support as support
 IssueScenario = support.IssueScenario
 
 ACTION_COMMENT_ID = support.ACTION_COMMENT_ID
+BACKEND_CLAUDE = support.BACKEND_CLAUDE
+COMMENTS_AFTER = support.COMMENTS_AFTER
+CONTINUE_COMMAND = support.CONTINUE_COMMAND
 DEFAULT_SESSION = support.DEFAULT_SESSION
+DEV_SESSION = support.DEV_SESSION
 DONE_MESSAGE = support.DONE_MESSAGE
+DRIFT_RESUME_NOTICE = support.DRIFT_RESUME_NOTICE
 EXPIRED_WINDOW_HOURS = support.EXPIRED_WINDOW_HOURS
+FIRST_REPLY_ID = support.FIRST_REPLY_ID
 FakeComment = support.FakeComment
 FakeGitHubClient = support.FakeGitHubClient
+FakeLabel = support.FakeLabel
 FakeUser = support.FakeUser
+GRANTED_ATTEMPTS = support.GRANTED_ATTEMPTS
+GUIDANCE_REPLY = support.GUIDANCE_REPLY
+HARD_SKIP_LABELS = support.HARD_SKIP_LABELS
 HUMAN_REPLY_ID = support.HUMAN_REPLY_ID
 KEY_AWAITING_HUMAN = support.KEY_AWAITING_HUMAN
+KEY_DEV_AGENT = support.KEY_DEV_AGENT
+KEY_DEV_SESSION_ID = support.KEY_DEV_SESSION_ID
+KEY_LAST_ACTION_COMMENT_ID = support.KEY_LAST_ACTION_COMMENT_ID
 KEY_PARK_REASON = support.KEY_PARK_REASON
+KEY_RETRY_CAP_CONTINUED = support.KEY_RETRY_CAP_CONTINUED
 KEY_RETRY_CAP_NOTICE = support.KEY_RETRY_CAP_NOTICE
+KEY_RETRY_CAP_STAGE = support.KEY_RETRY_CAP_STAGE
 KEY_RETRY_COUNT = support.KEY_RETRY_COUNT
+LABEL_DONE = support.LABEL_DONE
 LABEL_IMPLEMENTING = support.LABEL_IMPLEMENTING
 OK_MESSAGE = support.OK_MESSAGE
+OUTSIDE_AUTHOR = support.OUTSIDE_AUTHOR
+OWED_NOTICE = support.OWED_NOTICE
+CONTINUE_PR_NUMBER = support.CONTINUE_PR_NUMBER
+PARKED_WATERMARK = support.PARKED_WATERMARK
+RETRY_CAP_CONTINUE_ISSUE = support.RETRY_CAP_CONTINUE_ISSUE
+PARK_RETRY_CAP = support.PARK_RETRY_CAP
+PHASE_CONTINUED = support.PHASE_CONTINUED
 PHASE_DELIVERED = support.PHASE_DELIVERED
 PHASE_RECONCILED = support.PHASE_RECONCILED
 PHASE_STANDING = support.PHASE_STANDING
+PR_CLOSED = support.PR_CLOSED
 RETRY_CAP_PARK_ISSUE = support.RETRY_CAP_PARK_ISSUE
 RETRY_CAP_TICKS = support.RETRY_CAP_TICKS
+RESUME_PROMPT_FRAGMENT = support.RESUME_PROMPT_FRAGMENT
 RUN_AGENT = support.RUN_AGENT
+STALE_CONTENT_HASH = support.STALE_CONTENT_HASH
+STUCK_MESSAGE = support.STUCK_MESSAGE
+TRUSTED_AUTHOR = support.TRUSTED_AUTHOR
+TRUSTED_COMMAND = support.TRUSTED_COMMAND
+TRUSTED_GUIDANCE = support.TRUSTED_GUIDANCE
+UNTOUCHED_RECORDS = support.UNTOUCHED_RECORDS
+_RetryCapContinueMixin = support._RetryCapContinueMixin
 _RetryCapFixtureMixin = support._RetryCapFixtureMixin
 _RetryCapParkMixin = support._RetryCapParkMixin
+_TEST_SPEC = support._TEST_SPEC
 _agent = support._agent
 _iso_hours_ago = support._iso_hours_ago
 config = support.config
+dispatch = support.dispatch
 make_issue = support.make_issue
 patch = support.patch
 session = support.session
@@ -293,8 +327,370 @@ class RetryCapNoticeReplayTest(unittest.TestCase, _RetryCapParkMixin):
         mocks[RUN_AGENT].assert_not_called()
         self.assertEqual(len(client.posted_comments), 1)
         self.assertIn("hit retry cap", client.posted_comments[0][1])
-        self.assertEqual(self._phases(client), [PHASE_DELIVERED])
+        # Said, and then refused: the same tick that finally delivers the
+        # sentence is one the park stops, which is what the second record is.
+        self.assertEqual(
+            self._phases(client), [PHASE_DELIVERED, PHASE_STANDING],
+        )
         # Said once and settled durably, so the tick after it says nothing.
         self.assertNotIn(
             KEY_RETRY_CAP_NOTICE, client.pinned_data(RETRY_CAP_PARK_ISSUE),
         )
+
+
+class RetryCapContinueGateTest(unittest.TestCase, _RetryCapContinueMixin):
+    """What lifts a standing retry-cap park, and what may not.
+
+    The park is the budget's rather than a question's: nothing under this
+    stage can pay for a spawn while it stands, so the one reply that changes
+    anything is the one that buys another attempt.
+    """
+
+    def test_a_trusted_command_anywhere_buys_one(self) -> None:
+        for reply, replies, answered in (
+            ("nothing new on the thread", (), None),
+            (
+                "guidance carrying no command",
+                (TRUSTED_GUIDANCE,),
+                None,
+            ),
+            (
+                "the command from outside the allowlist",
+                ((CONTINUE_COMMAND, OUTSIDE_AUTHOR),),
+                None,
+            ),
+            (
+                "the command alone",
+                (TRUSTED_COMMAND,),
+                FIRST_REPLY_ID,
+            ),
+            (
+                "the command carrying an explanation",
+                ((f"{CONTINUE_COMMAND}\n\n{GUIDANCE_REPLY}", TRUSTED_AUTHOR),),
+                FIRST_REPLY_ID,
+            ),
+            (
+                "words written after the command",
+                (
+                    TRUSTED_COMMAND,
+                    TRUSTED_GUIDANCE,
+                ),
+                FIRST_REPLY_ID + 1,
+            ),
+            (
+                "the command written after the words",
+                (
+                    TRUSTED_GUIDANCE,
+                    TRUSTED_COMMAND,
+                ),
+                FIRST_REPLY_ID + 1,
+            ),
+        ):
+            with self.subTest(reply=reply):
+                github, parked = self._parked(*replies)
+
+                self.assertEqual(
+                    self._decide(github, parked), answered is None,
+                )
+                self._assert_bought(github, answered=answered)
+
+    def test_a_later_command_answers_over_chatter(self) -> None:
+        # A refused tick consumes nothing, so what a human wrote before
+        # reaching for the command stays on the unread side of the watermark
+        # -- and the tick that reads both has to act on the command rather
+        # than be talked out of it, or the park is unanswerable for good.
+        github, parked = self._parked(TRUSTED_GUIDANCE)
+
+        self.assertTrue(self._decide(github, parked))
+        self._assert_bought(github, answered=None)
+        parked.comments.append(FakeComment(
+            id=FIRST_REPLY_ID + 1,
+            body=CONTINUE_COMMAND,
+            user=FakeUser(TRUSTED_AUTHOR),
+        ))
+
+        self.assertFalse(self._decide(github, parked))
+        self._assert_bought(github, answered=FIRST_REPLY_ID + 1)
+
+    def test_a_failed_notice_read_buys_nothing(self) -> None:
+        # The entry replay could not read the thread, so the sentence this
+        # park owes is still unsaid -- and a command written before the
+        # question was asked is no answer to it. Read here instead, a second
+        # attempt at the same request would buy an attempt off those words
+        # and then clear the notice the human was owed on the way out.
+        github, parked = self._parked(
+            TRUSTED_COMMAND, retry_cap_notice=OWED_NOTICE,
+        )
+
+        with (
+            self._only_trusted(),
+            patch.object(
+                github,
+                COMMENTS_AFTER,
+                side_effect=[RuntimeError, parked.comments],
+            ),
+        ):
+            mocks = self._run_implementing(
+                github, parked, run_agent=_agent(), has_new_commits=False,
+            )
+
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertEqual(github.posted_comments, [])
+        self._assert_bought(github, answered=None)
+        # Still owed, so the tick that can read the thread says it first.
+        self.assertIn(KEY_RETRY_CAP_NOTICE, self._pinned(github))
+        self.assertEqual(self._phases(github), [PHASE_STANDING])
+
+    def _assert_bought(self, github, *, answered: int | None) -> None:
+        """What the tick left durable, on each side of the one answer.
+
+        `answered` is the comment the watermark should have been moved to,
+        or None for a tick that refused. The grant and the park it lifts are
+        one write, so a tick that dies past it cannot hand the same command
+        out twice -- and a tick that refused wrote nothing at all.
+        """
+        bought = answered is not None
+        pinned = self._pinned(github)
+        self.assertEqual(bool(pinned.get(KEY_AWAITING_HUMAN)), not bought)
+        self.assertEqual(
+            pinned.get(KEY_PARK_REASON), None if bought else PARK_RETRY_CAP,
+        )
+        self.assertEqual(
+            pinned.get(KEY_RETRY_CAP_CONTINUED),
+            GRANTED_ATTEMPTS if bought else None,
+        )
+        self.assertEqual(KEY_RETRY_CAP_STAGE in pinned, not bought)
+        self.assertEqual(
+            pinned.get(KEY_LAST_ACTION_COMMENT_ID),
+            answered if bought else PARKED_WATERMARK,
+        )
+
+
+class RetryCapGrantedAttemptTest(unittest.TestCase, _RetryCapContinueMixin):
+    """What the attempt a human bought is, once the park is out of the way.
+
+    One fresh spawn through the shared gate, and no other agent run: every
+    other road to one resumes a session, which passes no gate and would leave
+    the attempt on the issue with a run already made against it.
+    """
+
+    def test_the_tick_takes_the_bought_attempt(self) -> None:
+        github, parked = self._parked(TRUSTED_COMMAND)
+
+        with self._only_trusted():
+            mocks = self._run_implementing(
+                github,
+                parked,
+                run_agent=_agent(last_message=STUCK_MESSAGE),
+                has_new_commits=False,
+            )
+
+        self._assert_fresh_run(mocks)
+        pinned = self._pinned(github)
+        # One attempt, spent by the spawn it bought: the window reopened at
+        # the grant, so the count is this run and nothing before it.
+        self.assertEqual(pinned.get(KEY_RETRY_COUNT), 1)
+        self.assertEqual(pinned.get(KEY_RETRY_CAP_CONTINUED), 0)
+        self.assertEqual(self._phases(github), [PHASE_CONTINUED])
+
+    def test_an_edit_while_parked_spawns_fresh(self) -> None:
+        # The requirements move while a human takes their time, and the
+        # session that spent the budget is still pinned. Resumed against the
+        # edit it would run the agent the continuation paid for and leave the
+        # grant on the issue, ready to buy a second run nothing counted.
+        github, parked = self._parked(
+            TRUSTED_COMMAND,
+            dev_agent=BACKEND_CLAUDE,
+            dev_session_id=DEV_SESSION,
+            user_content_hash=STALE_CONTENT_HASH,
+        )
+
+        with self._only_trusted():
+            mocks = self._run_implementing(
+                github,
+                parked,
+                run_agent=_agent(last_message=STUCK_MESSAGE),
+                has_new_commits=False,
+            )
+
+        self._assert_one_charged_spawn(github, mocks)
+
+    def test_a_restart_still_owes_the_bought_attempt(self) -> None:
+        # The grant is durable and the attempt is charged in memory, so a
+        # process that died between them comes back to an unparked issue with
+        # the attempt still owed -- and it is owed as a fresh spawn, whatever
+        # the thread and the pinned session have become since.
+        github, granted = self._granted(
+            dev_agent=BACKEND_CLAUDE,
+            dev_session_id=DEV_SESSION,
+            user_content_hash=STALE_CONTENT_HASH,
+        )
+
+        mocks = self._run_implementing(
+            github,
+            granted,
+            run_agent=_agent(last_message=STUCK_MESSAGE),
+            has_new_commits=False,
+        )
+
+        self._assert_one_charged_spawn(github, mocks)
+
+    def test_a_spawn_with_no_id_retires_the_old(self) -> None:
+        # The spawn replaces the pinned id only when the run hands one back,
+        # so nothing downstream of the grant can drop the session the cap
+        # stopped: left pinned, the next reply would carry straight on from
+        # the transcript that ran the budget out. The grant is durable, so
+        # the tick that spends it is not always the one that read the
+        # command -- and the budget is shared, so an issue can arrive here
+        # carrying a grant this stage never granted.
+        for road, on_the_command in (
+            ("the tick that reads the command", True),
+            ("a restart on the durable grant", False),
+        ):
+            with self.subTest(road=road):
+                self._assert_retires_the_old_session(
+                    on_the_command=on_the_command,
+                )
+
+    def _assert_retires_the_old_session(self, *, on_the_command: bool) -> None:
+        """One grant-funded spawn that hands no id back, on either road."""
+        seed = self._parked if on_the_command else self._granted
+        replies = (TRUSTED_COMMAND,) if on_the_command else ()
+        github, funded = seed(
+            *replies, dev_agent=BACKEND_CLAUDE, dev_session_id=DEV_SESSION,
+        )
+
+        with self._only_trusted():
+            self._run_implementing(
+                github,
+                funded,
+                run_agent=_agent(session_id="", last_message=STUCK_MESSAGE),
+                has_new_commits=False,
+            )
+
+        pinned = self._pinned(github)
+        self.assertFalse(pinned.get(KEY_DEV_SESSION_ID))
+        # The backend the issue is pinned to survives the retirement: what a
+        # spent budget is not is a backend-selection problem.
+        self.assertEqual(pinned.get(KEY_DEV_AGENT), BACKEND_CLAUDE)
+        self._assert_reply_regrounds(github, funded)
+
+    def _assert_reply_regrounds(self, github, parked) -> None:
+        """The reply after the granted run starts a session of its own."""
+        parked.comments.append(FakeComment(
+            id=FIRST_REPLY_ID + 1,
+            body=GUIDANCE_REPLY,
+            user=FakeUser(TRUSTED_AUTHOR),
+        ))
+
+        with self._only_trusted():
+            mocks = self._run_implementing(
+                github,
+                parked,
+                run_agent=_agent(last_message=STUCK_MESSAGE),
+                has_new_commits=False,
+            )
+
+        resumed = self._assert_fresh_run(mocks)
+        self.assertIn(RESUME_PROMPT_FRAGMENT, resumed.call_args[0][1])
+
+    def _assert_one_charged_spawn(self, github, mocks) -> None:
+        """The grant bought a fresh spawn, and the gate is what took it."""
+        self._assert_fresh_run(mocks)
+        self.assertFalse(
+            any(
+                DRIFT_RESUME_NOTICE in body
+                for _, body in github.posted_comments
+            ),
+        )
+        pinned = self._pinned(github)
+        self.assertEqual(pinned.get(KEY_RETRY_COUNT), 1)
+        self.assertEqual(pinned.get(KEY_RETRY_CAP_CONTINUED), 0)
+
+
+class RetryCapParkOwnsTheTickTest(unittest.TestCase, _RetryCapContinueMixin):
+    """The park is answered ahead of the drift and resume roads below it.
+
+    Both of those would act on it as an ordinary awaiting-human issue -- the
+    resume lifting the flag on any reply at all, and charging nothing for the
+    session it starts -- so what they may reach is a park a human has bought
+    an attempt for, and nothing else.
+    """
+
+    def test_a_park_nobody_answered_spends_nothing(self) -> None:
+        for park, replies, window_hours in (
+            ("a window the clock ran out of", (), EXPIRED_WINDOW_HOURS),
+            ("a reply that is not the command", (TRUSTED_GUIDANCE,), 1),
+        ):
+            with self.subTest(park=park):
+                self._assert_stands(*replies, window_hours=window_hours)
+
+    def test_a_merged_pr_outranks_the_park(self) -> None:
+        # The park is answered inside the preflight rather than ahead of it,
+        # so a pull request that landed still ends the issue over a standing
+        # one -- and a poll that leaves no `retry_cap` record behind is not a
+        # park that lifted.
+        github, finished = self._parked(
+            TRUSTED_COMMAND, pr_number=CONTINUE_PR_NUMBER,
+        )
+        landed = github.pulls[CONTINUE_PR_NUMBER]
+        landed.merged = True
+        landed.state = PR_CLOSED
+
+        with self._only_trusted():
+            mocks = self._run_implementing(
+                github, finished, run_agent=_agent(),
+            )
+
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertIn(
+            (RETRY_CAP_CONTINUE_ISSUE, LABEL_DONE), github.label_history,
+        )
+        # Nothing was decided about the budget on the way past: no record,
+        # and the command still sits unread on a thread that is finished.
+        self.assertEqual(self._phases(github), [])
+        self.assertEqual(
+            self._pinned(github).get(KEY_LAST_ACTION_COMMENT_ID),
+            PARKED_WATERMARK,
+        )
+
+    def test_a_hard_skipped_issue_buys_nothing(self) -> None:
+        # `paused` / `backlog` park the issue outside the state machine, so
+        # the command sits on the thread unread until the label comes off --
+        # it is not consumed, and it buys no spawn under a hold.
+        for skip_label in HARD_SKIP_LABELS:
+            with self.subTest(label=skip_label):
+                github, skipped = self._parked(TRUSTED_COMMAND)
+                skipped.labels.append(FakeLabel(skip_label))
+                seeded = self._pinned(github)
+
+                with self._only_trusted():
+                    dispatch._process_issue(github, _TEST_SPEC, skipped)
+
+                self.assertEqual(self._pinned(github), seeded)
+                self.assertEqual(github.posted_comments, [])
+                self.assertEqual(github.recorded_events, [])
+
+    def _assert_stands(self, *replies, window_hours: int) -> None:
+        """One tick over a park nobody answered, and what it left alone.
+
+        The sentence was said when the park was taken, so a tick that refuses
+        again says nothing and writes nothing -- and the records the size gate
+        and the publication own are not this park's to spend.
+        """
+        github, parked = self._parked(
+            *replies, window_hours=window_hours, **UNTOUCHED_RECORDS
+        )
+        seeded = self._pinned(github)
+        writes = github.write_state_calls
+
+        with self._only_trusted():
+            mocks = self._run_implementing(
+                github, parked, run_agent=_agent(), has_new_commits=False,
+            )
+
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertEqual(github.posted_comments, [])
+        self.assertEqual(github.write_state_calls, writes)
+        self.assertEqual(self._pinned(github), seeded)
+        self.assertEqual(self._phases(github), [PHASE_STANDING])

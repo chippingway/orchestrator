@@ -218,12 +218,14 @@ where you put it rather than greeted a second time, so nothing runs again until 
   `API Error: 529 Overloaded` or one of its 5xx siblings). The park comment says which, and names this command when
   it is the answer. It is not an un-pause command and does not clear other park reasons — a park waiting on a real
   answer refuses it and says so.
-  The same command answers one more park, on a different stage: an issue stopped under `workflow:decomposing` because
+  The same command answers one more park, on two other stages: an issue stopped under `workflow:decomposing` or
+  `workflow:implementing` because
   its per-issue daily spawn budget (`MAX_RETRIES_PER_DAY`) is spent. Nothing else moves that one — not an edited issue
-  body, not a widened or disabled cap, not an ordinary reply — and it keeps its manifest, its children, its decomposer
-  session, and its pull request while it waits. One trusted `/orchestrator continue` buys a single further decomposer
+  body, not a widened or disabled cap, not an ordinary reply — and it keeps everything it carries while it waits: the
+  manifest, the children and the decomposer session on one, the developer's session, its commits and its pull request
+  on the other. One trusted `/orchestrator continue` buys a single further agent
   run on a fresh conversation, and it counts even when your comment carries guidance beside it. It buys that one run
-  and no more: once the attempt is spent, the next fresh decomposer this issue needs is refused again, and buying it
+  and no more: once the attempt is spent, the next fresh agent this issue needs is refused again, and buying it
   is another command.
 - `/orchestrator add-review-rounds N` — post this on its own line with a positive `N` on an issue parked at
   `MAX_REVIEW_ROUNDS`. It grants up to `N` more reviewer rounds, capped at the configured maximum.

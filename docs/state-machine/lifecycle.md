@@ -572,10 +572,11 @@ than a second source of truth: where the two disagree, the handler pages are aut
                         exhausted, invalid manifest)
                  wait for new human comment ──► resume locked
                                                  session (backend + args)
-                 except a spent spawn budget under decomposing:
+                 except a spent spawn budget under decomposing
+                 or implementing:
                    no reply resumes it ──► held, keeping the manifest,
-                                           children, session, and PR,
-                                           until a trusted
+                                           children, session, commits,
+                                           and PR, until a trusted
                                            /orchestrator continue renews
                                            the budget for one fresh spawn
                                            (the old session is retired,
