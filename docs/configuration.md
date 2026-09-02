@@ -196,7 +196,9 @@ examples.
   more of them: each of those bounds how often a single road may be retried, and an issue that walks enough of those
   roads in turn spends more than any one of them ever sees. Unlike the daily retry budget this one never reopens — a
   lifetime total is spent once, and no clock returns it. `0` = unlimited. A negative or non-integer value aborts at
-  import, like the parallelism caps: a ceiling under zero is one no run could ever come in under.
+  import, like the parallelism caps: a ceiling under zero is one no run could ever come in under. What the setting
+  carries is the ceiling itself — validated at import and published on `orchestrator.config`, stated in the same unit
+  as the `issue_agent_runs` meter — and no stage handler turns an agent run away against it.
 - `MAX_ADDED_LINES` — default `4000`. size ceiling a pull request may publish under, counted in the
   textual lines it **adds**: the frozen remote base commit against the exact committed
   candidate commit, across every path. It is applied to the first publication and to every dev fix pushed onto a
