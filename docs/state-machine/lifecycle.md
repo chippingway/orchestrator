@@ -319,7 +319,8 @@ than a second source of truth: where the two disagree, the handler pages are aut
 
    the same dispatch, on the same pinned read (the pair below is asked
        AHEAD of the reuse guard above, since both RUN rather than merely
-       answer; the greeting refusal is asked behind it):
+       answer; the agent-run-limit hold sits between them and the reuse
+       guard, and the greeting refusal is asked behind it):
      late cycle a close ended, ─► the closed-owner ending below, run from
        cleanup unfinished          wherever the owner was left: reaches no
                                    handler, and writes that cycle's rejected
@@ -339,6 +340,22 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                    own people may make. backlog|paused defer
                                    the whole of it; a refused notice or label
                                    keeps the marker and resumes next tick
+     awaiting_human +          ─► the HOLD: reaches no handler, says the
+       park_reason=                sentence the park still owes if nothing
+       agent_run_limit, and        ever did, and records a standing phase.
+       the issue is OPEN           The issue has spent every agent run
+                                   MAX_AGENT_RUNS_PER_ISSUE allows, and a
+                                   lifetime total is spent once -- no window
+                                   elapses under this park and no command
+                                   reopens it, so every stage road below
+                                   (a resume on the next reply, a hold
+                                   waiting on words, a continue classifier)
+                                   would answer a park it was not written
+                                   for. A CLOSED issue is let past instead:
+                                   what it reaches below is a terminal that
+                                   ENDS it rather than a road that spends
+                                   anything, and the poll's own closed
+                                   reading counts beside the object's
      no workflow label, a      ─► nothing, logged once a tick. Pickup GREETS
        pinned comment already      an issue and mints its pinned comment, so a
        on the issue, and no        second greeting writes a second one every

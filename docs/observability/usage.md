@@ -65,9 +65,11 @@ skipped when no run was ever counted.
 `workflow/engine/run_ledger.py` seeds a missing `agent_runs_used` from it and never reads below it, so an issue
 already in flight keeps what it has already spent. The two count the same unit but not the same set — the ledger
 charges the launch and so also holds the runs whose usage never parsed, while this meter counts the parsed exits —
-which is why the ledger's total is the larger of the pair. Nothing turns an agent run away against either of them;
-see [`configuration.md`](../configuration.md#cadence-and-budgets) for `MAX_AGENT_RUNS_PER_ISSUE` and
-[state-machine/labels-and-state.md][pinned-state] for the ledger's own keys.
+which is why the ledger's total is the larger of the pair. Nothing turns an agent run away against either of them —
+where an issue that had spent it all would STOP is the durable `agent_run_limit` park on
+`workflow/engine/run_limit.py` and the dispatcher hold over it, which no handler hands an exhausted reading.
+See [`configuration.md`](../configuration.md#cadence-and-budgets) for `MAX_AGENT_RUNS_PER_ISSUE` and
+[state-machine/labels-and-state.md][pinned-state] for the ledger's and the park's own keys.
 
 **Skill-trigger extractor (opt-in).** A sibling trio mirrors the usage parsers' two-parsers-one-dispatcher shape and
 resilience contract to record which agent *skills* a run loaded, gated behind `TRACK_SKILL_TRIGGERS` (default off;
