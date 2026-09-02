@@ -511,7 +511,8 @@ agent spec pinned into an in-flight session — are in
   to resume where it left off. Removing the label is the whole resume action, honored on the next poll; there is no
   un-pause command, and `/orchestrator continue` is unrelated — it retries a specific `awaiting_human` session-failure
   park (`agent_silent` / `agent_timeout`) across the dev stages (`implementing`, `documenting`, `validating`,
-  `fixing`, `resolving_conflict`), not a `paused` hold. Applying `paused` while a developer agent is mid-run also
+  `fixing`, `resolving_conflict`), and renews a spent spawn budget on a `retry_cap`-parked `workflow:decomposing`
+  issue, but never a `paused` hold. Applying `paused` while a developer agent is mid-run also
   takes effect: every stage that resumes a dev agent (`implementing`, `validating`, `documenting`, `in_review`,
   `fixing`, `resolving_conflict`) re-reads the label after the run returns, before any post-agent side effect, and
   discards the result rather than pushing, opening a PR, relabeling, advancing watermarks, or posting comments, so the
