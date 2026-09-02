@@ -18,16 +18,26 @@ FakeComment = support.FakeComment
 FakeGitHubClient = support.FakeGitHubClient
 FakeUser = support.FakeUser
 HUMAN_REPLY_ID = support.HUMAN_REPLY_ID
+KEY_AWAITING_HUMAN = support.KEY_AWAITING_HUMAN
+KEY_PARK_REASON = support.KEY_PARK_REASON
+KEY_RETRY_CAP_NOTICE = support.KEY_RETRY_CAP_NOTICE
 KEY_RETRY_COUNT = support.KEY_RETRY_COUNT
 LABEL_IMPLEMENTING = support.LABEL_IMPLEMENTING
 OK_MESSAGE = support.OK_MESSAGE
+PHASE_DELIVERED = support.PHASE_DELIVERED
+PHASE_RECONCILED = support.PHASE_RECONCILED
+PHASE_STANDING = support.PHASE_STANDING
+RETRY_CAP_PARK_ISSUE = support.RETRY_CAP_PARK_ISSUE
+RETRY_CAP_TICKS = support.RETRY_CAP_TICKS
 RUN_AGENT = support.RUN_AGENT
 _RetryCapFixtureMixin = support._RetryCapFixtureMixin
+_RetryCapParkMixin = support._RetryCapParkMixin
 _agent = support._agent
 _iso_hours_ago = support._iso_hours_ago
 config = support.config
 make_issue = support.make_issue
 patch = support.patch
+session = support.session
 
 
 class HandleImplementingRetryCapTest(
@@ -88,6 +98,7 @@ class HandleImplementingRetryCapTest(
         gh, issue = self._seeded(
             retry_count=2,
             retry_window_start=_iso_hours_ago(1),
+            retry_cap_continued=1,
         )
 
         self._run_implementing(
@@ -101,8 +112,10 @@ class HandleImplementingRetryCapTest(
 
         pinned_data = gh.pinned_data(8)
         self.assertEqual(pinned_data.get(KEY_RETRY_COUNT), 0)
-        # window_start cleared back to falsy.
+        # window_start cleared back to falsy, and with it the attempts a
+        # continuation left on this issue's budget.
         self.assertFalse(pinned_data.get("retry_window_start"))
+        self.assertFalse(pinned_data.get("retry_cap_continued"))
         self.assertEqual(len(gh.opened_prs), 1)
 
     def test_window_older_than_one_day_resets_counter(self) -> None:
@@ -162,3 +175,126 @@ class HandleImplementingRetryCapTest(
         # _on_commits then clears it to 0.
         pinned_data = gh.pinned_data(9)
         self.assertEqual(pinned_data.get(KEY_RETRY_COUNT), 0)
+
+
+class RetryCapParkDeliveryTest(unittest.TestCase, _RetryCapParkMixin):
+    """What a refused fresh spawn says, and how often it says it.
+
+    The gate is asked again on every eligible tick -- that is what makes the
+    refusal idempotent -- so the notice is the one thing that may not be.
+    """
+
+    def test_repeated_ticks_park_once_and_say_it_once(self) -> None:
+        gh, issue = self._exhausted()
+
+        refusals = [
+            self._refuse(gh, issue) for _ in range(RETRY_CAP_TICKS)
+        ]
+
+        self.assertEqual(refusals, [False, False, False])
+        self.assertEqual(len(gh.posted_comments), 1)
+        self.assertIn("hit retry cap", gh.posted_comments[0][1])
+        self.assertEqual(
+            self._phases(gh),
+            [PHASE_DELIVERED, PHASE_STANDING, PHASE_STANDING],
+        )
+        # Durable and stable: the park survives the restart each re-read is.
+        pinned = gh.pinned_data(RETRY_CAP_PARK_ISSUE)
+        self.assertTrue(pinned.get(KEY_AWAITING_HUMAN))
+        self.assertEqual(pinned.get(KEY_PARK_REASON), "retry_cap")
+        self.assertEqual(pinned.get(KEY_RETRY_COUNT), RETRY_CAP_TICKS)
+
+    def test_an_unbounded_cap_does_not_lift_the_park(self) -> None:
+        # The gate answers the park before it answers the cap, so an operator
+        # who turns the budget off does not resume a workflow whose notice
+        # asked for a human -- only an explicit continuation does.
+        gh, issue = self._exhausted()
+
+        self._refuse(gh, issue)
+        lifted = self._refuse(gh, issue, cap=0)
+
+        self.assertFalse(lifted)
+        self.assertEqual(len(gh.posted_comments), 1)
+        self.assertEqual(
+            self._phases(gh), [PHASE_DELIVERED, PHASE_STANDING],
+        )
+
+    def test_a_notice_on_the_thread_is_not_repeated(self) -> None:
+        # A tick that posted and died before its write leaves the sentence
+        # owed by a thread that already has it.
+        gh, issue = self._exhausted()
+
+        self._refuse(gh, issue, persist=False)
+        self._refuse(gh, issue)
+
+        self.assertEqual(len(gh.posted_comments), 1)
+        self.assertEqual(
+            self._phases(gh), [PHASE_DELIVERED, PHASE_RECONCILED],
+        )
+
+    def test_an_unreadable_thread_says_nothing(self) -> None:
+        # The window the reconciliation exists for: a notice that landed under
+        # a pinned write that then failed is on the thread, and a read that
+        # fails cannot tell that from a thread with nothing on it. Posting on
+        # a failed read is the duplicate this protocol is here to stop, so the
+        # tick says nothing and the notice stays owed for the next one.
+        gh, issue = self._exhausted()
+        self._refuse(gh, issue, persist=False)
+
+        with patch.object(gh, "comments_after", side_effect=RuntimeError):
+            quiet = self._refuse(gh, issue)
+        said_later = self._refuse(gh, issue)
+
+        self.assertEqual([quiet, said_later], [False, False])
+        self.assertEqual(len(gh.posted_comments), 1)
+        # The tick that could read the thread found the sentence on it and
+        # recorded it as said rather than saying it twice.
+        self.assertEqual(
+            self._phases(gh), [PHASE_DELIVERED, PHASE_RECONCILED],
+        )
+
+    def test_a_park_that_cannot_persist_says_nothing(self) -> None:
+        # The park goes down before the sentence goes out. A notice nothing
+        # durable backs is one no later tick would reconcile -- and the window
+        # under it would roll over a day later with the issue running again
+        # beneath a comment saying it had stopped.
+        gh, issue = self._exhausted()
+        state = gh.read_pinned_state(issue)
+
+        with (
+            patch.object(config, "MAX_RETRIES_PER_DAY", RETRY_CAP_TICKS),
+            patch.object(gh, "write_pinned_state", side_effect=RuntimeError),
+            self.assertRaises(RuntimeError),
+        ):
+            session._check_and_increment_retry_budget(gh, issue, state)
+
+        self.assertEqual(gh.posted_comments, [])
+        self.assertFalse(
+            gh.pinned_data(RETRY_CAP_PARK_ISSUE).get(KEY_AWAITING_HUMAN),
+        )
+
+
+class RetryCapNoticeReplayTest(unittest.TestCase, _RetryCapParkMixin):
+    """The sentence a stranded park is still owed, said at the next entry.
+
+    A park routes the tick to a resume or to nothing, and neither road passes
+    the gate that took it, so nothing below stage entry would ever say it.
+    """
+
+    def test_a_stranded_notice_is_said_at_stage_entry(self) -> None:
+        client, parked = self._exhausted()
+        with patch.object(client, "comments_after", side_effect=RuntimeError):
+            self._refuse(client, parked)
+
+        mocks = self._run_implementing(
+            client, parked, run_agent=_agent(), has_new_commits=False,
+        )
+
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertEqual(len(client.posted_comments), 1)
+        self.assertIn("hit retry cap", client.posted_comments[0][1])
+        self.assertEqual(self._phases(client), [PHASE_DELIVERED])
+        # Said once and settled durably, so the tick after it says nothing.
+        self.assertNotIn(
+            KEY_RETRY_CAP_NOTICE, client.pinned_data(RETRY_CAP_PARK_ISSUE),
+        )

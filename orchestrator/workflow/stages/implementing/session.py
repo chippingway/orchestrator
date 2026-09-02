@@ -12,10 +12,13 @@ is not a backend-selection problem) while clearing the id and both counters.
 Retirement drops the id BEFORE the spawn so a spawn that returns no id of its
 own cannot leave the next tick resuming the session this one just retired.
 
-The retry budget is the other gate, and it is deliberately not per-session: the
-24h window counts fresh spawns per ISSUE, shared with decomposing, so a stuck
-issue cannot burn a day of tokens by rotating sessions. Only fresh spawns are
-counted -- a resume on a human reply is an unblock signal, not a retry.
+The retry budget is the other gate, and it is deliberately not per-session:
+the 24h window counts fresh spawns per ISSUE, shared with decomposing, so a
+stuck issue cannot burn a day of tokens by rotating sessions. Only fresh spawns
+are counted -- a resume on a human reply is an unblock signal, not a retry.
+What the budget IS lives on `workflow/engine/retry_budget.py`, which every
+stage's gate is decided by; what is here is the form that parks the issue on
+the caller's behalf, for the stages that own no notice delivery of their own.
 
 `_build_dev_spawn_prompt` is here for the same reason: a resume carries the
 requirements in its replayed transcript, so what a fresh spawn needs instead --
@@ -34,9 +37,8 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     comments as _comments,
-    guards as _guards,
     prompts as _prompts,
-    usage as _usage,
+    retry_budget as _retry_budget,
 )
 from orchestrator.workflow.stages.implementing import (
     models as _models,
@@ -98,56 +100,44 @@ def _check_and_increment_retry_budget(
     *,
     stage: str = _state._IMPLEMENTING_STAGE,
 ) -> bool:
-    """Gate fresh agent spawns by a per-issue 24h retry cap.
+    """Gate a fresh agent spawn, and park the issue itself when it is refused.
 
-    The window starts at the first counted attempt and resets once 24h after
-    that start has elapsed -- a fixed window per issue, not a true rolling
-    window, but enough to stop a stuck issue from burning tokens for a day.
-    Implementing and decomposing share the same per-issue counter on
-    purpose: both consume the issue's daily spawn budget.
+    The parking form of the shared budget, for the callers that own no notice
+    delivery of their own. Everything it decides is decided by
+    `workflow/engine/retry_budget.py`; what is here is the tail those callers
+    would otherwise each have to write -- stage the park, settle the sentence
+    it owes against the thread, and say it once.
 
-    Returns True if the spawn is allowed (and the budget was incremented);
-    False if the cap is exhausted (and the issue was parked on awaiting_human).
+    Returns True if the spawn is allowed (and the budget was charged); False
+    if the budget is out. On that branch the park is made DURABLE here, before
+    a word of it is said: a notice on a thread that no pinned state backs is
+    the worst of both endings -- nothing reconciles it, because nothing knows
+    it is owed, and the window under it rolls over a day later with the issue
+    running again beneath a comment saying it had stopped. The caller's own
+    write follows and carries whatever the delivery settled.
 
-    Only fresh spawns count. Resumes on human reply and recovered-worktree
-    pushes are explicit unblock signals or carry-over work, not retries.
-    Caller writes pinned state after this returns; on the False branch we have
-    already parked, so caller's pinned-state write commits the park.
+    A park already standing for an exhausted budget is re-taken silently: the
+    budget is re-decided on every eligible tick, so announcing it again would
+    say the same sentence to the same thread once a poll until a human
+    arrived. The thread is asked before anything is said, so a comment that
+    landed under a write that failed is recorded as said rather than repeated
+    -- and a thread this tick could not read is said nothing to at all, since
+    the sentence it may already carry is exactly the one about to go out.
+    The park stands and the notice stays owed, so the next tick reads again.
     """
-    from datetime import UTC, datetime, timedelta
-
-    cap = config.MAX_RETRIES_PER_DAY
-    if cap <= 0:
+    decision = _retry_budget._consume_retry_slot(state, stage=stage)
+    if decision.allowed:
         return True
-
-    now = datetime.now(UTC)
-    window_start_raw = state.get(_state._RETRY_WINDOW_START)
-    window_start: datetime | None = None
-    if window_start_raw:
-        try:
-            window_start = datetime.fromisoformat(window_start_raw)
-        except (TypeError, ValueError):
-            window_start = None
-
-    if window_start is None or now - window_start > timedelta(hours=24):
-        # Window absent/corrupt/expired: open a new one.
-        state.set(_state._RETRY_WINDOW_START, _usage._now_iso())
-        state.set(_state._RETRY_COUNT, 0)
-        window_start_raw = state.get(_state._RETRY_WINDOW_START)
-
-    count = int(state.get(_state._RETRY_COUNT) or 0)
-    if count >= cap:
-        _guards._park_awaiting_human(
-            gh, issue, state,
-            f"{config.HITL_MENTIONS} hit retry cap ({cap}/day) for "
-            f"{stage}; manual intervention needed. "
-            f"Window opened at {window_start_raw}.",
-            reason="retry_cap",
+    if not _retry_budget._stage_retry_cap_park(state, decision):
+        _retry_budget._emit_phase(
+            gh, issue, state, _retry_budget.RetryCapPhase.STANDING,
         )
         return False
-
-    state.set(_state._RETRY_COUNT, count + 1)
-    return True
+    gh.write_pinned_state(issue, state)
+    reading = _retry_budget._reconcile_notice(gh, issue, state)
+    if reading is _retry_budget.NoticeReading.UNSAID:
+        _retry_budget._deliver_notice(gh, issue, state)
+    return False
 
 
 def _resolve_dev_session_for_resume(

@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
+from orchestrator.workflow.engine import retry_budget as _retry_budget
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LateGeneration,
@@ -14,6 +15,7 @@ from orchestrator.workflow.late_split.models import (
     LateVerdict,
 )
 from orchestrator.workflow.stages.decomposition import (
+    late_coordinator as _coordinator,
     late_session as _late_session,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
@@ -49,6 +51,13 @@ from tests.workflow.stages.decomposition.late_test_support import (
 )
 
 FUTURE_WINDOW = "2999-01-01T00:00:00+00:00"
+
+# A budget in force, so what the gate charges is read against a cap of its own
+# rather than against whatever the environment configures.
+BOUNDED_CAP = 3
+
+# One attempt bought by a continuation and not yet spent.
+GRANTED = 1
 
 # The three records that are not a live oversized candidate: an issue that
 # never entered the gate, one measured under its ceiling, and a cancelled
@@ -244,6 +253,47 @@ class SpawnPersistenceTest(LateCase, unittest.TestCase):
         # The identity is durable before the agent starts; the retry slot it
         # holds is not, so a run this tick then declines costs nothing.
         self.assertNotIn(KEYS.retry_count, recorded)
+
+    def test_a_grant_is_unspent_before_the_spawn(self) -> None:
+        # The attempt a human bought is charged by the same gate the counters
+        # are, so the pre-spawn write has to leave it as it found it too --
+        # a run this tick then declines must not spend a continuation nobody
+        # got an answer for.
+        self.issue = seed_late_issue(
+            self.github, late_generation(), retry_cap_continued=GRANTED,
+        )
+        recorder = SpawnSnapshot(self.github, agent_reply(SPLIT_REPLY))
+
+        self._adjudicate(recorder)
+
+        self.assertEqual(recorder.snapshots[0].get(KEYS.retry_grant), GRANTED)
+        # The run that finished is what makes the spend durable.
+        self.assertEqual(self._pinned().get(KEYS.retry_grant), 0)
+
+    def test_the_refund_covers_every_charged_field(self) -> None:
+        # The set the pre-spawn write puts back has to mirror what the shared
+        # gate writes, both roads through it: a field charged here and not
+        # refunded there is spent by a run the tick goes on to decline.
+        for grant in ({}, {KEYS.retry_grant: GRANTED}):
+            with self.subTest(grant=grant):
+                state = self.github.read_pinned_state(self.issue)
+                state.data.update(grant)
+                before = dict(state.data)
+
+                with patch.object(
+                    config, "MAX_RETRIES_PER_DAY", BOUNDED_CAP,
+                ):
+                    _retry_budget._consume_retry_slot(
+                        state, stage=STAGE_DECOMPOSING,
+                    )
+
+                self.assertLessEqual(
+                    {
+                        name for name, charge in state.data.items()
+                        if before.get(name) != charge
+                    },
+                    set(_coordinator._ACCOUNTING_FIELDS),
+                )
 
     def test_it_spends_the_shared_retry_and_usage(self) -> None:
         self._adjudicate(agent_reply(SPLIT_REPLY))

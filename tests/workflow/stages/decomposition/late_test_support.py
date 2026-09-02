@@ -130,6 +130,7 @@ class _StateKeys:
     receipt_lease: str = "implementing_published_lease"
     retry_count: str = "retry_count"
     retry_window: str = "retry_window_start"
+    retry_grant: str = "retry_cap_continued"
     agent_runs: str = "issue_agent_runs"
     awaiting: str = "awaiting_human"
     park_reason: str = "park_reason"

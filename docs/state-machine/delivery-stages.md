@@ -571,7 +571,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   - **the spawn** (`late_coordinator`), asked twice and the second time right against it — a worktree probe, a
     retry-budget write, a hold reconcile, and the write that records what this attempt IS all stand between a tick's
     own gates and the one step that puts an agent on somebody's repository. What the record then claims is an
-    attempt nobody made, which the next tick reconciles for free; an agent that ran is what nothing takes back;
+    attempt nobody made, which the next tick reconciles for free; an agent that ran is what nothing takes back. Both
+    are asked with the retry accounting handed back, since the cancellation a latch takes is itself a write and a
+    run nobody started may not cost the issue a counted attempt — or the one a `/orchestrator continue` bought;
   - **the developer revision** (`late_revision`), three times: as the tick is entered, again right against the
     resume — the revising notice it posts in between is a request the poll runs beside — and once more when the run
     comes back, which stops the remeasure that would write a fresh candidate over a cycle a close already ended.
@@ -985,7 +987,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      untouched: there the commits are a previous run's whatever the probe says, and refusing them would buy a second
      developer over an implementation the first one already finished.
   4. Else gate the run on the per-issue retry budget (`MAX_RETRIES_PER_DAY`, default 3); a 24h window opens at the first
-     counted spawn. Only fresh spawns count.
+     counted spawn. Only fresh spawns count. An exhausted budget parks the issue durably as `retry_cap`, and that
+     park is asked before the cap and the window both, so the notice that asked for a human is not answered by the
+     clock or by a retuned cap — see [the retry budget](labels-and-state.md#the-retry-budget).
   5. Else build the implementer prompt (issue body + recent comments + "commit, do not push"), persist `dev_agent`
      BEFORE invoking `run_agent`, then spawn.
   6. Branch on result:

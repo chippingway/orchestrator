@@ -130,6 +130,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             greeting / hash / label / state order a start publishes in
     prompts.py              the prompt builders the stages share, the header, notes, and placeholders they are
                             assembled from, and the single-decision comment
+    retry_budget.py         the per-issue daily spawn budget every stage's gate is decided by: the decision it
+                            answers and posts nothing for, the durable `retry_cap` park and the stage that ran out,
+                            the sentence that park owes the thread until the thread is shown to carry it, the one
+                            bounded renewal, and the four audit phases over them
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the
@@ -267,7 +271,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       state.py              the counter keys they share, and the single settled pair one held round at a time is
                             named by
     decomposition/          `workflow:decomposing`, `workflow:ready`, `workflow:blocked`, and `workflow:umbrella`
-      run.py                one `decomposing` tick: the late route asked before anything else, the drift / recovery /
+      run.py                one `decomposing` tick: the retry-cap notice a stranded park still owes replayed at
+                            entry, the late route asked before anything else after it, the drift / recovery /
                             kill-switch order before the agent, and the pause, dirty-worktree, and interruption
                             checks after it
       handoff.py            the two ways this label hands an issue to implementation -- the kill switch and a
@@ -329,7 +334,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             hold on the pull request the candidate stands on before any spawn -- and the displaced
                             one no new agent is started under --
                             the content settlement that can end the tick, the completed-result short circuit, the
-                            retry-budgeted run whose pre-spawn write holds the accounting back, the read-only proof
+                            retry-budgeted run whose pre-spawn write holds the whole accounting back -- the
+                            counters and the attempt a continuation bought alike, since a run the tick then
+                            declines must cost neither -- the read-only proof
                             over the candidate worktree, the fresh owner read every completion but a declined
                             run passes through on its way to settlement, and the split transaction that read hands
                             a cleared `split` on to
@@ -750,7 +757,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       models.py             the frozen records the owners hand each other
       state.py              the pinned-state keys they share
     implementing/           `workflow:implementing`
-      handler.py            the order one tick asks its questions in
+      handler.py            the order one tick asks its questions in, opening with the retry-cap notice a stranded
+                            park still owes
       spawn.py              awaiting-human vs active, the restorer the checkout comes back from, the
                             recovered-worktree shortcut and the certified baseline it stands down for -- which
                             an unread head cannot spend, since that comparison is what a retirement rests on --

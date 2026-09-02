@@ -44,6 +44,8 @@ from tests.workflow.stages.decomposition.late_test_support import (
     KEYS,
     LATE_ISSUE_NUMBER,
     SINGLE_REPLY,
+    late_generation,
+    seed_late_issue,
 )
 
 _WORKFLOW_LOG = "orchestrator.workflow"
@@ -54,6 +56,9 @@ REPO_SLUG = _TEST_SPEC.slug
 # publication drops the whole generation, and the sweep reads exactly this to
 # decide whether anything is owed.
 _KEY_CYCLE_ID = "late_cycle_id"
+
+# One attempt bought by a continuation and not yet spent.
+_GRANTED = 1
 
 
 class LatchedCloseStopsTheSpawnTest(
@@ -88,6 +93,21 @@ class LatchedCloseStopsTheSpawnTest(
         pinned = self._pinned()
         self.assertTrue(pinned[KEYS.cancelled])
         self.assertTrue(pinned[KEYS.cancelled_at])
+
+    def test_no_attempt_is_spent(self) -> None:
+        # The gate runs before this barrier, so the slot it charged is in
+        # memory when the latch fires -- and the cancellation the latch takes
+        # is a write. No agent started, so the issue pays for nothing: the
+        # counted attempt and the one a human bought are both handed back.
+        self.issue = seed_late_issue(
+            self.github, late_generation(), retry_cap_continued=_GRANTED,
+        )
+
+        with self.assertLogs(_WORKFLOW_LOG):
+            self._adjudicate()
+
+        self.assertEqual(self._pinned().get(KEYS.retry_grant), _GRANTED)
+        self.assertNotIn(KEYS.retry_count, self._pinned())
 
     def test_a_settled_latch_lets_the_run_through(self) -> None:
         # The other side of it, so the barrier is not just "never spawn":
@@ -124,6 +144,21 @@ class LatchedInsideTheSpawnRecordTest(
         spawn.assert_not_called()
         self.assertEqual(outcome.disposition, _LateDisposition.CANCELLED)
         self.assertTrue(self._pinned()[KEYS.cancelled])
+
+    def test_no_attempt_is_spent(self) -> None:
+        # The record this write carries is durable and the slot behind it is
+        # deliberately not, so the latch asked against the spawn has to find
+        # the accounting as the issue had it: a cancellation landing here ends
+        # a cycle no agent ever ran for.
+        self.issue = seed_late_issue(
+            self.github, late_generation(), retry_cap_continued=_GRANTED,
+        )
+
+        with self.assertLogs(_WORKFLOW_LOG), self._closing():
+            self._adjudicate()
+
+        self.assertEqual(self._pinned().get(KEYS.retry_grant), _GRANTED)
+        self.assertNotIn(KEYS.retry_count, self._pinned())
 
     def _closing(self):
         """Latch the close inside the write that records this attempt."""
