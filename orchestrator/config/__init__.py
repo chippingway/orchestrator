@@ -71,6 +71,7 @@ __all__ = [
     "IN_REVIEW_DEBOUNCE_SECONDS",
     "LOG_DIR",
     "MAX_ADDED_LINES",
+    "MAX_AGENT_RUNS_PER_ISSUE",
     "MAX_CONFLICT_ROUNDS",
     "MAX_PARALLEL_ISSUES_GLOBAL",
     "MAX_PARALLEL_ISSUES_PER_REPO",
@@ -235,6 +236,19 @@ MAX_CONFLICT_ROUNDS: int = _RESOLVED["MAX_CONFLICT_ROUNDS"]
 # counters: it drops the window it finds, so turning it back on opens a fresh
 # one rather than refusing out of what was charged before it went off.
 MAX_RETRIES_PER_DAY: int = _RESOLVED["MAX_RETRIES_PER_DAY"]
+# Lifetime ceiling on the agent runs one issue may spend, counted on the
+# `issue_agent_runs` total the usage accounting folds onto pinned state: every
+# real agent exit charged to that issue, in every role and at every stage --
+# decomposer, developer, reviewer, and the conversation agents -- not only the
+# implementer spawns `MAX_RETRIES_PER_DAY` meters. It is the backstop under
+# the per-stage budgets rather than one more of them: those bound how often a
+# single road may be retried, and an issue that walks enough of them in turn
+# spends more than any one of them ever sees. Unlike the daily retry budget
+# this one never reopens -- a lifetime total is spent once, and no clock
+# returns it. 0 = unlimited. A negative or non-integer value aborts at import
+# like the parallelism caps, because a ceiling under zero is one no run could
+# ever come in under.
+MAX_AGENT_RUNS_PER_ISSUE: int = _RESOLVED["MAX_AGENT_RUNS_PER_ISSUE"]
 # Proactive dev-session rotation: after a single `dev_session_id` has been
 # resumed this many times, retire it and start a fresh spawn from durable
 # state (issue body + recent comments + the committed branch) instead of

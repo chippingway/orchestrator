@@ -3,14 +3,14 @@
 """Environment resolution for the config package.
 
 This module owns env-value parsing (shell-like agent-backend specs,
-positive-integer controls, HITL handle lists, verify-command lists) and the
-`_SettingsResolver` that drives the whole pipeline: it loads the non-secret
-`.env` (via the `_dotenv` leaf), then reads each `os.environ` key, validates
-it, and returns the resolved settings mapping. `orchestrator.config` invokes
-the resolver on every import / reload and binds the mapping as the package's
-public API; the abort-on-invalid / warn-to-stderr diagnostics the resolver
-calls on bad input are injected from that package's single
-configuration-failure funnel.
+positive-integer controls, non-negative budgets, HITL handle lists,
+verify-command lists) and the `_SettingsResolver` that drives the whole
+pipeline: it loads the non-secret `.env` (via the `_dotenv` leaf), then reads
+each `os.environ` key, validates it, and returns the resolved settings
+mapping. `orchestrator.config` invokes the resolver on every import / reload
+and binds the mapping as the package's public API; the abort-on-invalid /
+warn-to-stderr diagnostics the resolver calls on bad input are injected from
+that package's single configuration-failure funnel.
 """
 from __future__ import annotations
 
@@ -38,6 +38,11 @@ _DEFAULT_HITL = "geserdugarov"
 # here beside the other defaults; what a value at or past it means is on the
 # setting itself in `orchestrator/config/__init__.py`.
 _DEFAULT_MAX_ADDED_LINES = 4000
+
+# Agent runs one issue may spend over its whole life. Finite by default, so a
+# runaway issue is bounded even when no per-stage budget catches it; what the
+# number counts is on the setting itself in `orchestrator/config/__init__.py`.
+_DEFAULT_MAX_AGENT_RUNS_PER_ISSUE = 50
 
 
 def parse_agent_spec(
@@ -114,6 +119,43 @@ class PositiveIntParser:
             self._config_error(
                 f"orchestrator: {setting_name}={raw_setting!r} must be >= 1 "
                 "(zero or negative would block all work)",
+            )
+        return parsed_setting
+
+
+class NonNegativeIntParser:
+    """Callable non-negative-integer parser bound to the config error funnel.
+
+    The shape a budget takes when zero is a value an operator means rather
+    than a typo: `0` is that setting's own spelling of "unlimited", so only a
+    negative -- a ceiling no run could ever come in under -- and a
+    non-integer abort. `PositiveIntParser` above is the other shape, where a
+    zero would block all work and is refused for exactly that reason.
+    """
+
+    def __init__(self, config_error: Callable[[str], NoReturn]) -> None:
+        self._config_error = config_error
+
+    def __call__(
+        self,
+        setting_name: str,
+        raw_setting: str,
+        default: int,
+    ) -> int:
+        stripped_setting = (raw_setting or "").strip()
+        if not stripped_setting:
+            return default
+        try:
+            parsed_setting = int(stripped_setting)
+        except ValueError:
+            self._config_error(
+                f"orchestrator: {setting_name}={raw_setting!r} is not a "
+                "valid integer; expected 0 (unlimited) or a positive integer",
+            )
+        if parsed_setting < 0:
+            self._config_error(
+                f"orchestrator: {setting_name}={raw_setting!r} must be >= 0 "
+                "(0 means unlimited; a negative ceiling refuses every run)",
             )
         return parsed_setting
 
@@ -197,6 +239,7 @@ class _SettingsResolver:
     def _controls(self) -> dict[str, Any]:
         env = self._environ
         positive_int = PositiveIntParser(self._config_error)
+        non_negative_int = NonNegativeIntParser(self._config_error)
         raw_guard = env.get("WORKFLOW_TRANSITION_GUARD", "")
         guard = raw_guard.strip().lower() or "warn"
         if guard not in ("off", "warn", "enforce"):
@@ -219,6 +262,11 @@ class _SettingsResolver:
                 "MAX_ADDED_LINES",
                 env.get("MAX_ADDED_LINES", ""),
                 _DEFAULT_MAX_ADDED_LINES,
+            ),
+            "MAX_AGENT_RUNS_PER_ISSUE": non_negative_int(
+                "MAX_AGENT_RUNS_PER_ISSUE",
+                env.get("MAX_AGENT_RUNS_PER_ISSUE", ""),
+                _DEFAULT_MAX_AGENT_RUNS_PER_ISSUE,
             ),
             "VERIFY_COMMANDS": parse_verify_commands(env.get("VERIFY_COMMANDS", "")),
             "ORCHESTRATOR_BASE_BRANCH": env.get("ORCHESTRATOR_BASE_BRANCH", "main"),
