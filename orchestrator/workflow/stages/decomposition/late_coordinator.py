@@ -11,21 +11,26 @@ the initial decomposition runs for it. What a finished reply becomes is the
 
 The order is the contract, and each step persists what it reached before it
 acts. A generation that is not a live oversized one is not this owner's
-business at all. Past that, the pull request standing over the candidate is
-held BEFORE anything is spawned -- the plan one a discussion left behind where
-the generation was entered before publication, and the implementation one the
-work is already on where it was entered past it -- because the hold is what
-stops a human from merging a change while the question of whether it should
-exist as one issue is still open. So a hold that could not be reconciled parks
-and spawns nothing, and every retry re-reconciles the same pull request rather
-than mutating it again. Then a result already recorded for this cycle,
-generation, and exact commit short circuits the spawn entirely: an agent that
-finished is not paid for twice because the tick that read its answer died
-before acting on it, and a second run is free to decide differently. Either
-way, the park a previous attempt left is retired the moment the hold reconciles
--- that attempt is the answer to it, and a stale `awaiting_human` would go on
-to silence the announcement a question verdict earns, whether the question came
-from this run or from a recorded one whose own announcement never landed.
+business at all. Past that, a standing spent-budget park stops the tick where
+it is: what it is waiting on is a human deciding to spend more of this issue's
+day on the candidate, and no step below is that -- so the park is asked ahead
+of the evidence probe, the hold, and the content settlement, and while it
+stands nothing is proved, reconciled, read, or spawned. Past THAT, the pull
+request standing over the candidate is held BEFORE anything is spawned -- the
+plan one a discussion left behind where the generation was entered before
+publication, and the implementation one the work is already on where it was
+entered past it -- because the hold is what stops a human from merging a
+change while the question of whether it should exist as one issue is still
+open. So a hold that could not be reconciled parks and spawns nothing, and
+every retry re-reconciles the same pull request rather than mutating it
+again. Then a result already recorded for this cycle, generation, and exact
+commit short circuits the spawn entirely: an agent that finished is not paid
+for twice because the tick that read its answer died before acting on it, and
+a second run is free to decide differently. Either way, the park a previous
+attempt left is retired the moment the hold reconciles -- that attempt is the
+answer to it, and a stale `awaiting_human` would go on to silence the
+announcement a question verdict earns, whether the question came from this run
+or from a recorded one whose own announcement never landed.
 
 What the humans have said since the candidate was frozen is settled next, and
 deliberately before that short circuit rather than after it: an answer to a
@@ -114,6 +119,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_hold as _late_hold,
     late_outcome as _late_outcome,
     late_owner as _late_owner,
+    late_retry_cap as _late_retry_cap,
     late_session as _late_session,
     late_settlement as _late_settlement,
     late_transaction as _late_transaction,
@@ -125,11 +131,8 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateRun,
     _OwnerState,
 )
-from orchestrator.workflow.stages.implementing import session as _dev_session
 
 log = logging.getLogger("orchestrator.workflow")
-
-_DECOMPOSING_STAGE = "decomposing"
 
 _LAST_AGENT_ACTION_AT = "last_agent_action_at"
 
@@ -272,9 +275,8 @@ def _blocked_before_running(
     not by the issue, and the guard would take it as proof that nobody was
     told and clear its park without the follow-up it promised.
 
-    The evidence and the hold are asked as one short circuit past all of it.
-    Both park on their own and both stop the tick, and the hold is still only
-    reached by a generation whose evidence was proved first.
+    Everything below the live-generation gate is one short circuit, because
+    every one of them parks on its own and every one of them stops the tick.
     """
     _late_outcome._reconcile_notice_delivery(context)
     owed = _late_owner._reconcile_pending_owner_check(context)
@@ -283,11 +285,36 @@ def _blocked_before_running(
     _late_outcome._redeliver_park_notice(context)
     if not _is_adjudicable(context.generation):
         return _LateDisposition.NOT_LATE
-    if not _has_frozen_evidence(context) or not _holds_the_objects(context):
-        return _LateDisposition.PARKED
-    if not _hold_pull_request(context):
+    if _parks_before_running(context):
         return _LateDisposition.PARKED
     return None
+
+
+def _parks_before_running(context: _LateContext) -> bool:
+    """Whether something hands this issue back before an agent could run.
+
+    Ordered, and each step is only reached because the one above it passed. A
+    spent spawn budget stops the tick first: what stands there is not about
+    this generation at all -- the budget is the issue's day of tokens, shared
+    with every other agent run -- but what it stops is every step below, each
+    of which either probes the host, rewrites a pull request, or reads a
+    thread as an answer to a question nobody asked there. It is asked BEHIND
+    the live-generation gate for the opposite reason: an issue whose
+    generation is not adjudicable falls through to the initial decomposition,
+    and holding it here would keep that road's own park owner from ever
+    seeing it.
+
+    Then the record has to be usable, then this host has to hold the two
+    commits it names, and only then is the pull request standing over the
+    candidate marked -- the one step of the four that changes anything a
+    human can see.
+    """
+    return (
+        _late_retry_cap._park_owns_the_tick(context)
+        or not _has_frozen_evidence(context)
+        or not _holds_the_objects(context)
+        or not _hold_pull_request(context)
+    )
 
 
 def _holds_the_objects(context: _LateContext) -> bool:
@@ -496,6 +523,12 @@ def _hold_pull_request(context: _LateContext) -> bool:
 def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
     """Spend a retry slot on one adjudication of the frozen candidate.
 
+    The slot is the shared budget's and the refusal it can answer with is a
+    park this mode owns: it is taken with the generation this tick reached, so
+    the record, the reason it stopped moving, and the sentence the thread is
+    owed go out on one write. Reached only with no such park standing, since
+    the gate above holds that case before any of this runs.
+
     A hold a human displaced stops this the way a failed one does. Their words
     are left where they wrote them, but the pull request is now open with
     nothing on it saying an adjudication is running -- so no agent is started
@@ -506,9 +539,9 @@ def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
 
     A close a poll observed stops it too, and that one is asked twice, the
     second time right against the spawn. Everything between the tick's own
-    gates and here is a request -- a worktree probe, a retry-budget write, a
-    hold to reconcile, and the write that records what this attempt IS -- and
-    the poll runs beside all of it, so the reading it took may not have
+    gates and here is a request -- a worktree probe, a thread read, a hold to
+    reconcile, and the write that records what this attempt IS -- and the
+    poll runs beside all of it, so the reading it took may not have
     existed when this tick started nor when the first of those two asked. The
     latch costs nothing, and what it is asked against is the one step that
     puts an agent on somebody's repository. It is asked with the retry
@@ -532,10 +565,7 @@ def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
         )
         return _late_outcome._finished(context, _LateDisposition.PARKED)
     unspent = _accounting(context.state)
-    if not _dev_session._check_and_increment_retry_budget(
-        context.gh, context.issue, context.state, stage=_DECOMPOSING_STAGE,
-    ):
-        _late_outcome._persist(context)
+    if not _late_retry_cap._charge_fresh_spawn(context):
         return _late_outcome._finished(context, _LateDisposition.PARKED)
     stopped = _latched_stop(context, unspent)
     if stopped is not None:

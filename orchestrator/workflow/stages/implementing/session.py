@@ -18,9 +18,12 @@ The retry budget is the other gate, and it is deliberately not per-session:
 the 24h window counts fresh spawns per ISSUE, shared with decomposing, so a
 stuck issue cannot burn a day of tokens by rotating sessions. Only fresh spawns
 are counted -- a resume on a human reply is an unblock signal, not a retry.
-What the budget IS lives on `workflow/engine/retry_budget.py`, which every
-stage's gate is decided by; what is here is the form that parks the issue on
-the caller's behalf, for the stages that own no notice delivery of their own.
+None of it is here: the budget, the park an exhausted one takes, and the
+sentence that park owes the thread all live on
+`workflow/engine/retry_budget.py`, which every stage's gate is decided by and
+whose parking form the spawn road calls directly. What this owner still knows
+about it is the retirement -- a continuation buys a FRESH spawn, so the
+conversation that ran the budget out may not still be pinned when it finishes.
 
 `_build_dev_spawn_prompt` is here for the same reason: a resume carries the
 requirements in its replayed transcript, so what a fresh spawn needs instead --
@@ -35,12 +38,10 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
-from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     comments as _comments,
     prompts as _prompts,
-    retry_budget as _retry_budget,
 )
 from orchestrator.workflow.stages.implementing import (
     models as _models,
@@ -98,53 +99,6 @@ def _drop_poisoned_dev_session(state: PinnedState) -> None:
     # The resume budget is per-session; clearing the session resets it so the
     # fresh spawn that follows starts its own count from zero.
     state.set(_state._DEV_RESUME_COUNT, 0)
-
-
-def _check_and_increment_retry_budget(
-    gh: GitHubClient,
-    issue: Issue,
-    state: PinnedState,
-    *,
-    stage: str = _state._IMPLEMENTING_STAGE,
-) -> bool:
-    """Gate a fresh agent spawn, and park the issue itself when it is refused.
-
-    The parking form of the shared budget, for the callers that own no notice
-    delivery of their own. Everything it decides is decided by
-    `workflow/engine/retry_budget.py`; what is here is the tail those callers
-    would otherwise each have to write -- stage the park, settle the sentence
-    it owes against the thread, and say it once.
-
-    Returns True if the spawn is allowed (and the budget was charged); False
-    if the budget is out. On that branch the park is made DURABLE here, before
-    a word of it is said: a notice on a thread that no pinned state backs is
-    the worst of both endings -- nothing reconciles it, because nothing knows
-    it is owed, and the window under it rolls over a day later with the issue
-    running again beneath a comment saying it had stopped. The caller's own
-    write follows and carries whatever the delivery settled.
-
-    A park already standing for an exhausted budget is re-taken silently: the
-    budget is re-decided on every eligible tick, so announcing it again would
-    say the same sentence to the same thread once a poll until a human
-    arrived. The thread is asked before anything is said, so a comment that
-    landed under a write that failed is recorded as said rather than repeated
-    -- and a thread this tick could not read is said nothing to at all, since
-    the sentence it may already carry is exactly the one about to go out.
-    The park stands and the notice stays owed, so the next tick reads again.
-    """
-    decision = _retry_budget._consume_retry_slot(state, stage=stage)
-    if decision.allowed:
-        return True
-    if not _retry_budget._stage_retry_cap_park(state, decision):
-        _retry_budget._emit_phase(
-            gh, issue, state, _retry_budget.RetryCapPhase.STANDING,
-        )
-        return False
-    gh.write_pinned_state(issue, state)
-    reading = _retry_budget._reconcile_notice(gh, issue, state)
-    if reading is _retry_budget.NoticeReading.UNSAID:
-        _retry_budget._deliver_notice(gh, issue, state)
-    return False
 
 
 def _resolve_dev_session_for_resume(

@@ -527,7 +527,11 @@ The keys that matter for the state machine fall into a few groups:
   `late_manifest_invalid`, `late_result_unrecordable`, `late_owner_unreadable`, `late_pr_unreconciled`,
   `late_snapshot_failed`, `late_children_failed`, `late_supersession_failed`, `late_content_drift`,
   `late_revision_dirty`, `late_revision_unmeasured`, `late_revision_unanswered`, and `late_question` — see
-  [the late run](#the-late-run) for which of them the next attempt retires. `late_measurement_failed` is the only one
+  [the late run](#the-late-run) for which of them the next attempt retires. A late tick can also hand the issue back
+  under the shared `retry_cap`, which is not one of its own: the adjudication is charged to the same per-issue spawn
+  budget every other agent run is, and a refusal there means the issue's day of tokens is spent rather than anything
+  about its candidate. It is staged through the same late owner all the same, so the generation and the hold ride
+  its write, and it is answered where every other `retry_cap` park is. `late_measurement_failed` is the only one
   of them taken outside `workflow:decomposing`, because it is the gate's own and the gate runs before any
   adjudication exists — under `workflow:implementing` where the push would open the pull request, and under any of
   the five states that push onto one the remote already carries. It is answered wherever it was taken, one step
@@ -572,21 +576,31 @@ The keys that matter for the state machine fall into a few groups:
 - **Undelivered park notice.** `late_park_notice` is the `{reason, message}` a late park has recorded and not yet
   said. The flag is durable before the comment is posted — a comment GitHub refuses must not take a finished run's
   result with it — so without this field a refused post leaves an `awaiting_human` nothing can tell from one whose
-  comment landed, and every later tick reads the flag, takes the human as told, and says nothing. It is written
-  beside the flag on the same write and dropped by the post that discharges it, so a park whose sentence is still
-  owed is never counted as a repeat and is re-said at the top of the next eligible tick. It is matched against the
-  standing `park_reason` (a notice for a park something has replaced or answered is dropped rather than said), left
-  to the fresh attempt for the reasons that attempt supersedes, dropped when the cycle is cancelled, and refused
-  whole — loudly — when it would not fit the pinned comment, the same budget a recorded outcome is refused past. Not
-  one of `LATE_STATE_KEYS`: a park outlives the generation that took it. Owned by
-  [`late_notice`](../../orchestrator/workflow/stages/decomposition/late_notice.py).
-  It is a claim about the thread, so the thread settles a disagreement with it. The post and the write recording it
-  cannot be one operation, so a write that failed after a post that landed leaves the field claiming a sentence is
-  owed to an issue that already has it — and the first thing a tick does is look for that sentence among the comments
-  above `last_action_comment_id` (the mark a park's own mention ratchets, and only on a write that landed, which is
-  what scopes the search to this episode). One found there discharges the obligation and repairs the watermark to it.
-  Without that step the redelivery would repeat a comment, and — worse — the owner guard would read the standing
-  obligation as proof nobody was told and clear its park without the recovery follow-up it promises.
+  comment landed, and every later tick reads the flag, takes the human as told, and says nothing. It is written beside
+  the flag on the same write and dropped by the post that discharges it, so a park whose sentence is still owed is
+  never counted as a repeat and is re-said at the top of the next eligible tick. It is matched against the standing
+  `park_reason` (a notice for a park something has replaced or answered is dropped rather than said), left to the
+  fresh attempt for the reasons that attempt supersedes, dropped when the cycle is cancelled, and refused whole —
+  loudly — when it would not fit the pinned comment, the same budget a recorded outcome is refused past. Not one of
+  `LATE_STATE_KEYS`: a park outlives the generation that took it. It carries the shared spawn budget's `retry_cap`
+  sentence too when a late adjudication is what ran out — that park is taken by this mode's owner, so it is this field
+  rather than `retry_cap_notice` that holds what it owes, and the entry replay under `workflow:decomposing` finds
+  nothing to say for it because the redelivery below is what says it. The converse is the one an old record leaves: an
+  issue parked on `retry_cap_notice` under this label — by the shared parking form, before it entered the size gate or
+  before this owner existed — is said by that entry replay instead, so the late spent-budget hold treats an obligation
+  on **either** field as a park the thread has not been told about. Owned by
+  [`late_notice`](../../orchestrator/workflow/stages/decomposition/late_notice.py). It is a claim about the thread, so
+  the thread settles a disagreement with it. The post and the write recording it cannot be one operation, so a write
+  that failed after a post that landed leaves the field claiming a sentence is owed to an issue that already has it —
+  and the first thing a tick does is look for that sentence among the comments above `last_action_comment_id` (the
+  mark a park's own mention ratchets, and only on a write that landed, which is what scopes the search to this
+  episode). One found there discharges the obligation and repairs the watermark to it. Without that step the
+  redelivery would repeat a comment, and — worse — the owner guard would read the standing obligation as proof nobody
+  was told and clear its park without the recovery follow-up it promises. A read that could not be TAKEN answers here
+  exactly as an empty one does, which is the opposite of the shared field's reading and is this mode's own choice: the
+  sentence is said again, costing one repeated comment rather than risking a park that stands unexplained for as long
+  as the read keeps failing. What that buys is the property every late park hangs on — the notice reaches the thread
+  before anything on that thread is read as an answer to it.
 - **In-review watermarks.** `pr_last_comment_id` (issue thread + PR conversation, shared IssueComment id space),
   `pr_last_review_comment_id` (inline PR review comments), `pr_last_review_summary_id` (PR review summary bodies). Only
   non-empty `CHANGES_REQUESTED` or `COMMENTED` review IDs ever advance the summary watermark; `APPROVED`, `DISMISSED`,
@@ -740,7 +754,10 @@ the same issue's day of tokens — and it is decided on
 [`orchestrator/workflow/engine/retry_budget.py`](../../orchestrator/workflow/engine/retry_budget.py), which every
 stage's gate reads and none of them re-implements. The gate answers a decision and posts nothing: what a refusal
 implies durably is staged into the caller's own pinned state and rides the write that caller was going to make
-anyway, so a tick that dies between the two leaves the budget as it found it.
+anyway, so a tick that dies between the two leaves the budget as it found it. What a caller then DOES with a refusal
+is written once beside the gate (`_charge_or_park`) for the stages whose park carries nothing of their own — the
+initial decomposer's and the implementer's fresh spawns — and by the stage itself where the park has to carry state
+the budget never sees, which is the late adjudication and its live generation.
 
 - **The accounting.** `retry_window_start` + `retry_count`, against the bound `MAX_RETRIES_PER_DAY` sets. The window
   opens at the first counted attempt and reopens once 24h have elapsed. Only fresh spawns count: a resume on a human
@@ -761,52 +778,75 @@ anyway, so a tick that dies between the two leaves the budget as it found it.
   everything the tick never reached: the manifest, the children, the locked session and its spec, the `pr_number`,
   the frozen candidate, and a late generation's whole record
   ([decomposing](delivery-stages.md#_handle_decomposing-label-workflowdecomposing),
-  [implementing](delivery-stages.md#_handle_implementing-label-workflowimplementing)).
+  [implementing](delivery-stages.md#_handle_implementing-label-workflowimplementing)). The late adjudication that
+  runs under `workflow:decomposing` holds it a third time, on its own road and for its own reasons — the tick that
+  meets one there never proves the frozen pair, never re-marks the pull request the candidate stands under, and
+  never reads the thread as an answer to a question about the requirements
+  ([the late run](#the-late-run)).
 - **The notice.** `retry_cap_notice` — the sentence the park still owes the thread, written **before** a word of it is
   said and dropped only by a post that landed or by the park ending. The order is the point: a notice on a thread that
   no pinned state backs is one nothing would ever reconcile, and the window under it would roll over a day later with
   the issue running again beneath a comment saying it had stopped. What the park routes the tick past is what makes
   the record load-bearing, so the sentence is replayed at stage entry (`_replay_owed_notice`, called by
-  `_handle_implementing` and `_handle_decomposing` ahead of every gate) until the thread carries it — and a stage
-  that answers a command on this park waits for that sentence before it reads the thread at all, since a delivery
-  moves the response boundary past everything written under the old one and words that predate the question are no
-  answer to it. Spelled without
-  the mention the delivery prefixes, and kept verbatim for as long as the park stands: the thread is searched for
-  exactly that text, so a later refusal under another stage or a retuned cap may not reword it. Before it is said
-  again the thread is read for it, so a comment that landed under a pinned write that then failed is recorded as said
-  rather than repeated — and only a comment **this orchestrator wrote** counts as that receipt, since the sentence is
-  plain text anybody on a public thread can copy (the comment-side receipt rule in
-  [`security.md`](../security.md#the-snapshot-ref-namespace)). A thread that could not be READ is its own answer,
-  distinct from one read and found empty: the notice stays owed and the tick says nothing, because a request that
-  failed inside the window where the sentence is already posted would otherwise produce exactly the duplicate this
-  protocol exists to stop.
+  `_handle_implementing` and `_handle_decomposing` ahead of every gate) until the thread carries it — and a stage that
+  answers a command on this park waits for that sentence before it reads the thread at all, since a delivery moves the
+  response boundary past everything written under the old one and words that predate the question are no answer to it.
+  Spelled without the mention the delivery prefixes, and kept verbatim for as long as the park stands: the thread is
+  searched for exactly that text, so a later refusal under another stage or a retuned cap may not reword it. Before it
+  is said again the thread is read for it, so a comment that landed under a pinned write that then failed is recorded
+  as said rather than repeated — and only a comment **this orchestrator wrote** counts as that receipt, since the
+  sentence is plain text anybody on a public thread can copy (the comment-side receipt rule in
+  [`security.md`](../security.md#the-snapshot-ref-namespace); the author is read through
+  `github.comments.authored_by_us`, the one owner every receipt this repository reads off a thread goes through). A
+  thread that could not be READ is its own answer, distinct from one read and found empty: the notice stays owed and
+  the tick says nothing, because a request that failed inside the window where the sentence is already posted would
+  otherwise produce exactly the duplicate this protocol exists to stop.
+
+  A park the LATE adjudication takes carries the same sentence in `late_park_notice` instead — that mode already owns
+  a notice field, because everything one of its parks leaves standing is a generation's record that has to ride the
+  same write ([late generation state](#late-generation-state)). The persist-before-post order, the verbatim match,
+  and the authorship rule are the same there; a sentence carrying no marker is one anybody could otherwise paste back
+  to mark a park explained that nobody ever explained. The unreadable-thread reading is the one thing that is **not**
+  the same, and deliberately: that field answers a failed read the way it answers an empty one, so the sentence is
+  said again. It costs one repeated comment where this owner would have stayed silent, and it buys the property the
+  late mode needs more — the notice always reaches the thread, which is what moves the response boundary before any
+  command on that thread is read as an answer. Its own reasoning is under [late generation
+  state](#late-generation-state).
+
+  Which field a `retry_cap` park under `workflow:decomposing` carries therefore depends on which owner took it, and
+  the hold that keeps that park reads **both**. A park the shared parking form took — on an issue that had not
+  entered the size gate, or before the late owner existed — is said by the stage-entry replay, and that replay is the
+  one step that can stand down leaving the sentence unsaid. The late hold runs immediately after it, so treating its
+  own field as the whole question would find the park explained, take a second read that may succeed where the first
+  failed, and buy an adjudication with words written before the human was ever asked.
 - **The renewal.** One explicit step on this owner, and the only thing that renews a budget while its park stands. It
-  routes no comment itself: a caller establishes that the park stands and that the words it is answering are a
-  trusted `/orchestrator continue`, and then calls it. The two `retry_cap` owners are the callers that do
-  (`_park_owns_the_tick` under `decomposition/` and `implementing/`, each taking the command with whatever else its
-  comment carries and consuming the batch it read); under a stage that has no such caller a park is lifted by the
-  reply that resumes the session instead. What the step grants is a single attempt: it reopens the window at that
-  moment and clears the park with its stage and notice, and the caller retires the locked session in the same write,
-  keeping the agent spec — a fresh spawn is what was bought, and the spawn pins an id of its own only when the run
-  hands one back, so an id left standing is one the next reply would resume. On `workflow:implementing` the gate
-  asks that again for every spawn a grant pays for, since a grant outlives the tick that took it and the budget is
-  shared: a restart, or a continuation bought on a `decomposing` park, reaches the spawn with a session no
-  `implementing` park ever saw. A whole fresh day would let one reply
-  spend the cap over again with nobody watching. The
-  attempt is written down as itself — `retry_cap_continued`, a count of granted spawns nobody has spent — rather than
-  as a counter to compare against the setting when the spawn is finally asked for, which would make it worth nothing
-  once an operator turns `MAX_RETRIES_PER_DAY` off and several attempts once they widen it. An issue carrying that
-  count is answered from it and from nothing else: no window is renewed under it and no cap is read, and a grant with
-  nothing left refuses like any other exhausted budget, so the next attempt is a human's word again. Until it is
-  spent, the stage's other roads to an agent stand down for the gate — on `workflow:implementing`, the body-edit
-  resume — since a resume passes no gate and would run the attempt while leaving it on the issue to be bought again.
-  The count is
-  dropped where the rest of the budget is — the publication that moves the issue on
-  (`_reset_implementing_counters`) — and refunded with the counters by the one write that goes out before an agent
-  starts: the late adjudication's pre-spawn record (`_ACCOUNTING_FIELDS`), so a run the close latch, a pause, or a
-  shutdown declines leaves the attempt there to be taken again. Neither `retry_cap` owner needs a refund for that
-  case: the grant is written before the spawn and the spend rides the tick's own later write, which a mid-run
-  `paused` or a shutdown never makes.
+  routes no comment itself: a caller establishes that the park stands and that the words it is answering are a trusted
+  `/orchestrator continue`, and then calls it. The three `retry_cap` owners are the callers that do
+  (`_park_owns_the_tick` under `decomposition/`, `decomposition/late_retry_cap.py`, and `implementing/`, each taking
+  the command with whatever else its comment carries and consuming the batch it read); under a stage that has no such
+  caller a park is lifted by the reply that resumes the session instead. What the step grants is a single attempt: it
+  reopens the window at that moment and clears the park with its stage and notice, and the caller retires the locked
+  session in the same write, keeping the agent spec — a fresh spawn is what was bought, and the spawn pins an id of
+  its own only when the run hands one back, so an id left standing is one the next reply would resume. The late
+  adjudication is the one caller that retires nothing there, and for the same reason rather than a different one: its
+  pre-spawn record already drops `late_session_id` for every run that is not continuing a question a human has
+  answered, so the attempt a command buys opens a fresh conversation before the agent starts. On
+  `workflow:implementing` the gate asks that again for every spawn a grant pays for, since a grant outlives the tick
+  that took it and the budget is shared: a restart, or a continuation bought on a `decomposing` park, reaches the
+  spawn with a session no `implementing` park ever saw. A whole fresh day would let one reply spend the cap over again
+  with nobody watching. The attempt is written down as itself — `retry_cap_continued`, a count of granted spawns
+  nobody has spent — rather than as a counter to compare against the setting when the spawn is finally asked for,
+  which would make it worth nothing once an operator turns `MAX_RETRIES_PER_DAY` off and several attempts once they
+  widen it. An issue carrying that count is answered from it and from nothing else: no window is renewed under it and
+  no cap is read, and a grant with nothing left refuses like any other exhausted budget, so the next attempt is a
+  human's word again. Until it is spent, the stage's other roads to an agent stand down for the gate — on
+  `workflow:implementing`, the body-edit resume — since a resume passes no gate and would run the attempt while
+  leaving it on the issue to be bought again. The count is dropped where the rest of the budget is — the publication
+  that moves the issue on (`_reset_implementing_counters`) — and refunded with the counters by the one write that goes
+  out before an agent starts: the late adjudication's pre-spawn record (`_ACCOUNTING_FIELDS`), so a run the close
+  latch, a pause, or a shutdown declines leaves the attempt there to be taken again. The two initial-spawn `retry_cap`
+  owners need no refund for that case: the grant is written before the spawn and the spend rides the tick's own later
+  write, which a mid-run `paused` or a shutdown never makes.
 - **The audit.** One `retry_cap` event per step, `phase` distinguishing them — see
   [`observability/event-streams.md`](../observability/event-streams.md#audit-event-log-event_log_path).
 
@@ -1495,12 +1535,20 @@ are
 retired — `awaiting_human` and `park_reason` cleared — the moment the hold reconciles, ahead of both the spawn and the
 reuse of a recorded answer, because `awaiting_human` is exactly what suppresses the announcement a question verdict
 earns. A stale one would silence a question durably recorded and never said out loud — whether this attempt produced it
-or a crashed run recorded one whose comment never reached the issue. Five are not retired, because none of them is a
+or a crashed run recorded one whose comment never reached the issue. Six are not retired, because none of them is a
 step that failed. `late_question` is the announcement itself, and the issue really is waiting on the human it names;
 `late_content_drift`, `late_revision_dirty`, `late_revision_unmeasured`, and `late_revision_unanswered` are the
 workflow waiting to be told what an edited scope, a worktree the developer left changed, a candidate nobody could
 measure, or a developer that changed nothing and vouched for nothing now means. Retiring one of
 those would drop the very state the next tick reads to tell a human's answer from the silence before it.
+The shared `retry_cap` is the sixth and the plainest: a retry is exactly what it refuses, so an attempt that
+superseded it would clear the flag and meet the same spent budget one step later — saying the same sentence once a
+poll and taking down, in between, the park a human has to answer. It is held at the top of the adjudication instead,
+behind only the reconciliations an earlier tick left owed and the live-generation gate, and while it stands the tick
+ends there having proved no evidence, re-marked no pull request, read no thread as an answer, spawned nothing, and
+written nothing. What lifts it is a trusted `/orchestrator continue` and nothing else — not an edited body, not the
+clock reaching the end of the window, not an untrusted account's copy of the command, and not a `paused` tick, which
+never reaches a handler at all.
 `late_owner_unreadable` is left out for a different reason again: it IS answered by a retry, but by the pending-check
 reconciliation that runs ahead of all of this, and that step reads the standing reason to decide whether it owes the
 thread a follow-up — so retiring it here would erase the only durable evidence that this mode had said anything to

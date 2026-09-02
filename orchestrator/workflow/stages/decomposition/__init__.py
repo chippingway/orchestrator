@@ -12,52 +12,60 @@ the walk that waits on them belong in one package rather than one per label.
 
 The owners divide by what each is responsible for rather than by label:
 `manifest` and `validation` decide what the agent's reply is allowed to be,
-`session` owns the decomposer session an issue is locked to and every spawn
-or resume under it, `retry_cap` owns the park a spent spawn budget leaves --
-held ahead of every road that would walk past one, and lifted only by the
-command that renews the budget -- `run` owns the order one tick asks the
-others in and `outcomes` the three dispositions its reply earns, `recovery`
-owns what a tick that died mid-split left behind, `split` owns the crash-safe
-order children are created in, and `parents`, `activation`, `blocked`, and
-`umbrella` own the parent-side polling that drives the tree to completion.
+`session` owns the decomposer session an issue is locked to and every spawn or
+resume under it, `retry_cap` owns the park a spent spawn budget leaves an
+INITIAL decomposition -- held ahead of every road that would walk past one, and
+lifted only by the command that renews the budget -- `run` owns the order one
+tick asks the others in and `outcomes` the three dispositions its reply earns,
+`recovery` owns what a tick that died mid-split left behind, `split` owns the
+crash-safe order children are created in, and `parents`, `activation`,
+`blocked`, and `umbrella` own the parent-side polling that drives the tree to
+completion.
 
 The `late_*` owners are an additive second mode under the same `decomposing`
-label, for the issue whose implementation is already committed and turns out
-to be oversized. They are named apart rather than folded in because what a
-missing or malformed INITIAL manifest means may not change: `late_prompt` and
+label, for the issue whose implementation is already committed and turns out to
+be oversized. They are named apart rather than folded in because what a missing
+or malformed INITIAL manifest means may not change: `late_prompt` and
 `late_reply` are the question that mode asks and the fence it is answered on,
 `late_hold` owns the cycle-marked hold a reusable pull request wears while the
 question is open -- the plan one where the gate was entered before publication,
 and the implementation one the work is already on where it was entered past it
--- `late_session` owns the run's pinned record and the tracked
-spawn over it, `late_content` fingerprints the requirements the candidate was
-frozen against and `late_guidance` decides what a change to them or an answer
-about them earns, `late_revision` owns the developer run guidance buys and the
-re-measured candidate it comes back with, `late_relabel` owns the label a live
-generation pins against the kill switch and a hand relabel, `late_owner` owns
-the fresh read that stands between a finished run and anything it earns,
-`late_settlement` owns what a guarded verdict becomes, `late_coordinator`
-owns the order those are asked in and `late_outcome` what one finished reply
-becomes, and `late_models` carries what they hand each other. `late_snapshot`,
-`late_children`, and `late_transaction` are the ordered split itself -- the
-candidate preserved on an immutable ref, the children cut from it, and the
-supersession behind them -- while `late_cleanup` owns what that leaves the
-remote holding, `late_cancellation` owns the irreversible ending an owner
-observed closed earns, `late_sweep` is the cleanup-only pass that revisits an
-owner a human closed mid-cycle, and `late_restart` owns the fresh cycle an
-operator authorizes by taking that ending's `rejected` back off. What puts an
-issue in front of them is the size gate at the implementing package's
+-- `late_session` owns the run's pinned record and the tracked spawn over it,
+`late_content` fingerprints the requirements the candidate was frozen against
+and `late_guidance` decides what a change to them or an answer about them
+earns, `late_revision` owns the developer run guidance buys and the re-measured
+candidate it comes back with, `late_relabel` owns the label a live generation
+pins against the kill switch and a hand relabel, `late_owner` owns the fresh
+read that stands between a finished run and anything it earns,
+`late_settlement` owns what a guarded verdict becomes, `late_retry_cap` owns
+the same spent-budget park on this mode's road -- the gate its one spawn is
+charged to, and the hold that keeps a park nothing supersedes ahead of the
+evidence probe, the pull-request hold, and the content read -- `late_notice`
+owns the sentence any late park still owes the thread, `late_coordinator` owns
+the order those are asked in and `late_outcome` what one finished reply
+becomes, and `late_models` carries what they hand each other. The budget both
+`retry_cap` owners are decided by is neither of theirs: it is the shared
+`engine/retry_budget.py`, so a park taken on either road is the same durable
+reason, answered by the same command, and audited on the same stream.
+`late_snapshot`, `late_children`, and `late_transaction` are the ordered split
+itself -- the candidate preserved on an immutable ref, the children cut from
+it, and the supersession behind them -- while `late_cleanup` owns what that
+leaves the remote holding, `late_cancellation` owns the irreversible ending an
+owner observed closed earns, `late_sweep` is the cleanup-only pass that
+revisits an owner a human closed mid-cycle, and `late_restart` owns the fresh
+cycle an operator authorizes by taking that ending's `rejected` back off. What
+puts an issue in front of them is the size gate at the implementing package's
 publication seam, and what reaches them is the first question a `decomposing`
 tick asks: a record carrying a live generation belongs to the coordinator
-entire, and no step of the initial decomposition runs for it. Two answers
-short of one are routed rather than adjudicated -- a settled candidate the
+entire, and no step of the initial decomposition runs for it. Two answers short
+of one are routed rather than adjudicated -- a settled candidate the
 measurement put back under the ceiling goes to `workflow:implementing` for
 publication, and `DECOMPOSE=off` may not route an unadjudicated one there at
 all -- so the four labels above are still the whole of what this package
-answers for. `handoff` owns both of those routes, together because neither is
-a decomposition and both end the same way: the label moves and the
-implementing handler runs on the same tick, against an issue read back after
-the write rather than the stale object that write was made against.
+answers for. `handoff` owns both of those routes, together because neither is a
+decomposition and both end the same way: the label moves and the implementing
+handler runs on the same tick, against an issue read back after the write
+rather than the stale object that write was made against.
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per label, and an eager binding here would

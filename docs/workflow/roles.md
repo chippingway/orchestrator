@@ -626,12 +626,12 @@ past `last_action_comment_id` rather than from a receipt — the comment and the
 **A park is not delivered until its comment is.** Persisting the flag ahead of the notice leaves one gap: GitHub
 refuses the comment, and every later tick reads an `awaiting_human` it cannot tell from one whose comment landed, so
 it takes the human as told and says nothing. For a park a fresh attempt supersedes that costs one tick; for a
-question, a content-drift hold, or a stalled revision it is unbounded, since those parks *are* what the issue is
-waiting on. So the sentence is written down beside the flag (`late_park_notice`) and dropped only by the post that
-discharges it: a park whose sentence is still owed never counts as a repeat, is re-said at the top of the next
-eligible tick — ahead of every gate a parked issue routes past — and, on the guard's own park, rides out on whichever
-answer the owed read gets. A notice too long for the pinned comment is refused whole and loudly, since a record that
-broke the write would take the park it explains down with it.
+question, a content-drift hold, a stalled revision, or a spent spawn budget it is unbounded, since those parks *are*
+what the issue is waiting on. So the sentence is written down beside the flag (`late_park_notice`) and dropped only by
+the post that discharges it: a park whose sentence is still owed never counts as a repeat, is re-said at the top of
+the next eligible tick — ahead of every gate a parked issue routes past — and, on the guard's own park, rides out on
+whichever answer the owed read gets. A notice too long for the pinned comment is refused whole and loudly, since a
+record that broke the write would take the park it explains down with it.
 
 ## What a verdict the read cleared earns
 
@@ -1475,6 +1475,15 @@ comments shift nothing. The fields themselves are in
 The first tick of an adjudication takes the baseline: whatever the issue says then is what the candidate was frozen
 against, and nothing on the thread counts as an answer to it. Every tick after that compares.
 
+**A spent spawn budget outranks even drift.** An adjudication is charged to the issue's shared daily spawn budget,
+and a budget with nothing left in it parks the issue as `retry_cap` before any of the reading below happens. What
+that park is waiting on is a human deciding to spend more of the issue's day on this candidate, which an edited body
+is not — so the tick ends at the park, the fingerprints are not even read, and the frozen commit, the late session,
+the recorded generation, and the hold all stay where they are. The one reply that lifts it is a trusted
+`/orchestrator continue`, and what it buys is one adjudication; the notice explaining the park has to have reached
+the thread before any comment on it is read as that answer, since saying it is what moves the response boundary.
+The budget itself is in [`../state-machine/labels-and-state.md#the-retry-budget`][retry-budget].
+
 **Drift outranks every answer.** An edit to the title, the body, or a comment already counted into the baseline
 changes what the candidate is supposed to BE, and an answer that arrived in the same window was written about the scope
 as it stood before — applying it would adjudicate a reply against requirements it never saw. So the tick that first
@@ -1582,3 +1591,4 @@ reference.
 [workflow-labels]: ../state-machine/labels-and-state.md#workflow-labels
 [late-run]: ../state-machine/labels-and-state.md#the-late-run
 [late-state]: ../state-machine/labels-and-state.md#late-generation-state
+[retry-budget]: ../state-machine/labels-and-state.md#the-retry-budget
