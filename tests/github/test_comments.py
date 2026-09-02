@@ -3,8 +3,10 @@
 """Trust policy for GitHub-authored content: `is_trusted_author` /
 `filter_trusted` gate workflow-driving comments on the
 `ALLOWED_ISSUE_AUTHORS` allowlist (empty disables the filter, populated
-matches logins case-insensitively, bots follow the same login rule), and
-`carries_reserved_marker` refuses content claiming a receipt of ours."""
+matches logins case-insensitively, bots follow the same login rule),
+`carries_reserved_marker` refuses content claiming a receipt of ours, and
+`authored_by_us` decides whether a receipt read back off a thread is one this
+orchestrator wrote."""
 from __future__ import annotations
 
 import unittest
@@ -12,6 +14,7 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.github.comments import (
+    authored_by_us,
     carries_reserved_marker,
     filter_trusted,
     is_trusted_author,
@@ -20,6 +23,8 @@ from tests.support.fakes import FakeComment, FakeUser
 
 _ALLOWED_LOGIN = "alice"
 _BOT_ACCOUNT_TYPE = "Bot"
+
+_BOT_LOGIN = "orchestrator"
 
 
 class IsTrustedAuthorTest(unittest.TestCase):
@@ -116,6 +121,46 @@ class FilterTrustedTest(unittest.TestCase):
                 [comment.id for comment in filter_trusted(comments)],
                 [1],
             )
+
+
+class AuthoredByUsTest(unittest.TestCase):
+    """Whose comment a receipt read back off a thread has to be.
+
+    Separate from the allowlist above: a trusted human is still not this
+    orchestrator, and a receipt is a claim that WE already did something.
+    """
+
+    def test_only_our_own_login_is_a_receipt(self) -> None:
+        # The allowlist has nothing to say here -- the operator writing the
+        # commands is trusted and is still not the author of our receipts.
+        for login, ours in ((_BOT_LOGIN, True), (_ALLOWED_LOGIN, False)):
+            with self.subTest(login=login):
+                self.assertIs(
+                    authored_by_us(
+                        FakeComment(id=1, body="said", user=FakeUser(login)),
+                        bot_login=_BOT_LOGIN,
+                    ),
+                    ours,
+                )
+
+    def test_an_author_that_did_not_load_is_not_ours(self) -> None:
+        self.assertFalse(
+            authored_by_us(
+                FakeComment(id=1, body="said", user=None),
+                bot_login=_BOT_LOGIN,
+            ),
+        )
+
+    def test_no_login_takes_the_content_alone(self) -> None:
+        # A client with no authenticated login of its own has nothing to check,
+        # so the content is the whole of the receipt -- the same fallback the
+        # pinned-state read takes rather than a check that always fails.
+        self.assertTrue(
+            authored_by_us(
+                FakeComment(id=1, body="said", user=FakeUser(_ALLOWED_LOGIN)),
+                bot_login=None,
+            ),
+        )
 
 
 class ReservedMarkerTest(unittest.TestCase):

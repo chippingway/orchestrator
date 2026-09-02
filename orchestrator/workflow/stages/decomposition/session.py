@@ -37,10 +37,20 @@ from orchestrator.git.worktrees import decomposition as _worktree_decomposition
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments, drift as _drift, prompts as _prompts, usage as _usage
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    drift as _drift,
+    prompts as _prompts,
+    retry_budget as _retry_budget,
+    usage as _usage,
+)
 from orchestrator.workflow.stages.decomposition import state as _state
 from orchestrator.workflow.stages.decomposition.models import _DecomposerSession
-from orchestrator.workflow.stages.implementing import session as _dev_session
+
+# What this stage's spawns are charged and attributed under. The budget is
+# shared with implementing, so the name is what tells a park taken here from
+# one taken there.
+_DECOMPOSING_STAGE = "decomposing"
 
 
 def _read_decomposer_session(
@@ -81,11 +91,13 @@ def _spawn_fresh_decomposer(
 ) -> AgentResult | None:
     """Consume a retry slot and spawn a fresh decomposer session.
 
-    Returns the agent result, or None when the retry budget is exhausted
-    (the budget helper already wrote the park; caller must return).
+    Returns the agent result, or None when the retry budget is exhausted. The
+    shared parking form has already taken the park and said what it is for by
+    then, so the caller returns; the write below is what commits a park it
+    found already standing, which that form deliberately leaves undone.
     """
-    if not _dev_session._check_and_increment_retry_budget(
-        gh, issue, state, stage="decomposing"
+    if not _retry_budget._charge_or_park(
+        gh, issue, state, stage=_DECOMPOSING_STAGE,
     ):
         gh.write_pinned_state(issue, state)
         return None

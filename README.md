@@ -223,7 +223,8 @@ where you put it rather than greeted a second time, so nothing runs again until 
   its per-issue daily spawn budget (`MAX_RETRIES_PER_DAY`) is spent. Nothing else moves that one — not an edited issue
   body, not a widened or disabled cap, not an ordinary reply — and it keeps everything it carries while it waits: the
   manifest, the children and the decomposer session on one, the developer's session, its commits and its pull request
-  on the other. One trusted `/orchestrator continue` buys a single further agent
+  on the other, and the frozen candidate with the pull request it stands under where the spent run was the size
+  adjudication of an oversized change. One trusted `/orchestrator continue` buys a single further agent
   run on a fresh conversation, and it counts even when your comment carries guidance beside it. It buys that one run
   and no more: once the attempt is spent, the next fresh agent this issue needs is refused again, and buying it
   is another command.

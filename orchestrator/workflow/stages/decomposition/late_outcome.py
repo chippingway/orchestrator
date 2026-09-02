@@ -18,6 +18,15 @@ narrow crash window between the post and the write can still cost is one
 repeated comment -- the same window every park in this repository has -- and
 never the run.
 
+One park here carries a reason this owner did not invent. A late adjudication
+spends the same per-issue day of tokens every other agent run does, so a spawn
+the shared budget refuses parks as `retry_cap` -- the reason every stage's gate
+takes -- staged through this owner because everything that refusal leaves
+standing is late state that has to ride the same write. It is the one park
+whose audit goes out on the budget's own stream rather than as a late verdict
+or a typed late failure, and the one no later attempt supersedes: a retry is
+exactly what it refuses.
+
 `_announce` is published for the same reason it is not called from the two
 places that record an outcome: the owner guard runs between the record and
 anything said out loud, so what posts a question is the step past that guard
@@ -56,7 +65,10 @@ from dataclasses import replace
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
-from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import (
+    guards as _guards,
+    retry_budget as _retry_budget,
+)
 from orchestrator.workflow.late_split import (
     events as _events,
     formats as _formats,
@@ -127,19 +139,33 @@ PARK_REVISION_DIRTY = "late_revision_dirty"
 PARK_REVISION_UNMEASURED = "late_revision_unmeasured"
 PARK_REVISION_UNANSWERED = "late_revision_unanswered"
 
+# The shared spawn budget's own park, spelled by the engine that decides it
+# rather than again here. A late adjudication is charged to the same per-issue
+# day of tokens every other agent run is, so what stops it when that day is
+# spent is the same durable reason every other stage's gate takes -- and it has
+# to READ as that reason, because the tick that meets it next may be an initial
+# decomposition rather than an adjudication.
+PARK_RETRY_CAP = _retry_budget.PARK_RETRY_CAP
+
 # The parks a fresh attempt answers, and therefore retires before it runs. A
 # hold that failed has now been reconciled, a worktree that was gone is back, a
 # run that timed out or answered unusably is about to be re-run, and a pull
 # request lookup nobody could take is about to be taken again, and each of the
 # three transaction steps -- the snapshot, the children, the supersession -- is
 # about to be reconciled again from the same recorded verdict, at no agent's
-# cost. The six left out are the ones no retry answers. `PARK_QUESTION` is the announcement
+# cost. The seven left out are the ones no retry answers. `PARK_QUESTION` is the announcement
 # itself, and the four content
 # parks are the workflow waiting to be told what an edited scope, a worktree
 # the developer left changed, a candidate nobody could measure, or a developer
 # that changed nothing and vouched for nothing now means. Retiring one of those
 # would drop the very state the next tick reads to tell a human's answer from
 # the silence before it.
+#
+# `PARK_RETRY_CAP` is left out for the plainest reason of the seven: a retry is
+# exactly what it refuses. The attempt that would supersede it is the one the
+# budget has no room for, so retiring it here would clear the flag and then
+# meet the same spent budget one step later -- announcing the same sentence
+# once a poll, and taking the park a human has to answer down in between.
 #
 # `PARK_OWNER_UNREADABLE` is left out for a different reason: it IS answered by
 # a retry, but by one that runs before any of this -- the pending owner check
@@ -416,6 +442,43 @@ def _park(context: _LateContext, message: str, *, reason: str) -> None:
     _release_staged_park(context)
 
 
+def _park_on_spent_budget(
+    context: _LateContext, decision: _retry_budget.RetryDecision,
+) -> None:
+    """Stop this adjudication on a per-issue budget it cannot spend.
+
+    The refusal the shared gate hands back, made durable here rather than
+    beside the gate. Nothing has been paid for -- the whole point is that no
+    agent started -- so this is the pre-run park shape: the write goes out and
+    the sentence follows it immediately, with no owner read between them and
+    no result a refused comment could take down with it.
+
+    The write carries the generation this tick reached, which is the reason
+    the park is staged through this owner at all: everything the refusal
+    leaves standing -- the frozen pair, the phase, the hold on the pull
+    request the candidate is on, the locked run and whatever it recorded -- is
+    late state, and a park written past it would either lose that record or
+    have to write it twice.
+
+    The stage that ran out goes down beside the flag, unabbreviated by this
+    mode. The budget is shared, so a park carrying no stage is one a later
+    tick can neither attribute in an audit nor tell from another stage's --
+    and the tick that meets this one next may well be an initial
+    decomposition, on an issue whose generation has since been retired.
+
+    What the park says is the gate's own sentence rather than a late-mode
+    rewording of it. A human reading it is owed the bound the refusal was
+    made on and the window it was made in, and an operator comparing two
+    parked issues is owed the same words on both.
+    """
+    context.state.set(_retry_budget.RETRY_CAP_STAGE, decision.stage)
+    _park(
+        context,
+        _retry_budget._cap_message(decision),
+        reason=PARK_RETRY_CAP,
+    )
+
+
 def _stage_park(context: _LateContext, message: str, *, reason: str) -> None:
     """Record the park in memory and hold its notice for the caller.
 
@@ -489,6 +552,7 @@ def _release_staged_park(context: _LateContext) -> None:
     )
     context.state.set(_PARK_REASON, staged.reason)
     _late_notice._notice_settled(context)
+    _audit_retry_cap(context, staged, _retry_budget.RetryCapPhase.DELIVERED)
     _persist(context)
 
 
@@ -598,6 +662,7 @@ def _reconcile_notice_delivery(context: _LateContext) -> None:
     )
     _late_notice._notice_settled(context)
     _mark_replies_read(context, delivered)
+    _audit_retry_cap(context, owed, _retry_budget.RetryCapPhase.RECONCILED)
     _persist(context)
 
 
@@ -638,6 +703,29 @@ def _redeliver_park_notice(context: _LateContext) -> None:
     )
     context.staged_park = owed
     _release_staged_park(context)
+
+
+def _audit_retry_cap(
+    context: _LateContext,
+    staged: _StagedPark,
+    phase: _retry_budget.RetryCapPhase,
+) -> None:
+    """Report a spent-budget park's step on the budget's own stream.
+
+    Only that park's. Every other reason this owner takes is a fact about the
+    candidate, and what those report is a late verdict or a typed late
+    failure; this one is a fact about the issue's day of tokens, and what an
+    operator counts it beside is every other stage's refusal on the same
+    budget.
+
+    Emitted from the two seams where a sentence actually reaches the thread
+    rather than from the refusal that owes it, because that is what the two
+    phases claim: one comment paid for, and one found already posted by a tick
+    whose write did not land.
+    """
+    if staged.reason != PARK_RETRY_CAP:
+        return
+    _retry_budget._emit_phase(context.gh, context.issue, context.state, phase)
 
 
 def _stands_parked(context: _LateContext) -> bool:

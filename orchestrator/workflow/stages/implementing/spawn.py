@@ -143,7 +143,9 @@ def _charge_fresh_spawn(
     nothing ran.
     """
     granted = _retry_budget._grant_is_unspent(state)
-    if not _session._check_and_increment_retry_budget(gh, issue, state):
+    if not _retry_budget._charge_or_park(
+        gh, issue, state, stage=_state._IMPLEMENTING_STAGE,
+    ):
         return False
     if granted:
         _session._drop_poisoned_dev_session(state)

@@ -68,8 +68,8 @@ class AgentLifecycleEventEmissionTest(unittest.TestCase, support._PatchedWorkflo
             ),
         )
         self.assertGreaterEqual(exit_event["duration_s"], 0)
-        # retry_count is incremented to 1 by `_check_and_increment_retry_budget`
-        # BEFORE the spawn, so the recorded value is what the agent ran under.
+        # retry_count is incremented to 1 by the shared spawn gate BEFORE the
+        # spawn, so the recorded value is what the agent ran under.
         self.assertEqual(
             (
                 spawn[support._RETRY_COUNT_KEY],

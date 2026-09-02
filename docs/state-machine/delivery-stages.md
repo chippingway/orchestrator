@@ -182,6 +182,27 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      one pinned read that has already happened and answers immediately. What it does under that label is
      [`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer).
 
+     The spent spawn budget's park is asked inside that route as well as below it, because the two questions wearing
+     this label reach an agent by different roads. A live generation standing on `awaiting_human` +
+     `park_reason="retry_cap"` is held by `late_retry_cap._park_owns_the_tick`, behind only the reconciliations
+     above and the live-generation gate: the tick ends there having proved no frozen pair, re-marked no pull
+     request, read no thread as an answer to a question about the requirements, spawned nothing, and written
+     nothing. What lifts it is the same trusted `/orchestrator continue`, buying the same single attempt, spent at
+     the same gate in front of the adjudicator's own spawn. The refusal that TAKES that park is staged through the
+     late outcome owner, so the generation, the frozen candidate, the hold's record of the pull request, and the
+     sentence the thread is owed (`late_park_notice`, not `retry_cap_notice`) all land on one write before a word of
+     it is posted — and the redelivery, the already-posted reconciliation, and the audit phases are the ones every
+     other late park gets. No session is retired by the grant there: the pre-spawn record already opens a fresh
+     conversation for every run that is not answering a question a human has answered.
+
+     Which field the sentence sits on depends on which owner took the park, so the hold reads **both** before it
+     reads the thread for a command. A `retry_cap` park the shared parking form took under this label — on an issue
+     that had not entered the size gate, or before this owner existed — owes its sentence on `retry_cap_notice`, and
+     the entry replay above is the only thing that says it. That replay stands down for exactly one reason, a thread
+     it could not read, and this hold is the very next step: reading only its own field there would call the park
+     explained, take a second read that may well succeed where the first failed, and buy an adjudication with words
+     written before the human was ever asked.
+
      "Not an adjudication" is not the same answer as "never entered the gate", so one more question stands between
      the two. A record whose candidate the measurement put at or below the ceiling — a developer revision a human's
      guidance bought, re-frozen and re-measured — has had its size question **answered**: there is no verdict to
@@ -202,16 +223,16 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      push it licenses — which is where the freeze on the base refresh and the live-cycle reading a close is answered
      against both end. A restart's fresh cycle is deliberately not this case: it carries an identity and no
      candidate at all, and it really is waiting to be decomposed.
-  1. **The spent spawn budget's own park** (`retry_cap._park_owns_the_tick`), asked behind the late route and ahead
-     of every step below it. An issue standing on `awaiting_human` + `park_reason="retry_cap"` is stopped on its
-     budget, and each of the three steps below would walk past that park for a reason of its own: the drift reset
-     clears park flags and wipes the manifest, the kill switch clears the same flags and routes the issue to
-     implementation, and the awaiting-human resume reads any trusted reply as the answer. None of them is the answer
-     this park asked for, so while it stands the tick ends here having written nothing, spawned nothing, and said
-     nothing — which leaves the manifest, the children already open on GitHub, the locked decomposer session and its
-     `decomposer_agent` spec, `pr_number`, and a late generation's whole record exactly as the park found them. Each
-     held tick emits the `standing` audit phase, so a park that goes on refusing is visible as that rather than as a
-     workflow that went quiet.
+  1. **The spent spawn budget's own park** (`retry_cap._park_owns_the_tick`), asked behind the late route — which
+     holds its own copy of this park for an issue under adjudication — and ahead of every step below it. An issue
+     standing on `awaiting_human` + `park_reason="retry_cap"` is stopped on its budget, and each of the three steps
+     below would walk past that park for a reason of its own: the drift reset clears park flags and wipes the
+     manifest, the kill switch clears the same flags and routes the issue to implementation, and the awaiting-human
+     resume reads any trusted reply as the answer. None of them is the answer this park asked for, so while it stands
+     the tick ends here having written nothing, spawned nothing, and said nothing — which leaves the manifest, the
+     children already open on GitHub, the locked decomposer session and its `decomposer_agent` spec, `pr_number`, and
+     a late generation's whole record exactly as the park found them. Each held tick emits the `standing` audit phase,
+     so a park that goes on refusing is visible as that rather than as a workflow that went quiet.
 
      A park that still owes the thread its sentence (`retry_cap_notice`) is held before the thread is read for an
      answer at all. The entry replay above is what says that sentence, and saying it moves the response boundary

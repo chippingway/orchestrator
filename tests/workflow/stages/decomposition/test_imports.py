@@ -42,6 +42,7 @@ _OWNERS = (
     "late_restart",
     "late_reuse",
     "late_reply",
+    "late_retry_cap",
     "late_revision",
     "late_session",
     "late_settlement",

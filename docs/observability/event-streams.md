@@ -77,13 +77,19 @@ file is the durable record.
   the stage that ran out — dropped when the park carries none), `phase` — `delivered` (the notice said for the first
   time), `reconciled` (the thread was found already carrying it, so it was recorded as said rather than repeated),
   `standing` (a later tick refused another spawn under the same park and said nothing — emitted by the gate where a
-  stage re-asks it, and by the `decomposing` and `implementing` holds, which stop the tick before the gate is
-  reached. A hold reports once per tick that REACHES it, which is fewer ticks than the issue gets: a `paused` /
-  `backlog` hard skip runs no handler at all, and on `workflow:implementing` the preflight ahead of the park can own
-  the tick itself — a merged pull request or a closed issue finalizes, a stale `question` / `discussion` relabel is
-  refused, a recorded candidate is reconciled — so a poll that leaves no record behind is not a park that lifted),
+  stage re-asks it, and by the `decomposing`, late-adjudication, and `implementing` holds, which stop the tick
+  before the gate is reached. A hold reports once per tick that REACHES it, which is fewer ticks than the issue
+  gets: a `paused` / `backlog` hard skip runs no handler at all, and on `workflow:implementing` the preflight ahead
+  of the park can own the tick itself — a merged pull request or a closed issue finalizes, a stale `question` /
+  `discussion` relabel is refused, a recorded candidate is reconciled — so a poll that leaves no record behind is
+  not a park that lifted),
   `continued` (an explicit renewal cleared the park and bought one more attempt). The `park_awaiting_human` record
   with `reason="retry_cap"` is emitted beside the `delivered` one, by the shared park the delivery goes through.
+  A late adjudication that ran the budget out reports on this same stream and with the same four phases, even
+  though the park itself is staged and delivered by the late mode's own owner: what an operator counts that refusal
+  beside is every other stage's refusal on the same per-issue day of tokens, not the `late_verdict` and
+  `late_failure` records a generation reports. Its `delivered` and `reconciled` are emitted where that mode's own
+  notice reaches the thread, so a park whose comment GitHub refused records neither until the redelivery lands.
 - `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The
   `discussion` stage's plan publication emits the same event with `stage="discussion"` when it opens (never when it
   reuses) a plan PR; it carries no `retry_count`, having no retry budget of its own.

@@ -166,7 +166,10 @@ labeled `workflow:blocked` and leaves the parent on `workflow:blocked` or `workf
 recover rather than re-spawn, a `DECOMPOSE` kill switch falls through to `workflow:implementing`, and commits or a
 dirty tree park with the worktree kept. An issue standing on a `retry_cap` park is held ahead of all of that — the
 drift reset, the kill switch, and the human-reply resume each answer a park that is not this one — so it keeps
-everything it carries until a trusted `/orchestrator continue` buys it one more attempt. Full flow:
+everything it carries until a trusted `/orchestrator continue` buys it one more attempt. The late coordinator holds
+the same park one step earlier on its own road, so an issue whose adjudication ran the budget out keeps its frozen
+candidate, the pull request that candidate stands under, and its recorded run until the same command buys it one
+more adjudication. Full flow:
 [`state-machine/delivery-stages.md`][decomposing].
 
 ### `_handle_ready` (label `workflow:ready` → `workflow:implementing`)

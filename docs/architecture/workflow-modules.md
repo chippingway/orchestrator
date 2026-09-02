@@ -131,12 +131,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     prompts.py              the prompt builders the stages share, the header, notes, and placeholders they are
                             assembled from, and the single-decision comment
     retry_budget.py         the per-issue daily spawn budget every stage's gate is decided by: the decision it
-                            answers and posts nothing for, the durable `retry_cap` park and the stage that ran out,
+                            answers and posts nothing for, the parking form that composes the tail around it for
+                            the stages whose park carries nothing of their own,
+                            the durable `retry_cap` park and the stage that ran out,
                             the sentence that park owes the thread until the thread is shown to carry it -- and the
                             replay that says it at stage entry, since a park routes the tick past the gate that
                             took it -- the one bounded renewal, whether an attempt it granted is still owed, which
                             is what tells a stage's other roads to an agent to stand down for the gate, and the
-                            four audit phases over them
+                            four audit phases over them. The late adjudication is decided by the same gate and
+                            renewed by the same step, and owns its park's delivery itself, since what a refusal
+                            leaves standing there is a generation's whole record
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the
@@ -289,7 +293,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             candidate the size gate settled, the latter releasing the hold and moving
                             `pr_number` onto the pull request the measured commit is on first -- and the re-read
                             the inline handler is given
-      session.py            the locked decomposer session: the spec read, the fresh spawn that pins it, the
+      session.py            the locked decomposer session: the spec read, the fresh spawn that pins it -- gated
+                            and parked by `engine/retry_budget.py`'s own parking form -- the
                             human-reply resume, and the retirement the drift reset and the continuation both take
                             -- the id dropped and the spec kept, since a spawn records an id only where the backend
                             hands one back and the resume after one that did not would replay the conversation the
@@ -343,8 +348,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             which what a late split still owes a remote can be settled, and the last that comes
                             back if it cannot
       late_coordinator.py   the additive late mode's order: the owed owner read and the undelivered park notice both
-                            reconciled ahead of every gate, the live-generation gate, the frozen-evidence proof, the
-                            hold on the pull request the candidate stands on before any spawn -- and the displaced
+                            reconciled ahead of every gate, the live-generation gate, the spent-budget park held
+                            behind it and ahead of everything that would touch the world, the frozen-evidence
+                            proof, the hold on the pull request the candidate stands on before any spawn -- and the displaced
                             one no new agent is started under --
                             the content settlement that can end the tick, the completed-result short circuit, the
                             retry-budgeted run whose pre-spawn write holds the whole accounting back -- the
@@ -353,6 +359,17 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             over the candidate worktree, the fresh owner read every completion but a declined
                             run passes through on its way to settlement, and the split transaction that read hands
                             a cleared `split` on to
+      late_retry_cap.py     the same standing park on the adjudication's own road: the gate its fresh spawn is
+                            charged to, the refusal staged through this mode's outcome owner so the generation,
+                            the frozen pair, and the hold on the pull request the candidate stands under all ride
+                            the one write, the hold asked ahead of the evidence probe and the content settlement
+                            so a held tick writes, spawns, and says nothing, the sentence it waits to have said
+                            before any thread is read for an answer -- on either owner's field, since a park the
+                            shared parking form took under this label owes its own and is said by the stage-entry
+                            replay -- and the trusted `/orchestrator continue` that
+                            renews the budget for exactly one adjudication -- written down before the spawn it
+                            pays for, and needing no session retirement of its own, since the pre-spawn record
+                            opens a fresh conversation for every run that is not answering a question
       late_session.py       the late run's pinned record -- role, locked spec, session, cycle, source commit,
                             generation, and the whole of what a verdict decided -- the whole-comment budget it is
                             refused past, the rules it is read back through, and the tracked spawn in the candidate's
@@ -378,7 +395,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             announcement a recorded question is reconciled by, and the parks
                             and emissions every late exit shares -- staged for the owner read to release, released
                             anyway where nothing would ever say them, and re-said at the top of a later tick when the
-                            comment that should have said them was refused
+                            comment that should have said them was refused. The shared spawn budget's `retry_cap`
+                            is the one park here whose reason this owner did not invent: it is staged like the
+                            rest so the late record rides its write, and it is the only one audited on the
+                            budget's own stream rather than as a late verdict or a typed late failure
       late_notice.py        the sentence a park owes the issue until it is actually on the thread: the durable
                             `{reason, message}` beside the flag, matched against the park it explains, the thread
                             read that discharges one a failed write left claiming the opposite of what GitHub holds,
@@ -779,10 +799,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             continuation is what paid for it: the grant is durable and the budget is shared, so the
                             tick that spends one is not always the tick -- or even the stage -- that granted it
       session.py            the four session retirements -- the fourth being the continuation that buys a spent
-                            budget one more attempt, which is a fresh spawn by definition -- the parking form of the
-                            shared spawn budget the stages
-                            with no notice delivery of their own are gated by -- the budget itself is
-                            `engine/retry_budget.py`'s -- and the fresh-spawn prompt
+                            budget one more attempt, which is a fresh spawn by definition -- and the fresh-spawn
+                            prompt. The budget that retirement answers to is `engine/retry_budget.py`'s entire,
+                            gate and park alike, and the spawn road calls it there
       session_read.py       the locked session read plus the stale / overflow / quota classifiers and the blockquote
                             they quote with
       resume.py             the two resume entry points and the historical call shape they keep

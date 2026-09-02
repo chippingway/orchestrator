@@ -29,13 +29,15 @@ review readers) stay raw. Callers that want the allowlist applied filter
 their result through `filter_trusted`, or gate a single author on
 `is_trusted_author`.
 
-`carries_own_marker` answers a different question and lives here for the same
-reason: whether a hidden marker on a thread is one this orchestrator wrote.
-That question is asked wherever a comment is the receipt for an effect that
-cannot be made one operation with recording it, and the author is part of it --
-a marker anybody may post is a marker anybody may use to suppress the sentence
-it stands for. A client with no authenticated login to compare against checks
-the marker alone, which is the same fallback the pinned-state read takes.
+`authored_by_us` and the `carries_own_marker` built on it answer a different
+question and live here for the same reason: whether a comment on a thread is
+one this orchestrator wrote. That question is asked wherever a comment is the
+receipt for an effect that cannot be made one operation with recording it, and
+the author is part of it -- text anybody may post is text anybody may use to
+suppress the sentence it stands for, whether the receipt is a hidden marker or
+the sentence itself. A client with no authenticated login to compare against
+takes the content alone, which is the same fallback the pinned-state read
+takes.
 """
 from __future__ import annotations
 
@@ -121,6 +123,25 @@ def carries_reserved_marker(written: Any) -> bool:
     return isinstance(written, str) and RECEIPT_MARKER_PREFIX in written
 
 
+def authored_by_us(comment: Any, *, bot_login: str | None) -> bool:
+    """Whether this orchestrator is the one that posted a comment.
+
+    The author half of every receipt read off a thread, spelled once because
+    the receipts differ and the rule does not: a hidden marker, and a park
+    notice whose whole sentence is its identity, are both plain text on a
+    public thread and both trivially copied. Read from anybody, either would
+    let a third party discharge an obligation nobody discharged.
+
+    A client with no authenticated login of its own answers True. There is
+    nothing to compare against there, so the content is the whole of what can
+    be checked -- the same fallback the pinned-state read takes.
+    """
+    if bot_login is None:
+        return True
+    author = getattr(getattr(comment, "user", None), "login", None)
+    return author == bot_login
+
+
 def carries_own_marker(
     comments: Iterable[Any], marker: str, *, bot_login: str | None,
 ) -> bool:
@@ -134,12 +155,8 @@ def carries_own_marker(
     without the check a third party could post the marker and silence
     whatever the receipt gates.
     """
-    for comment in comments:
-        if marker not in (getattr(comment, "body", "") or ""):
-            continue
-        if bot_login is None:
-            return True
-        author = getattr(getattr(comment, "user", None), "login", None)
-        if author == bot_login:
-            return True
-    return False
+    return any(
+        marker in (getattr(comment, "body", "") or "")
+        and authored_by_us(comment, bot_login=bot_login)
+        for comment in comments
+    )

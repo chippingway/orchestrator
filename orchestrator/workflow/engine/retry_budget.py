@@ -18,6 +18,16 @@ into the caller's own pinned state and rides out on the write that caller was
 going to make anyway. A refusal writes nothing of its own, so a tick that dies
 between the decision and that write leaves the budget exactly as it found it.
 
+What a caller then DOES with a refusal is the one part that is not always its
+own. A stage whose park has to carry state this owner never sees -- a live
+late generation, its frozen pair, and the hold on the pull request its
+candidate stands under -- stages the park itself, so the record and the reason
+the record stopped moving land on one write. A stage whose park carries
+nothing but the park takes `_charge_or_park` below, which is that same tail
+written once rather than copied per stage: charge, stage, write, and say it
+once. The gate is untouched either way -- it is the composition that writes,
+and it writes before it posts.
+
 The park is durable so that it can be recognized. `park_reason` says
 `retry_cap` and `retry_cap_stage` says which stage ran out, which is what lets
 a later tick tell an issue waiting on THIS from one waiting on an agent's
@@ -49,10 +59,10 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from github.Issue import Issue
-from github.IssueComment import IssueComment
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
+from orchestrator.github.comments import authored_by_us
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import guards as _guards, usage as _usage
 
@@ -344,6 +354,54 @@ def _reconcile_notice(
     return NoticeReading.SAID
 
 
+def _charge_or_park(
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    *,
+    stage: str,
+) -> bool:
+    """Gate a fresh agent spawn, and park the issue itself when it is refused.
+
+    The parking form of the budget, for the stages whose park carries nothing
+    of their own. Everything it decides is decided by `_consume_retry_slot`;
+    what is here is the tail those callers would otherwise each have to write
+    -- stage the park, settle the sentence it owes against the thread, and say
+    it once.
+
+    Returns True if the spawn is allowed (and the budget was charged); False
+    if the budget is out. On that branch the park is made DURABLE here, before
+    a word of it is said: a notice on a thread that no pinned state backs is
+    the worst of both endings -- nothing reconciles it, because nothing knows
+    it is owed, and the window under it rolls over a day later with the issue
+    running again beneath a comment saying it had stopped. The caller's own
+    write follows and carries whatever the delivery settled.
+
+    A park already standing for an exhausted budget is re-taken silently: the
+    budget is re-decided on every eligible tick, so announcing it again would
+    say the same sentence to the same thread once a poll until a human
+    arrived. The thread is asked before anything is said, so a comment that
+    landed under a write that failed is recorded as said rather than repeated
+    -- and a thread this tick could not read is said nothing to at all, since
+    the sentence it may already carry is exactly the one about to go out.
+    The park stands and the notice stays owed, so the next tick reads again.
+
+    `stage` is required rather than defaulted. It is what the park is
+    attributed to and what the notice quotes, the budget is shared, and a
+    default here would be one stage's name answering for another's spawn.
+    """
+    decision = _consume_retry_slot(state, stage=stage)
+    if decision.allowed:
+        return True
+    if not _stage_retry_cap_park(state, decision):
+        _emit_phase(gh, issue, state, RetryCapPhase.STANDING)
+        return False
+    gh.write_pinned_state(issue, state)
+    if _reconcile_notice(gh, issue, state) is NoticeReading.UNSAID:
+        _deliver_notice(gh, issue, state)
+    return False
+
+
 def _replay_owed_notice(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> bool:
@@ -582,10 +640,11 @@ def _delivered_id(
     discharge an obligation nobody discharged: the park would stand with its
     notice marked said, the watermark would be dragged past whatever else was
     written under it, and the human the park was taken for would never be
-    told. So the author is checked the way every other receipt this repository
-    reads off a thread is (`github.comments.carries_own_marker`), and a client
-    with no authenticated login of its own to compare against falls back to
-    the text alone exactly as that one does.
+    told. So the author is checked through the same owner every other receipt
+    this repository reads off a thread goes through
+    (`github.comments.authored_by_us`), and a client with no authenticated
+    login of its own to compare against falls back to the text alone exactly
+    as those do.
 
     A read that could not be taken answers `_UNREADABLE_THREAD`, which is a
     different thing from finding nothing: the notice stays owed either way,
@@ -608,19 +667,9 @@ def _delivered_id(
         issue_comment.id
         for issue_comment in thread
         if message in (issue_comment.body or "")
-        and _authored_by_us(issue_comment, bot_login)
+        and authored_by_us(issue_comment, bot_login=bot_login)
     ]
     return max(said) if said else None
-
-
-def _authored_by_us(
-    issue_comment: IssueComment, bot_login: str | None,
-) -> bool:
-    """Whether this orchestrator is the one that posted a comment."""
-    if bot_login is None:
-        return True
-    author = getattr(getattr(issue_comment, "user", None), "login", None)
-    return author == bot_login
 
 
 def _cap_message(decision: RetryDecision) -> str:

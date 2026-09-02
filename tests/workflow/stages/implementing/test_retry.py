@@ -55,6 +55,7 @@ RETRY_CAP_PARK_ISSUE = support.RETRY_CAP_PARK_ISSUE
 RETRY_CAP_TICKS = support.RETRY_CAP_TICKS
 RESUME_PROMPT_FRAGMENT = support.RESUME_PROMPT_FRAGMENT
 RUN_AGENT = support.RUN_AGENT
+STAGE_IMPLEMENTING = support.STAGE_IMPLEMENTING
 STALE_CONTENT_HASH = support.STALE_CONTENT_HASH
 STUCK_MESSAGE = support.STUCK_MESSAGE
 TRUSTED_AUTHOR = support.TRUSTED_AUTHOR
@@ -71,7 +72,7 @@ config = support.config
 dispatch = support.dispatch
 make_issue = support.make_issue
 patch = support.patch
-session = support.session
+_retry_budget = support._retry_budget
 
 
 class HandleImplementingRetryCapTest(
@@ -300,7 +301,9 @@ class RetryCapParkDeliveryTest(unittest.TestCase, _RetryCapParkMixin):
             patch.object(gh, "write_pinned_state", side_effect=RuntimeError),
             self.assertRaises(RuntimeError),
         ):
-            session._check_and_increment_retry_budget(gh, issue, state)
+            _retry_budget._charge_or_park(
+                gh, issue, state, stage=STAGE_IMPLEMENTING,
+            )
 
         self.assertEqual(gh.posted_comments, [])
         self.assertFalse(

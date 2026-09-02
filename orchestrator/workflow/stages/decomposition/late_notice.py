@@ -47,12 +47,16 @@ window every park in this repository has; read as evidence that nobody was
 told, it would silence the follow-up a park that heals owes the thread, which
 is a promise nothing else keeps. So a notice is looked for on the issue before
 it is acted on, and one found there is discharged from what GitHub holds
-rather than from what the pinned comment claims.
+rather than from what the pinned comment claims -- and only where the thread
+shows this orchestrator wrote it, since a sentence anybody can paste back is
+one anybody could otherwise use to mark a park explained that nobody ever
+explained.
 """
 from __future__ import annotations
 
 import logging
 
+from orchestrator.github.comments import authored_by_us
 from orchestrator.workflow.stages.decomposition import (
     late_session as _late_session,
 )
@@ -159,6 +163,19 @@ def _delivered_id(context: _LateContext, message: str) -> int | None:
     to it is not required to match, so the same reconciliation answers for a
     notice however the shared park decorated it.
 
+    And the receipt has to be OURS. That the sentence is its own identity is
+    exactly what makes the author load-bearing: it is plain text on a public
+    thread, so anybody can paste it back, and read from anybody it would
+    discharge an obligation nobody discharged. The park would stand with its
+    notice marked said, the watermark would be dragged past whatever else an
+    outsider had written under it, and the human the park was taken for would
+    never be told -- on this tick and on every tick after it, since nothing
+    supersedes a park like the spent-budget one. So the author goes through
+    the same owner every other receipt this repository reads off a thread does
+    (`github.comments.authored_by_us`), and a client with no authenticated
+    login of its own to compare against falls back to the text alone exactly
+    as those do.
+
     The highest match is the one reported, so what the watermark is repaired to
     is the last thing said rather than the first.
 
@@ -177,10 +194,12 @@ def _delivered_id(context: _LateContext, message: str) -> int | None:
             context.issue.number,
         )
         return None
+    bot_login = getattr(context.gh, "_bot_login", None)
     said = [
         issue_comment.id
         for issue_comment in thread
         if message in (issue_comment.body or "")
+        and authored_by_us(issue_comment, bot_login=bot_login)
     ]
     return max(said) if said else None
 

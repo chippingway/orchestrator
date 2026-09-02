@@ -11,11 +11,13 @@ from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git.worktrees import creation as _worktree_creation
 from orchestrator.github.labels import BACKLOG_LABEL, PAUSED_LABEL
-from orchestrator.workflow.engine import dispatch as _dispatch
+from orchestrator.workflow.engine import (
+    dispatch as _dispatch,
+    retry_budget as _retry_budget,
+)
 from orchestrator.workflow.stages.implementing import (
     resume as _implementing_resume,
     retry_cap as _implementing_retry_cap,
-    session as _implementing_session,
 )
 from tests.support import fakes
 from tests.workflow import fixtures
@@ -67,7 +69,6 @@ RUN_AGENT = "run_agent"
 # The owners the checkout and the spawn answer on, so a sibling module patches
 # the module the stage calls.
 agent_runner = _agent_runner
-session = _implementing_session
 worktree_creation = _worktree_creation
 # The two a test drives directly: the dispatch a hard-skipped issue is refused
 # by, and the park handler the stage answers a spent budget with.
@@ -188,8 +189,8 @@ class _RetryCapParkMixin(_PatchedWorkflowMixin):
         """One tick's gate, read from and written back to durable state."""
         state = gh.read_pinned_state(issue)
         with patch.object(config, "MAX_RETRIES_PER_DAY", cap):
-            allowed = _implementing_session._check_and_increment_retry_budget(
-                gh, issue, state,
+            allowed = _retry_budget._charge_or_park(
+                gh, issue, state, stage=STAGE_IMPLEMENTING,
             )
         if persist:
             gh.write_pinned_state(issue, state)
