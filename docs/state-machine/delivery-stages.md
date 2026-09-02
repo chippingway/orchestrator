@@ -92,11 +92,16 @@ Non-human content is filtered seven ways:
   sessions and does not advance the watermark (it is re-filtered on each later tick, never marked consumed). The
   `/orchestrator continue` that renews a spent spawn budget on a `retry_cap`-parked `workflow:decomposing` or
   `workflow:implementing` issue is read through the same filter (`filter_trusted` in each stage's
-  `retry_cap._trusted_replies`), so what buys an agent run there is a trusted account's word and nothing else. An
+  `retry_cap._trusted_replies`), so what buys an agent run there is a trusted account's word and nothing else. The
+  `/orchestrator add-agent-runs N` that widens a spent LIFETIME agent-run allowance is filtered in the one place it
+  is read — the dispatcher's own hold, `run_grant._lifts_the_park` — for the same reason and one more: an untrusted
+  request earns no receipt either, since a reply is a comment somebody else's word paid for and posting one would
+  spend the watermark a trusted operator's command is read against. An
   untrusted comment therefore neither shifts the drift hash, sets a
   pending-fix bookmark, routes `in_review` to `workflow:fixing`, resumes an awaiting-human decomposer / developer /
   reviewer / question / documenting session, retries a parked auto-rebase, satisfies the `/orchestrator
-  add-review-rounds` review-cap command, renews an exhausted spawn budget, nor reaches any agent prompt.
+  add-review-rounds` review-cap command, renews an exhausted spawn budget, buys an issue past its lifetime agent-run
+  ceiling, nor reaches any agent prompt.
 
 `_detect_user_content_change` durably persists the baseline on its FIRST encounter via `gh.write_pinned_state`, so an
 early-return tick cannot silently absorb a later edit as the new baseline. It also carries a **legacy-hash
@@ -481,15 +486,16 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   `standing` phase on the `agent_run_limit` event stream, and returns before the label's handler is reached. A park
   already explained says nothing more, however many ticks meet it.
 - **The one thing that lifts it** is a trusted `/orchestrator add-agent-runs N` (`workflow/engine/run_grant.py`),
-  read off the unread thread once the park's own sentence has been said and nowhere else. Valid — an exact positive
-  whole number no larger than `MAX_RUNS_PER_COMMAND` — it persists an allowance of exactly `used + N`, clears this
-  park alone, consumes the batch it read plus the acknowledgement it posts (and nothing that arrived in between —
-  the boundary is derived from ids this tick observed, never re-read off the thread), records `granted`, and lets the
-  SAME tick
-  reach the stage handler, since the run a human just paid for is the one the issue was stopped for. Anything else
-  leaves both counts untouched: a malformed, zero, negative, or excessive request earns one marker-scoped receipt
-  and a `refused` phase under a park that still stands, and an untrusted one is answered with nothing at all. The
-  fields, the marker, and the ordering are in
+  read off the unread thread of an OPEN issue once the park's own sentence has been said, and nowhere else — the
+  closed-issue exemption below is asked first, since what a close reaches is a terminal rather than a road that
+  spends anything. A thread this tick could not read is a park held one more poll: silence buys nothing.
+  Valid — an exact positive whole number no larger than `MAX_RUNS_PER_COMMAND` — it persists an allowance of exactly
+  `used + N`, clears this park alone, consumes the batch it read plus the acknowledgement it posts (and nothing that
+  arrived in between — the boundary is derived from ids this tick observed, never re-read off the thread), records
+  `granted`, and lets the SAME tick reach the stage handler, since the run a human just paid for is the one the
+  issue was stopped for. Anything else leaves both counts untouched: a malformed, zero, negative, or excessive
+  request earns one marker-scoped receipt and a `refused` phase under a park that still stands, and an untrusted one
+  is answered with nothing at all. The fields, the markers, and the ordering are in
   [`labels-and-state.md`](labels-and-state.md#pinned-state).
 - **The one exemption is a CLOSED issue.** What a close reaches below is a terminal — the merged, rejected, and
   human-closed finalizers, and the cleanup sweep that settles a generation ledger — and each of those ENDS the issue
