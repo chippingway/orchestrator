@@ -26,7 +26,7 @@ from types import MappingProxyType
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.git import branch_transport
+from orchestrator.git import branch_transport, ref_transport
 
 GIT_COMMAND = "git"
 QUIET_FLAG = "--quiet"
@@ -133,14 +133,21 @@ class _LocalTransport:
             check=False,
         )
 
-    def tip(self, spec, worktree, branch):
-        """What the remote says that branch is at, or `""` when it has none."""
+    def read(self, spec, worktree, branch):
+        """What the remote says that branch is at, or `""` when it has none.
+
+        Handed back in the record the owner answers with, since a failure this
+        transport never has is exactly the case the tests arrange for
+        themselves.
+        """
         listed = run_git(
             "ls-remote", spec.remote_name, f"refs/heads/{branch}",
             cwd=spec.target_root,
         )
         first_line = (listed or "").split("\n")[0].strip()
-        return first_line.split()[0] if first_line else ""
+        return ref_transport._RefRead(
+            sha=first_line.split()[0] if first_line else "",
+        )
 
 
 class _WorldBuilder:
@@ -149,12 +156,13 @@ class _WorldBuilder:
     def __init__(self, repo) -> None:
         self._repo = repo
 
-    def build(self, test_case) -> None:
+    def build(self, test_case, *, patched_transport: bool) -> None:
         """Raise the remote, the clone, the checkout, and the transports."""
         self._initialize_remote()
         self._seed_initial_commit()
         self._add_candidate_worktree()
-        self._patch_transports(test_case)
+        if patched_transport:
+            self._patch_transports(test_case)
 
     def _initialize_remote(self) -> None:
         repo = self._repo
@@ -192,7 +200,8 @@ class _WorldBuilder:
                 side_effect=transport.fetch,
             ),
             patch.object(
-                branch_transport, "_remote_branch_tip", side_effect=transport.tip,
+                branch_transport, "_remote_branch_read",
+                side_effect=transport.read,
             ),
         )
         for transport_patch in transport_patches:
@@ -221,12 +230,19 @@ class CandidateRepo:
             remote_name=ORIGIN_REMOTE,
         )
 
-    def prepare(self, test_case) -> None:
-        """Build the world and hand its teardown to the test case."""
+    def prepare(self, test_case, *, patched_transport: bool = True) -> None:
+        """Build the world and hand its teardown to the test case.
+
+        `patched_transport=False` leaves the token-bearing reads real, for the
+        one thing a redirected transport cannot answer: what the owners do with
+        the output of a call that really ran.
+        """
         test_case.addCleanup(
             shutil.rmtree, str(self._tmpdir), ignore_errors=True,
         )
-        _WorldBuilder(self).build(test_case)
+        _WorldBuilder(self).build(
+            test_case, patched_transport=patched_transport,
+        )
 
     def base(self) -> str:
         """The commit the remote base branch is at, as this clone knows it."""

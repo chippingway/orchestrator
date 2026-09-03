@@ -174,15 +174,22 @@ def _measure_candidate(
     that could not be proved still reports the base that was frozen for it, so
     the record written before the retry -- and the comment a human reads --
     names the commit this attempt was going to measure against rather than
-    re-deriving one from a branch that has moved since.
+    re-deriving one from a branch that has moved since. The stopping end's own
+    line travels with it for the same reason: this is the last owner that
+    holds it, and everything past here reports a measurement that did not
+    happen from the record alone.
     """
     base = commits._freeze_base_commit(spec, worktree)
     if not base.is_frozen:
-        return AdditionMeasurement(failure=base.failure)
+        return AdditionMeasurement(
+            failure=base.failure, detail=base.detail,
+        )
     candidate = commits._prove_candidate_commit(worktree, revision)
     if not candidate.is_frozen:
         return AdditionMeasurement(
-            base_sha=base.sha, failure=candidate.failure,
+            base_sha=base.sha,
+            failure=candidate.failure,
+            detail=candidate.detail,
         )
     return _count_added_lines(worktree, base.sha, candidate.sha)
 

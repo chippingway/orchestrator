@@ -2,6 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """What a size measurement is, and the typed reasons there is not one.
 
+The records a reading hands around all live here -- the two ends of the diff,
+the count over them, and the readback saying whether an end this host was
+supposed to hold is really here -- because every one of them is spent by a
+caller in another module and none is owned by the step that happens to build
+it.
+
 The failure vocabulary lives beside the records because every member of it
 says the same thing about them: this measurement did not happen. That
 distinction is the whole point of the domain. A candidate whose size is
@@ -59,10 +65,21 @@ class FrozenCommit:
     asks for that exact object rather than for whatever the branch has moved
     to since. What `is_frozen` licenses is unchanged either way: only an id
     with no failure beside it is an end of a diff.
+
+    `detail` is the one line the transport that failed said for itself, and it
+    is beside the typed failure rather than folded into it because the two
+    answer different readers. The member is what code branches on and what a
+    park reason and an event payload carry, so its meanings are a contract
+    nothing may widen; the line is free text a human reads, and it is what
+    tells an operator whether a base the remote would not name is an expired
+    token, a repository this installation cannot see, or a host that was
+    simply down. Empty where the step said nothing worth carrying, and never
+    the credential: the transport scrubs its own stderr before handing it up.
     """
 
     sha: str = ""
     failure: MeasurementFailure | None = None
+    detail: str = ""
 
     @property
     def is_frozen(self) -> bool:
@@ -87,14 +104,41 @@ class AdditionMeasurement:
     adjudicated under, and the strictly-past-it comparison belongs there, so a
     verdict is re-answerable from durable state after a crash rather than from
     a reading only the tick that took it still holds.
+
+    `detail` carries the failing end's own line up with the failure, for the
+    same reason the two commits travel: the reading is taken deep in the git
+    layer and reported far from it, and by the time a human is told a candidate
+    has no size, the stderr that would have said why is long gone. It is free
+    text for a reader rather than anything to branch on, and it never carries
+    the token -- the transports scrub their stderr before it reaches here.
     """
 
     base_sha: str = ""
     candidate_sha: str = ""
     additions: int | None = None
     failure: MeasurementFailure | None = None
+    detail: str = ""
 
     @property
     def is_measured(self) -> bool:
         """Whether a count was actually taken, and may therefore be read."""
         return self.failure is None and self.additions is not None
+
+
+@dataclass(frozen=True)
+class _BaseObject:
+    """Whether the frozen base is readable here, and what a fetch for it said.
+
+    The presence is the answer the freeze and every retry branch on. The line
+    beside it is what the fetch that failed to supply the object wrote, kept so
+    the failure a human is eventually shown names the transport fault rather
+    than only the step: "not in the local object store even after a fetch" is
+    the same sentence for a network that was down, a token that expired
+    between two calls, and a base the remote rewrote out from under this host.
+
+    Set exactly when the object is absent, and scrubbed of the token by the
+    transport before it ever reaches here.
+    """
+
+    present: bool = False
+    detail: str = ""

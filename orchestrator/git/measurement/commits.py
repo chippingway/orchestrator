@@ -31,7 +31,11 @@ from pathlib import Path
 
 from orchestrator import config
 from orchestrator.git import branch_transport, commands
-from orchestrator.git.measurement.models import FrozenCommit, MeasurementFailure
+from orchestrator.git.measurement.models import (
+    FrozenCommit,
+    MeasurementFailure,
+    _BaseObject,
+)
 from orchestrator.git.verification import probes as verification_probes
 
 # The channel the authenticated transport already reports on: the reads below
@@ -39,6 +43,18 @@ from orchestrator.git.verification import probes as verification_probes
 # measurement that could not be taken is reading the same plumbing they filter
 # for when a fetch or a push misbehaves.
 log = logging.getLogger("orchestrator.git_plumbing")
+
+# What a base the remote answered for -- with "" -- is reported as. The read
+# succeeded, so there is no stderr to quote and nothing failed; what stopped
+# the freeze is the answer itself, and an operator told only "the base could
+# not be frozen" would go looking for a transport fault that never happened.
+_NO_SUCH_BRANCH = "the remote does not carry that branch"
+
+# What a fetch that failed silently is reported as, so a base this host still
+# lacks always says something. A fetch reporting nothing and a fetch that
+# reported a reason are the same failure to the caller, and only one of them
+# leaves an operator anywhere to start.
+_FETCH_SAID_NOTHING = "the fetch reported no reason"
 
 
 def _freeze_base_commit(
@@ -64,44 +80,70 @@ def _freeze_base_commit(
     would have nothing to retry: the next pass would ask the remote again and
     freeze whatever the branch had moved to since, measuring a different pair
     under the same generation.
+
+    Whichever way it stops, what the step said for itself comes back with the
+    typed reason. The two are read minutes and a process apart -- the failure
+    is persisted, reported on both sinks, and turned into a park a human reads
+    -- and by then nothing else holds the line git wrote. Both members reach
+    this owner already scrubbed, so recording one cannot publish a token.
     """
-    base_sha = branch_transport._remote_branch_tip(
+    read = branch_transport._remote_branch_read(
         spec, worktree, spec.base_branch,
     )
-    if not base_sha:
+    if not read.sha:
+        detail = read.detail or _NO_SUCH_BRANCH
         log.warning(
             "%s: the remote would not name %s, so the base a candidate in %s "
-            "is measured against could not be frozen",
-            spec.slug, spec.base_branch, worktree,
+            "is measured against could not be frozen: %s",
+            spec.slug, spec.base_branch, worktree, detail,
         )
-        return FrozenCommit(failure=MeasurementFailure.BASE_UNREADABLE)
-    if _base_object_present(spec, worktree, base_sha):
-        return FrozenCommit(sha=base_sha)
+        return FrozenCommit(
+            failure=MeasurementFailure.BASE_UNREADABLE, detail=detail,
+        )
+    base = _base_object_present(spec, worktree, read.sha)
+    if base.present:
+        return FrozenCommit(sha=read.sha)
     log.warning(
         "%s: base %s of %s is not in the local object store even after a "
-        "fetch, so no diff can be taken against it",
-        spec.slug, base_sha, spec.base_branch,
+        "fetch, so no diff can be taken against it: %s",
+        spec.slug, read.sha, spec.base_branch, base.detail,
     )
     return FrozenCommit(
-        sha=base_sha, failure=MeasurementFailure.BASE_ABSENT,
+        sha=read.sha,
+        failure=MeasurementFailure.BASE_ABSENT,
+        detail=base.detail,
     )
 
 
 def _base_object_present(
     spec: config.RepoSpec, worktree: Path, base_sha: str,
-) -> bool:
-    """True when the frozen base is readable here, fetching once if it is not.
+) -> _BaseObject:
+    """Whether the frozen base is readable here, fetching once if it is not.
 
     The fetch lands in `target_root`, whose object store this linked worktree
     shares, so what it brings is readable from the checkout the diff is taken
     in. Its exit status is deliberately not the answer: a fetch that reported
     success without bringing this commit leaves the caller exactly where a
     failed one does, so the store is asked again either way.
+
+    What the fetch SAID is kept even though what it returned decides nothing,
+    and that is not a contradiction: the store answers whether a diff can be
+    taken, while the line git wrote is the only thing that tells an operator
+    which fetch to fix. Every caller here is asking about one exact object --
+    the base this attempt froze, or the one a record already names -- so the
+    fetch either supplied that commit or it did not, and a caller left with a
+    bare "no" cannot tell a network that was down from a branch the remote
+    rewrote.
     """
     if verification_probes._commit_present(worktree, base_sha):
-        return True
-    branch_transport._authed_target_fetch(spec, spec.base_branch)
-    return verification_probes._commit_present(worktree, base_sha)
+        return _BaseObject(present=True)
+    fetched = branch_transport._authed_target_fetch(spec, spec.base_branch)
+    if verification_probes._commit_present(worktree, base_sha):
+        return _BaseObject(present=True)
+    return _BaseObject(
+        detail=commands._first_reported_line(fetched.stderr or "")
+        or _FETCH_SAID_NOTHING,
+    )
 
 
 def _prove_candidate_commit(worktree: Path, revision: str) -> FrozenCommit:

@@ -21,6 +21,7 @@ from unittest.mock import MagicMock, patch
 from orchestrator.git.measurement.models import (
     FrozenCommit,
     MeasurementFailure,
+    _BaseObject,
 )
 from orchestrator.git.snapshots import refs as _snapshot_refs
 from orchestrator.git.snapshots.refs import SnapshotOutcome
@@ -216,7 +217,7 @@ def hold_late_seams(
         "_measure_candidate": measurement or UNASKED_MEASUREMENT,
         "_worktree_path": checkout,
         "_head_sha": seed.head,
-        "_base_object_present": seed.base_object,
+        "_base_object_present": _BaseObject(present=seed.base_object),
         "create_snapshot_ref": (snapshot or SnapshotSeed()).create,
         "prove_snapshot_ref": (snapshot or SnapshotSeed()).prove,
     }

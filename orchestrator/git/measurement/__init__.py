@@ -3,7 +3,8 @@
 """Size-measurement domain owners.
 
 What a measurement IS -- the typed failure vocabulary, the one end of a diff a
-freeze produces, and the record a completed count hands back -- lives in
+freeze produces, the record a completed count hands back, and the readback
+saying whether an end this host was supposed to hold is really here -- lives in
 ``models``; the two commits it is taken between, each established before it
 counts for anything, in ``commits``; and the added-line count over the diff
 between them, plus the measurement that composes all three, in ``additions``.

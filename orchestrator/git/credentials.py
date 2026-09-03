@@ -47,6 +47,12 @@ log = logging.getLogger("orchestrator.git_plumbing")
 
 _ASKPASS_MODE = 0o700
 
+# What a token is replaced by wherever a transport reports a call's own output.
+# Spelled once here rather than at each transport because the guarantee is one
+# and belongs to the owner of the secret: nothing this package logs or hands
+# back carries the credential it authenticated with.
+_REDACTED = "***"
+
 
 @dataclass(frozen=True)
 class _GitAuthSession:
@@ -55,6 +61,19 @@ class _GitAuthSession:
     token: str
     auth_url: str
     env: dict[str, str]
+
+
+def _scrubbed(reported: str, token: str) -> str:
+    """The output of a token-bearing call with the token taken out of it.
+
+    Every transport spends this on the same two things: the stderr it logs a
+    refusal with, and the stderr it hands a caller to report somewhere else.
+    Neither is a place a credential may reach, and a call is not required to
+    have leaked one for the scrub to be worth taking -- the URL git is handed
+    names only the `x-access-token` username, so a token in that output is a
+    route nobody predicted rather than a route anybody meant.
+    """
+    return (reported or "").replace(token, _REDACTED)
 
 
 def _resolved_git_token(spec: config.RepoSpec, operation: str) -> str | None:

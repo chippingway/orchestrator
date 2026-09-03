@@ -37,6 +37,18 @@ _MOVED_PATH = "moved/legacy.py"
 # field.
 _TABBED_PATH = "tab\tname.txt"
 
+# One line of a transport's own stderr, the way a failing end hands it up.
+_TRANSPORT_DETAIL = (
+    "fatal: could not read Username for 'https://github.com': "
+    "terminal prompts disabled"
+)
+
+# The two ends a measurement can stop at, each with the reason it stops for.
+_STOPPING_ENDS = (
+    ("_freeze_base_commit", MeasurementFailure.BASE_UNREADABLE),
+    ("_prove_candidate_commit", MeasurementFailure.CANDIDATE_ABSENT),
+)
+
 # The two lines of work a case commits when what it is checking is not the
 # content itself.
 _TWO_LINES = "one\ntwo\n"
@@ -331,6 +343,24 @@ class MeasurementCompositionTest(unittest.TestCase):
 
         self.assertEqual(measured.failure, MeasurementFailure.BASE_UNREADABLE)
         self.assertEqual(measured.base_sha, "")
+
+    def test_the_stopping_end_hands_up_its_own_line(self) -> None:
+        # The reading is taken here and reported far from here: the record
+        # written for the retry, the failure both sinks carry, and the park a
+        # human answers are all produced after the stderr that explains them is
+        # gone. Whichever end stopped, its line rides out on the measurement.
+        candidate = self._repo.commit({_FEATURE_PATH: "one\n"})
+        for end, failure in _STOPPING_ENDS:
+            with self.subTest(end=end):
+                with patch.object(commits, end, return_value=FrozenCommit(
+                    failure=failure, detail=_TRANSPORT_DETAIL,
+                )):
+                    measured = additions._measure_candidate(
+                        self._repo.spec, self._repo.worktree, candidate,
+                    )
+
+                self.assertEqual(measured.failure, failure)
+                self.assertEqual(measured.detail, _TRANSPORT_DETAIL)
 
 
 if __name__ == "__main__":
