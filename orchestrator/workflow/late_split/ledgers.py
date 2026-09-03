@@ -19,8 +19,9 @@ positive whole number, because an issue number is what a reclamation sweep
 asks GitHub about. Every other shape leaves the ledger opaque and untouched.
 
 The wire spellings of an entry live here beside the reader that parses them;
-the encoder that turns a typed obligation back into one is the `state`
-owner's, because that is where a write is composed.
+the encoder that turns a typed obligation back into one is the
+`ledger_encoding` owner's, because what a write puts back is decided by the
+verbatim copy this reader hands out rather than by the typed view.
 """
 from __future__ import annotations
 

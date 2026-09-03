@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import keys as _late_keys
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
@@ -168,7 +168,7 @@ class NoticeKeyTest(unittest.TestCase):
         # Cleared with the generation, a park that survived a settlement or a
         # cancellation would keep its flag and lose its sentence -- which is
         # the exact state this field exists to make impossible.
-        self.assertNotIn(PARK_NOTICE, _late_state.LATE_STATE_KEYS)
+        self.assertNotIn(PARK_NOTICE, _late_keys.LATE_STATE_KEYS)
         self.assertEqual(PARK_NOTICE, KEYS.park_notice)
 
 

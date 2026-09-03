@@ -238,10 +238,26 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     ledgers.py              what the two external ledgers read back as, the exact entry shape one of ours has, the
                             verbatim copy anything else is preserved through, and the all-or-nothing reading of the
                             ordered child register, whose entries are positional and so may not be skipped past
-    state.py                the `late_*` pinned keys -- the frozen evidence, the publication provenance, the
-                            ledgers, and the cancellation and pending-owner-check markers -- and the round trip
-                            through them that leaves a legacy comment untouched and an unreadable obligation
-                            intact, plus the two keys
+    keys.py                 the `late_*` pinned keys one GENERATION owns -- the frozen evidence, the publication
+                            provenance, the ledgers, the hold's route bookkeeping, and the cancellation and
+                            pending-owner-check markers -- spelled once, as the tuple a clear is defined as
+                            dropping exactly
+    encoding.py             what each of those fields is spelled as on the way out: the wire string a vocabulary
+                            member is recorded under, the empty value every field names itself by and is dropped
+                            at (a lineage depth of 0 excepted, since that is a root), and the publication group a
+                            pre-publication entry writes none of
+    ledger_encoding.py      what the two external ledgers are written back as: the verbatim copy that outranks the
+                            typed view wherever the reader could not type the whole of one, and the only fields a
+                            record with no identity still records
+    state.py                the round trip over that group, which leaves a legacy comment untouched and an
+                            unreadable obligation intact: the fail-closed read, the write that drops every late key
+                            first and supersedes the retirement correlation on an identity, the clear defined as
+                            that list and nothing else, and the all-or-nothing read and write of the hold's route
+                            bookkeeping
+    spends.py               the vocabulary that bounds a restored spend: every field a route may close, paired with
+                            what that field may be set TO, since what comes back is applied to the pinned comment
+                            and then read by the owner that knows what it is
+    endings.py              what a cycle's ending leaves behind past the write that clears it, both keys
                             deliberately outside the group a cleared generation drops: the cycle a retirement
                             dropped, and the two-phase terminal record beside it -- the decision naming the
                             cycle a `rejected` is owed for, and the proof that one landed on the issue, which

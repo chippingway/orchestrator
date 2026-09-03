@@ -21,7 +21,7 @@ from unittest.mock import Mock, patch
 
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import dispatch as _dispatch
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import endings as _endings, state as _late_state
 from orchestrator.workflow.late_split.models import (
     LateGeneration,
     LatePhase,
@@ -282,7 +282,7 @@ class RestartCase:
         recorded = PinnedState(data=dict(extra_state))
         _late_state.write_late_generation(recorded, generation)
         if terminal and generation.is_present:
-            _late_state.record_terminal(
+            _endings.record_terminal(
                 recorded, generation.cycle_id, confirmed=True,
             )
         self.github.seed_state(LATE_ISSUE_NUMBER, **recorded.data)

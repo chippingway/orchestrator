@@ -29,10 +29,10 @@ from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import (
+    endings as _endings,
     formats as _formats,
     identity as _identity,
     lineage as _lineage,
-    state as _late_state,
     validation as _late_validation,
 )
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
@@ -296,7 +296,7 @@ def _identified(gate: _Gate, recorded: LateGeneration) -> LateGeneration:
     return _entered(gate, replace(
         recorded,
         cycle_id=recorded.cycle_id or _identity.next_identity(
-            _late_state.read_retired_cycle(gate.state),
+            _endings.read_retired_cycle(gate.state),
         ),
         generation=_identity.next_identity(recorded.generation),
         root_issue=root,

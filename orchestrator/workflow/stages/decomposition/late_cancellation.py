@@ -150,6 +150,7 @@ from orchestrator.github.labels import hard_skip_control_label
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import observations as _observations, usage as _usage
 from orchestrator.workflow.late_split import (
+    endings as _endings,
     events as _events,
     lineage as _lineage,
     restart as _restart,
@@ -842,7 +843,7 @@ def _retired_close_adopted(
     could not answer -- which hands its claim back and leaves the tick to the
     dispatcher's own per-issue isolation.
     """
-    retired = _late_state.read_retired_cycle(state)
+    retired = _endings.read_retired_cycle(state)
     if retired is None:
         return None
     with _observations.scanning_receipt(spec.slug, issue.number) as claimed:
@@ -956,7 +957,7 @@ def _ends_here(
     all, is owed the write rather than holding the removal of one.
     """
     if label is None:
-        return not _late_state.terminal_confirmed(state, generation.cycle_id)
+        return not _endings.terminal_confirmed(state, generation.cycle_id)
     if label in _RELABELLED_MID_ENDING:
         return True
     return is_allowed_transition(label, WorkflowLabel.REJECTED)
@@ -1478,7 +1479,7 @@ def _retired(
     if gh.workflow_label(issue) == WorkflowLabel.REJECTED:
         _terminal_recorded(gh, issue, state, generation)
         return
-    _late_state.record_terminal(state, generation.cycle_id, confirmed=False)
+    _endings.record_terminal(state, generation.cycle_id, confirmed=False)
     _persisted(gh, issue, state, generation)
     try:
         gh.set_workflow_label(issue, WorkflowLabel.REJECTED, guarded=False)
@@ -1604,7 +1605,7 @@ def _terminal_unproved(
         return False
     if not generation.cancelled or _unsettled(generation):
         return False
-    return not _late_state.terminal_confirmed(state, generation.cycle_id)
+    return not _endings.terminal_confirmed(state, generation.cycle_id)
 
 
 def _terminal_recorded(
@@ -1624,14 +1625,14 @@ def _terminal_recorded(
     guard that brings a tick back to a cancelled owner every tick costs a
     pinned write once rather than one per visit.
     """
-    if _late_state.terminal_confirmed(state, generation.cycle_id):
+    if _endings.terminal_confirmed(state, generation.cycle_id):
         return
     log.info(
         "issue=#%d carries %s over cancelled cycle %d; recording the terminal "
         "an operator removes to authorize a fresh one",
         issue.number, WorkflowLabel.REJECTED, generation.cycle_id,
     )
-    _late_state.record_terminal(state, generation.cycle_id, confirmed=True)
+    _endings.record_terminal(state, generation.cycle_id, confirmed=True)
     _persisted(gh, issue, state, generation)
 
 

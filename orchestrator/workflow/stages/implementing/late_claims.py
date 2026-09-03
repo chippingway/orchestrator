@@ -36,7 +36,7 @@ import logging
 from orchestrator import config
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow import state as _workflow_state
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import keys as _late_keys, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
@@ -81,39 +81,39 @@ def _awaits_its_count(recorded: LateGeneration) -> bool:
 # count lands only once the diff is taken, and a generation entered before
 # publication carries none of the group.
 _MINTED_EVIDENCE = (
-    (_late_state._CYCLE_ID, lambda recorded: bool(recorded.cycle_id)),
-    (_late_state._GENERATION, lambda recorded: bool(recorded.generation)),
-    (_late_state._ROOT_ISSUE, lambda recorded: bool(recorded.root_issue)),
+    (_late_keys.CYCLE_ID, lambda recorded: bool(recorded.cycle_id)),
+    (_late_keys.GENERATION, lambda recorded: bool(recorded.generation)),
+    (_late_keys.ROOT_ISSUE, lambda recorded: bool(recorded.root_issue)),
     (
-        _late_state._CURRENT_ISSUE,
+        _late_keys.CURRENT_ISSUE,
         lambda recorded: bool(recorded.current_issue),
     ),
     (
-        _late_state._CANDIDATE_SHA,
+        _late_keys.CANDIDATE_SHA,
         lambda recorded: bool(recorded.candidate_sha),
     ),
-    (_late_state._THRESHOLD, lambda recorded: recorded.threshold is not None),
-    (_late_state._PHASE, lambda recorded: recorded.phase is not None),
+    (_late_keys.THRESHOLD, lambda recorded: recorded.threshold is not None),
+    (_late_keys.PHASE, lambda recorded: recorded.phase is not None),
 )
 
 
 _FROZEN_EVIDENCE = _MINTED_EVIDENCE + (
-    (_late_state._BASE_SHA, lambda recorded: bool(recorded.base_sha)),
-    (_late_state._ADDITIONS, lambda recorded: recorded.additions is not None),
+    (_late_keys.BASE_SHA, lambda recorded: bool(recorded.base_sha)),
+    (_late_keys.ADDITIONS, lambda recorded: recorded.additions is not None),
     (
-        _late_state._POST_PUBLICATION,
+        _late_keys.POST_PUBLICATION,
         lambda recorded: recorded.post_publication,
     ),
     (
-        _late_state._SOURCE_STAGE,
+        _late_keys.SOURCE_STAGE,
         lambda recorded: recorded.source_stage is not None,
     ),
     (
-        _late_state._PUBLISHED_PR_NUMBER,
+        _late_keys.PUBLISHED_PR_NUMBER,
         lambda recorded: bool(recorded.published_pr_number),
     ),
     (
-        _late_state._PUBLISHED_SHA,
+        _late_keys.PUBLISHED_SHA,
         lambda recorded: bool(recorded.published_sha),
     ),
 )
@@ -258,7 +258,7 @@ def _claims_a_spend(state: PinnedState) -> bool:
     against a key the comment still carries is the damage, and it parks here
     rather than the reconciliation quietly closing nothing.
     """
-    if state.get(_late_state._SPENDS) is None:
+    if state.get(_late_keys.SPENDS) is None:
         return False
     return not _late_state.read_late_spends(state)
 
@@ -271,10 +271,10 @@ def _claims_a_spend(state: PinnedState) -> bool:
 # nobody measured and nobody pushed. Asked this way the same edit is damage
 # whichever member of the four it took.
 _PUBLICATION_GROUP = (
-    _late_state._POST_PUBLICATION,
-    _late_state._SOURCE_STAGE,
-    _late_state._PUBLISHED_PR_NUMBER,
-    _late_state._PUBLISHED_SHA,
+    _late_keys.POST_PUBLICATION,
+    _late_keys.SOURCE_STAGE,
+    _late_keys.PUBLISHED_PR_NUMBER,
+    _late_keys.PUBLISHED_SHA,
 )
 
 

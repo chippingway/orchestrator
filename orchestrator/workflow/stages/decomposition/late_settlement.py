@@ -84,10 +84,10 @@ from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.workflow.engine import comments as _comments, observations as _observations
 from orchestrator.workflow.late_split import (
+    endings as _endings,
     exemption as _exemption,
     formats as _formats,
     payloads as _payloads,
-    state as _late_state,
 )
 from orchestrator.workflow.late_split.models import (
     LateFailure,
@@ -844,7 +844,7 @@ def _published(context: _LateContext) -> _LateDisposition | None:
             opaque_resources=live.opaque_resources,
             opaque_consumers=live.opaque_consumers,
         )
-        _late_state.record_retired_cycle(context.state, live.cycle_id)
+        _endings.record_retired_cycle(context.state, live.cycle_id)
         _late_parks._persist(context)
     return _reinstated(context, live, retiring)
 

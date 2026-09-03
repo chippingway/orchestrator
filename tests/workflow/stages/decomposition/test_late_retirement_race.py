@@ -22,7 +22,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator.workflow.engine import dispatch as _dispatch
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import endings as _endings, state as _late_state
 from orchestrator.workflow.stages.decomposition import (
     late_cancellation as _late_cancellation,
     umbrella as _umbrella,
@@ -323,11 +323,11 @@ class SupersededCorrelationTest(_RetiredRecordCase, unittest.TestCase):
         # else, so a receipt for any earlier cycle on the same thread matches
         # nothing an adoption would read.
         state = self._state()
-        _late_state.record_retired_cycle(state, _NEXT_CYCLE)
+        _endings.record_retired_cycle(state, _NEXT_CYCLE)
 
         _umbrella._retired_cycle(state)
 
-        self.assertEqual(_late_state.read_retired_cycle(state), CYCLE_ID)
+        self.assertEqual(_endings.read_retired_cycle(state), CYCLE_ID)
 
     def _restarted(self) -> None:
         """The fresh cycle an operator authorizes, written as one is."""

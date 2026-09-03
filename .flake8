@@ -24,7 +24,6 @@ per-file-ignores =
     orchestrator/workflow/state.py:WPS202
     orchestrator/workflow/late_split/models.py:WPS214
     orchestrator/workflow/late_split/lineage.py:WPS202
-    orchestrator/workflow/late_split/state.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
     orchestrator/workflow/engine/observations.py:WPS202
     orchestrator/workflow/engine/dispatch.py:WPS201,WPS202

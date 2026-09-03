@@ -114,6 +114,7 @@ from orchestrator.workflow.engine import (
     run_ledger as _run_ledger,
 )
 from orchestrator.workflow.late_split import (
+    endings as _endings,
     events as _events,
     lineage as _lineage,
     restart as _restart,
@@ -320,7 +321,7 @@ def _restartable(
         return False
     if generation.restart_pending:
         return True
-    proved = _late_state.terminal_confirmed(state, generation.cycle_id)
+    proved = _endings.terminal_confirmed(state, generation.cycle_id)
     return label is None and proved
 
 
