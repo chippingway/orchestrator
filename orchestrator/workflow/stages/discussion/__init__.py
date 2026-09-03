@@ -48,9 +48,20 @@ as the records it stages around it, because both are about telling this round's
 work apart from what the checkout was already carrying. `outcomes` is where the
 write contract is enforced: commits and a dirty tree are checked before
 interruption and before the analysis, so an agent that started implementing is
-judged on what it wrote rather than read as a design. `publication` is what
-that judgement runs: one reading of the branch, the push and the found-or-opened
-PR a publishable plan earns, and the records that reading leaves behind.
+judged on what it wrote rather than read as a design.
+
+Publishing what that judgement passes divides by the question each owner
+answers. `artifact` takes the one reading of the branch every other owner
+decides and refuses from, and makes a remote tip askable in the checkout it was
+taken from. `settled_prs` asks GitHub whether the commit is already on a pull
+request the humans merged, closed, or pushed their own work past, which is what
+has to be ruled out before anything is sent. `publication` is the re-runnable
+order itself -- the durable marker, the lease, the push -- and `recovery` is
+what comes back for a marker a tick died holding, since everything past that
+write can leave the world changed. `plan_pr` opens or reuses the pull request
+and makes its body name the session the plan came out of, refusing a plan no
+session can be named for. `records` is what a finished publication writes down,
+and which of the two durable writes those records ride.
 
 The endings divide the same way the tick does. `parks` is the funnel all of
 them go through, and the only thing that writes: it stamps the reason the next

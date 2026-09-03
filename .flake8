@@ -61,7 +61,6 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS202
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
     orchestrator/workflow/stages/discussion/handler.py:WPS202
-    orchestrator/workflow/stages/discussion/publication.py:WPS202
     orchestrator/workflow/stages/discussion/run.py:WPS202
     orchestrator/workflow/stages/discussion/terminal.py:WPS202
     orchestrator/workflow/stages/fixing/resume.py:WPS201
