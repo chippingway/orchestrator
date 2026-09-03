@@ -485,7 +485,7 @@ The keys that matter for the state machine fall into a few groups:
   landed push settles it in the write that carries the receipt, so the fields go down with the publication rather
   than in a write behind it that a crash can take.
   Read back as ONE group, and bounded on both ends: the key has to name a field this workflow's routes actually
-  close (`late_split/state.py` spells that vocabulary as literals so the domain does not import the four stage
+  close (`late_split/spends.py` spells that vocabulary as literals so the domain does not import the four stage
   packages that own the keys, and a guard test proves the two agree), and the value has to be one the pinned comment
   can carry. A single member that fails either refuses the whole group and `late_claims` parks on the raw key still
   being there — half-applied is worse than none, since the caller restoring the hold cannot tell which half it got:
@@ -1035,13 +1035,15 @@ drives the real handlers against a spent ledger so an unwired road is caught as 
 The `late_*` keys are the late size gate's own group, and they are **additive**: an issue that never entered the gate
 carries none of them and reads back as an absent generation, so no migration reaches a live issue and a handler that
 reads and writes late state on every issue leaves a legacy pinned comment exactly as it found it. The keys are spelled
-once, on [`orchestrator/workflow/late_split/state.py`](../../orchestrator/workflow/late_split/state.py) —
+once, on [`orchestrator/workflow/late_split/keys.py`](../../orchestrator/workflow/late_split/keys.py) —
 `LATE_STATE_KEYS` is the whole of what one GENERATION owns inside the pinned comment, `read_late_generation` /
-`write_late_generation` are the round trip through them, and `clear_late_generation` is defined as dropping exactly
-that list and nothing else. Two late keys deliberately sit outside it, for the same reason — each is written so the
-generation CAN be cleared and would be worthless if the clear took it. `late_exempt_sha`, described below, lives on
-the [`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner beside it; `late_retired_cycle_id` is
-spelled on the `state` owner itself, beside the group it is excluded from. The typed record the
+`write_late_generation` on the [`state`](../../orchestrator/workflow/late_split/state.py) owner beside it are the
+round trip through them, and `clear_late_generation` is defined as dropping exactly
+that list and nothing else. The late keys that deliberately sit outside it all do for the same reason — each is
+written so the generation CAN be cleared and would be worthless if the clear took it. `late_exempt_sha`, described
+below, lives on the [`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner;
+`late_retired_cycle_id` and the two-phase terminal record beside it live on the
+[`endings`](../../orchestrator/workflow/late_split/endings.py) owner. The typed record the
 group round-trips through is `LateGeneration` on the `models` owner beside
 it. A write with no `late_cycle_id` records only what the issue still owes — the two external ledgers, if either
 holds anything — and drops the rest rather than keeping a half-record no audit line or child lineage could be

@@ -78,7 +78,7 @@ from orchestrator.workflow.engine import (
     observations as _observations,
     usage as _usage,
 )
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import endings as _endings, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.decomposition import (
     activation as _activation,
@@ -277,7 +277,7 @@ def _retired_cycle(state: PinnedState) -> LateGeneration:
         opaque_consumers=live.opaque_consumers,
     ))
     if live.is_present:
-        _late_state.record_retired_cycle(state, live.cycle_id)
+        _endings.record_retired_cycle(state, live.cycle_id)
     return live
 
 

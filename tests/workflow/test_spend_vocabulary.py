@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import spends as _spends
 from orchestrator.workflow.stages.conflicts import state as _conflicts_state
 from orchestrator.workflow.stages.documenting import (
     state as _documenting_state,
@@ -44,14 +44,14 @@ class SpendableFieldVocabularyTest(unittest.TestCase):
     def test_every_route_spends_a_known_field(self) -> None:
         for owed in _ROUTE_SPEND_KEYS:
             with self.subTest(owed=owed):
-                self.assertIn(owed, _late_state.SPENDABLE_FIELDS)
+                self.assertIn(owed, _spends.SPENDABLE_FIELDS)
 
     def test_the_vocabulary_names_nothing_else(self) -> None:
         # A key nothing writes is one nothing should accept back either: it is
         # a field a hand-edited record could set through a retry, and the
         # bound list is the whole of what stops that.
         self.assertEqual(
-            _late_state.SPENDABLE_FIELDS, frozenset(_ROUTE_SPEND_KEYS),
+            _spends.SPENDABLE_FIELDS, frozenset(_ROUTE_SPEND_KEYS),
         )
 
 

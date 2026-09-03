@@ -11,10 +11,14 @@ remote, whether it was cancelled, and whether a restart is half-written. The
 owners divide by what a reader is asking about it: what any late value has to
 look like (``formats``), the vocabularies and the frozen record itself
 (``models``), the identities it is keyed by (``identity``), what a hand-edited
-or older pinned comment reads back as (``payloads``), the pinned fields it
-round-trips through (``state``), the one commit an accepted candidate is let
-past the gate on, which deliberately outlives them (``exemption``), the
-two-phase restart marker over them
+or older pinned comment reads back as (``payloads``) and what its two external
+ledgers do instead (``ledgers``), the pinned keys the group is spelled by
+(``keys``), what each field and each ledger is written back as (``encoding``,
+``ledger_encoding``), the round trip those compose into (``state``), the
+vocabulary a restored spend is bounded by (``spends``), what a cycle's ending
+leaves behind past the clear (``endings``), the one commit an accepted
+candidate is let past the gate on, which deliberately outlives them
+(``exemption``), the two-phase restart marker over them
 (``restart``), what one event of its life may say (``events``), what a
 generation has to prove before any of it may be recorded (``validation``), the
 bounded record both observability sinks carry (``records``), and the dual

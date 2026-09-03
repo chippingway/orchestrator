@@ -26,6 +26,7 @@ from orchestrator.workflow.engine import (
     usage as _usage,
 )
 from orchestrator.workflow.late_split import (
+    endings as _endings,
     events as _events,
     state as _late_state,
 )
@@ -243,7 +244,7 @@ def _retired(
     )
     with retiring.held():
         _late_state.clear_late_generation(gate.state)
-        _late_state.record_retired_cycle(gate.state, generation.cycle_id)
+        _endings.record_retired_cycle(gate.state, generation.cycle_id)
         # What an APPROVAL still owes its route, put back inside the same
         # write that dropped the generation carrying it. Empty for every
         # other retirement: a superseded or adjudicated generation's
@@ -303,7 +304,7 @@ def _marked(gate: _records._Gate, generation: LateGeneration) -> None:
     )
     _parks._forget_approval(gate.state)
     _late_state.write_late_generation(gate.state, cancelled)
-    _late_state.clear_retired_cycle(gate.state)
+    _endings.clear_retired_cycle(gate.state)
     gate.gh.write_pinned_state(gate.issue, gate.state)
     _parks._emit(
         gate, cancelled,

@@ -6,7 +6,11 @@ from __future__ import annotations
 import unittest
 
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import exemption as _exemption, state as _late_state
+from orchestrator.workflow.late_split import (
+    exemption as _exemption,
+    keys as _late_keys,
+    state as _late_state,
+)
 from orchestrator.workflow.late_split.formats import InvalidLateValue
 from tests.workflow.late_split.generation_test_support import (
     BASE_SHA,
@@ -101,7 +105,7 @@ class ExemptionScopeTest(unittest.TestCase):
 
         self.assertEqual(_exemption.read_exemption(state), CANDIDATE_SHA)
         self.assertNotIn(
-            _exemption.LATE_EXEMPT_SHA, _late_state.LATE_STATE_KEYS,
+            _exemption.LATE_EXEMPT_SHA, _late_keys.LATE_STATE_KEYS,
         )
 
 
