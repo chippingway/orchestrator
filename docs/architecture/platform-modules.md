@@ -396,10 +396,11 @@ off a facade:
   it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against, and only `probes`
   reaches `commands` and `locks`. `models` carries only data. Nothing in the scan writes, fetches, or names GitHub,
   which is what lets a caller take it at any point in a tick. The classification over it keeps that split visible:
-  `evidence` calls `commands`, `locks`, `paths`, the `git/verification/` status probe, and `branch_transport` for the
-  one question a local ref may not answer — what the remote says a branch is at; `claims` names GitHub and reaches
-  `paths` for the branch names it asks GitHub about rather than for anything on disk; `eligibility` calls both and
-  nothing else. None of the three writes anything, on the host or on GitHub.
+  `evidence` calls `commands`, `locks`, `paths`, both `git/verification/` tree reads (the status one, and the
+  ignored-path one git leaves out of it and out of its own refusal to remove a dirty worktree), and
+  `branch_transport` for the one question a local ref may not answer — what the remote says a branch is at;
+  `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
+  disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,
