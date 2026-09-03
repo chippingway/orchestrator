@@ -1,36 +1,32 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Token-bearing git fetches and pushes, run under a credential session.
+"""Token-bearing branch fetches and the branch push, run under a credential session.
 
-The two fetches, the branch push, and the fully-qualified ref plumbing beside
-it share this module because they are one transport: each resolves a token
-through `credentials`, opens a session around it, and spawns git with the
-environment that session built and an argv naming nothing but the
-`x-access-token` URL. What the token stays out of is that argv -- git reads it
-from `$GIT_TOKEN` through the askpass script instead, so it never reaches the
-world-readable `/proc/<pid>/cmdline`. The session carries it here because this
-module needs it for the one thing the environment cannot do: scrubbing it back
-out of the stderr a failed call is logged with.
+The two fetches and the push share this module because they are one transport
+read at branch level: each resolves a token through `credentials`, opens a
+session around it, and spawns git with the environment that session built and
+an argv naming nothing but the `x-access-token` URL. What the token stays out
+of is that argv -- git reads it from `$GIT_TOKEN` through the askpass script
+instead, so it never reaches the world-readable `/proc/<pid>/cmdline`. The
+session carries it here because this module needs it for the one thing the
+environment cannot do: scrubbing it back out of the stderr a failed call is
+logged with.
 
-The ref plumbing is the branch push read one level down -- a remote read, a
-write, and a delete against a whole refname rather than a branch -- and it
-exists for the caller that owns an immutable namespace rather than a branch.
-What differs is the lease: a branch push may look the remote up for itself,
-because a branch is a moving thing whose current tip is the honest expectation,
-while a ref update here states what the caller established was there and has
-no form that overwrites whatever it finds. What policy that serves -- which
-namespace, and what an existing ref at another commit means -- belongs to
-`git/snapshots/`, which is the only caller.
+What a branch is at on the remote is asked through `ref_transport` beside this
+one, which owns every remote read and write named by a whole refname. The lease
+is where the two part: a branch push may look the remote up for itself, because
+a branch is a moving thing whose current tip is the honest expectation, while a
+ref update there states what the caller established was there and has no form
+that overwrites whatever it finds.
 """
 from __future__ import annotations
 
 import logging
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import commands, credentials, locks
+from orchestrator.git import commands, credentials, locks, ref_transport
 
 # The channel is named for the git-plumbing domain rather than for this
 # module's path: operators filter the rendered `orchestrator.git_plumbing`
@@ -251,40 +247,9 @@ def _remote_branch_tip(
         )
         return None
     with credentials._git_auth_session(spec, token) as auth_session:
-        return _remote_branch_sha(
-            auth_session, worktree, branch, f"refs/heads/{branch}", None,
+        return ref_transport._remote_ref_read(
+            auth_session, worktree, branch, f"refs/heads/{branch}",
         )
-
-
-def _remote_branch_sha(
-    auth_session: credentials._GitAuthSession,
-    worktree: Path,
-    branch: str,
-    ref: str,
-    force_with_lease: str | None,
-) -> str | None:
-    """Return the expected remote SHA, or None when it cannot be read."""
-    if force_with_lease is not None:
-        return force_with_lease
-    ls_remote = subprocess.run(
-        [*commands._AUTHED_GIT_PREFIX, "ls-remote", auth_session.auth_url, ref],
-        cwd=str(worktree),
-        capture_output=True,
-        text=True,
-        env=auth_session.env,
-        check=False,
-    )
-    if ls_remote.returncode != 0:
-        scrubbed = (ls_remote.stderr or "").replace(
-            auth_session.token, "***",
-        )
-        log.error("git ls-remote failed for %s: %s", branch, scrubbed)
-        return None
-    for output_line in (ls_remote.stdout or "").splitlines():
-        parts = output_line.strip().split()
-        if len(parts) >= 2 and parts[1] == ref:
-            return parts[0]
-    return ""
 
 
 def _push_with_auth(
@@ -296,8 +261,10 @@ def _push_with_auth(
 ) -> bool:
     """Push one branch through an established askpass session."""
     ref = f"refs/heads/{branch}"
-    remote_sha = _remote_branch_sha(
-        auth_session, worktree, branch, ref, force_with_lease,
+    remote_sha = (
+        ref_transport._remote_ref_read(auth_session, worktree, branch, ref)
+        if force_with_lease is None
+        else force_with_lease
     )
     if remote_sha is None:
         return False
@@ -459,157 +426,3 @@ def _push_branch(
         return _push_with_auth(
             auth_session, worktree, branch, force_with_lease, revision or _HEAD,
         )
-
-
-@dataclass(frozen=True)
-class _RefUpdate:
-    """One lease-pinned write to a fully-qualified ref, and what it is called.
-
-    Carried as a record rather than as four arguments because the four are one
-    decision: the ref names what is being written, the refspec says whether
-    that is a commit or a deletion, the lease says what the caller established
-    was there first, and the name is what a refusal is reported as. A caller
-    assembling three of them and forgetting the fourth would be pushing
-    without a lease, which is the one thing this transport does not do.
-    """
-
-    ref: str
-    refspec: str
-    expected: str
-    operation: str
-
-
-def _remote_ref_sha(
-    spec: config.RepoSpec, worktree: Path, ref: str,
-) -> str | None:
-    """Ask the REMOTE what one fully-qualified ref resolves to.
-
-    The read every snapshot decision is made on, and it is taken from the
-    remote rather than from a local ref for the reason `_remote_branch_tip`
-    is: the object store a worktree shares is writable by the agent that runs
-    in it, so a local ref that looks like the snapshot proves nothing about
-    what the remote actually carries.
-
-    Three answers, and the caller has to tell them apart. A SHA is the ref as
-    the remote holds it. "" is the remote saying it does not carry that ref at
-    all, which is what makes an absent-is-success deletion and a create that
-    may proceed possible. None established nothing -- a missing token, a
-    worktree whose config could hijack the transport, an unreachable remote --
-    and a caller that created or deleted on the strength of it would be acting
-    on a reading nobody gave.
-    """
-    token = credentials._resolved_git_token(spec, "read the remote ref")
-    if not token:
-        return None
-    unsafe = commands._unsafe_local_transport_config(worktree)
-    if unsafe:
-        log.error(
-            "refusing to read %s from the remote: worktree .git/config has "
-            "transport-hijacking config: %s", ref, unsafe,
-        )
-        return None
-    with credentials._git_auth_session(spec, token) as auth_session:
-        return _remote_branch_sha(auth_session, worktree, ref, ref, None)
-
-
-def _push_ref(
-    spec: config.RepoSpec,
-    worktree: Path,
-    *,
-    ref: str,
-    revision: str,
-    expected: str,
-) -> bool:
-    """Publish one exact commit under one fully-qualified ref.
-
-    `expected` is the SHA the caller established the remote ref was at, and it
-    is required rather than optional: this is the transport an immutable ref
-    namespace is written through, so it has no form that overwrites whatever
-    happens to be there. An empty string is the lease saying the ref must not
-    exist, which is how a snapshot is created; any other value is the lease
-    saying it must still be exactly what the caller read.
-
-    The revision is named rather than pushed as `HEAD`, for the reason the
-    branch push takes one: what is published is a commit somebody proved, and
-    HEAD between the proof and the push is not necessarily still it.
-    """
-    return _authed_ref_update(spec, worktree, _RefUpdate(
-        ref=ref,
-        refspec=f"{revision}:{ref}",
-        expected=expected,
-        operation=_PUSH,
-    ))
-
-
-def _delete_remote_ref(
-    spec: config.RepoSpec, worktree: Path, *, ref: str, expected: str,
-) -> bool:
-    """Delete one fully-qualified ref the caller has just read.
-
-    Pinned to what that read said, for the reason the create is: a ref
-    somebody re-pointed between the read and the delete is not the ref this
-    caller decided was reclaimable, and deleting it would destroy an artifact
-    nobody adjudicated. A caller that found nothing there has nothing to
-    delete and never reaches this.
-    """
-    return _authed_ref_update(spec, worktree, _RefUpdate(
-        ref=ref,
-        refspec=f":{ref}",
-        expected=expected,
-        operation="delete",
-    ))
-
-
-def _authed_ref_update(
-    spec: config.RepoSpec, worktree: Path, update: _RefUpdate,
-) -> bool:
-    """Run one lease-pinned ref update under the whole transport envelope.
-
-    The same envelope `_push_branch` runs under -- per-spec token, askpass so
-    the token never reaches argv, global and system config detached, hooks,
-    credential helpers, and fsmonitor disabled by `-c`, and a refusal when the
-    local config carries a url rewrite or an `http.*` setting that could
-    redirect the token-bearing push -- because this call carries the same token
-    to the same host.
-
-    Held under the target-root lock, which the branch push does not need and
-    this does: the namespace it writes is the one a verifying fetch reads back
-    into the shared clone, so a concurrent fetch of the same namespace from
-    another worktree of this target root would race the update it is proving.
-    """
-    token = credentials._resolved_git_token(spec, f"{update.operation} {update.ref}")
-    if not token:
-        return False
-    unsafe = commands._unsafe_local_transport_config(worktree)
-    if unsafe:
-        log.error(
-            "refusing to %s %s: worktree .git/config has "
-            "transport-hijacking config: %s",
-            update.operation, update.ref, unsafe,
-        )
-        return False
-    with credentials._git_auth_session(spec, token) as auth_session:
-        with locks._target_root_lock(spec.target_root):
-            updated = subprocess.run(
-                [
-                    *commands._AUTHED_GIT_PREFIX,
-                    _PUSH,
-                    f"--force-with-lease={update.ref}:{update.expected}",
-                    auth_session.auth_url,
-                    update.refspec,
-                ],
-                cwd=str(worktree),
-                capture_output=True,
-                text=True,
-                env=auth_session.env,
-                check=False,
-            )
-        if updated.returncode == 0:
-            return True
-        log.error(
-            "git %s failed for %s: %s",
-            update.operation,
-            update.ref,
-            (updated.stderr or "").replace(auth_session.token, "***"),
-        )
-    return False

@@ -19,7 +19,7 @@ The two questions about the remote are put to the remote. A
 ref in the object store every per-issue worktree shares, so an agent that
 repoints `refs/remotes/<remote>/<base>` at its own tip makes an unpublished
 branch read as already merged -- and a reclaim measuring against it would
-delete the only copy of that work. `authentication._remote_branch_tip` asks
+delete the only copy of that work. `branch_transport._remote_branch_tip` asks
 over the authenticated transport instead, which is the one answer nothing on
 this host can rewrite. It is a read on both sides, so a verdict still leaves
 no state behind it anywhere.
@@ -47,7 +47,7 @@ import subprocess
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication, commands, locks
+from orchestrator.git import branch_transport, commands, locks
 from orchestrator.git.verification import probes as verification_probes
 from orchestrator.git.worktrees import paths
 from orchestrator.git.worktrees.models import BranchTip, ProbeAnswer
@@ -214,7 +214,7 @@ def _published_tip(spec: config.RepoSpec, branch: str) -> BranchTip:
     the pass along with this one.
     """
     try:
-        published = authentication._remote_branch_tip(
+        published = branch_transport._remote_branch_tip(
             spec, spec.target_root, branch,
         )
     except Exception:

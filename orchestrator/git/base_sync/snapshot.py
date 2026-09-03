@@ -14,7 +14,7 @@ head it never saw.
 from __future__ import annotations
 
 from orchestrator import config
-from orchestrator.git import authentication, commands
+from orchestrator.git import branch_transport, commands
 from orchestrator.git.base_sync import persistence
 from orchestrator.git.base_sync.models import (
     _AutoRebaseRecoveryContext,
@@ -79,7 +79,7 @@ def _fetch_recovery_snapshot(
     branch = paths._resolve_branch_name(
         context.state, spec, context.issue.number,
     )
-    fetch_result = authentication._authed_fetch(
+    fetch_result = branch_transport._authed_fetch(
         spec,
         f"+refs/heads/{branch}:refs/remotes/"
         f"{spec.remote_name}/{branch}",

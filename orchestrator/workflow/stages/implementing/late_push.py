@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, replace as _replace
 
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
@@ -229,7 +229,7 @@ def _pushed(
     re-read. Where the gate froze nothing at all the push reads the remote
     itself, which is the behavior an install with the switch off keeps.
     """
-    return _authentication._push_branch(
+    return _branch_transport._push_branch(
         gate.spec, gate.worktree, branch,
         revision=published.revision or None,
         force_with_lease=published.lease or None,

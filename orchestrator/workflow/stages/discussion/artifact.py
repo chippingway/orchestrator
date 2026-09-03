@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.stages.discussion import (
@@ -152,5 +152,5 @@ def _readable_remote_tip(
     """
     if _verification_probes._commit_present(artifact.worktree, remote_tip):
         return True
-    _authentication._authed_target_fetch(run.spec, artifact.branch)
+    _branch_transport._authed_target_fetch(run.spec, artifact.branch)
     return _verification_probes._commit_present(artifact.worktree, remote_tip)

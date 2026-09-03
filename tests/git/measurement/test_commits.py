@@ -13,7 +13,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 from orchestrator.git.measurement import commits
 from orchestrator.git.measurement.models import MeasurementFailure
 from tests.git.measurement import measurement_test_support as _support
@@ -70,7 +70,7 @@ class BaseFreezeTest(unittest.TestCase):
         # way no diff can be taken, and a candidate with no diff is unmeasured
         # rather than small.
         with patch.object(
-            authentication, _REMOTE_TIP_READ, return_value=_support.ABSENT_SHA,
+            branch_transport, _REMOTE_TIP_READ, return_value=_support.ABSENT_SHA,
         ):
             frozen = commits._freeze_base_commit(
                 self._repo.spec, self._repo.worktree,
@@ -86,7 +86,7 @@ class BaseFreezeTest(unittest.TestCase):
         # whose base has moved on, measuring a different pair. Nothing may
         # measure against it either way, which `is_frozen` above refuses.
         with patch.object(
-            authentication, _REMOTE_TIP_READ, return_value=_support.ABSENT_SHA,
+            branch_transport, _REMOTE_TIP_READ, return_value=_support.ABSENT_SHA,
         ):
             frozen = commits._freeze_base_commit(
                 self._repo.spec, self._repo.worktree,
@@ -101,7 +101,7 @@ class BaseFreezeTest(unittest.TestCase):
         for answer in (None, ""):
             with self.subTest(answer=answer):
                 with patch.object(
-                    authentication, _REMOTE_TIP_READ, return_value=answer,
+                    branch_transport, _REMOTE_TIP_READ, return_value=answer,
                 ):
                     frozen = commits._freeze_base_commit(
                         self._repo.spec, self._repo.worktree,

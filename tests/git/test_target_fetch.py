@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Target-root authenticated fetch owned by the authentication module."""
+"""Target-root authenticated fetch owned by the branch transport."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
-from orchestrator.git import authentication
-from tests.git.authentication_test_support import (
+from orchestrator.git import branch_transport
+from tests.git.token_transport_test_support import (
     CACHE_BRANCH,
     MAIN_BRANCH,
     PRIVATE_REPO_SLUG,
@@ -67,7 +67,7 @@ class AuthedTargetFetchTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, token_resolver),
         ):
-            fetch = authentication._authed_target_fetch(repo, CACHE_BRANCH)
+            fetch = branch_transport._authed_target_fetch(repo, CACHE_BRANCH)
 
         self.assertEqual(fetch.returncode, 0)
         # Token resolved exactly once -- for the spec's slug, NOT the
@@ -103,7 +103,7 @@ class AuthedTargetFetchTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, return_value=SECRET_TOKEN),
         ):
-            authentication._authed_target_fetch(_spec(), MAIN_BRANCH)
+            branch_transport._authed_target_fetch(_spec(), MAIN_BRANCH)
 
         _assert_hardened_fetch(self, run_recorder, SECRET_TOKEN)
 
@@ -126,7 +126,7 @@ class AuthedTargetFetchTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, return_value=SECRET_TOKEN),
         ):
-            fetch = authentication._authed_target_fetch(_spec(), MAIN_BRANCH)
+            fetch = branch_transport._authed_target_fetch(_spec(), MAIN_BRANCH)
 
         # Only the rewrite probe ran; the token-bearing fetch did NOT.
         self.assertEqual(len(run_recorder.calls), 1)
@@ -154,9 +154,9 @@ class AuthedTargetFetchTest(unittest.TestCase):
                 patch.object(config, TOKEN_RESOLVER, return_value=SECRET_TOKEN),
             )
             log_capture.records = stack.enter_context(
-                self.assertLogs(authentication.log, level="ERROR"),
+                self.assertLogs(branch_transport.log, level="ERROR"),
             )
-            fetch = authentication._authed_target_fetch(
+            fetch = branch_transport._authed_target_fetch(
                 config.RepoSpec(
                     slug="chippingway/orchestrator",
                     target_root=repo,
@@ -185,9 +185,9 @@ class AuthedTargetFetchTest(unittest.TestCase):
                 patch.object(config, TOKEN_RESOLVER, return_value=""),
             )
             log_capture.records = stack.enter_context(
-                self.assertLogs(authentication.log, level="ERROR"),
+                self.assertLogs(branch_transport.log, level="ERROR"),
             )
-            fetch = authentication._authed_target_fetch(
+            fetch = branch_transport._authed_target_fetch(
                 _private_spec(), CACHE_BRANCH,
             )
 

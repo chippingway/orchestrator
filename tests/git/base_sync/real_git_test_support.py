@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 from orchestrator.git.base_sync import refresh
 from tests.git.base_sync.gate_reads_support import _gate_base_reads
 
@@ -187,7 +187,7 @@ class _FixtureBuilder:
         # refresh.
         _gate_base_reads(fixture)
         fixture._fetch_patch = patch.object(
-            authentication,
+            branch_transport,
             "_authed_target_fetch",
             side_effect=_local_fetch,
         )

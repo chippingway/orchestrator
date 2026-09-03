@@ -19,7 +19,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator.git import authentication, commands
+from orchestrator.git import branch_transport, commands
 from orchestrator.git.worktrees import evidence
 from orchestrator.git.worktrees.models import BranchTip, ProbeAnswer
 from tests.git.worktrees.artifact_test_support import (
@@ -268,7 +268,7 @@ class PublishedTipTest(_HostTestCase):
         self.commit()
 
         with patch.object(
-            authentication,
+            branch_transport,
             "_remote_branch_tip",
             side_effect=OSError("no git here"),
         ):

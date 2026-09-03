@@ -25,7 +25,7 @@ import logging
 from contextlib import suppress
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication, commands as _git_commands
+from orchestrator.git import branch_transport as _branch_transport, commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.documenting import models as _models, parks as _parks
 from orchestrator.workflow.state import WorkflowLabel
@@ -42,7 +42,7 @@ def _documenting_drift_fetch(ctx: _models._DocumentingContext, wt) -> bool:
     """
     spec = ctx.spec
     branch = ctx.branch
-    fetch_branch = _authentication._authed_fetch(
+    fetch_branch = _branch_transport._authed_fetch(
         spec,
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}",
         cwd=wt,

@@ -21,7 +21,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.git import authentication, locks
+from orchestrator.git import branch_transport, locks
 from orchestrator.git.worktrees import creation, paths
 from tests.git.concurrency_test_support import _start_and_join
 
@@ -178,12 +178,12 @@ class _RealGitWorktreeRepo:
             self._tmpdir / "worktrees",
         )
         fetch_patch = patch.object(
-            authentication,
+            branch_transport,
             "_authed_target_fetch",
             side_effect=_LocalTransport().fetch,
         )
         tip_patch = patch.object(
-            authentication,
+            branch_transport,
             "_remote_branch_tip",
             side_effect=_LocalTransport().tip,
         )

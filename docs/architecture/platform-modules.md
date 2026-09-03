@@ -40,15 +40,18 @@ last is held by the loader itself rather than by a check.
   setting as a module attribute, which is the reload and patch target every caller reads one through. Each package's
   own tests hold its surface — a `test_imports.py` in the domains, `tests/config/test_surface.py` for the settings
   module — and `tests/repository/test_package_exports.py` holds the publish-or-front-nothing rule over the tree.
-- **No second site.** No domain here sits behind a facade. Where a package replaced flat modules — `git/` and four
-  of its six subpackages, `runtime/`, `skills/` — its own `test_imports.py` asserts that nothing resolves at the
-  retired spelling, that no inventory or resolver hook names one as a target, and that no aggregate over the git
-  domains sits above them — `tests/git/publication/test_imports.py` carries that last one. `git/measurement/` and
-  `git/snapshots/` replaced nothing and hold the surface assertion anyway. The rule also holds one name at a time
-  where a second binding would be invisible: the transport reaches the token lookup, the askpass session, and the
-  session record through `credentials` rather than importing the three by name, and `tests/git/test_imports.py`
-  asserts each is bound on that owner and nowhere in `authentication` — a copy there would read as the patch target
-  a test aims at while the session a call actually opens stayed the owner's.
+- **No second site.** No domain here sits behind a facade. Where a package replaced flat modules — `git/` and four of
+  its six subpackages, `runtime/`, `skills/` — its own `test_imports.py` asserts that nothing resolves at the retired
+  spelling, that no inventory or resolver hook names one as a target, and that no aggregate over the git domains sits
+  above them — `tests/git/publication/test_imports.py` carries that last one. `git/measurement/` and `git/snapshots/`
+  replaced nothing and hold the surface assertion anyway, and the same list carries `git/authentication.py`, the
+  module the two transports were split out of, so no facade settles back at that spelling. The rule also holds one
+  name at a time where a second binding would be invisible: each transport reaches the token lookup, the askpass
+  session, and the session record through `credentials`, and the branch transport reaches the `ls-remote` read a lease
+  is taken from through `ref_transport`, rather than importing any of the four by name. `tests/git/test_imports.py`
+  asserts each is bound on the owner that defines it and nowhere in the module that spends it — a copy beside the
+  caller would read as the patch target a test aims at while the session or the read a call actually takes stayed the
+  owner's.
 - **One road to a process.** The `agents/` chain is reached at one point from above and one per hop below it: only
   `workflow/engine/usage.py` calls `run_agent`, and the initializer republishing it as the package API is the one
   other module that names it at all; only `runner.py` names `codex.run_codex` / `claude.run_claude`; and only the two
@@ -58,14 +61,15 @@ last is held by the loader itself rather than by a check.
   than a call so a spawn bound into a variable is caught where its name is written, and holds the call itself to
   `_run_agent_tracked`'s own body with the circuit asked on a line above it.
 - **Operator log channels.** Four names are spelled literally rather than derived from `__name__`, because an
-  operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/authentication.py`,
-  `git/credentials.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that log, which all report on
-  the same token, `ls-remote`, fetch, push, and diff plumbing),
+  operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
+  `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that
+  log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
   `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the nine `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
-  `tests/git/test_authentication.py` and `tests/git/test_credentials.py`, `tests/git/base_sync/test_state.py`,
-  `tests/git/worktrees/test_imports.py`, and `tests/git/publication/test_imports.py`.
+  `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
+  `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`, and
+  `tests/git/publication/test_imports.py`.
 - **Import cost.** `import orchestrator` costs the root module and no owner behind it, and importing a `runtime/`
   owner plants neither the CLI nor an app — `tests/runtime/test_imports.py` and `tests/apps/test_imports.py`.
 - **Direction inside `skills/`.** Neither owner may reach the workflow engine, a stage, or an application entry
@@ -163,9 +167,8 @@ orchestrator/
                         worker holds the issue costs an observation rather than a turn, and the workflow keeps that
                         reading where its own stage handlers can reach it
   git/
-    authentication.py   the authenticated fetches, the remote-ref reads that answer what a branch or a whole refname
-                        is at without a local one, the lease-pinned branch push, and the lease-pinned ref write and
-                        delete an immutable namespace is owned through -- each spending one credential session
+    branch_transport.py the authenticated fetches, the remote read that answers what a branch is at without trusting
+                        a local ref, and the lease-pinned branch push -- each spending one credential session
     commands.py         plain / hardened git execution, the argv hardening and no-prompt environment, the per-call
                         environment pin a caller adds over it, the absolute `--work-tree` argument a working-tree
                         operation names its tree with, and the unsafe local-transport probe
@@ -173,6 +176,8 @@ orchestrator/
                         the session record a token-bearing call is spawned from -- the detached environment, the
                         URL naming only the `x-access-token` username, and the token the transport redacts with
     locks.py            the per-target-root re-entrant lock registry and its accessor
+    ref_transport.py    the remote read named by a whole refname, and the lease-pinned write and delete an immutable
+                        ref namespace is owned through -- the read the branch transport spends for its own lease too
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
                         in -- including the label scope on the two freezes no write ever ends -- and the
@@ -358,27 +363,27 @@ The six subpackages bind their collaborators directly, so the dependency directi
 off a facade:
 
 - `publication/` — `probes` calls `commands`; `titles` calls `probes`; `planning` calls `commands`, both siblings,
-  and the verification probes; `rewrite` calls `commands`, `authentication`, and those probes; `squash` calls
+  and the verification probes; `rewrite` calls `commands`, `branch_transport`, and those probes; `squash` calls
   `planning` and `rewrite`.
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
-- `measurement/` — `models` carries only data. `commits` calls `commands`, `authentication`, and the verification
+- `measurement/` — `models` carries only data. `commits` calls `commands`, `branch_transport`, and the verification
   probes for the two object reads; `additions` calls `commands` and `commits`. Nothing here reaches the workflow
   layer, so the ceiling a count is compared against, and the verdict that comparison earns, stay with the caller.
 - `snapshots/` — `namespace` is string policy and reaches nothing, which is what lets the late domain's lineage
-  record consult it on every pinned read without paying for the transport; `refs` calls `authentication` for the
-  remote read, the lease-pinned write and delete, and the fetch, and `commands` for the hardened local resolution
-  that proves what the fetch brought. The workflow decides WHEN a snapshot is taken and what its absence costs; this
-  package decides only what a snapshot ref IS and refuses everything outside it.
-- `worktrees/` — the creators call `commands`, `locks`, `authentication`, and their `paths` / `recovery` siblings;
+  record consult it on every pinned read without paying for the transport; `refs` calls `ref_transport` for the
+  remote read and the lease-pinned write and delete, `branch_transport` for the fetch, and `commands` for the
+  hardened local resolution that proves what the fetch brought. The workflow decides WHEN a snapshot is taken and
+  what its absence costs; this package decides only what a snapshot ref IS and refuses everything outside it.
+- `worktrees/` — the creators call `commands`, `locks`, `branch_transport`, and their `paths` / `recovery` siblings;
   `decomposition` resolves its own path helper; `terminal` composes its local teardown from `cleanup`. The read-only
-  scan sits on the same owners: `inventory` calls `probes` and `attribution`, and `paths` itself for the checkout
-  path it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against, and only
-  `probes` reaches `commands` and `locks`. `models` carries only data. Nothing in the scan writes, fetches, or names
-  GitHub, which is what lets a caller take it at any point in a tick. The classification over it keeps that split
-  visible: `evidence` calls `commands`, `locks`, `paths`, the `git/verification/` status probe, and
-  `authentication` for the one question a local ref may not answer — what the remote says a branch is at;
-  `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
-  disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
+  scan sits on the same owners: `inventory` calls `probes` and `attribution`, and `paths` itself for the checkout path
+  it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against, and only `probes`
+  reaches `commands` and `locks`. `models` carries only data. Nothing in the scan writes, fetches, or names GitHub,
+  which is what lets a caller take it at any point in a tick. The classification over it keeps that split visible:
+  `evidence` calls `commands`, `locks`, `paths`, the `git/verification/` status probe, and `branch_transport` for the
+  one question a local ref may not answer — what the remote says a branch is at; `claims` names GitHub and reaches
+  `paths` for the branch names it asks GitHub about rather than for anything on disk; `eligibility` calls both and
+  nothing else. None of the three writes anything, on the host or on GitHub.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,

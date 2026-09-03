@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
-from orchestrator.git import authentication, commands
+from orchestrator.git import branch_transport, commands
 from orchestrator.git.worktrees import decomposition, paths
 
 BASE_BRANCH = "main"
@@ -156,7 +156,7 @@ def _worktree_fixture(
 ) -> Iterator[_WorktreeFixture]:
     """Point the worktrees root at a temp dir and fake the git plumbing.
 
-    The owners bind `git.commands` and `git.authentication` directly, so a
+    The owners bind `git.commands` and `git.branch_transport` directly, so a
     test that has to intercept what they run patches those owners.
     `WORKTREES_DIR` moves so `Path.exists()` answers for
     real -- the reuse decision turns on it.
@@ -172,9 +172,9 @@ def _worktree_fixture(
         tempfile.TemporaryDirectory(prefix="orch-worktree-") as temp_dir,
         patch.object(config, "WORKTREES_DIR", Path(temp_dir)),
         patch.object(commands, "_git", recorder),
-        patch.object(authentication, "_authed_target_fetch", fetches),
+        patch.object(branch_transport, "_authed_target_fetch", fetches),
         patch.object(
-            authentication, "_remote_branch_tip", return_value=remote_tip,
+            branch_transport, "_remote_branch_tip", return_value=remote_tip,
         ),
     ):
         yield _WorktreeFixture(

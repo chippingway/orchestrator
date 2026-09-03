@@ -11,7 +11,13 @@ from importlib import import_module
 from importlib.util import find_spec
 
 from orchestrator import git as _git_package
-from orchestrator.git import authentication, commands, credentials, locks
+from orchestrator.git import (
+    branch_transport,
+    commands,
+    credentials,
+    locks,
+    ref_transport,
+)
 from tests.git.inventory_test_support import inventory_modules
 
 _PACKAGE = "orchestrator"
@@ -25,17 +31,22 @@ _AGGREGATE_HUB = "orchestrator.worktrees"
 
 _ABSENT_TARGETS = (_AGGREGATE_HUB, _PLUMBING_FACADE)
 
+# The module the two transports were split out of, retired rather than left
+# behind as a facade over them.
+_RETIRED_TRANSPORT = "orchestrator.git.authentication"
+
 _MODULES = (
     "orchestrator.git",
-    "orchestrator.git.authentication",
+    "orchestrator.git.branch_transport",
     "orchestrator.git.commands",
     "orchestrator.git.credentials",
     "orchestrator.git.locks",
+    "orchestrator.git.ref_transport",
 )
 
 # The module paths a second import site for these owners would take: the two
-# spellings themselves, and the inventory and resolver hooks either one would
-# be built from.
+# spellings themselves, the inventory and resolver hooks either one would be
+# built from, and the module the transports were split out of.
 _FLAT_MODULES = (
     "orchestrator._git_plumbing_export_manifest",
     "orchestrator._git_plumbing_exports",
@@ -43,6 +54,7 @@ _FLAT_MODULES = (
     "orchestrator._worktrees_exports",
     _AGGREGATE_HUB,
     _PLUMBING_FACADE,
+    _RETIRED_TRANSPORT,
 )
 
 # The per-root lock and the askpass session, named once each because both
@@ -50,6 +62,10 @@ _FLAT_MODULES = (
 _ROOT_LOCK = "_target_root_lock"
 
 _AUTH_SESSION = "_git_auth_session"
+
+# The one remote read both transports answer a lease with, named once because
+# it recurs in the owner surface and in the binding assertion below.
+_REF_READ = "_remote_ref_read"
 
 # The initializer binds nothing, so each name answers on the owner that defines
 # it, never on the package itself.
@@ -63,6 +79,7 @@ _OWNER_ONLY_NAMES = (
     "_git_hardened",
     "_push_branch",
     "_push_ref",
+    _REF_READ,
     "_remote_ref_sha",
     _ROOT_LOCK,
     "_unsafe_local_transport_config",
@@ -130,20 +147,30 @@ class OwnerImportSiteTest(unittest.TestCase):
     """No surface over these owners sits beside them."""
 
     def test_credential_names_have_one_binding(self) -> None:
-        # The transport reaches these through the module rather than importing
-        # them by name. A second binding in `authentication` would be a patch
+        # Each transport reaches these through the module rather than
+        # importing them by name. A second binding on either would be a patch
         # target that reads as the right one and intercepts nothing, since the
         # session a call actually opens would still be the owner's.
         for credential_name in _CREDENTIAL_NAMES:
-            with self.subTest(name=credential_name):
-                self.assertIn(credential_name, credentials.__dict__)
-                self.assertNotIn(credential_name, authentication.__dict__)
+            for spender in (branch_transport, ref_transport):
+                with self.subTest(name=credential_name, owner=spender):
+                    self.assertIn(credential_name, credentials.__dict__)
+                    self.assertNotIn(credential_name, spender.__dict__)
+
+    def test_the_remote_read_has_one_binding(self) -> None:
+        # A branch tip and a whole refname are the same `ls-remote`, so the
+        # branch transport spends the ref owner's read rather than keeping one
+        # of its own. A copy beside the caller would be the patch target a test
+        # aims at while the read a push actually takes stayed the owner's.
+        self.assertIn(_REF_READ, ref_transport.__dict__)
+        self.assertNotIn(_REF_READ, branch_transport.__dict__)
 
     def test_no_flat_module_exists(self) -> None:
         # Anything importable at these paths would be a second identity for the
-        # hardened argv prefixes every git call is spawned with and the
-        # per-root lock the worktree mutations serialize under -- free to drift
-        # from the owner silently and invisible to a patch aimed at it.
+        # hardened argv prefixes every git call is spawned with, the per-root
+        # lock the worktree mutations serialize under, or the transport the two
+        # owners were split out of -- free to drift from the owner silently and
+        # invisible to a patch aimed at it.
         # Resolving the spec rather than stat-ing one path catches a copy
         # planted anywhere the interpreter would find it.
         for module in _FLAT_MODULES:

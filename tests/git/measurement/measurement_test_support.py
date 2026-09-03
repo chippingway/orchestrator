@@ -26,7 +26,7 @@ from types import MappingProxyType
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 
 GIT_COMMAND = "git"
 QUIET_FLAG = "--quiet"
@@ -188,11 +188,11 @@ class _WorldBuilder:
         transport = _LocalTransport()
         transport_patches = (
             patch.object(
-                authentication, "_authed_target_fetch",
+                branch_transport, "_authed_target_fetch",
                 side_effect=transport.fetch,
             ),
             patch.object(
-                authentication, "_remote_branch_tip", side_effect=transport.tip,
+                branch_transport, "_remote_branch_tip", side_effect=transport.tip,
             ),
         )
         for transport_patch in transport_patches:

@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""In-worktree authenticated fetch owned by the authentication module."""
+"""In-worktree authenticated fetch owned by the branch transport."""
 
 from __future__ import annotations
 
@@ -10,8 +10,14 @@ from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
-from orchestrator.git import authentication
-from tests.git.authentication_test_support import (
+from orchestrator.git import branch_transport
+from tests.git.concurrency_test_support import (
+    PROBE_DELAY_SECONDS,
+    THREAD_TIMEOUT_SECONDS,
+    _ConcurrencyProbe,
+    _start_and_join,
+)
+from tests.git.token_transport_test_support import (
     FAKE_TOKEN,
     REPOSITORY_SLUG,
     SUBPROCESS_RUN,
@@ -19,12 +25,6 @@ from tests.git.authentication_test_support import (
     TOKEN_RESOLVER,
     _assert_hardened_fetch,
     _spec,
-)
-from tests.git.concurrency_test_support import (
-    PROBE_DELAY_SECONDS,
-    THREAD_TIMEOUT_SECONDS,
-    _ConcurrencyProbe,
-    _start_and_join,
 )
 from tests.git.transport_helpers import (
     _GitRunRecorder,
@@ -59,7 +59,7 @@ class AuthedFetchHardeningTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
         ):
-            authentication._authed_fetch(
+            branch_transport._authed_fetch(
                 _spec(),
                 FORCED_MAIN_REFSPEC,
                 cwd=TEMP_ROOT,
@@ -81,7 +81,7 @@ class AuthedFetchHardeningTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
         ):
-            fetch = authentication._authed_fetch(
+            fetch = branch_transport._authed_fetch(
                 _spec(),
                 FORCED_MAIN_REFSPEC,
                 cwd=TEMP_ROOT,
@@ -105,9 +105,9 @@ class AuthedFetchHardeningTest(unittest.TestCase):
                 patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
             )
             log_capture.records = stack.enter_context(
-                self.assertLogs(authentication.log, level="ERROR"),
+                self.assertLogs(branch_transport.log, level="ERROR"),
             )
-            fetch = authentication._authed_fetch(
+            fetch = branch_transport._authed_fetch(
                 _spec(),
                 FORCED_MAIN_REFSPEC,
                 cwd=repo,
@@ -126,7 +126,7 @@ class AuthedFetchHardeningTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, subprocess_run),
             patch.object(config, TOKEN_RESOLVER, return_value=""),
         ):
-            fetch = authentication._authed_fetch(
+            fetch = branch_transport._authed_fetch(
                 _spec(),
                 FORCED_MAIN_REFSPEC,
                 cwd=TEMP_ROOT,
@@ -151,7 +151,7 @@ class AuthedFetchHardeningTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, token_resolver),
         ):
-            fetch = authentication._authed_fetch(
+            fetch = branch_transport._authed_fetch(
                 _spec(REPOSITORY_SLUG),
                 FORCED_MAIN_REFSPEC,
                 cwd=TEMP_ROOT,
@@ -185,9 +185,9 @@ class AuthedFetchHardeningTest(unittest.TestCase):
                 patch.object(config, TOKEN_RESOLVER, return_value=""),
             )
             log_capture.records = stack.enter_context(
-                self.assertLogs(authentication.log, level="ERROR"),
+                self.assertLogs(branch_transport.log, level="ERROR"),
             )
-            fetch = authentication._authed_fetch(
+            fetch = branch_transport._authed_fetch(
                 _spec(REPOSITORY_SLUG),
                 FORCED_MAIN_REFSPEC,
                 cwd=TEMP_ROOT,
@@ -224,7 +224,7 @@ class AuthedFetchSerializationTest(unittest.TestCase):
         ):
             threads = [
                 threading.Thread(
-                    target=authentication._authed_fetch,
+                    target=branch_transport._authed_fetch,
                     args=(_spec(), FORCED_MAIN_REFSPEC),
                     kwargs={"cwd": worktree},
                 )

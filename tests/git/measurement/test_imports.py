@@ -105,7 +105,7 @@ class LayeringTest(unittest.TestCase):
         # transport the freeze needs: charging a reader for an askpass session
         # is what makes a data type expensive enough to copy instead.
         self.assertNotIn(
-            "orchestrator.git.authentication",
+            "orchestrator.git.branch_transport",
             _imported_orchestrator_modules(
                 "orchestrator.git.measurement.models",
             ),

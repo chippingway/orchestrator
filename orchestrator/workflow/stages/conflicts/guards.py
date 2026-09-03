@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication, commands as _git_commands
+from orchestrator.git import branch_transport as _branch_transport, commands as _git_commands
 from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.conflicts import models as _models
@@ -75,7 +75,7 @@ def _already_rebased_onto_base(spec: config.RepoSpec, wt: Path) -> bool:
     would incorrectly enable the force-publish path without proving HEAD
     is on the current base.
     """
-    fetch = _authentication._authed_fetch(
+    fetch = _branch_transport._authed_fetch(
         spec,
         f"+refs/heads/{spec.base_branch}:"
         f"refs/remotes/{spec.remote_name}/{spec.base_branch}",

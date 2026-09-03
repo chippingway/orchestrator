@@ -20,7 +20,7 @@ from types import MappingProxyType
 from unittest import mock
 
 from orchestrator import config
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 from orchestrator.git.base_sync import recovery
 from tests.git.base_sync.gate_reads_support import _gate_base_reads
 from tests.support.fakes import (
@@ -254,10 +254,10 @@ class RecoveryGitFixtureMixin:
         _RecoveryRepositoryBuilder(self).prepare()
         self.push = _LocalLeasePush()
         self.enterContext(
-            mock.patch.object(authentication, AUTHED_FETCH, _local_fetch),
+            mock.patch.object(branch_transport, AUTHED_FETCH, _local_fetch),
         )
         self.enterContext(
-            mock.patch.object(authentication, PUSH_BRANCH, self.push),
+            mock.patch.object(branch_transport, PUSH_BRANCH, self.push),
         )
 
     def recover(self) -> bool:

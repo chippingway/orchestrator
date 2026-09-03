@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 
 FETCH_OPERATION = "fetch"
 PLUMBING_LOGGER = "orchestrator.git_plumbing"
@@ -22,7 +22,7 @@ class RefusalChannelTest(unittest.TestCase):
     """
 
     def test_logger_keeps_its_operator_facing_name(self) -> None:
-        self.assertEqual(authentication.log.name, PLUMBING_LOGGER)
+        self.assertEqual(branch_transport.log.name, PLUMBING_LOGGER)
 
 
 class FailedFetchTest(unittest.TestCase):
@@ -32,7 +32,7 @@ class FailedFetchTest(unittest.TestCase):
         # Callers branch on `returncode` and surface `stderr` in park
         # comments, so a refusal must be indistinguishable in shape from a
         # fetch that really ran and failed.
-        failure = authentication._failed_fetch("GITHUB_TOKEN missing")
+        failure = branch_transport._failed_fetch("GITHUB_TOKEN missing")
 
         self.assertEqual(failure.args, ["git", FETCH_OPERATION])
         self.assertEqual(failure.returncode, 1)

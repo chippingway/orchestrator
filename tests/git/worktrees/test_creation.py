@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication, commands
+from orchestrator.git import branch_transport, commands
 from orchestrator.git.worktrees import creation
 from tests.git.worktrees.lifecycle_test_support import (
     BASE_BRANCH,
@@ -292,7 +292,7 @@ class MergedPrBranchTest(unittest.TestCase):
             return_value=_git_result(returncode=1, stderr=FETCH_FAILURE),
         )
 
-        with patch.object(authentication, AUTHED_TARGET_FETCH, failed_fetch), self.assertRaises(RuntimeError):
+        with patch.object(branch_transport, AUTHED_TARGET_FETCH, failed_fetch), self.assertRaises(RuntimeError):
             creation._ensure_pr_worktree(
                 self._repo.spec, ISSUE_NUMBER, branch=ISSUE_BRANCH,
             )
@@ -316,7 +316,7 @@ class MergedPrBranchTest(unittest.TestCase):
             return_value=_git_result(returncode=1, stderr=FETCH_FAILURE),
         )
 
-        with patch.object(authentication, AUTHED_TARGET_FETCH, failed_fetch), self.assertRaises(RuntimeError):
+        with patch.object(branch_transport, AUTHED_TARGET_FETCH, failed_fetch), self.assertRaises(RuntimeError):
             creation._ensure_pr_worktree(
                 amended.spec, ISSUE_NUMBER, branch=ISSUE_BRANCH,
             )
@@ -494,7 +494,7 @@ class MergedPlanHandoffTest(unittest.TestCase):
             return_value=_git_result(returncode=1, stderr=FETCH_FAILURE),
         )
 
-        with patch.object(authentication, AUTHED_TARGET_FETCH, failed_fetch):
+        with patch.object(branch_transport, AUTHED_TARGET_FETCH, failed_fetch):
             self.assertIsNone(self._anchor_on_base())
 
         self.assertEqual(

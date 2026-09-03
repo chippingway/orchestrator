@@ -22,9 +22,9 @@ Resolution is per repository rather than per process: a deployment serving
 several slugs keeps one token file each, and a call authenticates with the one
 belonging to the repo it names.
 
-`authentication` is the only caller and imports this module directly. Nothing
-republishes these names, so a test intercepting the session targets the owner
-that defines it.
+The two transports -- `branch_transport` and `ref_transport` -- are the only
+callers, and each imports this module directly. Nothing republishes these
+names, so a test intercepting the session targets the owner that defines it.
 """
 from __future__ import annotations
 

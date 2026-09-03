@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication as _authentication, commands as _git_commands
+from orchestrator.git import branch_transport as _branch_transport, commands as _git_commands
 from orchestrator.workflow.stages.conflicts import guards as _guards
 from tests.support.fakes import (
     FakeGitHubClient,
@@ -61,7 +61,7 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
     def test_already_rebased_reads_rev_list_count(self) -> None:
         fetch_ok = MagicMock(return_value=MagicMock(returncode=0))
         with (
-            patch.object(_authentication, "_authed_fetch", fetch_ok),
+            patch.object(_branch_transport, "_authed_fetch", fetch_ok),
             patch.object(
                 _git_commands,
                 "_git_hardened",
@@ -72,7 +72,7 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
                 _guards._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),
             )
         with (
-            patch.object(_authentication, "_authed_fetch", fetch_ok),
+            patch.object(_branch_transport, "_authed_fetch", fetch_ok),
             patch.object(
                 _git_commands,
                 "_git_hardened",
@@ -96,7 +96,7 @@ class ResolvingConflictPublishGuardUnitTest(unittest.TestCase):
         rev_list_zero = MagicMock(
             return_value=MagicMock(returncode=0, stdout="0\n"),
         )
-        with patch.object(_authentication, "_authed_fetch", fetch_fail), \
+        with patch.object(_branch_transport, "_authed_fetch", fetch_fail), \
              patch.object(_git_commands, "_git_hardened", rev_list_zero):
             self.assertFalse(
                 _guards._already_rebased_onto_base(_TEST_SPEC, Path("/tmp/x")),

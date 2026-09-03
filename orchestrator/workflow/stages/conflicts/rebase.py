@@ -21,7 +21,7 @@ import logging
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.conflicts import (
@@ -40,7 +40,7 @@ def _fetch_pr_branch(
     """Fetch `<remote>/<branch>` into the worktree. Returns False (after
     parking) on fetch failure, True otherwise."""
     spec = ctx.spec
-    fetch_branch = _authentication._authed_fetch(
+    fetch_branch = _branch_transport._authed_fetch(
         spec,
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}",
         cwd=wt,
@@ -68,7 +68,7 @@ def _fetch_base_ref(ctx: _models._ConflictContext, wt: Path) -> bool:
     """Fetch `<remote>/<base>` into the worktree. Returns False (after
     parking) on fetch failure, True otherwise."""
     spec = ctx.spec
-    fetch_base = _authentication._authed_fetch(
+    fetch_base = _branch_transport._authed_fetch(
         spec,
         f"+refs/heads/{spec.base_branch}:"
         f"refs/remotes/{spec.remote_name}/{spec.base_branch}",

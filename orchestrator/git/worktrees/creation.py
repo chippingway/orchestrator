@@ -30,7 +30,7 @@ import logging
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication, commands, locks
+from orchestrator.git import branch_transport, commands, locks
 from orchestrator.git.worktrees import paths, recovery
 
 # The channel is named for the worktree-lifecycle domain rather than for
@@ -87,7 +87,7 @@ def _ensure_worktree(
                 cwd=spec.target_root,
             )
 
-        authentication._authed_target_fetch(spec, spec.base_branch)
+        branch_transport._authed_target_fetch(spec, spec.base_branch)
 
         have_branch = commands._git(
             *_VERIFY_REF, branch, cwd=spec.target_root,
@@ -143,7 +143,7 @@ def _ensure_pr_worktree(
     uses the operator's git config / credential helpers / SSH keys
     directly. The transport hardening that `_push_branch` applies is
     unnecessary for these, which carry no token of their own: the fetch
-    that does goes through `authentication`, which hardens itself. What a
+    that does goes through `branch_transport`, which hardens itself. What a
     linked worktree CAN reach in the parent clone is why the anchor below
     hardens the operations that write there.
 
@@ -215,7 +215,7 @@ def _fetch_for_restore(
     from the wrong place, so it is logged where an operator reading the tick can
     see it beside the decision it feeds.
     """
-    fetch_result = authentication._authed_target_fetch(spec, branch)
+    fetch_result = branch_transport._authed_target_fetch(spec, branch)
     if fetch_result.returncode != 0:
         log.warning(
             "issue=#%d fetch of %s failed while restoring the checkout: %s",
@@ -267,7 +267,7 @@ def _pr_branch_start_point(
     ).returncode == 0
     if have_remote:
         return pr_ref
-    remote_tip = authentication._remote_branch_tip(
+    remote_tip = branch_transport._remote_branch_tip(
         spec, spec.target_root, branch,
     )
     if remote_tip is None:
@@ -376,7 +376,7 @@ def _anchor_target(
     """
     if not head_sha:
         return _base_anchor(spec, issue_number, branch)
-    remote_tip = authentication._remote_branch_tip(
+    remote_tip = branch_transport._remote_branch_tip(
         spec, spec.target_root, branch,
     )
     if remote_tip != head_sha:

@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import logging
 
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.workflow.stages.discussion import (
@@ -145,7 +145,7 @@ def _publish_plan(
     lease = _permitted_lease(run, artifact)
     if lease is None:
         return
-    pushed = _authentication._push_branch(
+    pushed = _branch_transport._push_branch(
         run.spec,
         artifact.worktree,
         artifact.branch,
@@ -264,7 +264,7 @@ def _permitted_lease(
     Anything else parks and says what is there: a human amending the plan on its
     PR, a stray push, a rewritten remote, or a tip nothing could bring here.
     """
-    remote_tip = _authentication._remote_branch_tip(
+    remote_tip = _branch_transport._remote_branch_tip(
         run.spec, artifact.worktree, artifact.branch,
     )
     if remote_tip is None:

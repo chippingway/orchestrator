@@ -7,7 +7,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 from tests.git.base_sync.real_git_test_support import (
     _LocalBranchPusher,
     _RefreshBaseRealGitFixture,
@@ -102,7 +102,7 @@ class RefreshPrRealGitTest(_RefreshBaseRealGitFixture, unittest.TestCase):
         )
 
     def _refresh_with_push(self, push) -> None:
-        with patch.object(authentication, "_push_branch", side_effect=push):
+        with patch.object(branch_transport, "_push_branch", side_effect=push):
             self._refresh()
 
     def _assert_clean_rebase(

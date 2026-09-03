@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import logging
 
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.workflow.stages.discussion import (
@@ -224,7 +224,7 @@ def _publication_on_the_branch(
     establishes nothing and answers True: a record dropped on a reading nobody
     could take is a plan nothing goes looking for again.
     """
-    remote_tip = _authentication._remote_branch_tip(
+    remote_tip = _branch_transport._remote_branch_tip(
         run.spec, artifact.worktree, artifact.branch,
     )
     if remote_tip is None:

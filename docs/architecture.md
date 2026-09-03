@@ -453,7 +453,7 @@ worktree, so a measurement that finds either records a typed `diff_unpinnable` f
 inspects that path without opening it (`lstat`, no link followed, anything but a regular file refused), since a FIFO
 or a `/dev/zero` symlink planted there would otherwise block or exhaust the tick that read it.
 
-## Push path (`git.authentication._push_branch`)
+## Push path (`git.branch_transport._push_branch`)
 
 The orchestrator (not the agent) pushes. The push is hardened against the agent-controlled worktree:
 

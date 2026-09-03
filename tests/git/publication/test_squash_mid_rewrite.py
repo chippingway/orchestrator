@@ -26,7 +26,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 from orchestrator.git.measurement import additions as _additions
 from orchestrator.git.measurement.models import (
     AdditionMeasurement,
@@ -292,7 +292,7 @@ class SquashUnmeasuredRealGitTest(
         """The reading the next tick takes ahead of its own handler."""
         pushed = MagicMock(return_value=True)
         self.enterContext(patch.object(
-            authentication, squash_support.PUSH_BRANCH_HELPER, pushed,
+            branch_transport, squash_support.PUSH_BRANCH_HELPER, pushed,
         ))
         self.enterContext(patch.object(
             _worktree_paths, _WORKTREE_HELPER,

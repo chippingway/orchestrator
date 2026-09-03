@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Hardened authenticated push owned by the authentication module."""
+"""Hardened authenticated push owned by the branch transport."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
-from orchestrator.git import authentication
-from tests.git.authentication_test_support import (
+from orchestrator.git import branch_transport
+from tests.git.token_transport_test_support import (
     FAKE_TOKEN,
     REPOSITORY_SLUG,
     SUBPROCESS_RUN,
@@ -88,7 +88,7 @@ class PushBranchLeaseTest(unittest.TestCase):
                 _git_result(),
             ]
         ) as run_mock:
-            ok = authentication._push_branch(_spec(), WORKTREE, ISSUE_BRANCH)
+            ok = branch_transport._push_branch(_spec(), WORKTREE, ISSUE_BRANCH)
             self.assertTrue(ok)
             push_cmd = run_mock.call_args_list[2].args[0]
             self.assertIn("push", push_cmd)
@@ -109,7 +109,7 @@ class PushBranchLeaseTest(unittest.TestCase):
                 _git_result(),
             ]
         ) as run_mock:
-            ok = authentication._push_branch(_spec(), WORKTREE, FRESH_BRANCH)
+            ok = branch_transport._push_branch(_spec(), WORKTREE, FRESH_BRANCH)
             self.assertTrue(ok)
             push_cmd = run_mock.call_args_list[2].args[0]
             self.assertIn(
@@ -122,7 +122,7 @@ class PushBranchLeaseTest(unittest.TestCase):
         # HEAD. Reading a fresh ls-remote instead would adopt an out-of-band
         # remote update as the lease value and silently clobber it.
         with _patched_push([_git_result(), _git_result()]) as run_mock:
-            ok = authentication._push_branch(
+            ok = branch_transport._push_branch(
                 _spec(), WORKTREE, ISSUE_BRANCH, force_with_lease=PINNED_SHA,
             )
             self.assertTrue(ok)
@@ -147,7 +147,7 @@ class PushBranchLeaseTest(unittest.TestCase):
                 _git_result(),
             ]
         ) as run_mock:
-            ok = authentication._push_branch(
+            ok = branch_transport._push_branch(
                 _spec(), WORKTREE, ISSUE_BRANCH, revision=PINNED_SHA,
             )
             self.assertTrue(ok)
@@ -160,9 +160,9 @@ class PushBranchLeaseTest(unittest.TestCase):
         # scrubbed before it reaches the log.
         with (
             _patched_push([_git_result(), _transport_failure()]) as run_mock,
-            self.assertLogs(authentication.log, level=ERROR_LEVEL) as logs,
+            self.assertLogs(branch_transport.log, level=ERROR_LEVEL) as logs,
         ):
-            ok = authentication._push_branch(_spec(), WORKTREE, ISSUE_BRANCH)
+            ok = branch_transport._push_branch(_spec(), WORKTREE, ISSUE_BRANCH)
             # Only the transport probe and ls-remote ran; the push subprocess
             # was not invoked.
             self.assertEqual(run_mock.call_count, 2)
@@ -194,7 +194,7 @@ class PushBranchTokenTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, run_mock),
         ):
             self.assertTrue(
-                authentication._push_branch(
+                branch_transport._push_branch(
                     _spec(REPOSITORY_SLUG), WORKTREE, ISSUE_BRANCH,
                 )
             )
@@ -225,9 +225,9 @@ class PushBranchTokenTest(unittest.TestCase):
         with (
             patch.object(config, TOKEN_RESOLVER, return_value=""),
             patch(SUBPROCESS_RUN, run_mock),
-            self.assertLogs(authentication.log, level=ERROR_LEVEL) as logs,
+            self.assertLogs(branch_transport.log, level=ERROR_LEVEL) as logs,
         ):
-            ok = authentication._push_branch(
+            ok = branch_transport._push_branch(
                 _spec(REPOSITORY_SLUG), WORKTREE, ISSUE_BRANCH,
             )
             log_output = logs.output
@@ -250,9 +250,9 @@ class PushBranchRefusalTest(unittest.TestCase):
                     _transport_failure(),
                 ]
             ),
-            self.assertLogs(authentication.log, level=ERROR_LEVEL) as logs,
+            self.assertLogs(branch_transport.log, level=ERROR_LEVEL) as logs,
         ):
-            ok = authentication._push_branch(_spec(), WORKTREE, ISSUE_BRANCH)
+            ok = branch_transport._push_branch(_spec(), WORKTREE, ISSUE_BRANCH)
             log_output = logs.output
 
         self.assertFalse(ok)
@@ -263,7 +263,7 @@ class PushBranchRefusalTest(unittest.TestCase):
         # exfil vector the security hardening guards against; ls-remote and
         # push must never run.
         with _patched_push([_git_result(stdout=REWRITE_HIT)]) as run_mock:
-            ok = authentication._push_branch(_spec(), WORKTREE, ISSUE_BRANCH)
+            ok = branch_transport._push_branch(_spec(), WORKTREE, ISSUE_BRANCH)
             self.assertFalse(ok)
             self.assertEqual(run_mock.call_count, 1)
 
@@ -277,9 +277,9 @@ class PushBranchRefusalTest(unittest.TestCase):
                 [(HTTP_PROXY_KEY, "http://evil.example:8080")],
             ) as repo,
             patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
-            self.assertLogs(authentication.log, level=ERROR_LEVEL) as logs,
+            self.assertLogs(branch_transport.log, level=ERROR_LEVEL) as logs,
         ):
-            ok = authentication._push_branch(_spec(), repo, ISSUE_BRANCH)
+            ok = branch_transport._push_branch(_spec(), repo, ISSUE_BRANCH)
             log_output = logs.output
 
         self.assertFalse(ok)
