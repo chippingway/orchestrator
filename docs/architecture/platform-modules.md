@@ -64,7 +64,7 @@ last is held by the loader itself rather than by a check.
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
   `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that
   log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the nine `git/worktrees/`
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the ten `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
   `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
@@ -298,8 +298,8 @@ orchestrator/
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
-                        and the branches beside them name, and the classification of which of those may be
-                        reclaimed
+                        and the branches beside them name, the classification of which of those may be
+                        reclaimed, and the ledger carrying an unfinished teardown of one of them across a restart
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
                         resolution, the exact set of names one issue's branch can be published under, and the
                         `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
@@ -375,6 +375,98 @@ orchestrator/
                         nobody proved is one a teardown may neither delete nor write down. Reported as one
                         verdict per candidate carrying every reason it is kept for, and -- when it keeps none --
                         the commit each artifact was cleared at
+      obligations.py    the ledger a teardown writes its notes to itself into, both kinds read back off their own
+                        namespace: one ref per branch under
+                        `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
+                        classification cleared -- or, for a branch it cleared none for, at git's empty tree, an
+                        object every repository knows and no branch is ever at, which is how a reminder to ask
+                        again is told from a commit somebody adjudicated. Neither value authorizes anything: the
+                        pass that reads one back asks the classification for that. What the value IS is checked
+                        as well as what it says: a ref file carries an object id and nothing else, and git
+                        writes and resolves one for an object the repository does not have, so a note left at a
+                        stray id -- or at a blob, or at a tree that is not the mark -- reads back exactly like a
+                        commit somebody adjudicated. Only a commit this repository holds is a value every note
+                        is written at, and the mark is a record's alone: an anchor exists to name a commit, so a
+                        marker-valued one names no work at all. The write is held to the same reading before it
+                        reports a note kept, since git files a ref at any object it has and a caller told its
+                        record was kept would go on over a ledger the pass after has to refuse whole. Every one
+                        of those readings is pinned local with `GIT_NO_LAZY_FETCH`: a clone made with a filter
+                        keeps a promisor remote, and git answers an object it is missing by fetching it -- so
+                        the write, the listing, and the type read under both would each reach that remote, and a
+                        note left at an object nothing on this host has would come back as one somebody
+                        adjudicated. A ref rather than a file,
+                        because that is where this domain's durable state already lives and it is written under
+                        the same lock; outside `refs/heads/`, so the
+                        artifact scan does not read one as a candidate of its own, and outside the snapshot
+                        namespace, which is published. Written and taken away without dereferencing, since a
+                        record pointed at somebody's branch would otherwise have this host's note to itself land
+                        on that branch or take it away -- and taken away only under the value the caller read
+                        there, since each of these is read before it is acted on and a note repointed in that
+                        window is holding a commit nothing else names. A leased delete is refused for a ref
+                        that has already gone as squarely as for one that moved, so a refusal is asked about
+                        once more and a name nothing resolves is the success it looks like -- the ref genuinely
+                        not being there, which is why that read answers in three and not two: one that failed
+                        spent as an absence would report a note still standing as one this host took away.
+                        Every read of a name goes through an undereferenced one first, and so does every
+                        deletion, because neither the resolution nor the lease under them answers for the name
+                        itself: both follow a symbolic ref. The resolution reports NOTHING for one aimed at a
+                        ref that does not exist -- git's own answer for a name nobody ever wrote -- so such a
+                        note would read as one this host had already taken away and the deletion that never ran
+                        would be reported as done; and the lease compares the stated value against what the name
+                        RESOLVES to, so a note aimed at anything standing at that same value passes it, and what
+                        the delete takes is a ref the caller never read. Asked undereferenced, a name holding
+                        anything but a direct ref or nothing at all is the unreadable name it is. In front of
+                        that sits a look at the name itself, taken without following, because git has a second
+                        way of following one that no ref read reports on: it opens a note by path, so a note
+                        somebody replaced with a filesystem link is read as whatever the link leads to -- and a
+                        link leading nowhere reads, to every one of those commands, as a name nothing is at,
+                        which is what let a discharge report a note still standing as taken and let the
+                        create-only lease write over one. That look walks the whole name a room at a time rather
+                        than only its last step, since git follows every one of them: a namespace replaced with
+                        a link to `refs/heads` files each note under that name instead -- the note about an
+                        issue's branch becoming that branch, which the artifact scan then reads back as a
+                        candidate -- and has each listing report somebody else's branches as notes this host
+                        wrote. Writes are held to the rooms alone, a note already standing being a thing a later
+                        write is allowed to replace. Each reading and the step spent on it are one hold of the
+                        lock besides, since git has no write here that states what a name may BE as well as what
+                        it stands at, and two holds would leave open the window the reading is there to close.
+                        The
+                        repository key is the branch namespace's readable
+                        segment plus a digest of the untransformed slug, and the digest is the half that
+                        matters: two entries sharing a clone derive one legacy branch name, which is why a
+                        ledger keyed on the branch alone would send one entry's deletion to the other's remote
+                        -- and the segment alone is no better, since `acme/wid:get` and `acme/wid_get` sanitize
+                        to one segment, the very collision the attribution refuses to resolve. Beside the
+                        records, one anchor per issue holds what a checkout was standing on while it came down,
+                        written from inside that checkout so git resolves and records its HEAD in one command --
+                        which is also what makes the tree it runs in decide the store it lands in, so that store
+                        is asked for and held to the one this repository reads: a checkout of somebody else's
+                        repository would otherwise take the note where nothing on this side ever looks while the
+                        caller was told it was kept --
+                        and written under the lease that says the ref must not exist -- what an anchor already
+                        there is holding is a commit nothing else names -- with the undereferenced read in front
+                        of it, since the lease compares against what a name RESOLVES to and a dangling symbolic
+                        ref resolves to the nothing it accepts.
+                        The read-back answers "could not read" apart from "nothing owed" -- a listing that
+                        warned, a line that did not parse, a note standing at a commit it merely points at
+                        rather than one it was written at, and a ref
+                        outside the repository's own namespace all refuse the whole answer, since a ledger short
+                        by one entry is indistinguishable from a complete one. The one note the listing itself
+                        cannot refuse is the one it never sees: git drops a ref aimed at a ref that does not
+                        exist out of every ref iteration it has, silently and at exit zero -- the paranoia that
+                        widens iteration to broken refs turns dangling symbolic ones off in the same breath. So
+                        what the store is holding is asked of the store, under the same hold of the lock as the
+                        listing: a symbolic ref is never packed, so every note that could be in that shape is a
+                        file under the namespace, and a name found there the listing did not report refuses the
+                        answer. That walk is taken entry by entry and without following any of them, since a
+                        glob answers a namespace it was refused exactly as it answers an empty one -- and a
+                        namespace this host may not look into holds notes the listing beside it could not read
+                        either, both of them coming back as nothing owed. A room that will not be read and
+                        anything under one that is neither a note nor a room for more of them refuse the answer;
+                        the lock git holds a note under while it writes one is passed over, being a write in
+                        flight rather than a name anything has to have accounted for. Nothing here reads a
+                        remote or
+                        deletes anything on one
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends
@@ -412,6 +504,9 @@ off a facade:
   `branch_transport` for the one question a local ref may not answer — what the remote says a branch is at;
   `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
   disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
+  `obligations` is where that changes, and only just: it calls `commands` and `locks` for the notes it writes into the
+  clone's own ref store and `paths` for the repository segment its namespaces are keyed by, and it reaches no remote,
+  no GitHub, and neither the scan nor the classification. What is done about a note it hands back is the caller's.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,

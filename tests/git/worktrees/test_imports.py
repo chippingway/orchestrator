@@ -14,7 +14,8 @@ from orchestrator.git import worktrees as _worktrees_package
 
 # The artifact scan's own owners and the classification over it, named apart
 # from the lifecycle ones above because that is the split the map draws: these
-# seven are read-only.
+# seven are read-only. The ledger beside them is neither -- it writes, but only
+# the notes this host keeps for itself.
 from orchestrator.git.worktrees import (
     attribution,
     claims,
@@ -25,6 +26,7 @@ from orchestrator.git.worktrees import (
     evidence,
     inventory,
     models,
+    obligations,
     paths,
     probes,
     recovery,
@@ -56,6 +58,7 @@ _MODULES = (
     "orchestrator.git.worktrees.evidence",
     "orchestrator.git.worktrees.inventory",
     "orchestrator.git.worktrees.models",
+    "orchestrator.git.worktrees.obligations",
     "orchestrator.git.worktrees.paths",
     "orchestrator.git.worktrees.probes",
     "orchestrator.git.worktrees.recovery",
@@ -90,6 +93,7 @@ _OWNER_ONLY_NAMES = (
     "_ensure_worktree",
     "_decompose_worktree_path",
     "_local_issue_inventory",
+    "_recorded_obligations",
     "_remove_issue_worktree",
     "_resolve_branch_name",
     "_sanitize_slug",
@@ -121,10 +125,36 @@ _OWNER_ONLY_NAMES = (
 # checkout's own three-read order, the tables each of those is charged
 # through, the tip read that falls back to the remote, the HEAD read spent
 # twice, and the proof an eligible verdict is handed over as. Then the four
-# records a teardown over one of those verdicts answers in. Naming the
+# records a teardown over one of those verdicts answers in, and the ledger it
+# writes its own notes to itself into: the two namespaces, the repository's own
+# key and the room each namespace opens for it, the ref one branch is recorded
+# at, the write and the delete every note goes through, the value a record
+# carries when nothing was cleared and the reminder written at it, the
+# discharge, the read-back with the separator it is split on and the whole-line
+# and per-line parses beneath it, and the anchor a removal pins what it is
+# about to take under -- its ref, the segment it names an issue by, the lease
+# that only ever creates one, the HEAD it is written at, its read-back and the
+# three-answer resolution under it, the undereferenced reading that resolution
+# and every deletion are gated on with the status a name holding no symbolic
+# ref answers at, the value a name nothing is at comes back as and the status
+# git answers one with, its discard, and the check that the listing named
+# every note the store is holding -- the ref store it is asked of, the names
+# the loose half of that store carries, the suffix a write in flight is
+# skipped by, the no-follow look that walks a name a room at a time, the rooms
+# alone that a write is held to, the two halves of the walk that finds them,
+# the one name the lock every reading and every writing is paired under is
+# taken by, the check that a write lands in the store this repository reads,
+# what tells a value a note under one namespace is written at from a blob, a
+# stray tree, an id nothing was written under, or the reminder mark under the
+# room that has nothing to say with it -- the object kind a tree answers with,
+# the one kind every note carries, and the room the mark is allowed in -- the
+# same reading a write is held to before it reports a note kept, and the one
+# environment setting that keeps each of those local.
+# Naming the
 # whole surface makes a helper added to an owner an edit here rather than a
 # definition site nothing checks.
 _OWNER_DEFINED = (
+    ("ANCHOR_NAMESPACE", obligations),
     ("ArtifactInventory", models),
     ("ArtifactReclamation", models),
     ("ArtifactSurface", models),
@@ -136,22 +166,39 @@ _OWNER_DEFINED = (
     ("IssueBranches", attribution),
     ("ProbeAnswer", models),
     ("ProvenTip", models),
+    ("RECLAIM_NAMESPACE", obligations),
     ("Retention", models),
     ("RetentionReason", models),
     ("SurfaceOutcome", models),
     ("SurfaceResult", models),
     ("TERMINAL_LABELS", claims),
+    ("_ABSENT_LEASE", obligations),
     ("_CLEANLINESS_REASONS", eligibility),
+    ("_COMMIT_OBJECT", obligations),
+    ("_DIGEST_MARK", obligations),
     ("_GIT_NEGATIVE", evidence),
+    ("_GIT_NO_SUCH_REF", obligations),
+    ("_GIT_NOT_SYMBOLIC", obligations),
     ("_HEAD", evidence),
+    ("_HEAD", obligations),
     ("_HIDDEN_REASONS", eligibility),
     ("_IDENTITY_REASONS", eligibility),
+    ("_ISSUE_SEGMENT", obligations),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
+    ("_NO_DEREF", obligations),
+    ("_NO_LAZY_FETCH", obligations),
+    ("_NO_NOTE", obligations),
     ("_OPEN_PULL_REQUEST", claims),
     ("_ORCHESTRATOR_BRANCH_REFS", probes),
+    ("_RECORD_FIELDS", obligations),
+    ("_RECORD_FORMAT", obligations),
+    ("_RECORD_SEPARATOR", obligations),
+    ("_RECLAIM_ROOM", obligations),
+    ("_REF_LOCK_SUFFIX", obligations),
     ("_REF_SEPARATOR", attribution),
+    ("_REMINDER_MARK", obligations),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
@@ -159,8 +206,14 @@ _OWNER_DEFINED = (
     ("_VERIFY_REF", creation),
     ("_WORKTREE_ADD", creation),
     ("_WORKTREE_REMOVE_FORCE", creation),
+    ("_anchor_checkout", obligations),
     ("_anchor_pr_worktree", creation),
+    ("_anchor_ref", obligations),
     ("_anchor_target", creation),
+    ("_anchored_commit", obligations),
+    ("_a_note_stands_at", obligations),
+    ("_a_note_to_write", obligations),
+    ("_anchors_prefix", obligations),
     ("_artifact_reading", eligibility),
     ("_artifact_verdict", eligibility),
     ("_attributed_issues", attribution),
@@ -194,10 +247,15 @@ _OWNER_DEFINED = (
     ("_common_git_dir", evidence),
     ("_decompose_worktree_path", decomposition),
     ("_delete_local_issue_branch", cleanup),
+    ("_direct_note", obligations),
+    ("_discard_anchor", obligations),
+    ("_discharge_obligation", obligations),
+    ("_dropped_note", obligations),
     ("_ended_retentions", claims),
     ("_ensure_decompose_worktree", decomposition),
     ("_ensure_pr_worktree", creation),
     ("_ensure_worktree", creation),
+    ("_every_note_listed", obligations),
     ("_fetch_for_restore", creation),
     ("_fetched_issue", claims),
     ("_hardened_read", evidence),
@@ -208,22 +266,38 @@ _OWNER_DEFINED = (
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
     ("_local_branch_tip", evidence),
+    ("_loose_note_names", obligations),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
     ("_matching_owners", attribution),
     ("_merged", inventory),
     ("_move_branch_onto", creation),
+    ("_note_at", obligations),
+    ("_note_value", obligations),
     ("_nothing_ignored", evidence),
+    ("_object_kind", obligations),
+    ("_obligation_ref", obligations),
     ("_open_pull_request_retentions", claims),
+    ("_own_way_down", obligations),
+    ("_parsed_record", obligations),
+    ("_parsed_records", obligations),
     ("_pr_branch_start_point", creation),
     ("_proven_tips", eligibility),
     ("_published_tip", evidence),
+    ("_read_notes", obligations),
     ("_read_orchestrator_refs", probes),
     ("_read_state", claims),
     ("_record_attribution", attribution),
+    ("_record_obligation", obligations),
+    ("_recorded_anchors", obligations),
+    ("_recorded_notes", obligations),
+    ("_recorded_obligations", obligations),
     ("_recorded_pull_request", claims),
+    ("_records_prefix", obligations),
+    ("_remind", obligations),
     ("_remove_issue_worktree", cleanup),
     ("_repo_worktrees_root", paths),
+    ("_repository_key", obligations),
     ("_resolve_branch_name", paths),
     ("_resolved_commit", creation),
     ("_resolved_root", inventory),
@@ -234,23 +308,30 @@ _OWNER_DEFINED = (
     ("_run_local_branch_deletion", cleanup),
     ("_sanitize_branch_segment", paths),
     ("_sanitize_slug", paths),
+    ("_shared_ref_store", obligations),
     ("_shared_repository", evidence),
+    ("_stands_as", obligations),
     ("_slug_digest", paths),
     ("_slugs_by_worktrees_root", attribution),
     ("_spec_inventory", inventory),
     ("_specs_by_clone", inventory),
+    ("_store_held", obligations),
     ("_terminal_retentions", claims),
     ("_tip_retentions", eligibility),
     ("_workflow_members", claims),
     ("_worktree_issue_numbers", probes),
+    ("_walked_entry", obligations),
+    ("_walked_into", obligations),
     ("_worktree_path", paths),
+    ("_writes_here", obligations),
+    ("_written_note", obligations),
 )
 
 # The owners that report, each binding the channel an operator's level and
 # handler selection is keyed on.
 _REPORTING_OWNERS = (
     attribution, claims, cleanup, creation, decomposition, evidence,
-    inventory, probes, terminal,
+    inventory, obligations, probes, terminal,
 )
 
 
