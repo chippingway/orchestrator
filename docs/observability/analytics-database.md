@@ -50,7 +50,7 @@ matching `ANALYTICS_LOG_PATH`.
 [`../../analytics-db/init/01-schema.sql`](../../analytics-db/init/01-schema.sql) defines:
 
 - **`analytics_events` table.** Columns mirror the JSONL record shape produced by `analytics.build_record`. `ts`,
-  `repo`, `issue`, `event` are `NOT NULL`; everything else is nullable so any record across the three event kinds is a
+  `repo`, `issue`, `event` are `NOT NULL`; everything else is nullable so a record of any kind the sink writes is a
   valid row. An `extras JSONB` column captures any field added to `build_record` before the DDL knows about it — the
   opt-in skill fields (`skills_triggered` / `skills_triggered_count` / `skills_available`, the per-load
   `skills_evidence` tier map, the name-to-source-level `skill_levels` map, and the `skills_incidental` /

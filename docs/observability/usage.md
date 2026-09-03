@@ -68,7 +68,12 @@ charges the launch and so also holds the runs whose usage never parsed, while th
 which is why the ledger's total is the larger of the pair. Nothing turns a run away against THIS meter — the ledger
 is the one that is judged, at the tracked spawn boundary (`workflow/engine/run_circuit.py`), and where an issue that
 has spent it all STOPS is the durable `agent_run_limit` park on `workflow/engine/run_limit.py` and the dispatcher
-hold over it.
+hold over it. What that ledger DOES, as opposed to what it currently holds, is its own record:
+`workflow/engine/run_budget.py` writes one
+[`agent_run_budget`](event-streams.md#agent-run-budget-records-both-sinks) event to both sinks per durable
+transition — a run charged, the spawn it paid for, the ceiling that refused one, and the ceiling an operator widened
+— each carrying the configured limit, the allowance in force, the spend, and what is left. That is the stream to
+count charges on; `agent_exit` records, and this meter behind them, count the runs whose usage parsed.
 See [`configuration.md`](../configuration.md#cadence-and-budgets) for `MAX_AGENT_RUNS_PER_ISSUE` and
 [state-machine/labels-and-state.md][pinned-state] for the ledger's and the park's own keys.
 
