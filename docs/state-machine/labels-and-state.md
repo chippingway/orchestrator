@@ -651,7 +651,7 @@ The keys that matter for the state machine fall into a few groups:
   being asked is settled by whether the discussion stage has the issue parked:
   on an unparked issue it means a round ended with no disposition (withheld by a mid-run `paused`, or cut short) and
   comparing it to the branch says whether that round committed; on a parked one it says everything the branch carries
-  AT that SHA predates this stage — which is what `read_only_relabel.py` reads to let a discussion held on an
+  AT that SHA predates this stage — which is what `relabel_evidence.py` reads to let a discussion held on an
   inherited PR branch relabel to implementing. A park that *did* find a commit keeps the pair for that second reading:
   it is the tip the park tells the operator to reset back to, and the one the guard then certifies, so dropping it
   would strand a PR-backed issue whose only other remedies (reset to base, delete the branch) destroy the PR. The
@@ -676,7 +676,7 @@ The keys that matter for the state machine fall into a few groups:
   Standing beside `discussion_plan_sha`, it is also the record that says a handoff was ACCEPTED and nothing here has
   published since, which is a state a crash can leave an issue in for polls at a time: the write lands before the
   developer runs and an interruption drops everything staged after it. While it stands,
-  `read_only_relabel._reconcile_open_plan_handoff` takes the guard's own reading again on every tick — the same plan
+  `plan_handoff._reconcile_open_plan_handoff` takes the guard's own reading again on every tick — the same plan
   PR read, the same re-anchor onto what it carries, the same two records written — because the humans still have the
   design on an open pull request and can move its head. Left unwatched, an amendment made in that window reads as this
   stage having pushed: merged, the issue closes as `done` with no developer having run, and unmerged the developer is

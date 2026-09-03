@@ -47,6 +47,7 @@ from orchestrator.workflow.stages.implementing import (
     continue_command as _continue_command,
     disposition as _disposition,
     drift as _drift,
+    plan_handoff as _plan_handoff,
     read_only_relabel as _read_only_relabel,
     spawn as _spawn,
     state as _state,
@@ -199,7 +200,7 @@ def _implementing_preflight(
     """
     if _unfinished_discussion_holds_the_tick(gh, spec, issue, state):
         return True
-    if _read_only_relabel._reconcile_open_plan_handoff(gh, spec, issue, state):
+    if _plan_handoff._reconcile_open_plan_handoff(gh, spec, issue, state):
         return True
     if _recorded_pr_holds_the_tick(gh, spec, issue, state):
         return True
