@@ -35,6 +35,7 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    AGENT_RUN_CHARGE_WRITES,
     _agent,
     _PatchedWorkflowMixin,
 )
@@ -182,7 +183,9 @@ class _ValidatingPauseFixtureMixin(_PatchedWorkflowMixin):
                 for _, body in github.posted_comments
             ),
         )
-        self.assertEqual(github.write_state_calls, before_writes)
+        self.assertEqual(
+            github.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         state = github.pinned_data(DRIFT_ISSUE)
         self.assertEqual(state.get(REVIEW_ROUND), 1)
         self.assertEqual(state.get("user_content_hash"), "stale-hash")
@@ -193,7 +196,9 @@ class _ValidatingPauseFixtureMixin(_PatchedWorkflowMixin):
         self.assertEqual(github.label_history, [])
         self.assertEqual(github.posted_comments, [])
         self.assertEqual(github.posted_pr_comments, [])
-        self.assertEqual(github.write_state_calls, before_writes)
+        self.assertEqual(
+            github.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         state = github.pinned_data(HUMAN_RESUME_ISSUE)
         self.assertTrue(state.get("awaiting_human"))
         self.assertEqual(
@@ -213,7 +218,12 @@ class _ValidatingPauseFixtureMixin(_PatchedWorkflowMixin):
             github.label_history,
         )
         mocks[PUSH_BRANCH].assert_not_called()
-        self.assertEqual(github.write_state_calls, before_writes + 1)
+        # The pre-spawn flip's own write, plus the charge each of the two
+        # runs took before it reached a process.
+        self.assertEqual(
+            github.write_state_calls,
+            before_writes + 1 + 2 * AGENT_RUN_CHARGE_WRITES,
+        )
         state = github.pinned_data(CHANGES_REQUESTED_ISSUE)
         self.assertEqual(state.get(REVIEW_ROUND), 0)
 

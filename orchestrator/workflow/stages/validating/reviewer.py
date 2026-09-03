@@ -41,6 +41,7 @@ from orchestrator.workflow.engine import (
     guards as _guards,
     messages as _messages,
     prompts as _prompts,
+    run_circuit as _run_circuit,
     usage as _usage,
 )
 from orchestrator.workflow.stages.implementing import session_read as _dev_session_read
@@ -82,7 +83,7 @@ def _run_reviewer_round(
     # config spec is the right behavior here.
     state.set("review_agent", config.REVIEW_AGENT_SPEC)
     review = _usage._run_agent_tracked(
-        gh, issue.number,
+        gh, _run_circuit.AgentRunBudget(issue=issue, state=state),
         agent_role="reviewer",
         stage="validating",
         backend=config.REVIEW_AGENT,

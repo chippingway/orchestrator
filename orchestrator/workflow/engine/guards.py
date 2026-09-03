@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """What a finished agent run is allowed to leave behind.
 
-Two of these decline a run's outcome and one publishes it, but all three live
+Three of these decline a run's outcome and one publishes it, but all four live
 in the same window -- after the spawn returns, before the handler's
 `gh.write_pinned_state` -- and they share one rule: the handler owns that
-write. `_ignore_if_interrupted` and `_paused_during_agent_run` say "not this
+write. `_ignore_if_never_invoked`, `_ignore_if_interrupted`, and
+`_paused_during_agent_run` say "not this
 run" by returning True and letting the caller `return` without writing, so the
 in-memory `PinnedState` mutations it already staged are dropped and the next
 tick re-derives the run from the state the prior tick left. `_park_awaiting_human`
@@ -14,11 +15,18 @@ ratchets `last_action_comment_id` past it -- and still leaves the write to the
 caller, so a park composes with whatever else that handler staged rather than
 committing ahead of it.
 
-The two refusals answer different questions and neither covers the other.
-Interruption is read off the result the shutdown sweep produced. A mid-run
+The three refusals answer different questions and none covers the others.
+A launch that never became a process is read off the result the agent-run
+circuit hands back in place of one. Interruption is read off the result the
+shutdown sweep produced. A mid-run
 `paused` / `backlog` is visible only on a FRESHLY fetched issue: the dispatcher
 screened the hard-skip labels once at tick start, and the handler has been
 holding that snapshot for however long the agent ran.
+
+The first two are asked in that order wherever a stage inspects the worktree
+before it asks about interruption -- and several do, deliberately. What a
+killed run left on disk is the operator's to see; what a launch that never
+started left is nothing, so the tree it would be read on says nothing about it.
 """
 from __future__ import annotations
 
@@ -60,6 +68,38 @@ def _ignore_if_interrupted(issue: Issue, agent_result: AgentResult) -> bool:
     log.info(
         "issue=#%d agent run interrupted by shutdown sweep; leaving durable "
         "state untouched for retry by the next process",
+        issue.number,
+    )
+    return True
+
+
+def _ignore_if_never_invoked(issue: Issue, agent_result: AgentResult) -> bool:
+    """True when no process was ever invoked for `agent_result`.
+
+    The answer a launch the agent-run circuit turned away carries
+    (`workflow/engine/run_circuit.py`): the lifetime ledger was spent, the
+    pinned comment could not be read, or the charge could not be written, and
+    nothing was spawned.
+
+    Asked BEFORE any inspection of what a run left behind, which is the one
+    place it differs from `_ignore_if_interrupted` below it. Several stages
+    read the worktree ahead of that guard on purpose -- a run the shutdown
+    sweep killed can have written before it died, and a contaminated tree is
+    an operator's to see whether or not the run counted. A launch that never
+    started wrote nothing, so a tree dirty for some older reason is not its
+    doing, and a park taken in its name would replace the durable one the
+    circuit had already recorded with a reason about a process that never
+    existed.
+
+    Callers `return` without writing pinned state, exactly as they do for an
+    interruption. Nothing is logged loudly here: the refusal was already
+    recorded where it was decided, and this is that decision arriving.
+    """
+    if agent_result.invoked:
+        return False
+    log.debug(
+        "issue=#%d agent launch was refused before any process started; "
+        "leaving durable state to whatever refused it",
         issue.number,
     )
     return True

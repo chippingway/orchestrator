@@ -38,6 +38,13 @@ not begun, `started` says the spawn happened. Both are wire strings on live
 issues, and the pair is what lets a later tick tell a launch that never ran
 from one that did. Nothing settles a reservation by giving the charge back.
 
+Which launch holds it is written down beside the phase, as the fingerprint its
+reader hands over. A standing charge is only worth reusing by the launch it
+was taken for: read by any other, a charge one road recorded would be spent by
+a road that never paid for it, and the ledger would stop being a record of
+what each run cost. So the pair is asked together -- charged, and charged for
+this -- and a launch that is not the one named pays its own way.
+
 Nothing here decides anything and nothing here posts. This owner answers what
 an issue is allowed and what it has spent, as one typed snapshot; what to do
 about a ledger with nothing left in it belongs to the reader, which owns the
@@ -70,6 +77,12 @@ AGENT_RUNS_USED = "agent_runs_used"
 # The launch currently holding one of those charges, and how far it got.
 # Absent means no launch this owner knows about is outstanding.
 AGENT_RUN_RESERVATION = "agent_run_reservation"
+
+# Which launch that is: the fingerprint its reader derives from the request,
+# recorded in the same write as the phase so the two are never read apart. A
+# phase alone says a charge is standing and not what it is standing for, and a
+# charge nothing can identify is one any launch could claim.
+AGENT_RUN_FINGERPRINT = "agent_run_fingerprint"
 
 # What an issue-state projection keeps of this ledger. The allowance and the
 # spend are facts about the ISSUE -- what it may have, and what it has already
@@ -114,11 +127,22 @@ class AgentRunLedger:
     allowance: int
     used: int
     reservation: RunPhase | None
+    fingerprint: str | None = None
 
     @property
     def unlimited(self) -> bool:
         """Whether the allowance in force bounds nothing at all."""
         return self.allowance <= 0
+
+    @property
+    def spent(self) -> bool:
+        """Whether the allowance in force has nothing left to give.
+
+        An unlimited allowance is never this, however much the issue has run:
+        the count under it is a total somebody may want later, not a number
+        anything is measured against.
+        """
+        return self.remaining == 0
 
     @property
     def remaining(self) -> int | None:
@@ -136,6 +160,21 @@ class AgentRunLedger:
             return None
         return max(self.allowance - self.used, 0)
 
+    def pending_for(self, fingerprint: str) -> bool:
+        """Whether a charge is standing, unspawned, for exactly this launch.
+
+        Both halves, because either alone answers a different question. A
+        charge in any other phase is one whose launch reached a process, and
+        what happened to that process is not something a later tick can read
+        off the issue -- so it is spent and this launch pays again. A charge
+        recorded for some other launch was taken by a road that is not this
+        one, and reusing it would spend a run this launch never paid for.
+        """
+        return (
+            self.reservation is RunPhase.RESERVED
+            and self.fingerprint == fingerprint
+        )
+
 
 def _read_ledger(state: PinnedState) -> AgentRunLedger:
     """This issue's allowance, what it has spent, and the launch in flight."""
@@ -144,10 +183,11 @@ def _read_ledger(state: PinnedState) -> AgentRunLedger:
         allowance=_allowance_in_force(state),
         used=_runs_used(state),
         reservation=_reservation(state),
+        fingerprint=_fingerprint(state),
     )
 
 
-def _reserve_run(state: PinnedState) -> AgentRunLedger:
+def _reserve_run(state: PinnedState, fingerprint: str) -> AgentRunLedger:
     """Charge one run to this issue and record the launch it was charged for.
 
     In memory only, like every other field a tick stages: what makes the
@@ -161,6 +201,7 @@ def _reserve_run(state: PinnedState) -> AgentRunLedger:
     """
     state.set(AGENT_RUNS_USED, _runs_used(state) + 1)
     state.set(AGENT_RUN_RESERVATION, RunPhase.RESERVED)
+    state.set(AGENT_RUN_FINGERPRINT, fingerprint)
     return _read_ledger(state)
 
 
@@ -183,8 +224,12 @@ def _settle_run(state: PinnedState) -> None:
     The charge is untouched, which is the whole point of settling rather than
     releasing: the run happened, the issue paid for it, and what ends is only
     the claim that a launch is outstanding.
+
+    The launch it named goes with it. A fingerprint left behind names a claim
+    nothing stands behind, and the pair is only ever read together.
     """
     state.data.pop(AGENT_RUN_RESERVATION, None)
+    state.data.pop(AGENT_RUN_FINGERPRINT, None)
 
 
 def _allowance_in_force(state: PinnedState) -> int:
@@ -236,6 +281,20 @@ def _reservation(state: PinnedState) -> RunPhase | None:
         return RunPhase(state.get(AGENT_RUN_RESERVATION))
     except ValueError:
         return None
+
+
+def _fingerprint(state: PinnedState) -> str | None:
+    """The launch a standing charge was taken for, if one is recorded.
+
+    Anything but a non-empty string reads as no launch named. What that costs
+    is one charge nothing can be matched against -- the next launch pays for
+    itself, which is the answer this owner already gives a charge whose phase
+    it cannot read.
+    """
+    recorded = state.get(AGENT_RUN_FINGERPRINT)
+    if not isinstance(recorded, str) or not recorded:
+        return None
+    return recorded
 
 
 def _counted(raw: Any) -> int | None:

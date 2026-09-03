@@ -468,8 +468,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   `park_reason="agent_run_limit"` — the durable state an issue is left in once it has spent every agent run its
   lifetime ceiling (`MAX_AGENT_RUNS_PER_ISSUE`) allows. It shares the pinned read the guards beside it take, so it
   costs no extra comment walk. The park itself, the sentence it owes, and the fields behind both are in
-  [`labels-and-state.md`](labels-and-state.md#pinned-state); no stage handler turns an agent run away against the
-  ledger, so nothing hands the park an exhausted reading to take.
+  [`labels-and-state.md`](labels-and-state.md#pinned-state). What hands the park an exhausted reading is the tracked
+  spawn boundary itself ([The agent-run circuit](labels-and-state.md#the-agent-run-circuit)), never a stage handler:
+  the ledger is read where a run is about to be spent, so this hold is what a park taken there leaves behind.
 - **Why here and not in a stage**: the issue this is about is one *every* handler below would touch, and each in a
   way that is right about some other park. `awaiting_human` routes `implementing` to a resume on the next trusted
   reply, the conversation stages to the answer their agent asked for, and the spent-budget holds to a command that

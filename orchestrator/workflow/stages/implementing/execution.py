@@ -34,6 +34,7 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     guards as _guards,
     observations as _observations,
+    run_circuit as _run_circuit,
     usage as _usage,
 )
 from orchestrator.workflow.stages.implementing import (
@@ -115,7 +116,9 @@ class _DevResumeContext:
         session = self.plan.session
         agent_result = _usage._run_agent_tracked(
             self.gh,
-            self.issue.number,
+            _run_circuit.AgentRunBudget(
+                issue=self.issue, state=self.state,
+            ),
             agent_role="developer",
             stage=self.stage,
             backend=session.backend,

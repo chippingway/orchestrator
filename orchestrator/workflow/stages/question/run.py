@@ -25,7 +25,11 @@ from pathlib import Path
 
 from orchestrator.agents import AgentResult
 from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
-from orchestrator.workflow.engine import guards as _guards, usage as _usage
+from orchestrator.workflow.engine import (
+    guards as _guards,
+    run_circuit as _run_circuit,
+    usage as _usage,
+)
 from orchestrator.workflow.stages.question import models as _models, session as _session, state as _state
 
 
@@ -39,7 +43,7 @@ def _execute_question_prompt(
     """Run one question prompt and retain any session id it returns."""
     question_result = _usage._run_agent_tracked(
         run.gh,
-        run.issue.number,
+        _run_circuit.AgentRunBudget(issue=run.issue, state=run.state),
         agent_role=_state._QUESTION_STAGE,
         stage=_state._QUESTION_STAGE,
         backend=session.backend,

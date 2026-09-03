@@ -24,6 +24,7 @@ from unittest.mock import patch
 
 from orchestrator import config
 from tests.workflow.fixtures import (
+    AGENT_RUN_CHARGE_WRITES,
     KEY_AWAITING_HUMAN,
     KEY_LAST_ACTION_COMMENT_ID,
     KEY_PARK_REASON,
@@ -101,9 +102,11 @@ class DiscussionResumeNoopTest(unittest.TestCase, _DiscussionWorkflowMixin):
         mocks[RUN_AGENT].assert_called_once()
         self.assertEqual(gh.posted_comments, [])
         self._assert_reply_unconsumed(gh, issue)
-        # The round's provenance write is the one thing that did land, and it
-        # records nothing about the reply.
-        self.assertEqual(gh.write_state_calls, writes_before + 1)
+        # The round's provenance write and the charge its spawn took are all
+        # that landed, and neither records anything about the reply.
+        self.assertEqual(
+            gh.write_state_calls, writes_before + 1 + AGENT_RUN_CHARGE_WRITES,
+        )
 
     def test_a_moved_anchor_holds_the_resume(self) -> None:
         # The park being replied to already named this commit and quoted the

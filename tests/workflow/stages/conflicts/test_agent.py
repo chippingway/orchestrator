@@ -9,6 +9,7 @@ from orchestrator import config
 from tests.workflow.fixtures import (
     _FAKE_WT,
     _TEST_SPEC,
+    AGENT_RUN_CHARGE_WRITES,
     MEASURED_CANDIDATE_SHA,
     _agent,
 )
@@ -194,7 +195,9 @@ class ResolvingConflictAgentExecutionTest(unittest.TestCase, _ResolvingConflictM
 
         # The conflict-resolution dev run spawned, then was seen interrupted.
         mocks[RUN_AGENT].assert_called_once()
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         mocks[PUSH_BRANCH].assert_not_called()
         _assert_interrupted_state(self, gh)
 

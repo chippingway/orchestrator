@@ -28,6 +28,7 @@ _ENGINE_OWNERS = (
     "pickup",
     "prompts",
     "retry_budget",
+    "run_circuit",
     "run_grant",
     "run_ledger",
     "run_limit",

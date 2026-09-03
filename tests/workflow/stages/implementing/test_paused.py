@@ -28,6 +28,7 @@ from tests.support.fakes import (
 from tests.workflow.fixtures import (
     _FAKE_WT,
     _TEST_SPEC,
+    AGENT_RUN_CHARGE_WRITES,
     LABEL_IMPLEMENTING,
     _agent,
     _PatchedWorkflowMixin,
@@ -59,7 +60,9 @@ def _assert_fresh_pause_state(
     test_case.assertEqual(github.opened_prs, [])
     test_case.assertEqual(github.label_history, [])
     test_case.assertEqual(github.posted_comments, [])
-    test_case.assertEqual(github.write_state_calls, before_writes)
+    test_case.assertEqual(
+        github.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+    )
     pinned_state = github.pinned_data(1)
     test_case.assertNotIn("dev_session_id", pinned_state)
     test_case.assertFalse(pinned_state.get("awaiting_human"))
@@ -76,7 +79,9 @@ def _assert_poisoned_pause_state(
     test_case.assertEqual(get_issue_mock.call_count, 1)
     test_case.assertEqual(github.opened_prs, [])
     test_case.assertEqual(github.label_history, [])
-    test_case.assertEqual(github.write_state_calls, before_writes)
+    test_case.assertEqual(
+        github.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+    )
     pinned_state = github.pinned_data(POISONED_RESUME_ISSUE)
     test_case.assertEqual(
         pinned_state.get("dev_session_id"),
@@ -217,7 +222,9 @@ class ImplementingLivePauseRecoveryTest(unittest.TestCase, _PatchedWorkflowMixin
             )
         self.assertEqual(gh.opened_prs, [])
         self.assertEqual(gh.label_history, [])
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
 
         # Tick 2: `paused` removed. `get_issue` now returns the live (unpaused)
         # issue, so the recovered-worktree path skips the agent, publishes, and

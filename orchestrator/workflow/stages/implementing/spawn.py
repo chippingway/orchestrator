@@ -54,6 +54,7 @@ from orchestrator.workflow.engine import (
     guards as _guards,
     prompts as _prompts,
     retry_budget as _retry_budget,
+    run_circuit as _run_circuit,
     usage as _usage,
 )
 from orchestrator.workflow.stages.implementing import (
@@ -93,7 +94,7 @@ def _spawn_implementer(
     state.set(_state._DEV_AGENT, session.spec)
     agent_result = _usage._run_agent_tracked(
         gh,
-        issue.number,
+        _run_circuit.AgentRunBudget(issue=issue, state=state),
         agent_role="developer",
         stage=_state._IMPLEMENTING_STAGE,
         backend=session.backend,

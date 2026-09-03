@@ -19,6 +19,7 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    AGENT_RUN_CHARGE_WRITES,
     LABEL_DOCUMENTING,
     LABEL_IN_REVIEW,
     LABEL_VALIDATING,
@@ -220,7 +221,7 @@ class HandleInReviewResumeOnHashChangeTest(
         mocks[RUN_AGENT].assert_called_once()
         mocks["_push_branch"].assert_not_called()
         # Nothing persisted: the interrupted resume is ignored.
-        self.assertEqual(gh.write_state_calls, 0)
+        self.assertEqual(gh.write_state_calls, AGENT_RUN_CHARGE_WRITES)
         self.assertNotIn((INTERRUPTED_DRIFT_ISSUE, LABEL_VALIDATING), gh.label_history)
         self.assertNotIn((INTERRUPTED_DRIFT_ISSUE, LABEL_DOCUMENTING), gh.label_history)
         state = gh.pinned_data(INTERRUPTED_DRIFT_ISSUE)

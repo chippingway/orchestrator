@@ -16,6 +16,17 @@ defines it. That call is the seam the stage tests replace to drive a handler
 without a CLI, so a mock has to land on the runner owner; one left anywhere
 else would let a real CLI run.
 
+Being the only call in the repository that starts an agent process is also
+what makes this the place the lifetime agent-run ledger is charged. That
+circuit is `run_circuit.py`'s and it is asked immediately around the spawn,
+where a charge covers every role at once instead of once per spawning
+handler. Every launch names the budget it is charged against -- the issue and
+the pinned state its caller holds -- and names it as a required argument, so a
+spawn road added without one does not run rather than running uncounted. It is
+deliberately outside the bookend: the audit pair and the record between them
+describe a run that happened, and a launch the circuit turned away never
+became one.
+
 Everything after the spawn is fail-open. The record and the trajectory write
 behind it ride guards inside `recording.record_agent_exit`, and the skill
 emission carries its own here, because none of it is worth a run whose
@@ -28,8 +39,9 @@ The per-issue meter closes the same loop from the other end. The
 the object `_accumulate_issue_usage` folds into the running counters on the
 handler's pinned state, and `_format_issue_usage_verdict` reads those counters
 back into the single receipt line a terminal posts. The fold deliberately does
-not happen inside `_run_agent_tracked`: the tracked run writes no pinned state,
-so the handler that owns the write stays its only writer.
+not happen inside `_run_agent_tracked`: what that boundary writes to pinned
+state is the agent-run charge and nothing else, so the handler that dispositions
+the run stays the only writer of these counters.
 
 `_now_iso` sits here because the stamps it writes mark the same events. Every
 pinned-state timestamp a stage sets -- `last_agent_action_at`,
@@ -39,6 +51,7 @@ lets two ticks' stamps compare as plain strings.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from dataclasses import dataclass
@@ -53,7 +66,7 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.observability.analytics import recording
 from orchestrator.observability.usage.metrics import UsageMetrics
-from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import comments as _comments, run_circuit as _run_circuit
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -77,6 +90,35 @@ class _AgentRunRequest:
     extra_args: tuple[str, ...] = ()
     review_round: int | None = None
     retry_count: int | None = None
+
+    @property
+    def fingerprint(self) -> str:
+        """What identifies this launch to a charge taken across ticks.
+
+        Stable is the whole requirement. A charge recorded by a tick that then
+        died is only worth reusing if the launch coming back can be recognized
+        as the one that took it, so the digest is taken over what a request IS
+        -- the role, the stage, the backend and the spec behind it, the
+        session it continues, the round and the attempt it stands at.
+
+        The prompt is deliberately not among them, and neither is the worktree
+        it runs in. A prompt is rebuilt every tick out of an issue body, a
+        thread, and a repository catalog that all move underneath it, so a
+        digest counting it would call every launch a new one and no crash
+        window would ever be recognized. What is left is what a human reading
+        the pinned state would name the launch by anyway.
+        """
+        named = (
+            self.agent_role,
+            self.stage,
+            self.backend,
+            self.agent_spec,
+            self.resume_session_id,
+            self.review_round,
+            self.retry_count,
+        )
+        parts = ["" if part is None else str(part) for part in named]
+        return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
 
 
 def _agent_run_kwargs(request: _AgentRunRequest) -> dict[str, Any]:
@@ -154,16 +196,34 @@ def _emit_triggered_skills(
 
 def _run_agent_tracked(
     gh: GitHubClient,
-    issue_number: int,
+    budget: _run_circuit.AgentRunBudget,
     request: _AgentRunRequest | None = None,
     **request_fields: Any,
 ) -> AgentResult:
     """Run an agent, bookending the spawn with `agent_spawn` / `agent_exit`
     audit events and appending a per-invocation analytics record on exit.
 
-    Thin wrapper around `run_agent` -- the spawn behaviour is unchanged.
-    Optional context (`review_round`, `retry_count`, resume session id) is
-    forwarded so downstream consumers can correlate spawns with retry
+    The `budget` names the issue a charge is written on and the pinned state
+    the caller will write at the end of the run, and it is required rather
+    than optional: the lifetime agent-run ledger is charged immediately around
+    the spawn by `workflow/engine/run_circuit.py`, and a spawn road that could
+    omit the context would be a road that spends runs nothing counts. It is
+    also where the issue number every audit and analytics field below is
+    stamped with comes from, so the charge and the record cannot name
+    different issues.
+
+    That is the one place a charge covers every role at once: this is the sole
+    low-level `run_agent` call in the repository, so a gate here is a gate no
+    road walks around. A launch the circuit refuses returns an interrupted
+    result WITHOUT emitting `agent_spawn`, invoking a process, or recording an
+    exit -- there is no run to bookend. The charge goes to freshly read
+    durable state and only the fields it wrote come back onto the caller's
+    object, so a reviewer spec, a moved watermark, or a session id staged
+    before the spawn is still the handler's own write to make.
+
+    Thin wrapper around `run_agent` otherwise -- the spawn behaviour is
+    unchanged. Optional context (`review_round`, `retry_count`, resume session
+    id) is forwarded so downstream consumers can correlate spawns with retry
     budgets and reviewer rounds. The exit record carries
     `exit_code`/`timed_out`/`duration_s` from the AgentResult so an
     operator tailing the JSONL sink sees timeouts and crashes without
@@ -224,10 +284,12 @@ def _run_agent_tracked(
     if request is not None and request_fields:
         raise TypeError("pass either request or keyword request fields, not both")
     run_request = request or _AgentRunRequest(**request_fields)
+    if not _run_circuit._charge_launch(gh, budget, run_request.fingerprint):
+        return _run_circuit._refused_run()
     start = time.monotonic()
     gh.emit_event(
         "agent_spawn",
-        issue_number=issue_number,
+        issue_number=budget.issue.number,
         stage=run_request.stage,
         agent=run_request.backend,
         agent_role=run_request.agent_role,
@@ -246,7 +308,7 @@ def _run_agent_tracked(
     )
     duration_s = round(time.monotonic() - start, 3)
     triggered_skills = _record_tracked_agent_exit(
-        gh, issue_number, run_request, agent_result, duration_s,
+        gh, budget.issue.number, run_request, agent_result, duration_s,
     )
     # One `skill_triggered` audit event per distinct triggered skill, reusing
     # the list `record_agent_exit` already parsed (no second pass over stdout).
@@ -254,7 +316,9 @@ def _run_agent_tracked(
     # from the analytics layer. This is opt-in observability, so it rides its
     # own fail-open guard exactly like the skill parse does -- a bug here must
     # never break a run whose baseline audit events have already fired.
-    _emit_triggered_skills(gh, issue_number, run_request, triggered_skills)
+    _emit_triggered_skills(
+        gh, budget.issue.number, run_request, triggered_skills,
+    )
     return agent_result
 
 

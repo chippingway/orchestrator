@@ -680,8 +680,11 @@ def _declined_run(
     the initial decomposer's dirty check does: a run the shutdown sweep killed
     can have written before it died, and a contaminated candidate is a thing
     an operator has to be told about whether or not the run that caused it
-    counted.
+    counted. A launch that never became a process is ahead of both, since a
+    candidate changed by something else is not a verdict this run contaminated.
     """
+    if _guards._ignore_if_never_invoked(context.issue, agent_result):
+        return _late_outcome._finished(context, _LateDisposition.DEFERRED)
     if agent_result.timed_out:
         return _late_outcome._parked_run(
             context,

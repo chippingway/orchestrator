@@ -8,6 +8,8 @@ import unittest
 
 from tests.workflow.stages.implementing import drift_test_support as support
 
+AGENT_RUN_CHARGE_WRITES = support.AGENT_RUN_CHARGE_WRITES
+
 AWAITING_HUMAN = support.AWAITING_HUMAN
 DEV_AGENT = support.DEV_AGENT
 DEV_SESSION = support.DEV_SESSION
@@ -65,7 +67,9 @@ def _assert_interrupted_drift_state(
     github,
     before_writes,
 ) -> None:
-    test_case.assertEqual(github.write_state_calls, before_writes)
+    test_case.assertEqual(
+        github.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+    )
     state = github.pinned_data(INTERRUPTED_DRIFT_ISSUE)
     test_case.assertEqual(
         state.get(USER_CONTENT_HASH),

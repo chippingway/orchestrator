@@ -33,6 +33,7 @@ from tests.support.fakes import (
 )
 from tests.workflow.fixtures import (
     _TEST_SPEC,
+    AGENT_RUN_CHARGE_WRITES,
     _agent,
     _manifest,
     _PatchedWorkflowMixin,
@@ -100,9 +101,11 @@ class DecomposerLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
         self.assertEqual(gh.created_child_issues, [])
         self.assertEqual(gh.label_history, [])
         self.assertEqual(gh.posted_comments, [])
-        # Durable state untouched: the post-spawn session id is discarded and no
-        # pinned-state advancement is written.
-        self.assertEqual(gh.write_state_calls, before_writes)
+        # The spawn's own charge is the only durable write: the post-spawn
+        # session id is discarded and no pinned-state advancement is written.
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         self.assertNotIn(
             "decomposer_session_id",
             gh.pinned_data(_DECOMPOSER_ISSUE_NUMBER),
@@ -149,7 +152,9 @@ class ReviewerLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
             (gh.label_history, gh.posted_pr_comments, gh.posted_comments),
             ([], [], []),
         )
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         self.assertNotIn(
             "last_review_session_id",
             gh.pinned_data(_REVIEWER_ISSUE_NUMBER),
@@ -195,7 +200,9 @@ class QuestionLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
             (gh.opened_prs, gh.label_history, gh.posted_comments),
             ([], [], []),
         )
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         self.assertNotIn(
             "question_session_id",
             gh.pinned_data(_FRESH_QUESTION_ISSUE_NUMBER),
@@ -250,7 +257,9 @@ class QuestionLivePauseTest(unittest.TestCase, _PatchedWorkflowMixin):
         mocks["run_agent"].assert_called_once()
         self.assertEqual(gh.label_history, [])
         self.assertEqual(gh.posted_comments, [])
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         self.assertEqual(
             gh.pinned_data(_RESUMED_QUESTION_ISSUE_NUMBER).get(
                 "last_action_comment_id",

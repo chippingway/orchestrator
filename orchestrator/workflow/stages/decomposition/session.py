@@ -42,6 +42,7 @@ from orchestrator.workflow.engine import (
     drift as _drift,
     prompts as _prompts,
     retry_budget as _retry_budget,
+    run_circuit as _run_circuit,
     usage as _usage,
 )
 from orchestrator.workflow.stages.decomposition import state as _state
@@ -113,7 +114,7 @@ def _spawn_fresh_decomposer(
     # strip configured CLI args on subsequent resumes.
     state.set("decomposer_agent", session.spec)
     decomposer_result = _usage._run_agent_tracked(
-        gh, issue.number,
+        gh, _run_circuit.AgentRunBudget(issue=issue, state=state),
         agent_role="decomposer",
         stage="decomposing",
         backend=session.backend,
@@ -172,7 +173,7 @@ def _resume_decomposer_on_human_reply(
         )
     session = _DecomposerSession(*_read_decomposer_session(state))
     decomposer_result = _usage._run_agent_tracked(
-        gh, issue.number,
+        gh, _run_circuit.AgentRunBudget(issue=issue, state=state),
         agent_role="decomposer",
         stage="decomposing",
         backend=session.backend,

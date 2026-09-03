@@ -12,6 +12,7 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    AGENT_RUN_CHARGE_WRITES,
     MEASURED_CANDIDATE_SHA,
     _agent,
 )
@@ -184,7 +185,9 @@ class HandleDocumentingInterruptedTest(unittest.TestCase, _DocumentingWorkflowMi
         )
 
         self.assertEqual(mocks[RUN_AGENT].call_count, 1)
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         self.assertNotIn(
             (INTERRUPTED_ISSUE_NUMBER, IN_REVIEW),
             gh.label_history,
@@ -239,7 +242,9 @@ class HandleDocumentingInterruptedTest(unittest.TestCase, _DocumentingWorkflowMi
 
         # The reply DID drive a resume, but the interruption is ignored.
         self.assertEqual(mocks[RUN_AGENT].call_count, 1)
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         state = gh.pinned_data(INTERRUPTED_RESUME_ISSUE_NUMBER)
         # The park is not consumed and the consumed-reply watermark bump is
         # discarded, so the next process re-resumes on the same reply.

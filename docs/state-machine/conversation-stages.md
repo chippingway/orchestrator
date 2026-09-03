@@ -31,6 +31,9 @@ What each prompt grants and forbids, and how a session is continued across round
      BEFORE the usage fold, park, or pinned-state write, so the next tick re-runs from durable state (the
      `_question_run_cleanup` context manager still disposes the worktree per `keep_worktree`).
   4. Branch on result:
+     - a launch that never became a process (`invoked=False` — the agent-run circuit refused it) → return WITHOUT
+       writing, ahead of the pause re-check and every reading below it. Nothing in the worktree is that launch's
+       doing, and a park in its name would overwrite the durable one the refusal took.
      - `timed_out` → `_park_question` with `question_timeout`. **Keep** the worktree for operator inspection.
      - new commits → `_park_question` with `question_commits`. **Keep** the worktree: this stage is read-only.
      - dirty tree → `_park_question` with `question_dirty`. **Keep** the worktree.
@@ -294,7 +297,10 @@ the per-issue checkout only has to survive a tick when an unsafe park keeps it f
   the legacy name), and the round anchor moved onto the published tip — the branch's new position is exactly what
   this stage now vouches for, and an anchor left behind would have the implementing relabel guard convict the branch
   of the commit this stage just published.
-- **Disposition** (in order): a `paused` / `backlog` label applied mid-run suppresses every disposition below and
+- **Disposition** (in order): a launch that never became a process (`invoked=False` — the agent-run circuit refused
+  it) is declined first of all, ahead of the pause and every reading under it: no head, tree, or reply below is
+  about a process that did not exist, and a park in its name would overwrite the durable `agent_run_limit` one the
+  refusal took. Then a `paused` / `backlog` label applied mid-run suppresses every disposition below and
   returns without writing anything — the anchor above is what keeps that safe for a round that committed. Otherwise
   `last_discussion_at` is stamped and a non-interrupted run's usage is folded, then whether the commit question can
   be answered at all — both ends of it are `HEAD` reads, and either failing parks `discussion_unreadable_worktree`

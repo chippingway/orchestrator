@@ -22,6 +22,14 @@ class AgentResult:
     stderr: str
     interrupted: bool = False
     usage: UsageMetrics | None = None
+    # Whether a process was invoked for this result at all. True for every
+    # run either backend produced, including the ones a shutdown kill or a
+    # timeout cut short -- those reached a CLI, and what they left behind on
+    # disk is theirs. False only for a launch turned away before the spawn,
+    # which the stages have to be able to tell apart: a worktree they would
+    # otherwise read a killed run's leavings out of carries nothing this
+    # result put there.
+    invoked: bool = True
 
 
 CodexResult = AgentResult

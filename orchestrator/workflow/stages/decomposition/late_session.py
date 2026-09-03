@@ -69,7 +69,11 @@ from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.github import pinned_state as _pinned_state
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments, usage as _usage
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    run_circuit as _run_circuit,
+    usage as _usage,
+)
 from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import (
@@ -421,7 +425,10 @@ def _spawn_late_adjudicator(
     every run that is not answering one gets.
     """
     return _usage._run_agent_tracked(
-        context.gh, context.issue.number,
+        context.gh,
+        _run_circuit.AgentRunBudget(
+            issue=context.issue, state=context.state,
+        ),
         agent_role=run.role,
         stage=_DECOMPOSING_STAGE,
         backend=run.backend,

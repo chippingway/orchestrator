@@ -201,11 +201,15 @@ examples.
   `orchestrator.config` — and the accounting it is judged against is the per-issue ledger on
   [`workflow/engine/run_ledger.py`](../orchestrator/workflow/engine/run_ledger.py): the allowance in force (this
   setting, unless the issue records one of its own), the monotonic `agent_runs_used` count seeded and floored by the
-  `issue_agent_runs` meter, and the `reserved` / `started` phases of the launch currently holding a charge. That
+  `issue_agent_runs` meter, and the `reserved` / `started` phases of the launch currently holding a charge, matched
+  to it by the request fingerprint recorded beside them. That
   count goes on running while this setting is `0`, so turning the ceiling on reads a real lifetime total rather than
-  zero. The charge is taken *before* the spawn, so a run that crashed, timed out, or was killed mid-flight is still
-  spent — which is also why this count can sit above the `issue_agent_runs` figure the terminal receipt reports,
-  since that one records only the runs whose usage parsed. Where an issue that has spent it all STOPS is the park on
+  zero. The charge is taken *before* the spawn — by
+  [`workflow/engine/run_circuit.py`](../orchestrator/workflow/engine/run_circuit.py), immediately around the one
+  low-level `run_agent` call every role goes through — so a run that crashed, timed out, or was killed mid-flight is
+  still spent, which is also why this count can sit above the `issue_agent_runs` figure the terminal receipt reports,
+  since that one records only the runs whose usage parsed. A launch whose charge could not be written invokes no
+  process at all. Where an issue that has spent it all STOPS is the park on
   [`workflow/engine/run_limit.py`](../orchestrator/workflow/engine/run_limit.py): `awaiting_human` with a stable
   `agent_run_limit` reason, a notice recorded before it is posted and said once per park, and a hold in the
   dispatcher that keeps such an issue off every stage handler — behind only an authorized restart and a cancelled

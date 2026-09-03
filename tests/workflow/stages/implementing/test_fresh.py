@@ -16,6 +16,7 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    AGENT_RUN_CHARGE_WRITES,
     LABEL_IMPLEMENTING,
     _agent,
     _PatchedWorkflowMixin,
@@ -318,7 +319,9 @@ class HandleImplementingInterruptedTest(unittest.TestCase, _PatchedWorkflowMixin
         )
 
         mocks[RUN_AGENT].assert_called_once()
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         self.assertEqual(gh.opened_prs, [])
         self.assertEqual(gh.label_history, [])
         state = gh.pinned_data(INTERRUPTED_SPAWN_ISSUE)

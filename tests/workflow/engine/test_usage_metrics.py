@@ -44,6 +44,7 @@ _TRAJECTORY_PATH_ATTR = support._TRAJECTORY_PATH_ATTR
 _USAGE_HELPER_ISSUE_NUMBER = support._USAGE_HELPER_ISSUE_NUMBER
 _USAGE_KEY = support._USAGE_KEY
 _analytics_path = support._analytics_path
+_tracked_budget = support._tracked_budget
 _analytics_records = support._analytics_records
 _claude_stdout = support._claude_stdout
 _claude_stdout_with_skills = support._claude_stdout_with_skills
@@ -72,7 +73,7 @@ def _run_usage(
             stderr="",
         )
         tracked_result = engine_usage._run_agent_tracked(
-            gh, _USAGE_HELPER_ISSUE_NUMBER,
+            gh, _tracked_budget(gh, _USAGE_HELPER_ISSUE_NUMBER),
             agent_role=ROLE_DEVELOPER,
             stage=STAGE_IMPLEMENTING,
             backend=backend,
@@ -111,14 +112,16 @@ class RunUsageSurfacedTest(unittest.TestCase):
     left `None` when the usage parse fails (fail-open), and never disturbing
     the analytics record or the `skill_triggered` audit events."""
 
-    def test_agent_result_usage_defaults_to_none(self) -> None:
-        # The new field is defaulted so every existing construction stays
-        # valid without passing it; an untracked result carries no usage.
+    def test_agent_result_optional_fields_default(self) -> None:
+        # Both optional fields are defaulted so every construction a backend
+        # makes stays valid: an untracked result carries no usage, and a
+        # result nobody said otherwise about came from a process that ran.
         agent_result = AgentResult(
             session_id="s", last_message="", exit_code=0,
             timed_out=False, stdout="", stderr="",
         )
         self.assertIsNone(agent_result.usage)
+        self.assertTrue(agent_result.invoked)
 
     def test_result_carries_usage_without_sink(self) -> None:
         # Sink OFF: the parsed metrics still reach the caller off `.usage`,

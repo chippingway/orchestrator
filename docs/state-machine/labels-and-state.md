@@ -735,10 +735,14 @@ The keys that matter for the state machine fall into a few groups:
   setting stops nothing turning runs away, not the runs), and a missing one starts from the `issue_agent_runs` meter
   above rather than from zero — the two count the same unit, so the larger of the pair is what a read answers.
   `agent_run_reservation` is the launch currently holding a charge, as one of two stable phases: `reserved` (charged,
-  not yet spawned) and `started` (the spawn happened). The charge is taken before the spawn, so a run that crashed,
-  timed out, or was killed mid-flight is still spent; settling a reservation drops only the claim that a launch is
-  outstanding, never the charge. This owner decides nothing and posts nothing — no stage handler turns an agent run
-  away against it, and the one writer of `agent_run_allowance` is the operator command below.
+  not yet spawned) and `started` (the spawn happened), with `agent_run_fingerprint` naming which launch that is — the
+  digest of the request's own identity (role, stage, backend, spec, resumed session, review round, retry count), never
+  of its prompt, which is rebuilt every tick and would make one launch look like a new one every poll. The charge is
+  taken before the spawn, so a run that crashed, timed out, or was killed mid-flight is still spent; settling a
+  reservation drops the phase and the fingerprint together, never the charge. This owner decides nothing and posts
+  nothing — the reading is taken and acted on at the tracked spawn boundary
+  ([The agent-run circuit](#the-agent-run-circuit)), and the one writer of `agent_run_allowance` is the operator
+  command below.
 - **The agent-run-limit park.** `awaiting_human` + `park_reason="agent_run_limit"` + `agent_run_limit_notice`, owned
   by [`orchestrator/workflow/engine/run_limit.py`](../../orchestrator/workflow/engine/run_limit.py), which is handed
   the ledger reading rather than taking one — so the park quotes the numbers the refusal was made on rather than
@@ -933,6 +937,48 @@ every issue that never hit the cap is. Present, it governs: a number is read int
 bigger one buys the same single attempt, a negative buys nothing), and a value that is not a number at all proves no
 attempt and hands out none, which parks the issue and asks a human rather than falling through to a whole window's
 worth of spawns off the strength of something somebody typed.
+
+### The agent-run circuit
+
+The lifetime ledger is charged at the one place every role reaches an agent through:
+[`orchestrator/workflow/engine/run_circuit.py`](../../orchestrator/workflow/engine/run_circuit.py), asked immediately
+around the sole low-level `run_agent` call inside `_run_agent_tracked`. A gate written into each spawning handler
+would be a gate the next handler is added without; there is exactly one call that starts an agent process, so a
+charge around it is one every role, stage, and cycle pays. Every launch names an `AgentRunBudget` — the issue a
+charge is written on, and the caller's own `PinnedState` — and the parameter is **required**, so a spawn road that
+omitted it would not compile rather than quietly spend runs nothing counts. All eight spawn sites (the decomposer's
+fresh and resumed runs, the late adjudicator, the question and discussion rounds, the developer's fresh spawn and
+its resume, and the reviewer) pass one, and
+[`tests/workflow/engine/test_spent_ledger_spawns.py`](../../tests/workflow/engine/test_spent_ledger_spawns.py)
+drives the real handlers against a spent ledger so an unwired road is caught as a spawn that happened.
+
+- **Two durable writes, both before a process exists.** `reserved` (charged, nothing invoked) then `started` (the
+  invocation is what happens next). A charge taken behind the spawn is one a crash, a timeout, or a shutdown kill
+  collects for free. A tick that dies between the two writes leaves `reserved`, and the launch it was taken for
+  reuses that charge; a tick that dies anywhere after `started` leaves a run nobody can prove did not happen, so the
+  next launch charges a new attempt. Nothing settles a charge by giving it back.
+- **The launch is matched, not just the phase.** A standing `reserved` is reused only when `agent_run_fingerprint`
+  names this same request; a charge some other road recorded is one this launch never paid for.
+- **Durable state is re-read, and only the circuit's own fields come back.** The charge is written onto a fresh
+  `read_pinned_state`, and exactly the keys that write changed are merged into the caller's object. Everything else
+  the caller is holding is mid-tick — a reviewer spec staged ahead of the spawn, a moved reply watermark, a charged
+  retry slot, a session id about to be replaced — and belongs to the handler's own single write at the end of the
+  run. The merge is what keeps that write from putting the charge back the way its read found it.
+- **Nothing is invoked unless the charge landed.** An unreadable or unparsable pinned comment, a refused write, and a
+  spent allowance all return an `AgentResult` with `interrupted=True` **and `invoked=False`**, and emit no
+  `agent_spawn` / `agent_exit`: there is no run to bookend. Handlers already read the first through
+  `_ignore_if_interrupted` and return without writing durable state. Only the spent allowance is a decision about
+  the issue, so only it takes the park above — on the freshly read state, whose durable write the park owner makes
+  itself — and the dispatcher's hold stops the issue on the next tick.
+- **`invoked=False` is not the same claim as `interrupted`, and four roads need the difference.** The initial
+  decomposer, the late adjudicator, `question`, and `discussion` inspect the checkout *before* they ask about
+  interruption, deliberately: a run the shutdown sweep killed can have written before it died, and a contaminated
+  tree is an operator's to see whether or not the run counted. A launch that never started wrote nothing, so a tree
+  dirty from an earlier run — or a `HEAD` that will not resolve — is not its doing, and a `decomposer_dirty` /
+  `late_worktree_mutated` / `question_dirty` / `discussion_unreadable_worktree` park in its name would **replace the
+  durable `agent_run_limit` park the refusal had just taken** with a reason about a process that never existed. Each
+  of those roads therefore asks `guards._ignore_if_never_invoked` first, ahead of every reading it would otherwise
+  classify the run by.
 
 ### Late generation state
 

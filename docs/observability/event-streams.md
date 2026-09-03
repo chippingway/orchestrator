@@ -46,7 +46,9 @@ file is the durable record.
 - `stage_enter` — `set_workflow_label` (via `_emit_stage_enter`) for every label flip; extras: `stage`.
 - `agent_spawn` / `agent_exit` — `_run_agent_tracked` (in `workflow/engine/usage.py`) wraps every `run_agent` call
   (decomposer, implementer, reviewer, dev-resume, conflict-resolution dev); extras: `agent` (backend), `agent_role`,
-  `review_round`, `retry_count`. `session_id` and `agent_exit`-only fields are described below.
+  `review_round`, `retry_count`. `session_id` and `agent_exit`-only fields are described below. A launch the
+  agent-run circuit refuses emits **neither**: no process was invoked, so there is no run to bookend — what that
+  refusal records instead is an `agent_run_limit` event where a spent allowance was the reason.
 - `skill_triggered` — `_run_agent_tracked` after `agent_exit`, **only when `TRACK_SKILL_TRIGGERS` is on**
   (default off); one event per distinct skill the run triggered; extras: `agent` (backend), `agent_role`,
   `review_round`, `retry_count`, `skill` (the triggered skill name). Reuses the list `record_agent_exit` already parsed;

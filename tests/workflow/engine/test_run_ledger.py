@@ -37,6 +37,8 @@ _USED = _run_ledger.AGENT_RUNS_USED
 
 _RESERVATION = _run_ledger.AGENT_RUN_RESERVATION
 
+_FINGERPRINT = _run_ledger.AGENT_RUN_FINGERPRINT
+
 _RESERVED = _run_ledger.RunPhase.RESERVED
 
 _STARTED = _run_ledger.RunPhase.STARTED
@@ -46,6 +48,11 @@ _STARTED = _run_ledger.RunPhase.STARTED
 _SPENT = 6
 
 _CHARGED = 7
+
+# The launch a charge is taken for, and one that is not it.
+_LAUNCH = "a3f1"
+
+_OTHER_LAUNCH = "b7c2"
 
 # A count each meter carries when the two disagree.
 _AHEAD = 9
@@ -69,6 +76,10 @@ _UNREADABLE_COUNTS = (True, -1, 2.5, "7", None, [3])
 # else, and a list there must read as no phase rather than raise.
 _UNREADABLE_PHASES = ("", "running", 3, None, True, ["reserved"])
 
+# The same, for the field naming which launch holds a charge: only a non-empty
+# string names one, and everything else leaves a charge nothing can match.
+_UNREADABLE_LAUNCHES = ("", 7, None, ["a3f1"])
+
 
 def _state(**fields) -> PinnedState:
     return PinnedState(comment_id=1, data=dict(fields))
@@ -80,9 +91,14 @@ def _read(state: PinnedState, *, configured: int = _CONFIGURED):
         return _run_ledger._read_ledger(state)
 
 
-def _reserve(state: PinnedState, *, configured: int = _CONFIGURED):
+def _reserve(
+    state: PinnedState,
+    *,
+    configured: int = _CONFIGURED,
+    fingerprint: str = _LAUNCH,
+):
     with patch.object(config, "MAX_AGENT_RUNS_PER_ISSUE", configured):
-        return _run_ledger._reserve_run(state)
+        return _run_ledger._reserve_run(state, fingerprint)
 
 
 class LegacyMeterTest(unittest.TestCase):
@@ -158,13 +174,6 @@ class AllowanceTest(unittest.TestCase):
         self.assertEqual(ledger.configured, _CONFIGURED)
         self.assertEqual(ledger.allowance, _NARROW)
 
-    def test_a_recorded_zero_is_unlimited(self) -> None:
-        # Same unit as the setting, so `0` says the same thing in both places.
-        ledger = _read(_state(**{_ALLOWANCE: 0}))
-
-        self.assertTrue(ledger.unlimited)
-        self.assertIsNone(ledger.remaining)
-
     def test_a_damaged_allowance_uses_the_setting(self) -> None:
         for damaged in _UNREADABLE_COUNTS:
             with self.subTest(damaged=damaged):
@@ -182,10 +191,34 @@ class AllowanceTest(unittest.TestCase):
         self.assertEqual(ledger.remaining, 0)
 
     def test_unlimited_reports_no_remainder(self) -> None:
-        ledger = _read(_state(**{_USED: _OVERSPENT}), configured=0)
+        # The issue's own recorded `0` and the setting's say the same thing --
+        # same unit, both places -- and a ceiling there is none of has no
+        # remainder a reader could compare against zero and refuse on.
+        readings = (
+            (_state(**{_ALLOWANCE: 0}), _CONFIGURED),
+            (_state(**{_USED: _OVERSPENT}), 0),
+        )
+        for state, configured in readings:
+            with self.subTest(configured=configured):
+                ledger = _read(state, configured=configured)
 
-        self.assertTrue(ledger.unlimited)
-        self.assertIsNone(ledger.remaining)
+                self.assertTrue(ledger.unlimited)
+                self.assertIsNone(ledger.remaining)
+
+    def test_what_a_spent_allowance_reads_as(self) -> None:
+        # The one question a reader about to spend a run asks, and the one
+        # answer an unlimited ceiling never gives however much it has run.
+        cases = (
+            (_CONFIGURED, _SPENT, False),
+            (_CONFIGURED, _CONFIGURED, True),
+            (_NARROW, _OVERSPENT, True),
+            (0, _OVERSPENT, False),
+        )
+        for allowance, used, expected in cases:
+            with self.subTest(allowance=allowance, used=used):
+                state = _state(**{_ALLOWANCE: allowance, _USED: used})
+
+                self.assertIs(_read(state).spent, expected)
 
     def test_a_wider_ceiling_returns_no_spend(self) -> None:
         # Widening the setting hands back allowance, never spend: the runs are
@@ -219,6 +252,7 @@ class ChargeTest(unittest.TestCase):
 
         self.assertEqual(state.get(_USED), 1)
         self.assertNotIn(_RESERVATION, state.data)
+        self.assertNotIn(_FINGERPRINT, state.data)
 
     def test_a_charge_records_its_launch(self) -> None:
         # Charged ahead of the spawn, so a run that crashed, timed out, or was
@@ -229,6 +263,24 @@ class ChargeTest(unittest.TestCase):
 
         self.assertEqual(ledger.reservation, _RESERVED)
         self.assertEqual(ledger.used, 1)
+        self.assertEqual(ledger.fingerprint, _LAUNCH)
+        self.assertTrue(ledger.pending_for(_LAUNCH))
+
+    def test_only_the_launch_that_paid_reuses_it(self) -> None:
+        # A charge another road recorded is one this launch never paid for,
+        # and spending it would leave the ledger claiming a run it did not buy.
+        ledger = _reserve(_state())
+
+        self.assertFalse(ledger.pending_for(_OTHER_LAUNCH))
+
+    def test_a_started_charge_is_no_longer_pending(self) -> None:
+        # Past the start marker a process may have run, and nothing on the
+        # issue can say it did not -- so the charge is spent, not standing.
+        state = _state()
+        _reserve(state)
+        _run_ledger._start_reserved_run(state)
+
+        self.assertFalse(_read(state).pending_for(_LAUNCH))
 
     def test_a_reservation_moves_to_started(self) -> None:
         state = _state()
@@ -245,6 +297,10 @@ class ChargeTest(unittest.TestCase):
         self.assertFalse(_run_ledger._start_reserved_run(state))
         self.assertEqual(state.data, {})
 
+
+class WireContractTest(unittest.TestCase):
+    """The names and values live issues already carry."""
+
     def test_an_unknown_phase_is_no_launch(self) -> None:
         # A phase a newer binary wrote, or a hand edit: a reader must not act
         # on a claim about a launch it cannot interpret.
@@ -255,14 +311,29 @@ class ChargeTest(unittest.TestCase):
                 self.assertIsNone(_read(state).reservation)
                 self.assertFalse(_run_ledger._start_reserved_run(state))
 
+    def test_an_unreadable_launch_is_no_launch(self) -> None:
+        # A hand edit or an older binary leaves a charge nothing can match, so
+        # the next launch pays for itself rather than claiming it.
+        for damaged in _UNREADABLE_LAUNCHES:
+            with self.subTest(damaged=damaged):
+                state = _state(**{
+                    _RESERVATION: _RESERVED, _FINGERPRINT: damaged,
+                })
 
-class WireContractTest(unittest.TestCase):
-    """The names and values live issues already carry."""
+                ledger = _read(state)
+
+                self.assertIsNone(ledger.fingerprint)
+                self.assertFalse(ledger.pending_for(_LAUNCH))
 
     def test_the_field_and_phase_spellings(self) -> None:
         self.assertEqual(
-            (_ALLOWANCE, _USED, _RESERVATION),
-            ("agent_run_allowance", "agent_runs_used", "agent_run_reservation"),
+            (_ALLOWANCE, _USED, _RESERVATION, _FINGERPRINT),
+            (
+                "agent_run_allowance",
+                "agent_runs_used",
+                "agent_run_reservation",
+                "agent_run_fingerprint",
+            ),
         )
         self.assertEqual(
             [phase.value for phase in _run_ledger.RunPhase],
@@ -287,6 +358,7 @@ class WireContractTest(unittest.TestCase):
         self.assertEqual(restored.allowance, charged.allowance)
         self.assertEqual(restored.used, charged.used)
         self.assertEqual(restored.reservation, _STARTED)
+        self.assertEqual(restored.fingerprint, _LAUNCH)
         self.assertEqual(restored.remaining, _AHEAD - 1)
 
     def test_a_phase_is_written_as_its_string(self) -> None:
