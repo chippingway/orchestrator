@@ -389,7 +389,8 @@ The security posture:
   `/orchestrator add-agent-runs N` that widens a spent lifetime agent-run allowance), and the
   `in_review` / `fixing`
   PR-feedback loop. So an outsider on a public repo cannot inject instructions into an agent, resume a parked session,
-  retry a parked rebase, buy an agent run out of an exhausted budget or off a spent lifetime ceiling, route
+  retry a parked rebase, buy an agent run out of an exhausted budget or off a spent lifetime ceiling
+  ([below](#bounded-agent-spend-per-issue-max_agent_runs_per_issue)), route
   `in_review` to `workflow:fixing`, or shift the drift hash, while the audit trail of what they said stays intact. An
   untrusted request for more agent runs is not even answered: a receipt is a comment somebody else's word paid for,
   and posting one would spend the watermark a trusted operator's own command is read against.
@@ -435,6 +436,46 @@ The security posture:
   signals; it is not a sandbox. Agents still run as the orchestrator's OS user with sandbox bypass, so the host remains
   the real trust boundary (see [above](#ai-generated-code-review-tests-and-scans) and
   [`architecture.md#design-constraints`](architecture.md#design-constraints)).
+
+## Bounded agent spend per issue (`MAX_AGENT_RUNS_PER_ISSUE`)
+
+The scarce resource this deployment actually spends is agent time on the host: every workflow label an issue wears can
+put a `codex` or `claude` process in front of it, with sandbox bypass, for as long as the agent takes. The comment
+trust boundary above decides *whose words* reach one of those processes; this control decides *how many of them one
+issue may ever start*. Both matter, because the loops that spend agent time are not all reachable by a stranger — a
+review that keeps requesting changes, a resumed session that keeps failing, a candidate that keeps coming back
+oversized, and a rebase that keeps resetting the review round are all things the workflow does to itself.
+
+`MAX_AGENT_RUNS_PER_ISSUE` (default 50, `0` = unlimited) is the bound. The env-var reference is in
+[`configuration.md#cadence-and-budgets`](configuration.md#cadence-and-budgets); the mechanism is in
+[`state-machine/labels-and-state.md#the-agent-run-circuit`](state-machine/labels-and-state.md#the-agent-run-circuit).
+The security posture:
+
+- **One boundary, charged before the process exists.** The charge is taken at the single low-level call every role
+  starts a process from, and it lands durably *before* the spawn. A run that crashed, timed out, or was killed by the
+  shutdown sweep is therefore still spent — those are exactly the runs a crash loop would otherwise repeat for free.
+  A gate written into each spawning handler would be a gate the next handler is added without.
+- **Lifetime, and no clock reopens it.** Unlike the 24h spawn budget, the review-round cap, and the conflict-round
+  cap, nothing returns a run: not the next day, not a park a human answered, not a cancelled cycle, not a restart, and
+  not an operator widening the setting afterwards. The counters that *do* reset — `review_round` after a base rebase
+  or a recovered conflict, `dev_resume_count` behind session rotation, the retry window — are deliberately not this
+  one, so an issue cannot loop its way to unbounded spend through any of them.
+- **The one thing that lifts it is trusted and bounded.** A spent ledger parks the issue on `agent_run_limit`, held by
+  the dispatcher ahead of every stage handler. The only answer is `/orchestrator add-agent-runs N` from an author the
+  `ALLOWED_ISSUE_AUTHORS` boundary trusts, on a line of its own, with `N` a whole number no larger than
+  `MAX_RUNS_PER_COMMAND` (50) — so a typo costs at most one bounded grant and a human who wants more says so again, on
+  the record. The grant writes an absolute ceiling (`agent_run_allowance` = `used + N`), never an increment, so a
+  command read twice buys the same runs once. An untrusted request is not even answered.
+- **Legacy-safe, and not a migration.** An issue already running when the ceiling arrived starts from the
+  `issue_agent_runs` meter the usage accounting has always kept, never from zero, so an in-flight issue keeps what it
+  has spent instead of being handed a fresh lifetime.
+- **Turning it off is a deliberate act.** `MAX_AGENT_RUNS_PER_ISSUE=0` means nothing turns a run away. The meter keeps
+  counting under it — so an operator who turns the bound back on is measuring against a real total rather than
+  against zero.
+- **Scope is spawn count, not capability or cost.** This bounds how many processes an issue starts; it is not a token
+  budget, not a rate limit, and not a sandbox. Token and cost accounting is the usage parser's
+  ([`observability/usage.md`](observability/usage.md)), and the host remains the real trust boundary
+  (see [above](#ai-generated-code-review-tests-and-scans)).
 
 ## Pinned-state authentication
 

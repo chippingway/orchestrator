@@ -90,6 +90,7 @@ per-file-ignores =
     orchestrator/git/worktrees/paths.py:WPS202
     orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
+    tests/workflow/engine/lifetime_test_support.py:WPS202
     tests/workflow/engine/run_circuit_test_support.py:WPS202
     tests/workflow/engine/run_limit_test_support.py:WPS202
     tests/workflow/engine/test_run_budget.py:WPS202

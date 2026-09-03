@@ -58,6 +58,7 @@ spellings and pinned-state JSON keys are a compatibility contract, so this area 
 and forbids, and how a role's command spec is parsed and pinned.
 
 - [`workflow/roles.md`](workflow/roles.md) — the three roles, the stages that spawn each, the session-reuse rules, the
+  lifetime agent-run ledger every one of them spends from and the counters that reset without returning a run, the
   size gate a clean committed candidate passes before it is published, the
   late adjudication an oversized one earns under the decomposer's own role, the owner read that
   adjudication passes before anything acts on it and what each verdict earns past it, the snapshot-first order a
@@ -105,8 +106,8 @@ polling tick, so all are safe to truncate, rotate, or delete.
 ## Security
 
 [`security.md`](security.md) — the project security checklist mapped to this repo: what the repo files enforce, what
-is operator-owned in GitHub or org settings, the comment trust boundary, pinned-state authentication, and the
-cross-repo awareness disclosure.
+is operator-owned in GitHub or org settings, the comment trust boundary, the bounded agent spend one issue may ever
+reach, pinned-state authentication, and the cross-repo awareness disclosure.
 
 The reporting channel is neither on that page nor in this directory. [`../SECURITY.md`](../SECURITY.md) is the root
 community-health file GitHub's Security tab and community profile read, and it is written for a reporter from outside

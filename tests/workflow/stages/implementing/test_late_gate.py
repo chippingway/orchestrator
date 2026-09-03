@@ -258,7 +258,14 @@ class LateGateTelemetryTest(support._GateCase, unittest.TestCase):
 
 
 class LateGateExemptionTest(support._ParkedRetryCase, unittest.TestCase):
-    """The one commit an adjudication accepted, and nothing beside it."""
+    """The one commit an adjudication accepted, and nothing beside it.
+
+    The two cases that decide by commit id are asked of an issue with agent
+    runs to spare and of one with none left, because the ledger beside this
+    gate must not move either answer: a spent lifetime is not a way past the
+    ceiling, and it is not a reason to re-adjudicate a commit somebody already
+    accepted. Nothing here spawns, so neither reading charges a run.
+    """
 
     def test_an_exemption_retires_the_record(self) -> None:
         # A guidance resume can put the checkout back on a commit an
@@ -288,20 +295,32 @@ class LateGateExemptionTest(support._ParkedRetryCase, unittest.TestCase):
     def test_an_accepted_commit_is_not_measured(self) -> None:
         # Without this the gate would measure the accepted candidate past the
         # same ceiling and adjudicate it again, forever.
-        self._seed(**{support.KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA})
+        for runs_left, ledger in support.LEDGERS.items():
+            with self.subTest(runs_left=runs_left):
+                self._seed(**{
+                    support.KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA, **ledger,
+                })
 
-        mocks = self._run_gate()
+                mocks = self._run_gate()
 
-        self._assert_unmeasured(mocks)
-        self._assert_published(mocks)
+                self._assert_unmeasured(mocks)
+                self._assert_published(mocks)
+                self._assert_charged_nothing(ledger)
 
     def test_work_past_it_is_a_fresh_candidate(self) -> None:
-        self._seed(**{support.KEY_EXEMPT_SHA: _OTHER_SHA})
+        for runs_left, ledger in support.LEDGERS.items():
+            with self.subTest(runs_left=runs_left):
+                self._seed(**{
+                    support.KEY_EXEMPT_SHA: _OTHER_SHA, **ledger,
+                })
 
-        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+                mocks = self._run_gate(
+                    added_lines=support.OVERSIZED_ADDITIONS,
+                )
 
-        self._assert_measured(mocks)
-        self._assert_held(mocks)
+                self._assert_measured(mocks)
+                self._assert_held(mocks)
+                self._assert_charged_nothing(ledger)
 
     def _resumed_onto_the_exemption(self):
         """A resume that put the checkout back on an accepted commit.

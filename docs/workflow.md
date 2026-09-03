@@ -8,7 +8,8 @@ behavior belong to [`state-machine.md`](state-machine.md).
 ## The pages in this area
 
 - [`workflow/roles.md`](workflow/roles.md) — the three roles and the stages that spawn each one, where a handler and
-  its spawn live, the session-reuse rules per role, the size gate every clean committed candidate passes before it is
+  its spawn live, the session-reuse rules per role, the lifetime agent-run ledger every role spends from and the
+  counters that reset without returning a run, the size gate every clean committed candidate passes before it is
   published and what its number earns, what the late adjudication of an oversized committed candidate is
   asked and may answer, the owner read a finished run passes before anything acts on it and what each verdict earns
   past it, the order a cleared `split` runs its snapshot, children, supersession, and cleanup in, what a human's edit

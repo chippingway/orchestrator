@@ -123,6 +123,36 @@ What a resume re-parses, and why the pin is the full spec rather than the backen
 [`command-specs.md#in-flight-session-lock`](command-specs.md#in-flight-session-lock). The two conversation stages'
 prompts and round contracts are in [`conversations.md`](conversations.md).
 
+## The lifetime agent-run ledger every role spends from
+
+Every role above reaches an agent through one boundary, and the boundary charges the issue before a process exists
+([`../state-machine/labels-and-state.md#the-agent-run-circuit`][agent-run-circuit]). What it counts is
+**processes**, not ticks and not rounds: a reviewer round that requests changes and resumes the developer inside the
+same tick pays for two, a developer resume that lands on a transcript the backend has lost pays for the fresh spawn
+it buys itself, and a run the shutdown sweep killed or an operator paused mid-flight pays like one that finished —
+each cost the same minutes of somebody's compute, and only the disposition is thrown away.
+
+The ceiling is `MAX_AGENT_RUNS_PER_ISSUE` (default 50, `0` = unlimited), or the issue's own `agent_run_allowance`
+where a human has bought it one. It is a **lifetime** total, so nothing gives a run back — and in particular none of
+the counters a role does reset is this one:
+
+- `review_round` goes back to zero on a pushed base rebase and on a recovered conflict, so `MAX_REVIEW_ROUNDS` can
+  be spent over and over on one issue;
+- `conflict_round` and the 24h `retry_count` window each reopen on their own terms;
+- `dev_resume_count` reaching `DEV_SESSION_MAX_RESUMES` retires the transcript and the next round spawns fresh;
+- an authorized restart of a cancelled late cycle projects a whole fresh cycle over the pinned comment, carrying the
+  allowance and the spend across with the rest of what is true about the ISSUE.
+
+So an issue can move between `workflow:implementing` and `workflow:decomposing`, be adjudicated once per committed
+candidate, rotate sessions, and answer review round after review round without any of those loops ending — and the
+ledger is the one thing counting them. When it is spent, the issue parks on `agent_run_limit` and the dispatcher
+holds it ahead of every handler above; only a trusted, bounded `/orchestrator add-agent-runs N` widens what it may
+still spend ([`../state-machine.md#per-tick-flow-workflowtick`](../state-machine.md#per-tick-flow-workflowtick)).
+
+The caps each role already had still refuse first — a cap that fired only after the charge would spend a run on work
+nothing ran — so a spent review cap, conflict cap, or daily spawn budget parks its own way with the lifetime count
+untouched.
+
 ## The size gate a committed candidate passes
 
 No agent runs here. This is the seam that decides whether an adjudication happens at all, and it sits at the one
@@ -1599,3 +1629,4 @@ reference.
 [late-run]: ../state-machine/labels-and-state.md#the-late-run
 [late-state]: ../state-machine/labels-and-state.md#late-generation-state
 [retry-budget]: ../state-machine/labels-and-state.md#the-retry-budget
+[agent-run-circuit]: ../state-machine/labels-and-state.md#the-agent-run-circuit
