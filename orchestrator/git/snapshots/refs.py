@@ -51,7 +51,7 @@ from enum import Enum
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication, commands, locks
+from orchestrator.git import branch_transport, commands, locks, ref_transport
 from orchestrator.git.snapshots import namespace
 from orchestrator.git.worktrees import paths
 
@@ -117,7 +117,7 @@ def create_snapshot_ref(
     if not namespace.is_snapshot_ref(ref):
         log.error("refusing to create %r: not a snapshot ref", ref)
         return SnapshotOutcome.REFUSED
-    observed = authentication._remote_ref_sha(spec, worktree, ref)
+    observed = ref_transport._remote_ref_sha(spec, worktree, ref)
     if observed is None:
         return SnapshotOutcome.UNREADABLE
     if observed == sha:
@@ -129,7 +129,7 @@ def create_snapshot_ref(
             spec.slug, ref, observed, sha,
         )
         return SnapshotOutcome.MISMATCH
-    created = authentication._push_ref(
+    created = ref_transport._push_ref(
         spec, worktree, ref=ref, revision=sha, expected=_ABSENT_LEASE,
     )
     return SnapshotOutcome.CREATED if created else SnapshotOutcome.REFUSED
@@ -158,7 +158,7 @@ def prove_snapshot_ref(
     # another worktree of the same target root fetching the same ref between
     # them would have the resolution report on its landing rather than ours.
     with locks._target_root_lock(spec.target_root):
-        fetched = authentication._authed_fetch(
+        fetched = branch_transport._authed_fetch(
             spec, f"+{ref}:{mirror}", cwd=worktree,
         )
         if fetched.returncode != 0:
@@ -256,7 +256,7 @@ def observed_snapshot_ref(
     if not namespace.is_snapshot_ref(ref):
         log.error("refusing to ask about %r: not a snapshot ref", ref)
         return SnapshotOutcome.REFUSED
-    observed = authentication._remote_ref_sha(spec, worktree, ref)
+    observed = ref_transport._remote_ref_sha(spec, worktree, ref)
     if observed is None:
         return SnapshotOutcome.UNREADABLE
     if not observed:
@@ -274,7 +274,7 @@ def _taken_from_remote(
     spec: config.RepoSpec, worktree: Path, ref: str, sha: str,
 ) -> SnapshotOutcome:
     """Ask the remote to let go of the one ref this generation preserved."""
-    deleted = authentication._delete_remote_ref(
+    deleted = ref_transport._delete_remote_ref(
         spec, worktree, ref=ref, expected=sha,
     )
     return SnapshotOutcome.DELETED if deleted else SnapshotOutcome.REFUSED

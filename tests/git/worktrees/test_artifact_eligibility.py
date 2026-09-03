@@ -21,7 +21,7 @@ import shutil
 import unittest
 from unittest.mock import patch
 
-from orchestrator.git import authentication, commands
+from orchestrator.git import branch_transport, commands
 from orchestrator.git.worktrees import eligibility, evidence, paths
 from orchestrator.git.worktrees.models import (
     BranchTip,
@@ -477,7 +477,7 @@ class UnreadableReadTest(_CandidateTestCase):
         self.commit()
 
         with patch.object(
-            authentication,
+            branch_transport,
             "_remote_branch_tip",
             side_effect=OSError("no git here"),
         ):

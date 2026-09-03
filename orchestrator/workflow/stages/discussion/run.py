@@ -60,7 +60,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import (
     creation as _worktree_creation,
@@ -229,7 +229,7 @@ def _publication_on_the_remote(
         return True
     if not run.state.get(_state._PUBLISHING_SHA):
         return False
-    remote_tip = _authentication._remote_branch_tip(
+    remote_tip = _branch_transport._remote_branch_tip(
         run.spec, run.spec.target_root, branch,
     )
     return remote_tip != ""
@@ -331,7 +331,7 @@ def _pinned_base_sha(run: _models._DiscussionRun, worktree: Path) -> str:
     against -- the remote rewrote it, or the fetch could not run -- and
     recording it anyway would spend the round on a reading nobody could take.
     """
-    base_sha = _authentication._remote_branch_tip(
+    base_sha = _branch_transport._remote_branch_tip(
         run.spec, worktree, run.spec.base_branch,
     ) or ""
     if not base_sha or _base_object_available(run, worktree, base_sha):
@@ -357,7 +357,7 @@ def _base_object_available(
     """
     if _verification_probes._commit_present(worktree, base_sha):
         return True
-    _authentication._authed_target_fetch(run.spec, run.spec.base_branch)
+    _branch_transport._authed_target_fetch(run.spec, run.spec.base_branch)
     return _verification_probes._commit_present(worktree, base_sha)
 
 

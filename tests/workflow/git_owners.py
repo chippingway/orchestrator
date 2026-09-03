@@ -14,7 +14,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from unittest.mock import DEFAULT, patch
 
-from orchestrator.git import authentication as _authentication, commands as _commands
+from orchestrator.git import branch_transport as _branch_transport, commands as _commands
 from orchestrator.git.base_sync import (
     pre_pr as _base_sync_pre_pr,
     refresh as _base_sync_refresh,
@@ -44,8 +44,8 @@ from orchestrator.git.worktrees import (
 
 GIT_SEAM_OWNERS = MappingProxyType({
     "_anchor_pr_worktree": _worktree_creation,
-    "_authed_fetch": _authentication,
-    "_authed_target_fetch": _authentication,
+    "_authed_fetch": _branch_transport,
+    "_authed_target_fetch": _branch_transport,
     "_base_object_present": _measurement_commits,
     "_branch_divergence": _publication_probes,
     "_branch_has_unpushed_commits": _worktree_recovery,
@@ -73,11 +73,11 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_local_branch_present": _worktree_cleanup,
     "_measure_candidate": _measurement,
     "_prove_candidate_commit": _measurement_commits,
-    "_push_branch": _authentication,
+    "_push_branch": _branch_transport,
     "_rebase_base_into_worktree": _base_sync_pre_pr,
     "_rebase_in_progress": _base_sync_pre_pr,
     "_refresh_base_and_worktrees": _base_sync_refresh,
-    "_remote_branch_tip": _authentication,
+    "_remote_branch_tip": _branch_transport,
     "_remove_issue_worktree": _worktree_cleanup,
     "_resolve_branch_name": _worktree_paths,
     "_revision_contains_path": _verification_probes,

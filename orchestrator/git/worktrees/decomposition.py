@@ -14,7 +14,7 @@ import logging
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication, commands, locks
+from orchestrator.git import branch_transport, commands, locks
 from orchestrator.git.worktrees import paths
 
 # The channel is named for the worktree-lifecycle domain rather than for
@@ -46,7 +46,7 @@ def _ensure_decompose_worktree(spec: config.RepoSpec, issue_number: int) -> Path
                 "worktree", "remove", "--force", str(wt),
                 cwd=spec.target_root,
             )
-        authentication._authed_target_fetch(spec, spec.base_branch)
+        branch_transport._authed_target_fetch(spec, spec.base_branch)
         worktree_result = commands._git(
             "worktree", "add", "--detach", str(wt),
             f"{spec.remote_name}/{spec.base_branch}",

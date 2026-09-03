@@ -7,7 +7,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication, commands
+from orchestrator.git import branch_transport, commands
 from orchestrator.git.base_sync import persistence, snapshot
 from orchestrator.git.publication import probes as publication_probes
 from orchestrator.git.verification import probes as verification_probes
@@ -97,7 +97,7 @@ class FetchRecoverySnapshotTest(unittest.TestCase):
         context = fixtures._recovery_context()
         fetch = MagicMock(return_value=fixtures._git_result())
 
-        with patch.object(authentication, AUTHED_FETCH, fetch), patch.object(
+        with patch.object(branch_transport, AUTHED_FETCH, fetch), patch.object(
             verification_probes,
             HEAD_SHA,
             MagicMock(return_value=fixtures.RECOVERED_SHA),
@@ -125,7 +125,7 @@ class FetchRecoverySnapshotTest(unittest.TestCase):
         abort = MagicMock(return_value=True)
 
         with (
-            patch.object(authentication, AUTHED_FETCH, failed),
+            patch.object(branch_transport, AUTHED_FETCH, failed),
             patch.object(snapshot, "_abort_recovery_unverified", abort),
         ):
             fetched = snapshot._fetch_recovery_snapshot(context)

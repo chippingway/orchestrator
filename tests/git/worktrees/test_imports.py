@@ -238,7 +238,7 @@ class CleanProcessImportTest(unittest.TestCase):
     """Each owner imports standalone in a fresh interpreter.
 
     Every owner depends only on config, pinned state, the git command /
-    lock / authentication owners, and its in-package siblings, so importing
+    lock / branch-transport owners, and its in-package siblings, so importing
     any one of them first must not need a name a half-run module has not
     defined yet. A subprocess per module gives each a clean `sys.modules` no
     other test has already populated, exposing an import-order cycle a

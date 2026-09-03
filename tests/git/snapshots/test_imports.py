@@ -70,7 +70,8 @@ class LayeringTest(unittest.TestCase):
             check=True,
         ).stdout.split()
 
-        self.assertNotIn("orchestrator.git.authentication", planted)
+        self.assertNotIn("orchestrator.git.branch_transport", planted)
+        self.assertNotIn("orchestrator.git.ref_transport", planted)
         self.assertNotIn("orchestrator.git.commands", planted)
         self.assertNotIn("orchestrator.config", planted)
 

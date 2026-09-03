@@ -31,7 +31,7 @@ from pathlib import Path
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.publication import probes as _publication_probes
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
@@ -78,7 +78,7 @@ def _stranded_fix_unpushed(
     if _verification_probes._worktree_dirty_files(wt):
         return ""
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
-    fetch = _authentication._authed_fetch(
+    fetch = _branch_transport._authed_fetch(
         spec,
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}",
         cwd=wt,

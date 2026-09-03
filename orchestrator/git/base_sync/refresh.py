@@ -20,7 +20,7 @@ from pathlib import Path
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git import authentication as _authentication, commands as _commands
+from orchestrator.git import branch_transport as _branch_transport, commands as _commands
 from orchestrator.git.base_sync import (
     frozen as _frozen,
     pr as _pr,
@@ -381,7 +381,7 @@ def _refresh_base_and_worktrees(
     guarantee. `None` preserves the legacy behavior so direct test
     invocations that supply no scheduler still refresh every worktree.
     """
-    fetch_r = _authentication._authed_target_fetch(spec, spec.base_branch)
+    fetch_r = _branch_transport._authed_target_fetch(spec, spec.base_branch)
     if fetch_r.returncode != 0:
         log.warning(
             "repo=%s base fetch of %s/%s failed: %s",

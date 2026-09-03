@@ -9,7 +9,7 @@ import subprocess
 from types import MappingProxyType
 from unittest.mock import patch
 
-from orchestrator.git import authentication, commands
+from orchestrator.git import branch_transport, commands
 from orchestrator.git.base_sync import pre_pr, refresh
 from orchestrator.git.publication import probes as publication_probes
 from orchestrator.git.verification import probes as verification_probes
@@ -37,13 +37,13 @@ _BASE_SYNC_TARGETS = MappingProxyType(
     {
         "dirty": (verification_probes, "_worktree_dirty_files"),
         "rebase": (pre_pr, "_rebase_base_into_worktree"),
-        "push": (authentication, "_push_branch"),
+        "push": (branch_transport, "_push_branch"),
         "head_sha": (verification_probes, "_head_sha"),
         "git": (commands, "_git"),
         "hardened": (commands, "_git_hardened"),
-        "fetch": (authentication, "_authed_fetch"),
+        "fetch": (branch_transport, "_authed_fetch"),
         "ahead_behind": (publication_probes, "_branch_divergence"),
-        "target_fetch": (authentication, "_authed_target_fetch"),
+        "target_fetch": (branch_transport, "_authed_target_fetch"),
         "worktrees_root": (paths, "_repo_worktrees_root"),
         "sync": (refresh, "_sync_worktree_with_base"),
     }

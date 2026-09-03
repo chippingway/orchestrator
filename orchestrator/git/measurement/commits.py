@@ -30,7 +30,7 @@ import logging
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git import authentication, commands
+from orchestrator.git import branch_transport, commands
 from orchestrator.git.measurement.models import FrozenCommit, MeasurementFailure
 from orchestrator.git.verification import probes as verification_probes
 
@@ -65,7 +65,7 @@ def _freeze_base_commit(
     freeze whatever the branch had moved to since, measuring a different pair
     under the same generation.
     """
-    base_sha = authentication._remote_branch_tip(
+    base_sha = branch_transport._remote_branch_tip(
         spec, worktree, spec.base_branch,
     )
     if not base_sha:
@@ -100,7 +100,7 @@ def _base_object_present(
     """
     if verification_probes._commit_present(worktree, base_sha):
         return True
-    authentication._authed_target_fetch(spec, spec.base_branch)
+    branch_transport._authed_target_fetch(spec, spec.base_branch)
     return verification_probes._commit_present(worktree, base_sha)
 
 

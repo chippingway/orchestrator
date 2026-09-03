@@ -20,7 +20,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.git import authentication, commands, locks
+from orchestrator.git import branch_transport, commands, locks
 from orchestrator.git.worktrees import creation
 from tests.git.concurrency_test_support import (
     BARRIER_TIMEOUT_SECONDS,
@@ -101,7 +101,7 @@ class EnsureWorktreeSerializationTest(unittest.TestCase):
         with (
             patch.object(commands, "_git", side_effect=probe.git),
             patch.object(
-                authentication,
+                branch_transport,
                 "_authed_target_fetch",
                 side_effect=probe.fetch,
             ),

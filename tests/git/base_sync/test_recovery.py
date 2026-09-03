@@ -10,7 +10,7 @@ import unittest
 from types import MappingProxyType
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication, commands as _commands
+from orchestrator.git import branch_transport, commands as _commands
 from orchestrator.git.base_sync import (
     outcomes,
     persistence,
@@ -423,7 +423,7 @@ class RetryRecoveryPushTest(unittest.TestCase):
                 ),
             )
             stack.enter_context(
-                patch.object(authentication, PUSH_BRANCH, push),
+                patch.object(branch_transport, PUSH_BRANCH, push),
             )
             stack.enter_context(
                 patch.object(

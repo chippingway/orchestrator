@@ -486,7 +486,7 @@ The security posture:
   rewrite, the base-sync rebases — under a lease that refuses a remote which moved. The default
   `HEAD:refs/heads/<branch>` is left for the one push that could name no commit at all: a gated push on an install
   running with `DECOMPOSE=off` whose checkout would not prove its own head
-  ([`architecture.md#push-path`](architecture.md#push-path-gitauthentication_push_branch)). If a misled
+  ([`architecture.md#push-path`](architecture.md#push-path-gitbranch_transport_push_branch)). If a misled
   agent edits a sibling
   checkout, nothing the orchestrator does publishes it — it surfaces as a dirty foreign tree, never as a PR. The
   block's framing also states every listed path is read-only.

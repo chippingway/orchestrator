@@ -20,7 +20,7 @@ import contextlib
 import unittest
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 from orchestrator.git.base_sync import persistence, recovery
 from orchestrator.git.verification import probes as verification_probes
 from tests.git.base_sync import (
@@ -95,7 +95,7 @@ class SwitchedOffRecoveryPushTest(unittest.TestCase):
         """A clean checkout, a watched push, and a finalize that is a no-op."""
         with patch.object(
             verification_probes, DIRTY_FILES, MagicMock(return_value=[]),
-        ), patch.object(authentication, PUSH_BRANCH, push), patch.object(
+        ), patch.object(branch_transport, PUSH_BRANCH, push), patch.object(
             persistence,
             FINALIZE_HELPER,
             MagicMock(return_value=True),

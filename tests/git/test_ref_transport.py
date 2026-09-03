@@ -3,9 +3,10 @@
 """The lease-pinned ref plumbing the snapshot namespace is written through.
 
 What the ref update DOES to a repository is covered against real git beside the
-snapshot owners. What is asserted here is the envelope it carries and the two
-refusals that must happen before any of it runs -- neither of which a real
-remote would exercise, because both are about refusing to reach one.
+snapshot owners. What is asserted here is the channel a refusal reports on, the
+envelope the update carries, and the two refusals that must happen before any
+of it runs -- neither of which a real remote would exercise, because both are
+about refusing to reach one.
 """
 
 from __future__ import annotations
@@ -15,8 +16,14 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
-from orchestrator.git import authentication
-from tests.git.authentication_test_support import (
+from orchestrator.git import ref_transport
+from tests.git.concurrency_test_support import (
+    PROBE_DELAY_SECONDS,
+    THREAD_TIMEOUT_SECONDS,
+    _ConcurrencyProbe,
+    _start_and_join,
+)
+from tests.git.token_transport_test_support import (
     FAKE_TOKEN,
     SECRET_TOKEN,
     SUBPROCESS_RUN,
@@ -24,12 +31,6 @@ from tests.git.authentication_test_support import (
     WORKTREE,
     _assert_hardened_fetch,
     _spec,
-)
-from tests.git.concurrency_test_support import (
-    PROBE_DELAY_SECONDS,
-    THREAD_TIMEOUT_SECONDS,
-    _ConcurrencyProbe,
-    _start_and_join,
 )
 from tests.git.transport_helpers import _GitRunRecorder
 
@@ -76,6 +77,18 @@ def _failed_push() -> MagicMock:
     )
 
 
+class RefusalChannelTest(unittest.TestCase):
+    """Refusals reach the channel operators already watch.
+
+    Operators filter on the rendered `orchestrator.git_plumbing` prefix and
+    attach handlers to that logger, so every read and update refusal this owner
+    emits has to render under that name rather than a package-derived one.
+    """
+
+    def test_logger_keeps_its_operator_facing_name(self) -> None:
+        self.assertEqual(ref_transport.log.name, PLUMBING_LOG)
+
+
 class RefPushTest(unittest.TestCase):
     """A ref is published under the lease its caller established."""
 
@@ -88,7 +101,7 @@ class RefPushTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
         ):
-            pushed = authentication._push_ref(
+            pushed = ref_transport._push_ref(
                 _spec(), WORKTREE, ref=REF, revision=SHA, expected="",
             )
 
@@ -106,7 +119,7 @@ class RefPushTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
         ):
-            authentication._push_ref(
+            ref_transport._push_ref(
                 _spec(), WORKTREE, ref=REF, revision=SHA, expected=OTHER_SHA,
             )
 
@@ -121,7 +134,7 @@ class RefPushTest(unittest.TestCase):
             patch(SUBPROCESS_RUN, side_effect=run_recorder),
             patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
         ):
-            authentication._delete_remote_ref(
+            ref_transport._delete_remote_ref(
                 _spec(), WORKTREE, ref=REF, expected=SHA,
             )
 
@@ -140,7 +153,7 @@ class RefTransportRefusalTest(unittest.TestCase):
             patch.object(config, TOKEN_RESOLVER, return_value=""),
             self.assertLogs(PLUMBING_LOG, level=ERROR),
         ):
-            pushed = authentication._push_ref(
+            pushed = ref_transport._push_ref(
                 _spec(), WORKTREE, ref=REF, revision=SHA, expected="",
             )
 
@@ -160,7 +173,7 @@ class RefTransportRefusalTest(unittest.TestCase):
             patch.object(config, TOKEN_RESOLVER, return_value=FAKE_TOKEN),
             self.assertLogs(PLUMBING_LOG, level=ERROR),
         ):
-            deleted = authentication._delete_remote_ref(
+            deleted = ref_transport._delete_remote_ref(
                 _spec(), WORKTREE, ref=REF, expected=SHA,
             )
 
@@ -179,7 +192,7 @@ class RefTransportRefusalTest(unittest.TestCase):
             patch.object(config, TOKEN_RESOLVER, return_value=SECRET_TOKEN),
             self.assertLogs(PLUMBING_LOG, level=ERROR) as reported,
         ):
-            pushed = authentication._push_ref(
+            pushed = ref_transport._push_ref(
                 _spec(), WORKTREE, ref=REF, revision=SHA, expected="",
             )
             diagnostic = "\n".join(reported.output)
@@ -206,7 +219,7 @@ class RefUpdateSerializationTest(unittest.TestCase):
         ):
             threads = [
                 threading.Thread(
-                    target=authentication._push_ref,
+                    target=ref_transport._push_ref,
                     args=(_spec(), WORKTREE),
                     kwargs={"ref": REF, "revision": SHA, "expected": ""},
                 )

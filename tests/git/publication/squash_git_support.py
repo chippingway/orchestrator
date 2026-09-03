@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest import mock
 
 from orchestrator import config
-from orchestrator.git import authentication
+from orchestrator.git import branch_transport
 from orchestrator.git.publication import squash
 from tests.git.publication.squash_gate_support import (
     PublicationSeed,
@@ -244,7 +244,7 @@ class _SquashScenarioMixin:
             else mock.MagicMock(return_value=push_result)
         )
         self.enterContext(
-            mock.patch.object(authentication, PUSH_BRANCH_HELPER, push_mock),
+            mock.patch.object(branch_transport, PUSH_BRANCH_HELPER, push_mock),
         )
         # A case about the window between the squash and the gate's own proof
         # of the checkout drives the head reads itself; every other one takes

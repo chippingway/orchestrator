@@ -45,7 +45,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.git.publication import (
     probes as _publication_probes,
@@ -771,7 +771,7 @@ def _on_commits(
     if _dirtied_before_the_push(gh, issue, state, published, wt):
         return
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
-    if not _authentication._push_branch(
+    if not _branch_transport._push_branch(
         spec, wt, branch, revision=published,
         # The head an approval taken on the PUBLISHED side was frozen
         # against, where there is one. A candidate a settled adjudication

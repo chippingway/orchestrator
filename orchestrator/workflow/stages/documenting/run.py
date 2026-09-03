@@ -34,7 +34,7 @@ import logging
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
-from orchestrator.git import authentication as _authentication
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.publication import probes as _publication_probes
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.comments import filter_trusted
@@ -76,7 +76,7 @@ def _prepare_documenting_worktree(ctx: _models._DocumentingContext, wt):
     """
     spec = ctx.spec
     branch = ctx.branch
-    fetch_branch = _authentication._authed_fetch(
+    fetch_branch = _branch_transport._authed_fetch(
         spec,
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}",
         cwd=wt,
