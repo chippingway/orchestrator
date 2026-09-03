@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import run_limit as _run_limit
+from orchestrator.workflow.engine.run_budget import AgentRunLaunch
 from orchestrator.workflow.engine.run_ledger import (
     AGENT_RUN_ALLOWANCE,
     AGENT_RUNS_USED,
@@ -55,6 +56,14 @@ BOT_LOGIN = "orchestrator"
 
 OUTSIDER = "stranger"
 
+# The launch a park is taken against, as the boundary that refuses one hands
+# it over: what the budget record names as the work the ceiling stopped.
+LAUNCH = AgentRunLaunch(
+    fingerprint="c0ffee" * 8,
+    stage="implementing",
+    agent_role="developer",
+)
+
 
 def ledger(*, allowance: int = ALLOWANCE, used: int | None = None):
     """One spent ledger, as the reader that refuses a spawn hands it over."""
@@ -85,6 +94,11 @@ def parked_state(*, owing: bool = False, **fields) -> PinnedState:
     if owing:
         _run_limit._owe_notice(parked, ledger())
     return parked
+
+
+def owing_park() -> PinnedState:
+    """A park already standing whose sentence the thread was never told."""
+    return parked_state(owing=True)
 
 
 def notice_text(*, allowance: int = ALLOWANCE, used: int | None = None) -> str:

@@ -46,6 +46,15 @@ process, and a result that reads as a run which did not happen -- the answer
 every spawning handler in this repository already returns without writing
 durable state for. Only the last of the three is a decision about the issue,
 so only that one parks it and says so.
+
+Each of the three durable steps is reported to both observability sinks by
+`run_budget.py`, and reported AFTER the write that makes it durable. That
+order is what keeps the stream a count of what happened rather than of what
+was attempted: a refused write leaves no record, and a launch honoring a
+charge an earlier tick left standing reports the start it paid for and no
+second reservation. The two readings a launch is refused on without any
+decision about the issue -- a state nobody could read, a write nobody could
+take -- record nothing at all, because nothing about the issue changed.
 """
 from __future__ import annotations
 
@@ -58,9 +67,11 @@ from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
+    run_budget as _run_budget,
     run_ledger as _run_ledger,
     run_limit as _run_limit,
 )
+from orchestrator.workflow.engine.run_budget import AgentRunLaunch
 from orchestrator.workflow.engine.run_ledger import AgentRunLedger
 
 log = logging.getLogger("orchestrator.workflow")
@@ -124,7 +135,7 @@ def _refused_run() -> AgentResult:
 
 
 def _charge_launch(
-    gh: GitHubClient, budget: AgentRunBudget, fingerprint: str,
+    gh: GitHubClient, budget: AgentRunBudget, launch: AgentRunLaunch,
 ) -> bool:
     """Whether this launch has paid for the process it is about to invoke.
 
@@ -144,17 +155,61 @@ def _charge_launch(
     if durable is None:
         return False
     ledger = _run_ledger._read_ledger(durable)
-    if not ledger.pending_for(fingerprint):
+    if not ledger.pending_for(launch.fingerprint):
         if ledger.spent:
-            _park_spent(gh, budget, durable, ledger)
+            _park_spent(gh, budget, durable, ledger, launch)
             return False
-        recorded = dict(durable.data)
-        _run_ledger._reserve_run(durable, fingerprint)
-        if not _persist(gh, budget, durable, recorded):
+        if not _reserve(gh, budget, durable, launch):
             return False
+    return _start(gh, budget, durable, launch)
+
+
+def _reserve(
+    gh: GitHubClient,
+    budget: AgentRunBudget,
+    durable: PinnedState,
+    launch: AgentRunLaunch,
+) -> bool:
+    """Charge this launch one run, and record the charge if it landed.
+
+    The record follows the write rather than the staging, so what reaches a
+    sink is a run this issue durably owes rather than one a refused request
+    left it never charged for.
+    """
+    recorded = dict(durable.data)
+    charged = _run_ledger._reserve_run(durable, launch.fingerprint)
+    if not _persist(gh, budget, durable, recorded):
+        return False
+    _run_budget._emit_charge(
+        gh, budget.issue, _run_budget.BudgetPhase.RESERVED, charged, launch,
+    )
+    return True
+
+
+def _start(
+    gh: GitHubClient,
+    budget: AgentRunBudget,
+    durable: PinnedState,
+    launch: AgentRunLaunch,
+) -> bool:
+    """Move this launch's charge to the phase a spawn is about to happen in.
+
+    Recorded once per charge rather than once per launch that reached here: a
+    launch honoring a reservation an earlier tick left standing pays for no
+    new run, so the only budget transition it has to report is this one.
+    """
     recorded = dict(durable.data)
     _run_ledger._start_reserved_run(durable)
-    return _persist(gh, budget, durable, recorded)
+    if not _persist(gh, budget, durable, recorded):
+        return False
+    _run_budget._emit_charge(
+        gh,
+        budget.issue,
+        _run_budget.BudgetPhase.STARTED,
+        _run_ledger._read_ledger(durable),
+        launch,
+    )
+    return True
 
 
 def _durable_state(gh: GitHubClient, issue: Issue) -> PinnedState | None:
@@ -222,6 +277,7 @@ def _park_spent(
     budget: AgentRunBudget,
     durable: PinnedState,
     ledger: AgentRunLedger,
+    launch: AgentRunLaunch,
 ) -> None:
     """Stop this issue on the reading the refusal was made on.
 
@@ -232,6 +288,10 @@ def _park_spent(
     a refusal is answered with an interrupted run, and the handler above is
     about to return without a write of its own.
 
+    The launch travels with them for the same reason: the park is the whole of
+    what an issue's lifetime ends in, and the record it leaves on the budget
+    stream is the only place the work the ceiling actually stopped is named.
+
     A park that could not be taken still refuses the launch. The allowance is
     spent either way, and the poll comes back to a park that was never
     recorded -- while a spawn let through because the announcement failed is a
@@ -239,7 +299,7 @@ def _park_spent(
     """
     recorded = dict(durable.data)
     try:
-        _run_limit._park_exhausted(gh, budget.issue, durable, ledger)
+        _run_limit._park_exhausted(gh, budget.issue, durable, ledger, launch)
     except Exception:
         log.exception(
             "issue=#%d has spent every agent run it is allowed, and the park "

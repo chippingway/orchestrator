@@ -1011,6 +1011,16 @@ drives the real handlers against a spent ledger so an unwired road is caught as 
   coordinator holds the retry slot it charged out of its own pre-spawn write for the same reason. Both sit inside the
   window the two charge writes land in, so the merge that carries back only the circuit's own fields is what keeps
   them unpublished — the paused-round cases in the two modules above are what hold it.
+- **Each durable step is reported to both observability sinks.** `reserved`, `started`, the park a spent allowance
+  takes, and the wider ceiling an operator command buys are one `agent_run_budget` family written by
+  [`orchestrator/workflow/engine/run_budget.py`](../../orchestrator/workflow/engine/run_budget.py) — always *after*
+  the write that makes the step durable, so a refused write records nothing and a launch reusing a standing
+  `reserved` records only the start it paid for. Every record carries the whole ledger reading it was taken on, and
+  the two charge phases carry a `reservation_id` pairing the bounded head of the same fingerprint the phase is
+  matched by with the `used` count that charge moved — the fingerprint alone repeats across charges of one launch
+  shape, and the count is what makes the id name a charge — so the tick that charged a run and the tick that spawned
+  on it join. The contract is in
+  [`../observability/event-streams.md`](../observability/event-streams.md#agent-run-budget-records-both-sinks).
 - **There is no second road to a process.** The gate is worth what the number of places a run can start makes it
   worth, so the shape is also read off the source rather than only driven:
   [`tests/repository/test_agent_spawn_boundary.py`](../../tests/repository/test_agent_spawn_boundary.py) holds the

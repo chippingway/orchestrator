@@ -46,6 +46,13 @@ and travel the drift road that carries them to an agent.
 Neither ending returns a run. What the ledger has spent is spent, and both
 counts stay where they were: this widens what an issue may spend, and there is
 nothing here that unspends anything.
+
+Only the ending that moves the ceiling reaches the shared `agent_run_budget`
+stream (`run_budget.py`), and only once the write that moves it has landed.
+That is the transition an operator is counting: how often a deployment's limit
+has to be bought past, and by how much. A refusal moved nothing, so it stays
+where it already is -- on the park's own audit stream, beside the phase that
+records the receipt it earned.
 """
 from __future__ import annotations
 
@@ -62,6 +69,7 @@ from orchestrator.github.comments import carries_own_marker, filter_trusted
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     comments as _comments,
+    run_budget as _run_budget,
     run_ledger as _run_ledger,
     run_limit as _run_limit,
 )
@@ -327,6 +335,13 @@ def _grant_runs(
     record left in a shape nothing can read is one the park it belonged to no
     longer has, and the park is what is ending here.
 
+    The budget stream is told last, after the write that makes the wider
+    ceiling durable, and that order is what makes the record a transition. A
+    command re-read because a tick died between its receipt and its write is
+    a grant that never landed, so the reading it reports is the one that
+    finally did; a grant that landed takes its own park down, and nothing
+    reaches this owner again to report it twice.
+
     Nothing gives a run back. What is spent stays spent, and the issue stops
     on this same park the moment it reaches the ceiling this bought it.
     """
@@ -351,6 +366,7 @@ def _grant_runs(
     state.set(_PARK_REASON, None)
     _run_limit._settle_notice(state)
     _consumed(gh, issue, state, request, _run_limit.RunLimitPhase.GRANTED)
+    _run_budget._emit_extension(gh, issue, _run_ledger._read_ledger(state))
 
 
 def _refuse_request(

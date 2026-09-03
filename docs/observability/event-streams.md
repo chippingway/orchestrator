@@ -48,7 +48,9 @@ file is the durable record.
   (decomposer, implementer, reviewer, dev-resume, conflict-resolution dev); extras: `agent` (backend), `agent_role`,
   `review_round`, `retry_count`. `session_id` and `agent_exit`-only fields are described below. A launch the
   agent-run circuit refuses emits **neither**: no process was invoked, so there is no run to bookend — what that
-  refusal records instead is an `agent_run_limit` event where a spent allowance was the reason.
+  refusal records instead is an `agent_run_limit` event where a spent allowance was the reason, and an
+  `agent_run_budget` record carrying the `exhausted` phase. The charge the launch paid before the spawn is on that
+  same budget stream, one record per durable phase.
 - `skill_triggered` — `_run_agent_tracked` after `agent_exit`, **only when `TRACK_SKILL_TRIGGERS` is on**
   (default off); one event per distinct skill the run triggered; extras: `agent` (backend), `agent_role`,
   `review_round`, `retry_count`, `skill` (the triggered skill name). Reuses the list `record_agent_exit` already parsed;
@@ -112,7 +114,9 @@ file is the durable record.
   `park_awaiting_human` record with `reason="agent_run_limit"` is emitted beside the `delivered` one, by the shared
   park the delivery goes through. There is no `continued` phase here and nothing for one to renew: a lifetime total
   is spent once and no window reopens under this park — what `granted` records is a wider ceiling, not a returned
-  run.
+  run. The five phases here are about a notice and a command; the moment the park is *taken*, and the counts behind
+  it, are on the `agent_run_budget` stream below, which is where an operator counts a refusal against the runs that
+  spent it.
 - `pr_opened` — `_on_commits` after `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The
   `discussion` stage's plan publication emits the same event with `stage="discussion"` when it opens (never when it
   reuses) a plan PR; it carries no `retry_count`, having no retry budget of its own.
@@ -149,6 +153,11 @@ file is the durable record.
   `_recover_pending_auto_base_rebase` when a crashed prior tick is finalized; extras: `pr_number`, `sha` (new head),
   `method` ∈ {`auto_clean_rebase`, `crash_recovery_pushed`, `crash_recovery_relabel_only`}, `review_round`
   (post-reset, so 0), `retry_count`; `stage` names the stage the issue was in when the rebase started.
+- `agent_run_budget` — the per-issue lifetime agent-run ledger's four durable transitions, emitted by
+  `workflow/engine/run_budget.py` together with an identical analytics record; extras: `phase`, the whole ledger
+  reading, the launch correlation, and the bounded refusal reason in
+  [Agent-run budget records](#agent-run-budget-records-both-sinks). It sits beside `agent_run_limit` rather than
+  inside it: that stream is about a notice and a command, this one about the runs an issue spent.
 - `late_measurement` / `late_verdict` / `late_failure` / `late_snapshot` / `late_cleanup` / `late_cancellation` /
   `late_restart` — the late size gate's seven families, each emitted by `workflow/late_split/telemetry.py` together
   with an identical analytics record; extras: the bounded correlation payload in
@@ -229,6 +238,10 @@ foundation layer for the Postgres aggregation step.
   `issue` is
   the sentinel `0`); carries `base_branch`, `remote_name`, `skills_available` (deduped `SKILL.md` skill names on the
   base ref), and optional `skill_paths` (name → source paths) — see below.
+- `agent_run_budget` — `workflow/engine/run_budget.py`, one record per durable agent-run budget transition beside the
+  audit event of the same kind; carries `stage` plus the same payload — see
+  [Agent-run budget records](#agent-run-budget-records-both-sinks). This is the one family here that is *not* one
+  record per tracked run: an ordinary launch writes two (`reserved`, `started`) beside its `agent_exit`.
 - `late_measurement` / `late_verdict` / `late_failure` / `late_snapshot` / `late_cleanup` / `late_cancellation` /
   `late_restart` — `workflow/late_split/telemetry.py`, one record per late event beside the audit event of the same
   kind; carries `stage` plus the same bounded payload — see
@@ -476,6 +489,97 @@ Postgres `analytics_events` schema require, and the five catalog fields all land
 change**. The whole producer is fail-open: a missing clone, an unfetched ref, a git error, or a sink IO failure logs and
 is swallowed so catalog collection never disturbs the polling tick. An empty catalog still records `skills_available:
 []` (the "scanned, found none" signal) with both maps dropped.
+
+## Agent-run budget records (both sinks)
+
+The per-issue lifetime agent-run ledger writes to **both** streams, deliberately: the audit copy has to answer offline
+what the database answers over the analytics sink — how much of a lifetime an ordinary issue actually spends, whether
+a deployment's ceiling is turning launches away and at which stages, how often a charge is taken that never reaches a
+process, and how often a human has to buy past the limit. One call on
+[`workflow/engine/run_budget.py`](../../orchestrator/workflow/engine/run_budget.py) emits both —
+`GitHubClient.emit_event` for the audit record and the recording package's `build_record` / `append_record` pair for
+the analytics record — so the two carry the same payload under their own envelopes. The two records for one
+transition differ only in `ts`.
+
+**One family, four phases.** The kind is always `agent_run_budget`; `phase` says which durable step it is. Splitting
+them into four event kinds would make an operator join four streams to read one issue's lifetime.
+
+| `phase` | Written by | What it means |
+| --- | --- | --- |
+| `reserved` | `workflow/engine/run_circuit.py` | a run was charged to the issue and no process has been invoked |
+| `started` | `workflow/engine/run_circuit.py` | the standing charge moved to the phase the spawn happens in |
+| `exhausted` | `workflow/engine/run_limit.py` | a launch was refused and the lifetime park was taken on it |
+| `extended` | `workflow/engine/run_grant.py` | a trusted `/orchestrator add-agent-runs N` widened the allowance |
+
+**Payload.** Every phase carries the whole ledger reading the transition was taken on, rather than the one field that
+moved — a record naming only the delta is one an operator has to join against a setting that may have changed since,
+and offline, against the audit copy alone, there is nothing to join to:
+
+- **The ceiling** — `configured` (what `MAX_AGENT_RUNS_PER_ISSUE` says right now) and `allowance` (what this issue is
+  actually held to). They differ exactly where the issue carries an allowance of its own, which is what an
+  `extended` phase writes; a refusal explained by the deployment's number would name a ceiling this issue was never
+  held to.
+- **The spend** — `used`, the monotonic count of runs this issue has taken over its whole life.
+- **What is left** — `remaining`, on **every** record. Under a bounded allowance it is `max(allowance - used, 0)` —
+  floored, since an issue carried past its ceiling has nothing left rather than a negative amount. Under an unlimited
+  allowance (`allowance <= 0`) it is the string `"unlimited"` (`REMAINING_UNLIMITED`). Neither of the alternatives
+  works: a number there is one a query could compare against zero and read as an issue about to stop, and a dropped
+  field is one a consumer cannot tell from a count some writer, envelope, or replay lost — which defeats the point of
+  a copy that answers offline. A query that treats the field as a number therefore filters or coalesces that word:
+  `NULLIF(extras->>'remaining', 'unlimited')::int`.
+- **Correlation** — `reservation_id`, `<12-char fingerprint head>-<used>`: the first `FINGERPRINT_HEAD_LENGTH`
+  characters of the launch fingerprint the circuit charges under, then the ledger's `used` count as it stood after
+  that charge. It joins the tick that reserved a run to the tick that spawned on it. Both halves are needed. The
+  fingerprint alone repeats — it is deliberately stable across ticks so a standing reservation can be recognized and
+  reused, so the same shape is charged again every time a launch that already reached `started` comes back, and two
+  unrelated charges would carry one id. `used` goes up by exactly one per charge and never comes down, so it is that
+  charge's own sequence number on the issue: the pair names one charge, names it identically from both of its phases
+  (the count does not move between them, and a reused reservation reports the count its own charge wrote), and never
+  names two. With the envelope around it, `(repo, issue, reservation_id)` identifies one charge. Present on
+  `reserved` and `started` and on neither of the others: a refused launch never took a charge, and a grant is not a
+  launch. The fingerprint is a SHA-256 over the role, stage, backend, spec, resumed session, review round, and retry
+  count — never the prompt or the worktree — so the correlation carries none of what a launch was built out of.
+- **The work** — `stage` on every phase, and `agent_role` on the three launch phases only. On those three both are
+  the literals the `agent_spawn` / `agent_exit` pair records for the same launch, so a budget record and the spawn
+  beside it cannot name different work. `extended` still carries a `stage` — read off the workflow label the issue is
+  wearing rather than named by a launch — but no `agent_role` at all: the ledger is spent by every role at every
+  stage, so there is no one role a human bought runs for.
+- **The refusal** — `reason`, on `exhausted` only, from a closed vocabulary: `allowance_spent` (`used == allowance` —
+  the issue reached its ceiling by running) or `allowance_exceeded` (`used > allowance` — the issue was already past
+  the ceiling in force, so the ceiling came down on it rather than the runs adding up). Bounded rather than free
+  text, like every other field here: a sink carries whatever it is handed.
+
+**Transitions, not states.** Every record rides the write that makes its step durable, and is emitted *after* it. That
+is the whole of what keeps the stream a count of what an issue spent rather than of what a tick tried to spend:
+
+- A launch honoring a **reservation** an earlier tick left standing pays for no new run, so it records `started` and
+  no second `reserved`.
+- A **standing park** records nothing. An exhausted issue meets the same refusal on every launch it has left and the
+  dispatcher's hold meets it on every tick, so a record per meeting would report one ending as a stream of them; what
+  says a park went on holding is the `agent_run_limit` event's `standing` phase. A park re-taken while it still owes
+  the thread its sentence records nothing either — the sentence is re-said, but the lifetime ended once.
+- A **replayed command** records the extension that landed. A tick that died between its receipt and its write bought
+  nothing durable, so the next tick's grant is the only one there is to report; a grant that landed takes its own
+  park down and is never re-read.
+- The two refusals that decide **nothing about the issue** — a pinned comment nobody could read, a write nobody could
+  take — record nothing at all, on either sink.
+
+**Postgres ingestion.** `analytics_events` has no column for a budget field and needs none. `stage` and `agent_role`
+are already promoted columns; `phase`, `configured`, `allowance`, `used`, `remaining`, `reservation_id`, and `reason`
+all land in `extras JSONB` with **no DDL change and no schema reapply** — the same path the opt-in skill fields take
+(see [`analytics-database.md`](analytics-database.md#schema)). `remaining` is the one of those whose JSON type varies
+by row (a number, or `"unlimited"`), which JSONB carries as written.
+
+**Fail-open, all the way through.** Both sinks already swallow a filesystem refusal, and each of the two writes
+additionally rides its own guard on the `orchestrator.workflow` channel, so a failing sink costs the record and
+nothing else — and a failure on one side does not skip the other. Building the record is guarded on the same channel
+for the same reason: `extended` is the one phase whose `stage` costs a GitHub read, and it is taken *after* the write
+that widened the ceiling, so an escaping exception there would break a tick that had already taken the park down and
+lose the transition to both sinks on the way out. A read that fails costs the `stage` and not the record — the field
+is optional in both envelopes, a phase with no stage is still countable, and a transition nothing recorded is one an
+operator can never count. Everything else in a payload is built from a frozen ledger reading and a frozen launch, so
+there is nothing else here that can fail. The transition a record describes is already durable on the issue by the
+time any of this runs, so nothing about workflow disposition depends on delivery.
 
 ## Late-split records (both sinks)
 

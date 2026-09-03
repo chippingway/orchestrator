@@ -50,6 +50,14 @@ The five audit phases are the same story from outside: what was said first,
 what the thread was found to already carry, which ticks the park went on
 holding, and how the command beside it ended -- one ceiling wider, or one
 request this park could not act on.
+
+The moment the park is TAKEN is a sixth thing, and it is reported somewhere
+else: `run_budget.py`'s shared `agent_run_budget` stream, which carries it
+beside the charges the same launches paid, on both sinks and with the whole
+ledger reading under it. The five phases above are about a notice and a
+command; that one is about a lifetime ending, and an operator counts it
+against the runs that spent it rather than against the sentences that
+explained it.
 """
 from __future__ import annotations
 
@@ -63,7 +71,11 @@ from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import authored_by_us
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import guards as _guards, run_ledger as _run_ledger
+from orchestrator.workflow.engine import (
+    guards as _guards,
+    run_budget as _run_budget,
+    run_ledger as _run_ledger,
+)
 from orchestrator.workflow.engine.run_ledger import AgentRunLedger
 from orchestrator.workflow.state import stage_name
 
@@ -212,6 +224,7 @@ def _park_exhausted(
     issue: Issue,
     state: PinnedState,
     ledger: AgentRunLedger,
+    launch: _run_budget.AgentRunLaunch,
 ) -> None:
     """Stop this issue on its spent ledger, and say so once.
 
@@ -226,16 +239,28 @@ def _park_exhausted(
     every tick that reaches a spawn, so announcing it again would say the same
     sentence to the same thread once a poll until a human arrived.
 
+    The budget stream is told by the tick that TAKES the park, on the write
+    that makes it durable, and by no other. A park is met again by every
+    launch the issue has left, so a record per meeting would report one ending
+    as a stream of them -- and the phase beside it on this owner's own stream
+    is already what says a park went on holding. The launch travels into that
+    record because it is the work the ceiling stopped, which is the one thing
+    a park cannot say about itself: the ledger is spent by every role, so the
+    refusal names the role and the stage it was actually taken from.
+
     The thread is asked before anything is said, so a comment that landed
     under a write that failed is recorded as said rather than repeated -- and
     a thread this tick could not read is said nothing to at all, since the
     sentence it may already carry is exactly the one about to go out. The park
     stands and the notice stays owed, so the next tick reads again.
     """
+    taken = not _park_stands(state)
     if not _stage_park(state, ledger):
         _emit_phase(gh, issue, RunLimitPhase.STANDING)
         return
     gh.write_pinned_state(issue, state)
+    if taken:
+        _run_budget._emit_exhaustion(gh, issue, ledger, launch)
     if _reconcile_notice(gh, issue, state) is NoticeReading.UNSAID:
         _deliver_notice(gh, issue, state)
 

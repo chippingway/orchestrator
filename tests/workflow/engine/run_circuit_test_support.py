@@ -213,6 +213,18 @@ def seeded(gh: CircuitGitHubClient | None = None, **pinned) -> Launch:
     return Launch(gh=client, issue=issue, state=client.read_pinned_state(issue))
 
 
+def relaunched(launch: Launch) -> Launch:
+    """Drive one request through the circuit twice, as its own second attempt.
+
+    What a stable fingerprint makes ordinary: the first launch leaves the
+    charge it took in `started`, so the second recognizes no standing
+    reservation and pays its own way.
+    """
+    run_launch(launch)
+    run_launch(launch)
+    return launch
+
+
 def run_launch(
     launch: Launch,
     *,

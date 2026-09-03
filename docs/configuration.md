@@ -224,7 +224,12 @@ examples.
   [`workflow/engine/run_grant.py`](../orchestrator/workflow/engine/run_grant.py), which records
   `agent_run_allowance` = `used + N` on the issue and so takes it off this setting for good. That park is handed the
   ledger reading rather than taking one, so it quotes the numbers a refusal was made on — and no stage handler turns
-  an agent run away against any of it, so nothing hands it one.
+  an agent run away against any of it, so nothing hands it one. What each of those four durable steps looks like from
+  outside is the `agent_run_budget` record
+  [`workflow/engine/run_budget.py`](../orchestrator/workflow/engine/run_budget.py) writes to both observability sinks
+  — one per charge taken, spawn paid for, lifetime ended, and ceiling widened, each carrying this setting beside the
+  allowance actually in force, so a refusal can be read against the number it was made on
+  ([`observability/event-streams.md`](observability/event-streams.md#agent-run-budget-records-both-sinks)).
 - `MAX_ADDED_LINES` — default `4000`. size ceiling a pull request may publish under, counted in the
   textual lines it **adds**: the frozen remote base commit against the exact committed
   candidate commit, across every path. It is applied to the first publication and to every dev fix pushed onto a

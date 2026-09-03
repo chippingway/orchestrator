@@ -13,7 +13,10 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.engine import run_circuit_test_support as support
+from tests.workflow.engine import (
+    run_budget_test_support as budget,
+    run_circuit_test_support as support,
+)
 
 
 class ChargedLaunchTest(unittest.TestCase):
@@ -205,6 +208,114 @@ class RefusedLaunchTest(unittest.TestCase):
                 self.assertEqual(launch.invocations, 0)
                 self.assertEqual(launch.gh.writes, [])
                 self.assertTrue(launch.answer.interrupted)
+
+
+class ChargeRecordTest(unittest.TestCase):
+    """What the budget stream is told, and which ticks tell it nothing.
+
+    The record is tied to the write that makes a transition durable, so the
+    stream counts what an issue actually spent rather than what a tick tried
+    to spend on it.
+    """
+
+    def test_a_launch_records_charge_and_spawn(self) -> None:
+        launch = support.run_launch(support.seeded())
+
+        recorded = budget.audited(launch.gh)
+        self.assertEqual(
+            budget.phases(recorded), [budget.RESERVED, budget.STARTED],
+        )
+        for one in recorded:
+            with self.subTest(phase=one[budget.PHASE]):
+                self.assertEqual(one[budget.STAGE], support.STAGE)
+                self.assertEqual(one[budget.AGENT_ROLE], support.ROLE)
+                self.assertEqual(one[budget.USED], 1)
+                self.assertEqual(
+                    one[budget.REMAINING], support.ALLOWANCE - 1,
+                )
+
+    def test_a_reused_charge_records_the_start(self) -> None:
+        # A tick that died between the two writes already reported the
+        # reservation it took; the launch coming back pays for no new run, so
+        # a second one would report a charge nothing was charged.
+        launch = support.run_launch(support.seeded(**{
+            support.USED: 1,
+            support.RESERVATION: support.RESERVED,
+            support.FINGERPRINT: support.fingerprint(),
+        }))
+
+        self.assertEqual(
+            budget.phases(budget.audited(launch.gh)), [budget.STARTED],
+        )
+
+    def test_a_second_launch_is_a_second_reservation(self) -> None:
+        # The fingerprint is stable across ticks so a standing charge can be
+        # recognized and reused; the price of that is the SAME shape being
+        # charged again once the launch it named has started. Two charges have
+        # to stay two things a consumer can join separately.
+        launch = support.relaunched(support.seeded())
+
+        recorded = budget.audited(launch.gh)
+        self.assertEqual(budget.phases(recorded), [
+            budget.RESERVED, budget.STARTED, budget.RESERVED, budget.STARTED,
+        ])
+        charges = [
+            {one[budget.RESERVATION_ID] for one in recorded[:2]},
+            {one[budget.RESERVATION_ID] for one in recorded[2:]},
+        ]
+        # Each charge names itself the same from both of its phases, and no
+        # two charges name themselves alike.
+        self.assertEqual([len(named) for named in charges], [1, 1])
+        self.assertNotEqual(charges[0], charges[1])
+
+    def test_a_write_nobody_took_records_nothing(self) -> None:
+        # Nothing about the issue changed, so there is no transition to
+        # report -- and a record of one would be a run the ledger never saw.
+        launch = support.seeded()
+        launch.gh.refuse_write()
+
+        support.run_launch(launch)
+
+        self.assertEqual(budget.audited(launch.gh), [])
+
+    def test_a_refused_start_records_the_charge(self) -> None:
+        launch = support.seeded()
+        launch.gh.refuse_write(after=1)
+
+        support.run_launch(launch)
+
+        self.assertEqual(
+            budget.phases(budget.audited(launch.gh)), [budget.RESERVED],
+        )
+
+    def test_a_spent_ceiling_records_what_it_stopped(self) -> None:
+        # The park says where the issue stopped; only this record says which
+        # launch it stopped, which is what an operator needs to see whether a
+        # ceiling is turning reviews away or first attempts.
+        launch = support.run_launch(
+            support.seeded(**{support.USED: 1}), allowance=1,
+        )
+
+        recorded = budget.audited(launch.gh)
+        self.assertEqual(budget.phases(recorded), [budget.EXHAUSTED])
+        self.assertEqual(recorded[0][budget.STAGE], support.STAGE)
+        self.assertEqual(recorded[0][budget.AGENT_ROLE], support.ROLE)
+        self.assertEqual(recorded[0][budget.REASON], budget.ALLOWANCE_SPENT)
+        self.assertNotIn(budget.RESERVATION_ID, recorded[0])
+
+    def test_a_park_already_standing_records_nothing(self) -> None:
+        # An exhausted issue meets this refusal on every launch it has left,
+        # so a record per meeting would report one ending as a stream of them.
+        launch = support.run_launch(
+            support.seeded(**{
+                support.USED: 1,
+                support.AWAITING_HUMAN: True,
+                support.PARK_REASON: support.PARK_AGENT_RUN_LIMIT,
+            }),
+            allowance=1,
+        )
+
+        self.assertEqual(budget.audited(launch.gh), [])
 
 
 class CallerStateTest(unittest.TestCase):
