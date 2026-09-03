@@ -88,10 +88,11 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.stages.discussion import (
+    checkout_parks as _checkout_parks,
     models as _models,
     outcomes as _outcomes,
-    parks as _parks,
     publication as _publication,
+    publication_parks as _publication_parks,
     run as _run,
     session as _session,
     state as _state,
@@ -167,7 +168,7 @@ def _hold_resume_for_repair(
     if checkout.state.readable and not checkout.state.paths:
         return False
     if not already_asked:
-        _parks._park_blocked_resume(run, checkout.state)
+        _checkout_parks._park_blocked_resume(run, checkout.state)
     return True
 
 
@@ -223,7 +224,7 @@ def _settle_commit_under_park(
         _settle_recovered_commit(run)
         return
     if not already_asked:
-        _parks._park_blocked_resume(run, _run._CLEAN_TREE)
+        _checkout_parks._park_blocked_resume(run, _run._CLEAN_TREE)
 
 
 def _settle_moved_checkout(run: _models._DiscussionRun) -> None:
@@ -249,7 +250,7 @@ def _settle_moved_checkout(run: _models._DiscussionRun) -> None:
     if _state._round_in_flight(run.state):
         _settle_recovered_commit(run)
         return
-    _parks._park_foreign_commit(run)
+    _checkout_parks._park_foreign_commit(run)
 
 
 def _settle_recovered_commit(run: _models._DiscussionRun) -> None:
@@ -263,7 +264,7 @@ def _settle_recovered_commit(run: _models._DiscussionRun) -> None:
     """
     unpublishable = _publication._publish_plan_if_committed(run)
     if unpublishable is not None:
-        _parks._park_recovered_commit(run, unpublishable)
+        _publication_parks._park_recovered_commit(run, unpublishable)
 
 
 def _handle_discussion(
@@ -283,6 +284,6 @@ def _handle_discussion(
         _settle_moved_checkout(discussion_run)
         return
     if not checkout.state.readable or checkout.state.paths:
-        _parks._park_stranded_worktree(discussion_run, checkout.state)
+        _checkout_parks._park_stranded_worktree(discussion_run, checkout.state)
         return
     _run_discussion_round(discussion_run)

@@ -51,11 +51,19 @@ interruption and before the analysis, so an agent that started implementing is
 judged on what it wrote rather than read as a design. `publication` is what
 that judgement runs: one reading of the branch, the push and the found-or-opened
 PR a publishable plan earns, and the records that reading leaves behind.
-`parks` is every ending, each stamped with the reason the next tick's
-turn-taking gate reads back. `state` and `models` hold the wire keys, the park
-reasons, the plan path both the prompt and the check are drawn from, and the
-carriers between them, so what a park is called and what a round is identified
-by are decidable without a client.
+
+The endings divide the same way the tick does. `parks` is the funnel all of
+them go through, and the only thing that writes: it stamps the reason the next
+tick's turn-taking gate reads back, so no ending can reach the issue without
+one. Which ending is reached belongs to the owner whose question it answers --
+`checkout_parks` for a tree holding work nothing may run over or refusing to be
+read, `publication_parks` for what a reading of the committed plan earned, and
+`outcome_parks` for what the run itself came back with -- and `park_messages`
+holds the wording all three quote, so one checkout is described one way however
+it is reported. `state` and `models` hold the wire keys, the park reasons, the
+plan path both the prompt and the check are drawn from, and the carriers
+between them, so what a park is called and what a round is identified by are
+decidable without a client.
 
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per issue, and an eager binding here would

@@ -44,7 +44,9 @@ park in its name would overwrite the durable one the refusal itself took.
 
 Assessment and routing are the whole of this owner because the park has to be
 selected before any of it is published: what each selection then says to the
-human belongs to `parks` beside it, so a message can be reworded without
+human belongs to the park owners beside it -- `checkout_parks` for what the
+tree holds, `publication_parks` for what the branch carries, `outcome_parks`
+for what the run itself came back with -- so a message can be reworded without
 touching the order the decisions are made in.
 """
 from __future__ import annotations
@@ -53,9 +55,11 @@ from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import guards as _guards, usage as _usage
 from orchestrator.workflow.stages.discussion import (
+    checkout_parks as _checkout_parks,
     models as _models,
-    parks as _parks,
+    outcome_parks as _outcome_parks,
     publication as _publication,
+    publication_parks as _publication_parks,
     state as _state,
 )
 
@@ -172,7 +176,7 @@ def _dispose_round_commit(run: _models._DiscussionRun) -> None:
     """
     unpublishable = _publication._publish_plan_if_committed(run)
     if unpublishable is not None:
-        _parks._park_unpublishable_plan(run, unpublishable)
+        _publication_parks._park_unpublishable_plan(run, unpublishable)
 
 
 def _route_discussion_outcome(
@@ -182,18 +186,18 @@ def _route_discussion_outcome(
 ) -> None:
     """Publish the outcome selected by `_assess_discussion_outcome`."""
     if outcome.park_reason == _state._DISCUSSION_UNREADABLE:
-        _parks._park_unreadable_round(run)
+        _checkout_parks._park_unreadable_round(run)
         return
     if outcome.park_reason == _state._DISCUSSION_COMMITS:
         _dispose_round_commit(run)
         return
     if outcome.park_reason == _state._DISCUSSION_TIMEOUT:
-        _parks._park_timed_out_discussion(run)
+        _outcome_parks._park_timed_out_discussion(run)
         return
     if outcome.park_reason == _state._DISCUSSION_DIRTY:
-        _parks._park_dirty_discussion(run, outcome.dirty_files)
+        _checkout_parks._park_dirty_discussion(run, outcome.dirty_files)
         return
     if outcome.park_reason == _state._DISCUSSION_SILENT:
-        _parks._park_silent_discussion(run, round_result.agent_result)
+        _outcome_parks._park_silent_discussion(run, round_result.agent_result)
         return
-    _parks._park_discussion_response(run, outcome.response)
+    _outcome_parks._park_discussion_response(run, outcome.response)

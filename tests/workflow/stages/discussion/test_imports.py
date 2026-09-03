@@ -23,10 +23,14 @@ _HANDLER_OWNER = "handler"
 
 _OWNERS = (
     _HANDLER_OWNER,
+    "checkout_parks",
     "models",
+    "outcome_parks",
     "outcomes",
+    "park_messages",
     "parks",
     "publication",
+    "publication_parks",
     "run",
     "session",
     "state",
