@@ -22,6 +22,7 @@ from orchestrator.git.measurement import (
 from orchestrator.git.measurement.models import (
     AdditionMeasurement,
     FrozenCommit,
+    _BaseObject,
 )
 from orchestrator.git.verification import probes as _verification_probes
 from tests.git.base_sync.refresh_test_support import (
@@ -102,7 +103,7 @@ def _gate_base_reads(test_case) -> None:
     )
     _patched(
         test_case, _measurement_commits, "_base_object_present",
-        MagicMock(return_value=True),
+        MagicMock(return_value=_BaseObject(present=True)),
     )
     _patched(test_case, _measurement, "_count_added_lines", MagicMock(
         return_value=AdditionMeasurement(

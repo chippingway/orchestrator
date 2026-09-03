@@ -264,14 +264,15 @@ def _refrozen_base(
     with wherever the base branch is now, so the retry a human's continue
     drives would silently measure a different pair under the same generation.
     """
-    if _measurement_commits._base_object_present(
+    base = _measurement_commits._base_object_present(
         gate.spec, gate.worktree, recorded.base_sha,
-    ):
+    )
+    if base.present:
         return recorded
     log.error(
         "issue=#%d records base %s, which this host does not hold even after "
-        "a fetch; refusing to re-read the remote for a different one",
-        gate.issue.number, recorded.base_sha,
+        "a fetch (%s); refusing to re-read the remote for a different one",
+        gate.issue.number, recorded.base_sha, base.detail,
     )
     _parks._unmeasured(
         gate, _records._reportable(gate, recorded),

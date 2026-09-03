@@ -373,6 +373,11 @@ def _absent_object(context: _LateContext, worktree: Path) -> str | None:
     Named rather than counted, because the two are repaired differently: a
     candidate is work that has to come back with its branch, while a base is
     an object a fetch can still bring.
+
+    What the fetch said for itself is logged rather than named, because the
+    two readers want different things: the park tells a human which end to
+    restore, while the transport's own line is for the operator following the
+    plumbing beside it and would only crowd the instruction out.
     """
     generation = context.generation
     candidate = _measurement_commits._prove_candidate_commit(
@@ -380,10 +385,15 @@ def _absent_object(context: _LateContext, worktree: Path) -> str | None:
     )
     if not candidate.is_frozen:
         return f"candidate {generation.candidate_sha}"
-    if _measurement_commits._base_object_present(
+    base = _measurement_commits._base_object_present(
         context.spec, worktree, generation.base_sha,
-    ):
+    )
+    if base.present:
         return None
+    log.error(
+        "issue=#%d cannot read base %s here: %s",
+        context.issue.number, generation.base_sha, base.detail,
+    )
     return f"base {generation.base_sha}"
 
 

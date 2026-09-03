@@ -168,16 +168,22 @@ orchestrator/
                         reading where its own stage handlers can reach it
   git/
     branch_transport.py the authenticated fetches, the remote read that answers what a branch is at without trusting
-                        a local ref, and the lease-pinned branch push -- each spending one credential session
+                        a local ref -- in the plain form a caller acts on and the form that also carries why a read
+                        established nothing -- and the lease-pinned branch push, each spending one credential
+                        session
     commands.py         plain / hardened git execution, the argv hardening and no-prompt environment, the per-call
                         environment pin a caller adds over it, the absolute `--work-tree` argument a working-tree
-                        operation names its tree with, and the unsafe local-transport probe
-    credentials.py      the per-repo token lookup, the owner-only askpass script that outlives no operation, and
-                        the session record a token-bearing call is spawned from -- the detached environment, the
-                        URL naming only the `x-access-token` username, and the token the transport redacts with
+                        operation names its tree with, the unsafe local-transport probe, and the one line of a
+                        failed call's output a caller carries away from it
+    credentials.py      the per-repo token lookup, the owner-only askpass script that outlives no operation, the
+                        session record a token-bearing call is spawned from -- the detached environment, the URL
+                        naming only the `x-access-token` username, and the token itself -- and the redaction every
+                        transport puts that token's own output through before logging or handing it back
     locks.py            the per-target-root re-entrant lock registry and its accessor
-    ref_transport.py    the remote read named by a whole refname, and the lease-pinned write and delete an immutable
-                        ref namespace is owned through -- the read the branch transport spends for its own lease too
+    ref_transport.py    the remote read named by a whole refname -- the reading and, where nothing was
+                        established, the scrubbed line saying why -- and the lease-pinned write and delete an
+                        immutable ref namespace is owned through; the read the branch transport spends for its own
+                        lease too
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
                         in -- including the label scope on the two freezes no write ever ends -- and the
@@ -248,11 +254,15 @@ orchestrator/
                         that handler builds
       titles.py         subject-prefix inference and PR-title selection
     measurement/        how large a committed candidate is, and why a size is sometimes unknown
-      models.py         the typed failure vocabulary, one frozen end of a diff, and the measurement record
+      models.py         the typed failure vocabulary, and the three records a reading hands around: one frozen
+                        end of a diff, the measurement over both ends -- each of those two carrying the failing
+                        step's own scrubbed line beside the typed reason it stands next to -- and the readback
+                        saying whether an end this host was supposed to hold is really here
       commits.py        the remote-authoritative base freeze (fetched once when the object is missing) and the
                         candidate proof that an id resolves, is held here, and peels to the commit it names --
                         each handing back whatever id it did establish beside the failure, so a retry has one
-                        exact object to ask for
+                        exact object to ask for, and the freeze naming what the read or the fetch reported for
+                        itself
       additions.py      the `--numstat` added-line count over the frozen pair — read under the candidate's own
                         attributes and a named algorithm, pinned where git consults the environment last, and
                         refusing outright on the attribute file and diff-driver config no pin reaches — and the
@@ -383,8 +393,9 @@ off a facade:
   `planning` and `rewrite`.
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
 - `measurement/` — `models` carries only data. `commits` calls `commands`, `branch_transport`, and the verification
-  probes for the two object reads; `additions` calls `commands` and `commits`. Nothing here reaches the workflow
-  layer, so the ceiling a count is compared against, and the verdict that comparison earns, stay with the caller.
+  probes for the two object reads, and `commands` once more for the one line it keeps off a fetch that brought
+  nothing back; `additions` calls `commands` and `commits`. Nothing here reaches the workflow layer, so the ceiling
+  a count is compared against, and the verdict that comparison earns, stay with the caller.
 - `snapshots/` — `namespace` is string policy and reaches nothing, which is what lets the late domain's lineage
   record consult it on every pinned read without paying for the transport; `refs` calls `ref_transport` for the
   remote read and the lease-pinned write and delete, `branch_transport` for the fetch, and `commands` for the

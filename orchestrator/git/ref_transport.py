@@ -23,7 +23,9 @@ credential helpers, and fsmonitor disabled by `-c`, and a refusal when the
 worktree's local config carries a url rewrite or an `http.*` setting that could
 redirect the call to an attacker-controlled host. The session carries the token
 back here for the one thing the environment cannot do: scrubbing it out of the
-stderr a failed call is logged with.
+stderr a failed call is logged with -- and handed back on, since the caller that
+has to explain a reading it could not take is a long way from the process that
+took it.
 
 What policy the leases serve -- which namespace, and what an existing ref at
 another commit means -- belongs to `git/snapshots/`, which is the only caller
@@ -46,6 +48,32 @@ from orchestrator.git import commands, credentials, locks
 log = logging.getLogger("orchestrator.git_plumbing")
 
 _PUSH = "push"
+
+# What a read that failed with nothing on its stderr says for itself, so a
+# detail is empty only where a read SUCCEEDED and answered "no such ref".
+_SAID_NOTHING = "git reported no reason"
+
+
+@dataclass(frozen=True)
+class _RefRead:
+    """What the remote says a ref is at, and why a read that failed did.
+
+    The two fields answer different callers. `sha` is the reading -- a commit
+    id, "" where the remote does not carry the ref at all, and None where the
+    read established nothing -- and it is the only thing a lease or a freeze
+    may be pinned to. `detail` is the one line of git's own stderr that says
+    WHY nothing was established, carried so a caller reporting a failure to an
+    operator can say which of the many ways a token-bearing read fails this
+    one was: a rejected token, an unreachable host, a repository the token
+    cannot see. It is scrubbed of the token before it is set, because a
+    diagnostic that leaks the secret is one no caller could safely log.
+
+    Empty exactly where `sha` is not None: a read that answered, even with "",
+    has nothing to explain.
+    """
+
+    sha: str | None = None
+    detail: str = ""
 
 
 @dataclass(frozen=True)
@@ -71,13 +99,19 @@ def _remote_ref_read(
     worktree: Path,
     label: str,
     ref: str,
-) -> str | None:
+) -> _RefRead:
     """Return what the remote says `ref` is at through an open session.
 
     "" where the remote does not carry that ref at all, and None where the read
     established nothing, so a caller can tell an answer apart from a failure.
     `label` is what a failed read is reported as -- the branch a caller asked
     about rather than the refname it was spelled as.
+
+    A failure is reported to the operator AND handed back. The log line is
+    where somebody watching the plumbing sees it; the record is for the caller
+    that has to say why a decision it owns could not be taken, minutes later
+    and somewhere else, where nothing has this stderr any more. Both spend the
+    same scrubbed text, so the token cannot reach either.
     """
     ls_remote = subprocess.run(
         [*commands._AUTHED_GIT_PREFIX, "ls-remote", auth_session.auth_url, ref],
@@ -88,16 +122,18 @@ def _remote_ref_read(
         check=False,
     )
     if ls_remote.returncode != 0:
-        scrubbed = (ls_remote.stderr or "").replace(
-            auth_session.token, "***",
+        scrubbed = credentials._scrubbed(
+            ls_remote.stderr, auth_session.token,
         )
         log.error("git ls-remote failed for %s: %s", label, scrubbed)
-        return None
+        return _RefRead(
+            detail=commands._first_reported_line(scrubbed) or _SAID_NOTHING,
+        )
     for output_line in (ls_remote.stdout or "").splitlines():
         parts = output_line.strip().split()
         if len(parts) >= 2 and parts[1] == ref:
-            return parts[0]
-    return ""
+            return _RefRead(sha=parts[0])
+    return _RefRead(sha="")
 
 
 def _remote_ref_sha(
@@ -130,7 +166,7 @@ def _remote_ref_sha(
         )
         return None
     with credentials._git_auth_session(spec, token) as auth_session:
-        return _remote_ref_read(auth_session, worktree, ref, ref)
+        return _remote_ref_read(auth_session, worktree, ref, ref).sha
 
 
 def _push_ref(
@@ -231,6 +267,6 @@ def _authed_ref_update(
             "git %s failed for %s: %s",
             update.operation,
             update.ref,
-            (updated.stderr or "").replace(auth_session.token, "***"),
+            credentials._scrubbed(updated.stderr, auth_session.token),
         )
     return False

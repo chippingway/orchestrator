@@ -10,7 +10,9 @@ of is that argv -- git reads it from `$GIT_TOKEN` through the askpass script
 instead, so it never reaches the world-readable `/proc/<pid>/cmdline`. The
 session carries it here because this module needs it for the one thing the
 environment cannot do: scrubbing it back out of the stderr a failed call is
-logged with.
+logged with, and out of the stderr a fetch hands its caller -- what a caller
+carries into a record and reports somewhere else has to be as safe to print as
+what this module logs.
 
 What a branch is at on the remote is asked through `ref_transport` beside this
 one, which owns every remote read and write named by a whole refname. The lease
@@ -42,6 +44,20 @@ _PUSH = "push"
 # the worktree is on now, which is right for every caller that just made the
 # work it is publishing.
 _HEAD = "HEAD"
+
+# What a caller is told when the token could not be resolved at all, and when
+# the checkout it would run in carries config that could redirect the call.
+# Stated as text a human reads because they are what a failed transport hands
+# back in place of git's own stderr: neither refusal ever spawned git, and a
+# caller reporting "no reason" for either would send an operator to the wrong
+# thing entirely. Neither quotes the offending config -- what a worktree
+# carries is agent-written, and a diagnostic that travels is not where it
+# belongs.
+_NO_TOKEN = "GITHUB_TOKEN missing"
+
+_UNSAFE_WORKTREE_CONFIG = "unsafe transport config in worktree .git/config"
+
+_UNSAFE_TARGET_CONFIG = "unsafe transport config in target_root .git/config"
 
 
 def _failed_fetch(stderr: str) -> subprocess.CompletedProcess:
@@ -106,20 +122,18 @@ def _authed_fetch(
     # repo other than the legacy `REPO` (or use the wrong token).
     token = credentials._resolved_git_token(spec, _FETCH)
     if not token:
-        return _failed_fetch("GITHUB_TOKEN missing")
+        return _failed_fetch(_NO_TOKEN)
     unsafe = commands._unsafe_local_transport_config(cwd)
     if unsafe:
         log.error(
             "refusing to fetch into %s: worktree .git/config has "
             "transport-hijacking config: %s", cwd, unsafe,
         )
-        return _failed_fetch(
-            "unsafe transport config in worktree .git/config",
-        )
+        return _failed_fetch(_UNSAFE_WORKTREE_CONFIG)
     with credentials._git_auth_session(
         spec, token, include_identity=True,
     ) as auth_session, locks._target_root_lock(spec.target_root):
-        return subprocess.run(
+        fetched = subprocess.run(
             [
                 *commands._AUTHED_GIT_PREFIX,
                 _FETCH, "--quiet", auth_session.auth_url, refspec,
@@ -130,6 +144,13 @@ def _authed_fetch(
             env=auth_session.env,
             check=False,
         )
+        # Scrubbed here rather than at each caller, because this is the last
+        # frame that still holds the token: what a fetch hands back is logged
+        # by some callers and carried into a reported record by others.
+        fetched.stderr = credentials._scrubbed(
+            fetched.stderr, auth_session.token,
+        )
+        return fetched
 
 
 def _authed_target_fetch(
@@ -184,21 +205,19 @@ def _authed_target_fetch(
     """
     token = credentials._resolved_git_token(spec, _FETCH)
     if not token:
-        return _failed_fetch("GITHUB_TOKEN missing")
+        return _failed_fetch(_NO_TOKEN)
     unsafe = commands._unsafe_local_transport_config(spec.target_root)
     if unsafe:
         log.error(
             "refusing to fetch into %s: target_root .git/config has "
             "transport-hijacking config: %s", spec.target_root, unsafe,
         )
-        return _failed_fetch(
-            "unsafe transport config in target_root .git/config",
-        )
+        return _failed_fetch(_UNSAFE_TARGET_CONFIG)
     refspec = (
         f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}"
     )
     with credentials._git_auth_session(spec, token) as auth_session, locks._target_root_lock(spec.target_root):
-        return subprocess.run(
+        fetched = subprocess.run(
             [
                 *commands._AUTHED_GIT_PREFIX,
                 _FETCH, "--quiet", auth_session.auth_url, refspec,
@@ -209,6 +228,12 @@ def _authed_target_fetch(
             env=auth_session.env,
             check=False,
         )
+        # Scrubbed for the reason `_authed_fetch` is: this frame is the last
+        # one holding the token, and what a fetch reports travels.
+        fetched.stderr = credentials._scrubbed(
+            fetched.stderr, auth_session.token,
+        )
+        return fetched
 
 
 def _remote_branch_tip(
@@ -235,17 +260,41 @@ def _remote_branch_tip(
     publication finally be spent, while None established nothing and keeps it.
     Collapsing the two would drop the record of a plan on every reading that
     failed.
+
+    What the failure SAID is not on this answer. A caller that has to report a
+    reading rather than act on one asks `_remote_branch_read` beside this,
+    which is the same read with git's own line still attached.
+    """
+    return _remote_branch_read(spec, worktree, branch).sha
+
+
+def _remote_branch_read(
+    spec: config.RepoSpec, worktree: Path, branch: str,
+) -> ref_transport._RefRead:
+    """The same read, with the one line saying why it established nothing.
+
+    For the caller that has to REPORT a reading it could not take, rather than
+    only act on one. A size measurement is that caller: a base it cannot freeze
+    parks the issue for a human, and "the remote would not name the base" sends
+    an operator looking at everything from an expired token to a repository the
+    installation was never granted. The line git wrote says which, and it is
+    already scrubbed of the token by the transport that ran it.
+
+    The two refusals that never reach git answer for themselves, because
+    neither leaves an operator anywhere to look otherwise: a token this
+    deployment could not resolve for the repository, and a checkout whose own
+    config could send a token-bearing read somewhere else.
     """
     token = credentials._resolved_git_token(spec, "read the remote branch tip")
     if not token:
-        return None
+        return ref_transport._RefRead(detail=_NO_TOKEN)
     unsafe = commands._unsafe_local_transport_config(worktree)
     if unsafe:
         log.error(
             "refusing to read %s from the remote: worktree .git/config has "
             "transport-hijacking config: %s", branch, unsafe,
         )
-        return None
+        return ref_transport._RefRead(detail=_UNSAFE_WORKTREE_CONFIG)
     with credentials._git_auth_session(spec, token) as auth_session:
         return ref_transport._remote_ref_read(
             auth_session, worktree, branch, f"refs/heads/{branch}",
@@ -262,7 +311,9 @@ def _push_with_auth(
     """Push one branch through an established askpass session."""
     ref = f"refs/heads/{branch}"
     remote_sha = (
-        ref_transport._remote_ref_read(auth_session, worktree, branch, ref)
+        ref_transport._remote_ref_read(
+            auth_session, worktree, branch, ref,
+        ).sha
         if force_with_lease is None
         else force_with_lease
     )
@@ -284,8 +335,8 @@ def _push_with_auth(
     )
     if push_result.returncode == 0:
         return True
-    scrubbed = (push_result.stderr or "").replace(
-        auth_session.token, "***",
+    scrubbed = credentials._scrubbed(
+        push_result.stderr, auth_session.token,
     )
     log.error("git push failed for %s: %s", branch, scrubbed)
     return False

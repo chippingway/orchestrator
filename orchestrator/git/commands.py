@@ -109,6 +109,27 @@ def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess:
     )
 
 
+def _first_reported_line(output: str) -> str:
+    """The one line of a failed call's output a caller carries away with it.
+
+    One line, because what travels beside a typed failure is a diagnostic a
+    human reads rather than a transcript: git names what went wrong first and
+    spends the lines after it on advice, hints, and the remote's banner, none
+    of which says anything the first line has not. A record carrying all of it
+    would put a screenful of text everywhere the reason it stands beside is
+    reported.
+
+    Blank leading lines are skipped rather than answered with, since a call
+    whose output opens with one would otherwise report nothing at all, and ""
+    is reserved for a call that really said nothing.
+    """
+    for line in output.splitlines():
+        reported = line.strip()
+        if reported:
+            return reported
+    return ""
+
+
 def _git_hardened(
     *args: str,
     cwd: Path,

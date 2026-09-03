@@ -15,6 +15,7 @@ from orchestrator.git.measurement.models import (
     AdditionMeasurement,
     FrozenCommit,
     MeasurementFailure,
+    _BaseObject,
 )
 from tests.workflow.patch_models import _WorkflowRunContext
 from tests.workflow.repo_values import (
@@ -100,7 +101,7 @@ def _measurement_mocks(context: _WorkflowRunContext) -> dict[str, object]:
             ),
         ),
         "_base_object_present": MagicMock(
-            return_value=context.base_object_present,
+            return_value=_BaseObject(present=context.base_object_present),
         ),
         "_count_added_lines": MagicMock(side_effect=_CountedAdditions(context)),
     }
