@@ -99,7 +99,9 @@ file is the durable record.
   `stage` (the workflow label the issue is wearing, which is the whole of what this park can say about where the
   issue stopped — the ledger is spent by every role at every stage, so no one stage ran out of it), `phase` —
   `delivered` (the notice said for the first time), `reconciled` (the thread was found already carrying it, so it
-  was recorded as said rather than repeated), `standing` (a later tick met the same explained park and said nothing
+  was recorded as said rather than repeated) — both emitted wherever the notice reaches the thread, which is the
+  tracked spawn boundary where the refusal is taken (`workflow/engine/run_circuit.py`) and the dispatcher's hold
+  replaying one an earlier tick left owed — `standing` (a later tick met the same explained park and said nothing
   — emitted by the dispatcher's own hold, which stops the tick before any handler is reached, so it reports once per
   tick that REACHES it: a `paused` / `backlog` hard skip runs no dispatch at all, a closed issue is let past to its
   terminal, and a guard ahead of the hold can own the tick itself), `granted` (a trusted
