@@ -1051,8 +1051,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      succeeded next would finalize the plan the first answer existed to protect.
   1. Awaiting-human resume: on a new human comment past `last_action_comment_id`, resume the dev session via
      `run_agent(dev_agent, ...)`. A `retry_cap` park is the one awaiting-human state this road never sees: the
-     spent-budget bullet below owns the tick before it, because a resume is not a fresh spawn and nothing charges it,
-     so any reply at all would take that park down and hand the issue an unbudgeted session. The full spec persisted
+     spent-budget bullet below owns the tick before it, because a resume is not a fresh spawn and the daily spawn
+     budget does not charge it — the lifetime ledger does, like every other process start — so any reply at all would
+     take that park down and hand the issue an unbudgeted session. The full spec persisted
      in `dev_agent` is re-parsed via `_read_dev_session` and
      reused; flipping `DEV_AGENT` in env does not migrate in-flight issues. When parked on `agent_timeout` with **no**
      new comment, first attempt `_try_recover_implementing_timeout_park` (the implementing counterpart to validating's

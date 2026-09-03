@@ -192,9 +192,12 @@ examples.
   session that blows the window in fewer resumes.
 - `MAX_AGENT_RUNS_PER_ISSUE` — default `50`. lifetime ceiling on the agent runs one issue may spend: every agent run
   charged to that issue, in every role and at every stage — decomposer, developer, reviewer, and the conversation
-  agents — not only the implementer spawns `MAX_RETRIES_PER_DAY` meters. It is the backstop *under* the per-stage
-  budgets rather than one more of them: each of those bounds how often a single road may be retried, and an issue
-  that walks enough of those roads in turn spends more than any one of them ever sees. Unlike the daily retry budget
+  agents — not only the implementer spawns `MAX_RETRIES_PER_DAY` meters. What it counts is a process start rather than
+  a tick, so budget it that way: a reply-driven resume is a run exactly as a fresh spawn is, whichever stage makes it,
+  and one tick spends two where a developer resume lands on a transcript the backend has lost and the fresh retry
+  behind it recovers the session. It is the backstop *under* the per-stage budgets rather than one more of them: each
+  of those bounds how often a single road may be retried, and an issue that walks enough of those roads in turn spends
+  more than any one of them ever sees. Unlike the daily retry budget
   this one never reopens — a lifetime total is spent once, and no clock returns it. `0` = unlimited. A negative or
   non-integer value aborts at import, like the parallelism caps: a ceiling under zero is one no run could ever come
   in under. What the setting carries is the ceiling itself — validated at import and published on
@@ -206,8 +209,9 @@ examples.
   count goes on running while this setting is `0`, so turning the ceiling on reads a real lifetime total rather than
   zero. The charge is taken *before* the spawn — by
   [`workflow/engine/run_circuit.py`](../orchestrator/workflow/engine/run_circuit.py), immediately around the one
-  low-level `run_agent` call every role goes through — so a run that crashed, timed out, or was killed mid-flight is
-  still spent, which is also why this count can sit above the `issue_agent_runs` figure the terminal receipt reports,
+  low-level `run_agent` call every role goes through — so a run that crashed, timed out, was killed mid-flight, or came
+  back to an issue you had just `paused` is still spent, its outcome discarded but its compute already gone. That is
+  also why this count can sit above the `issue_agent_runs` figure the terminal receipt reports,
   since that one records only the runs whose usage parsed. A launch whose charge could not be written invokes no
   process at all. Where an issue that has spent it all STOPS is the park on
   [`workflow/engine/run_limit.py`](../orchestrator/workflow/engine/run_limit.py): `awaiting_human` with a stable
