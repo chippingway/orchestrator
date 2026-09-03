@@ -444,14 +444,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             `owner_check` unless a split transaction was interrupted, whose boundary the record
                             itself refuses to let any pre-split write rewind, since the phase is all that says a
                             loop was in flight when nothing is recorded yet -- the answer a crashed tick reads
-                            back rather than paying an agent for a second time, the announcement a recorded
-                            question is reconciled by, and the three emissions each written straight after the
-                            state they describe: a verdict, a typed late failure, and the cancellation an owner
-                            read earns
+                            back rather than paying an agent for a second time, the session a timeout or a
+                            contaminated worktree pins before the issue is handed back, the three sentences this
+                            owner words for parks this mode's park owner stages -- the unusable reply, the outcome
+                            too large to record, and the question itself, since the reason is a shared value that
+                            owner is read against and the sentence is the failing step's own to say -- the
+                            announcement a recorded question is reconciled by, and the three emissions each
+                            written straight after the state they describe: a verdict, a typed late failure, and
+                            the cancellation an owner read earns
       late_parks.py         every reason a late exit hands the issue back under, and the durable write each of
                             them rides out on: the park staged for the owner read to release, released anyway
                             where nothing would ever say it, and re-said at the top of a later tick when the
-                            comment that should have said it was refused; the obligation discharged from what the
+                            comment that should have said it was refused; the repeat that suppresses a second
+                            notice, read off the sentence rather than off the flag, since a park whose comment was
+                            refused is one nobody has been told about; the obligation discharged from what the
                             thread already carries where a failed write left the record claiming the opposite; the
                             parks a fresh attempt retires ahead of itself and the ones only a human's answer
                             clears; and the shared consumed-comment watermark every one of those answers
