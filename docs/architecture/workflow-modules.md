@@ -787,8 +787,18 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             their routing
       publication.py        which commits are this stage's to publish, the push and found-or-opened plan PR they earn,
                             and the records handed to the next tick
-      parks.py              every way the stage hands the issue back, and the funnel that stamps each park's reason
-                            and restores the consumed ceiling
+      parks.py              the funnel every way the stage hands the issue back goes through, which stamps each
+                            park's reason and restores the consumed ceiling
+      checkout_parks.py     the endings the per-issue checkout earns: the agent's loose edits and the stranded tree
+                            that arrived holding them, the unreadable one behind both, the tip that moved with no
+                            round in flight, and the reply no round may open on
+      publication_parks.py  the endings a reading of the committed plan earns: the round's own unpublishable commit
+                            and the recovered one beside it, the published plan, the plan no session can be named
+                            for, the publication the branch moved off, and the diverged and failed pushes
+      outcome_parks.py      the endings the run itself earns: the timeout, the silent backend and its diagnostics,
+                            and the analysis a finished round posts
+      park_messages.py      what those endings quote: the bounded path list, the reading of a committed artifact,
+                            the stale-publication standing and remedy, and the anchor a reset is named against
       models.py             the run, the agent identity and session, the prompt and its replies, the round, the
                             outcome, and the publication artifact
       state.py              the park reasons and wire keys, the plan path and the commit its PR carries, the

@@ -66,7 +66,7 @@ from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import pull_requests as _pull_requests
 from orchestrator.workflow.stages.discussion import (
     models as _models,
-    parks as _parks,
+    publication_parks as _publication_parks,
     run as _run,
     session as _session,
     state as _state,
@@ -585,7 +585,9 @@ def _refuse_stale_publication(
     """Say once that the publication in flight can no longer be finished."""
     if run.state.get(_state._PARK_REASON) == _state._DISCUSSION_STALE_PUBLISH:
         return
-    _parks._park_stale_publication(run, artifact, in_flight, published)
+    _publication_parks._park_stale_publication(
+        run, artifact, in_flight, published,
+    )
 
 
 def _publish_plan(
@@ -669,11 +671,11 @@ def _publish_plan(
         revision=artifact.head_sha,
     )
     if not pushed:
-        _parks._park_failed_plan_push(run, artifact)
+        _publication_parks._park_failed_plan_push(run, artifact)
         return
     plan_pr = _reuse_or_open_plan_pr(run, artifact)
     _record_published_plan(run, artifact, plan_pr.number)
-    _parks._park_published_plan(run, artifact, plan_pr.number)
+    _publication_parks._park_published_plan(run, artifact, plan_pr.number)
 
 
 def _record_landed_plan(
@@ -740,7 +742,7 @@ def _record_landed_plan(
     _attribute_reused_pr(run, artifact, plan_pr)
     _record_published_plan(run, artifact, plan_pr.number)
     if run.gh.pr_state(plan_pr) == _OPEN_PR_STATE:
-        _parks._park_published_plan(run, artifact, plan_pr.number)
+        _publication_parks._park_published_plan(run, artifact, plan_pr.number)
         return
     run.state.set(_state._ROUND_OPEN, None)
     run.gh.write_pinned_state(run.issue, run.state)
@@ -820,7 +822,7 @@ def _attributable_plan(
     if run.state.get(
         _state._PARK_REASON,
     ) != _state._DISCUSSION_PLAN_UNATTRIBUTED:
-        _parks._park_unattributed_plan(run, artifact)
+        _publication_parks._park_unattributed_plan(run, artifact)
     return False
 
 
@@ -885,7 +887,7 @@ def _permitted_lease(
         run.spec, artifact.worktree, artifact.branch,
     )
     if remote_tip is None:
-        _parks._park_diverged_plan_branch(run, artifact, remote_tip)
+        _publication_parks._park_diverged_plan_branch(run, artifact, remote_tip)
         return None
     if not remote_tip:
         return remote_tip
@@ -895,7 +897,7 @@ def _permitted_lease(
         artifact.worktree, remote_tip, artifact.head_sha,
     ):
         return remote_tip
-    _parks._park_diverged_plan_branch(run, artifact, remote_tip)
+    _publication_parks._park_diverged_plan_branch(run, artifact, remote_tip)
     return None
 
 
