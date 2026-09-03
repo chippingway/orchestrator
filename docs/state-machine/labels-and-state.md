@@ -1047,8 +1047,7 @@ drives the real handlers against a spent ledger so an unwired road is caught as 
   [`tests/workflow/stages/decomposition/test_late_lifetime.py`](../../tests/workflow/stages/decomposition/test_late_lifetime.py),
   which freezes one fresh candidate after another over the same issue and shows the ledger — rather than the day's
   spawn budget, pinned wider than the sequence is long — ending it, plus the restart that projects a new cycle and no
-  new runs; the exact-SHA exemption policy is asked of an issue with runs
-  to spare and of one with none in
+  new runs; the exact-SHA exemption policy is asked of an issue with runs to spare and of one with none in
   [`tests/workflow/stages/implementing/test_late_gate.py`](../../tests/workflow/stages/implementing/test_late_gate.py),
   since a spent lifetime is neither a way past the size gate nor a reason to re-adjudicate an accepted commit.
 - **There is no second road to a process.** The gate is worth what the number of places a run can start makes it

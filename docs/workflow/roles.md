@@ -138,10 +138,11 @@ the counters a role does reset is this one:
 
 - `review_round` goes back to zero on a pushed base rebase and on a recovered conflict, so `MAX_REVIEW_ROUNDS` can
   be spent over and over on one issue;
-- `conflict_round` and the 24h `retry_count` window each reopen on their own terms;
+- the 24h `retry_count` window empties on the clock, so `MAX_RETRIES_PER_DAY` is spendable again tomorrow;
 - `dev_resume_count` reaching `DEV_SESSION_MAX_RESUMES` retires the transcript and the next round spawns fresh;
-- an authorized restart of a cancelled late cycle projects a whole fresh cycle over the pinned comment, carrying the
-  allowance and the spend across with the rest of what is true about the ISSUE.
+- an authorized restart of a cancelled late cycle projects a whole fresh cycle over the pinned comment, dropping
+  every counter it is not told to keep — `conflict_round` among them, which nothing short of a restart resets — and
+  the allowance and the spend are two of the few it keeps.
 
 So an issue can move between `workflow:implementing` and `workflow:decomposing`, be adjudicated once per committed
 candidate, rotate sessions, and answer review round after review round without any of those loops ending — and the
