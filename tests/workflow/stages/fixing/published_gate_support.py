@@ -122,7 +122,7 @@ GROWN_CANDIDATES = tuple(
 )
 
 
-def recorded_generation(**overrides) -> dict:
+def recorded_generation(*, stage: str = support.FIXING, **overrides) -> dict:
     """The pinned fields a post-publication generation is retried from.
 
     Written through the domain's own writer rather than spelled as a dict, so
@@ -130,6 +130,11 @@ def recorded_generation(**overrides) -> dict:
     the freeze would have left behind -- the publication it was entered on
     included, which is what the retry proves the pull request has not moved
     against.
+
+    The stage is a parameter because it is a TERM of the reading rather than a
+    detail of it: all five that publish onto a pull request the remote already
+    carries can be left holding a pair, and the reading is re-entered only on
+    the one the issue is still wearing.
     """
     recorded = PinnedState(data={})
     _late_state.write_late_generation(
@@ -146,7 +151,7 @@ def recorded_generation(**overrides) -> dict:
             "phase": LatePhase.MEASURING,
             **overrides,
         }).with_publication(
-            stage=support.FIXING,
+            stage=stage,
             pr_number=support.PR_NUMBER,
             published_sha=support.PR_HEAD_SHA,
         ),

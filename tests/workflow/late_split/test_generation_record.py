@@ -47,7 +47,17 @@ class PresenceTest(unittest.TestCase):
 
 
 class MeasurementTest(unittest.TestCase):
-    """The gate trips strictly past the threshold it was measured against."""
+    """What a record answers about a measurement, or about holding none.
+
+    The gate trips strictly past the threshold the candidate was measured
+    against; a candidate the adjudication turned into children is owed no
+    reading at all, and the record says so by carrying no count -- which is
+    also what a tick that died between the freeze and the diff leaves.
+
+    The boundaries that answer are spelled out here for the reason the
+    in-flight set is: what they are is the contract, and a phase quietly
+    joining or leaving the runtime set has to fail this rather than follow it.
+    """
 
     def test_threshold_comparison_is_strict(self) -> None:
         threshold = _support.THRESHOLD
@@ -69,6 +79,39 @@ class MeasurementTest(unittest.TestCase):
             with self.subTest(additions=additions):
                 measured = _generation(threshold=ceiling, additions=additions)
                 self.assertEqual(measured.is_oversized, oversized)
+
+    def test_a_split_past_its_ref_owes_no_reading(self) -> None:
+        for phase in (
+            LatePhase.SPLITTING, LatePhase.SUPERSEDING, LatePhase.CLEANING_UP,
+        ):
+            with self.subTest(phase=phase):
+                self.assertTrue(_generation(phase=phase).split_has_settled)
+
+    def test_a_measurable_candidate_still_owes_one(self) -> None:
+        # `snapshotting` cuts the ref and creates no child, and a record at
+        # any boundary before it still carries the reading that sent it to the
+        # adjudication -- so calling either one settled would say something
+        # untrue about a generation whose count is on the comment.
+        for phase in (
+            None,
+            LatePhase.MEASURING,
+            LatePhase.HOLDING_PLAN_PR,
+            LatePhase.ADJUDICATING,
+            LatePhase.OWNER_CHECK,
+            LatePhase.SNAPSHOTTING,
+        ):
+            with self.subTest(phase=phase):
+                self.assertFalse(_generation(phase=phase).split_has_settled)
+
+    def test_a_recorded_child_answers_alone(self) -> None:
+        # The register is what the transaction writes down as it creates them
+        # and what the retirement keeps, so it answers for a record a retry
+        # left wearing the boundary it started from.
+        self.assertTrue(
+            _generation(
+                phase=LatePhase.SNAPSHOTTING, split_children=(7,),
+            ).split_has_settled,
+        )
 
     def test_an_unmeasured_candidate_is_not_oversized(self) -> None:
         # A missing measurement is a typed failure to reconcile, never a

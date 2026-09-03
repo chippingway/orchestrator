@@ -139,6 +139,37 @@ def _retire_spent_park(state: PinnedState) -> None:
         state.set(_state._AWAITING_HUMAN, False)
 
 
+def _retire_settled_park(
+    state: PinnedState, recorded: LateGeneration,
+) -> bool:
+    """Drop a measurement park a settled split's own record provoked.
+
+    True where one was standing, so the caller knows it owes the write. Left
+    to the caller for the reason `_retire_spent_park` leaves it there: the
+    tick that clears a park has its own write to ride out on, and this domain
+    does not put two where one will do.
+
+    The park is this domain's, and on a record whose candidate has already
+    become children it is this domain's own false positive: the group the
+    retirement keeps is there for the releases and the branch delete the
+    umbrella still owes, not for a reading anybody is waiting on. Left
+    standing it is an issue reading as parked for a human with nothing for a
+    human to answer -- and the reason is durable, so the pre-tick base refresh
+    goes on holding the branch it names for as long as the flag does.
+
+    Only the measurement park is retired, for the reason every other
+    retirement of it gives: a question, a rejected child, or a child somebody
+    closed by hand is a park with an answer still owed, and this record says
+    nothing about any of them.
+    """
+    if not recorded.split_has_settled:
+        return False
+    if state.get(_state._PARK_REASON) != PARK_MEASUREMENT_FAILED:
+        return False
+    _retire_spent_park(state)
+    return True
+
+
 def _retire_superseded_park(state: PinnedState) -> None:
     """Drop a park the adjudication is taking the issue out of.
 

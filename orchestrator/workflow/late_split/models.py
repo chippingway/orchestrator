@@ -106,6 +106,21 @@ IN_FLIGHT_PHASES = frozenset((
     LatePhase.SUPERSEDING,
 ))
 
+# The boundaries at which the candidate has been committed to becoming
+# children: every boundary the transaction owns past the ref it cuts, and the
+# tail its retirement leaves the record standing at. Assembled from the set
+# above rather than listed again, so a boundary that transaction gains is one
+# this reading gains with it.
+#
+# `snapshotting` is the one taken out, and taking it out costs nothing. A
+# record standing there still carries the measurement that sent it to the
+# adjudication -- the retirement is what drops that -- and a transaction
+# retried from there over a split that really did create children carries the
+# register, which answers on its own.
+_PAST_THE_SNAPSHOT = (
+    IN_FLIGHT_PHASES | frozenset((LatePhase.CLEANING_UP,))
+) - frozenset((LatePhase.SNAPSHOTTING,))
+
 # The boundaries that come before a transaction. Every retry above one -- the
 # hold reconciled on each tick, the spawn, the owner read a completion
 # claims -- writes one of these, and writing it over an in-flight boundary is
@@ -353,6 +368,28 @@ class LateGeneration:
             self.opaque_resources is not None
             or self.opaque_consumers is not None
         )
+
+    @property
+    def split_has_settled(self) -> bool:
+        """Whether this record's candidate has been made into children.
+
+        Two readings of one fact, because either can be the only one there.
+        The register is what the transaction writes down as it creates them
+        and what the retirement keeps -- it is what says which child owns
+        which slice of the manifest -- while the phase is what answers in the
+        window before the first of those writes lands, which is the window
+        `IN_FLIGHT_PHASES` exists for.
+
+        What it buys the readers behind it is the difference between a
+        candidate nobody counted and one nobody needs to. A settled split
+        drops the measurement, because a record still answering "oversized"
+        pins `workflow:decomposing` and would put the umbrella label back on
+        every tick, and keeps the publication group, because the umbrella
+        re-asks it in front of every child it releases and every branch it
+        deletes. A group with no number beside it is otherwise exactly the
+        shape of a tick that died between the freeze and the diff.
+        """
+        return bool(self.split_children) or self.phase in _PAST_THE_SNAPSHOT
 
     @property
     def has_publication_context(self) -> bool:

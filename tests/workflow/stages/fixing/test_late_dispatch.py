@@ -61,11 +61,43 @@ AWAITING_HUMAN = fixing.AWAITING_HUMAN
 # What a reading nobody could take left behind, for the tick that takes it.
 _MEASUREMENT_PARK = ((AWAITING_HUMAN, True), (PARK_REASON, PARK_MEASUREMENT_FAILED))
 
+# The five states the gate can take an issue out of, and so the five that can
+# be left holding a pair their own tick froze and never counted.
+PUBLISHING_LABELS = (
+    _workflow_state.WorkflowLabel.FIXING,
+    _workflow_state.WorkflowLabel.VALIDATING,
+    _workflow_state.WorkflowLabel.DOCUMENTING,
+    _workflow_state.WorkflowLabel.IN_REVIEW,
+    _workflow_state.WorkflowLabel.RESOLVING_CONFLICT,
+)
+
+# The boundaries a split's own transaction leaves a record standing at once
+# its candidate has been committed to becoming children.
+SETTLED_SPLIT_PHASES = (
+    support.LatePhase.SPLITTING,
+    support.LatePhase.SUPERSEDING,
+    support.LatePhase.CLEANING_UP,
+)
+
+# The ordered register that split wrote down as it created them, which the
+# retirement keeps because it says which child owns which slice.
+SPLIT_CHILDREN = (1585, 1586)
+
+# The pull request the supersession closed, which the same write that
+# hands the issue to `umbrella` stops calling this issue's.
+KEY_PR_NUMBER = "pr_number"
+
 
 class _FrozenPairMixin(_PatchedWorkflowMixin):
     """One issue whose record names a pair, and one tick routed over it."""
 
-    def _frozen(self, *, label: str = fixing.FIXING, parked: bool = False):
+    def _frozen(
+        self,
+        *,
+        label: str = fixing.FIXING,
+        stage: str = fixing.FIXING,
+        parked: bool = False,
+    ):
         """An issue whose record names a pair and carries no count."""
         github = FakeGitHubClient()
         issue = make_issue(ISSUE, label=label)
@@ -75,7 +107,7 @@ class _FrozenPairMixin(_PatchedWorkflowMixin):
             branch=_issue_branch(ISSUE),
             pr_number=PR_NUMBER,
             **(dict(_MEASUREMENT_PARK) if parked else {}),
-            **support.recorded_generation(),
+            **support.recorded_generation(stage=stage),
         )
         # Standing exactly where the record says it froze it: a head that
         # moved is its own refusal, tested beside this one.
@@ -136,15 +168,23 @@ class FrozenPairReconciliationTest(unittest.TestCase, _FrozenPairMixin):
         # push the crashed tick owed -- named against the commit that was
         # measured and pinned to the head the pair froze. Only then does the
         # handler run, over the same world that tick would have handed it.
-        github, issue = self._frozen()
+        # Every stage the gate can take an issue out of can be left holding
+        # one, and the reading is the same on all five.
+        for label in PUBLISHING_LABELS:
+            with self.subTest(stage=label):
+                github = self._frozen(label=label, stage=label)[0]
 
-        dispatched, mocks = self._route(github, issue)
+                dispatched, mocks = self._route(
+                    github, github.get_issue(ISSUE), handled=label,
+                )
 
-        mocks[COUNT_ADDED_LINES].assert_called_once()
-        pushed = mocks[PUSH_BRANCH].call_args
-        self.assertEqual(pushed.kwargs[REVISION], MEASURED_CANDIDATE_SHA)
-        self.assertEqual(pushed.kwargs[LEASE], fixing.PR_HEAD_SHA)
-        dispatched.assert_called_once()
+                mocks[COUNT_ADDED_LINES].assert_called_once()
+                pushed = mocks[PUSH_BRANCH].call_args
+                self.assertEqual(
+                    pushed.kwargs[REVISION], MEASURED_CANDIDATE_SHA,
+                )
+                self.assertEqual(pushed.kwargs[LEASE], fixing.PR_HEAD_SHA)
+                dispatched.assert_called_once()
 
     def test_a_published_pair_leaves_no_debt(self) -> None:
         # The record is retired and the debt the approval named is paid by the
@@ -223,23 +263,28 @@ class StrandedRecordTest(unittest.TestCase, _FrozenPairMixin):
         # the candidate is unmeasured and unpushed, so `validating` would hand
         # a reviewer a head the pull request never received. Neither road is
         # this process's to pick, so the tick stops and says so once.
-        github, issue = self._frozen(label=fixing.VALIDATING)
+        for label in PUBLISHING_LABELS[1:]:
+            with self.subTest(label=label):
+                github = self._frozen(label=label)[0]
 
-        dispatched, mocks = self._route(
-            github, issue, handled=_workflow_state.WorkflowLabel.VALIDATING,
-        )
+                dispatched, mocks = self._route(
+                    github, github.get_issue(ISSUE), handled=label,
+                )
 
-        mocks[COUNT_ADDED_LINES].assert_not_called()
-        dispatched.assert_not_called()
-        mocks[PUSH_BRANCH].assert_not_called()
-        self.assertEqual(github.label_history, [])
-        pinned = github.pinned_data(ISSUE)
-        self.assertTrue(pinned[AWAITING_HUMAN])
-        self.assertEqual(pinned[PARK_REASON], PARK_MEASUREMENT_FAILED)
-        # The pair is kept whole: the stage it was entered on is what a human
-        # puts the label back to, and the commit is still the one to measure.
-        self.assertEqual(pinned[KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA)
-        self.assertEqual(pinned[KEY_SOURCE_STAGE], fixing.FIXING)
+                mocks[COUNT_ADDED_LINES].assert_not_called()
+                dispatched.assert_not_called()
+                mocks[PUSH_BRANCH].assert_not_called()
+                self.assertEqual(github.label_history, [])
+                pinned = github.pinned_data(ISSUE)
+                self.assertTrue(pinned[AWAITING_HUMAN])
+                self.assertEqual(pinned[PARK_REASON], PARK_MEASUREMENT_FAILED)
+                # The pair is kept whole: the stage it was entered on is what
+                # a human puts the label back to, and the commit is still the
+                # one to measure.
+                self.assertEqual(
+                    pinned[KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA,
+                )
+                self.assertEqual(pinned[KEY_SOURCE_STAGE], fixing.FIXING)
 
     def test_a_stranded_record_asks_a_human_once(self) -> None:
         # The refusal is unrepairable from here, so every later poll reads the
@@ -253,3 +298,73 @@ class StrandedRecordTest(unittest.TestCase, _FrozenPairMixin):
 
         dispatched.assert_not_called()
         self.assertEqual(github.posted_comments, [])
+
+
+class SettledSplitRecordTest(unittest.TestCase, _FrozenPairMixin):
+    """A record whose candidate the adjudication turned into children.
+
+    The retirement drops the measurement, because one that still answered
+    "oversized" would pin `workflow:decomposing`, and keeps the publication
+    group, because the umbrella re-asks it in front of every child it releases
+    and every branch it deletes. What that leaves is the exact shape of a pair
+    frozen and never counted -- on an issue whose label the same write moved
+    to `workflow:umbrella`.
+    """
+
+    def test_a_settled_split_reaches_its_own_handler(self) -> None:
+        # Without the record's own settlement answering first, the group would
+        # name `fixing` while the issue is on `umbrella`, and the
+        # stranded-reading refusal would hold every tick in front of the walk
+        # that releases the children.
+        for phase in SETTLED_SPLIT_PHASES:
+            with self.subTest(phase=phase):
+                github = self._settled(phase=phase)
+
+                dispatched, mocks = self._route(
+                    github, github.get_issue(ISSUE),
+                    handled=_workflow_state.WorkflowLabel.UMBRELLA,
+                )
+
+                dispatched.assert_called_once()
+                mocks[COUNT_ADDED_LINES].assert_not_called()
+                self.assertEqual(github.posted_comments, [])
+                self.assertIsNone(github.pinned_data(ISSUE).get(PARK_REASON))
+
+    def test_a_park_standing_on_it_is_retired(self) -> None:
+        # The park is durable and nothing about a settled split is a human's
+        # to answer, so a flag left standing would read as waiting on one for
+        # good -- and hold the branch it names out of the pre-tick base
+        # refresh for just as long.
+        github = self._settled(parked=True)
+
+        dispatched, _mocks = self._route(
+            github, github.get_issue(ISSUE),
+            handled=_workflow_state.WorkflowLabel.UMBRELLA,
+        )
+
+        dispatched.assert_called_once()
+        pinned = github.pinned_data(ISSUE)
+        self.assertFalse(pinned[AWAITING_HUMAN])
+        self.assertIsNone(pinned[PARK_REASON])
+
+    def _settled(self, *, phase=support.LatePhase.CLEANING_UP, parked=False):
+        """The record a split's retirement leaves, on the label it hands to.
+
+        The measurement gone, the publication group and the ordered child
+        register kept, and no `pr_number` on the issue -- the same write drops
+        it, since the pull request the supersession closed carries work the
+        children are replacing.
+        """
+        github = self._frozen(
+            label=_workflow_state.WorkflowLabel.UMBRELLA, parked=parked,
+        )[0]
+        github.seed_state(ISSUE, **{
+            **github.pinned_data(ISSUE),
+            KEY_PR_NUMBER: None,
+            **support.recorded_generation(
+                threshold=None,
+                phase=phase,
+                split_children=SPLIT_CHILDREN,
+            ),
+        })
+        return github

@@ -56,8 +56,22 @@ def _awaits_its_count(recorded: LateGeneration) -> bool:
     moves the issue to the adjudication -- so a generation still sitting on a
     stage that publishes, with a whole publication group and no number, is a
     tick that died between the freeze and the diff and nothing else.
+
+    Unless the split that reading earned has settled. A candidate that became
+    children owes no count, and the record says so by carrying none: what a
+    settled split keeps is the publication group, for the releases and the
+    branch delete its umbrella still has to make, and what it drops is the
+    measurement, because one answering "oversized" pins `workflow:decomposing`
+    and would put the umbrella label back on every tick. Read without that,
+    the finished adjudication wears the whole shape of a reading nobody took,
+    and the record it is read off strands the very umbrella it made: the group
+    names the stage the gate was entered from, the issue is on
+    `workflow:umbrella` now, and the refusal for a pair read off its own stage
+    holds every tick in front of the handler that would release the children.
     """
     if not recorded.has_publication_context or recorded.cancelled:
+        return False
+    if recorded.split_has_settled:
         return False
     return bool(recorded.candidate_sha) and recorded.additions is None
 
