@@ -13,6 +13,10 @@ Each entry is the world its stage spawns in plus the call that runs one tick
 of it, and every driver takes the result the process comes back with, so the
 same road answers for a run that finished, one the shutdown sweep killed, and
 one an operator paused mid-flight.
+
+The three roles that talk rather than deliver -- the decomposer, the question
+stage, and the discussion stage -- are the sibling table in
+`charged_conversation_roads.py`, on the same seeded ledger.
 """
 from __future__ import annotations
 

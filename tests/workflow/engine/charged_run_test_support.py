@@ -2,28 +2,42 @@
 # SPDX-License-Identifier: Apache-2.0
 """The ledger a driven road is seeded on, and what one tick left on it.
 
-The vocabulary the developer and reviewer road table beside this is written
-in. Every road it drives is seeded here, on one ledger: an allowance with room
-under it, so a case about a second launch is not secretly a case about the
-ceiling, and a spend that is already non-zero, so a road that started the count
-over rather than charging the one the issue carried is a road the numbers
-catch.
+The vocabulary both road tables beside this are written in -- the developer
+and reviewer one, and the decomposer and conversation one. Every road either
+drives is seeded here, on one ledger: an allowance with room under it, so a
+case about a second launch is not secretly a case about the ceiling, and a
+spend that is already non-zero, so a road that started the count over rather
+than charging the one the issue carried is a road the numbers catch.
 
 What a case reads afterwards is the issue's own pinned comment, never the
 object the handler was holding. The charge is written onto freshly read
 durable state in the middle of a tick and the handler writes again at the end
 of one, so the count surviving that second write is half of what any of this
 proves.
+
+The two worlds a road is driven in besides its ordinary one live here for the
+same reason: a run the shutdown sweep killed and a run an operator paused
+mid-flight are what every road has to answer for, and each cost the issue the
+same run as one that came back.
 """
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 from orchestrator.agents import AgentResult
+from orchestrator.github.labels import PAUSED_LABEL
 from orchestrator.workflow.engine import run_ledger as _run_ledger
-from tests.support.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
+from tests.support.fakes import (
+    FakeComment,
+    FakeGitHubClient,
+    FakeLabel,
+    FakeUser,
+    make_issue,
+)
 from tests.workflow.fixtures import DEFAULT_PR_HEAD_SHA, MEASURED_CANDIDATE_SHA, _agent
 
 RUN_AGENT = "run_agent"
@@ -48,6 +62,10 @@ SHA_BEFORE = DEFAULT_PR_HEAD_SHA
 SHA_AFTER = MEASURED_CANDIDATE_SHA
 
 DEV_SESSION = "dev-sess"
+
+# What the shutdown sweep leaves behind: no session, nothing said, and a flag
+# saying none of it can be trusted.
+INTERRUPTED = _agent(session_id=None, last_message="", interrupted=True)
 
 # What Claude prints when `--resume` lands on a transcript it no longer has.
 # It is the one failure a resume answers with a second spawn rather than a
@@ -140,3 +158,19 @@ class ChargedRoad:
     label: str
     drive: Callable[..., Driven]
     agent_result: AgentResult = field(default_factory=_agent)
+
+
+@contextlib.contextmanager
+def paused_mid_run(road):
+    """An operator applying `paused` while this road's process is out.
+
+    Patched onto the client class rather than one instance because the road
+    builds its own, and what the guard reads is a FRESH fetch -- which is the
+    whole point: the labels the handler holds were read before the spawn.
+    """
+    view = make_issue(road.number, label=road.label)
+    view.labels.append(FakeLabel(PAUSED_LABEL))
+    with patch.object(
+        FakeGitHubClient, "get_issue", MagicMock(return_value=view),
+    ) as fetched:
+        yield fetched

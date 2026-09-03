@@ -23,39 +23,15 @@ than the ones that happened to come back.
 """
 from __future__ import annotations
 
-import contextlib
 import unittest
-from unittest.mock import MagicMock, patch
 
-from orchestrator.github.labels import PAUSED_LABEL
-from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
 from tests.workflow.engine import charged_run_roads as roads, charged_run_test_support as support
 from tests.workflow.fixtures import _agent, _PatchedWorkflowMixin
-
-# What the shutdown sweep leaves behind: no session, nothing said, and a flag
-# saying none of it can be trusted.
-_INTERRUPTED = _agent(session_id=None, last_message="", interrupted=True)
 
 # What a resume lands on when the backend has lost the transcript it names.
 _POISONED = _agent(
     session_id=None, last_message="", stderr=support.POISONED_STDERR,
 )
-
-
-@contextlib.contextmanager
-def _paused_mid_run(road):
-    """An operator applying `paused` while this road's process is out.
-
-    Patched onto the client class rather than one instance because the road
-    builds its own, and what the guard reads is a FRESH fetch -- which is the
-    whole point: the labels the handler holds were read before the spawn.
-    """
-    view = make_issue(road.number, label=road.label)
-    view.labels.append(FakeLabel(PAUSED_LABEL))
-    with patch.object(
-        FakeGitHubClient, "get_issue", MagicMock(return_value=view),
-    ) as fetched:
-        yield fetched
 
 
 class ChargedLaunchTest(unittest.TestCase, _PatchedWorkflowMixin):
@@ -85,7 +61,7 @@ class ChargedLaunchTest(unittest.TestCase, _PatchedWorkflowMixin):
     def test_an_interrupted_launch_stays_charged(self) -> None:
         for road in roads.ROADS:
             with self.subTest(role=road.role):
-                driven = road.drive(self, _INTERRUPTED)
+                driven = road.drive(self, support.INTERRUPTED)
 
                 self.assertEqual(driven.spawns, 1)
                 self._assert_charged(driven, launches=1)
@@ -94,7 +70,7 @@ class ChargedLaunchTest(unittest.TestCase, _PatchedWorkflowMixin):
     def test_a_paused_launch_stays_charged(self) -> None:
         for road in roads.ROADS:
             with self.subTest(role=road.role):
-                with _paused_mid_run(road) as fetched:
+                with support.paused_mid_run(road) as fetched:
                     driven = road.drive(self, road.agent_result)
                     fetched.assert_called_with(road.number)
 
