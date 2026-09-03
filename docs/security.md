@@ -455,11 +455,12 @@ The security posture:
   starts a process from, and it lands durably *before* the spawn. A run that crashed, timed out, or was killed by the
   shutdown sweep is therefore still spent — those are exactly the runs a crash loop would otherwise repeat for free.
   A gate written into each spawning handler would be a gate the next handler is added without.
-- **Lifetime, and no clock reopens it.** Unlike the 24h spawn budget, the review-round cap, and the conflict-round
-  cap, nothing returns a run: not the next day, not a park a human answered, not a cancelled cycle, not a restart, and
-  not an operator widening the setting afterwards. The counters that *do* reset — `review_round` after a base rebase
-  or a recovered conflict, `dev_resume_count` behind session rotation, the retry window — are deliberately not this
-  one, so an issue cannot loop its way to unbounded spend through any of them.
+- **Lifetime, and no clock reopens it.** Unlike the 24h spawn budget, which empties on the clock, and the
+  review-round cap, which a base rebase or a recovered conflict puts back to zero, nothing returns a run: not the next
+  day, not a park a human answered, not a cancelled cycle, not a restart, and not an operator widening the setting
+  afterwards. The counters that *do* reset — `review_round` after a base rebase or a recovered conflict,
+  `dev_resume_count` behind session rotation, the retry window — are deliberately not this one, so an issue cannot
+  loop its way to unbounded spend through any of them.
 - **The one thing that lifts it is trusted and bounded.** A spent ledger parks the issue on `agent_run_limit`, held by
   the dispatcher ahead of every stage handler. The only answer is `/orchestrator add-agent-runs N` from an author the
   `ALLOWED_ISSUE_AUTHORS` boundary trusts, on a line of its own, with `N` a whole number no larger than
