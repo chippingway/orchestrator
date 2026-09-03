@@ -797,9 +797,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       recovery.py           a publication a tick died in the middle of: the marker that answers for the branch, the
                             remote reading that tells a plan that landed from a branch an operator reset, and the
                             stale refusal written once
-      plan_pr.py            the plan's own pull request: the open one reused or the new one opened and announced, the
-                            session line a body of unknown provenance is rewritten to carry, and the refusal of a
-                            plan no session can be named for
+      plan_pr.py            the plan's own pull request: the open one reused -- its body rewritten where it does not
+                            already name the publishing session -- or the new one opened and announced, the title
+                            taken from the plan commit's own subject, the body that names that session and says what
+                            merging or closing decides, and the refusal of a plan no session can be named for
       records.py            what a finished publication writes down: the adoption of a PR already carrying the
                             commit, and the plan path, branch, number, PR head, and moved round anchor one durable
                             write leaves behind
