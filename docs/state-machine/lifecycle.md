@@ -119,6 +119,15 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      not, so a crash in between is a step to
                                      resume rather than a record nothing
                                      goes back for
+     ... unless the split settled ─► nothing is owed. A candidate the
+                                     adjudication made into children keeps
+                                     the publication group -- the umbrella
+                                     re-asks it before each release and each
+                                     branch delete -- and drops the count, so
+                                     the tick goes to the label's own handler
+                                     on workflow:umbrella, and a stale
+                                     late_measurement_failed standing over it
+                                     is retired rather than held
      ... with no checkout here    ─► park late_measurement_failed and stop the
                                      tick, announced once: the commit is on a
                                      host this one is not, and letting the

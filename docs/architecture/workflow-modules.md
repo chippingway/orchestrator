@@ -1142,8 +1142,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             was taken on, the typed failure both sinks carry under the stage the reading happened
                             in, the bare continue that re-reads rather than re-runs, the measurement park a fresh
                             reading retires -- latch and all, since a reconciliation has no run behind it to clear
-                            the flag -- and the commits a publication is read by: the one an approval owes a push
-                            for with the head it is pinned to, and the one this stage made
+                            the flag -- the same park retired on a record whose split has already become children,
+                            where no reading is owed and nothing about it is a human's to answer, and the commits a
+                            publication is read by: the one an approval owes a push for with the head it is pinned
+                            to, and the one this stage made
       publication.py        the push -- named against the commit the gate decided and pinned to the head a
                             published approval was frozen against, where there is one -- the PR reuse (re-bodied
                             when it was opened elsewhere) or open, and the

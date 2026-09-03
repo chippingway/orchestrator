@@ -1015,6 +1015,14 @@ request would have its work handed to children on the very next poll and the ref
 terminal, with nothing in between having looked. It costs one lookup per release, one per delete, and one per
 terminal decision, and a parent that never entered the size gate answers without a request at all.
 
+Keeping the group has one cost, and it is paid a layer above: a whole publication group with no count beside it is
+also the shape a tick that died between the freeze and the diff leaves, so the reconciliation the dispatcher runs
+ahead of every handler asks the record's own settlement before it reads that shape — a `late_phase` past the ref the
+transaction cuts, or a non-empty `late_split_children`. Without that question the group would name the stage the
+gate was entered from while the issue wears `workflow:umbrella`, every poll would be held for a human as a reading
+read off a stage the issue has left, and the walk this section is about would never run
+([`../state-machine/delivery-stages.md#the-size-gate…`][size-gate]).
+
 That last ask is the one no ledger could make, and it happens **twice**. A reclamation that **finished** owes
 nothing, so a human who restores the branch and reopens the change afterwards leaves every entry settled and the
 terminal free — and what it writes is `done`, a close, and the drop of the publication group, after which nothing
@@ -1631,3 +1639,4 @@ reference.
 [late-state]: ../state-machine/labels-and-state.md#late-generation-state
 [retry-budget]: ../state-machine/labels-and-state.md#the-retry-budget
 [agent-run-circuit]: ../state-machine/labels-and-state.md#the-agent-run-circuit
+[size-gate]: ../state-machine/delivery-stages.md#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr
