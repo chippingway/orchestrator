@@ -327,7 +327,11 @@ agent-run ledger is charged. `workflow/engine/run_circuit.py` is asked immediate
 mid-flight is still spent and a tick that died between the two is recognized rather than charged twice. A launch it
 refuses — an unreadable pinned comment, a write that failed, or an allowance with nothing left — invokes nothing and
 returns an `interrupted` result, which is the answer spawning handlers already return without writing durable state
-for. Details in [`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#the-agent-run-circuit).
+for. That "only call" is held rather than assumed:
+[`../tests/repository/test_agent_spawn_boundary.py`](../tests/repository/test_agent_spawn_boundary.py) reads the
+production tree and fails on any second module that so much as names `run_agent`, on anything but `runner.py` naming
+a backend entry, and on anything but the two backends naming `run_subprocess`. Details in
+[`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#the-agent-run-circuit).
 
 The role command specs (`DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT`), their parsing, the durable per-session
 lock, and the resume mechanic are documented in
