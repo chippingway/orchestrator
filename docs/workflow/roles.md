@@ -649,19 +649,21 @@ superseding the pull request its work is on are one transaction; what the guard 
 check for itself, that the outcome was re-checked against an owner read taken after the agent finished. Nothing is
 created here. What that transaction then does is [the section below](#what-a-cleared-split-actually-does).
 
-A **single** is reconciled as an EXEMPTION for the measured commit (`late_settlement.py`). The
-candidate is already committed in the developer's own worktree, and the ordinary implementing publication is what
-pushes it and hands it to review — so what this step
+A **single** is reconciled as an EXEMPTION for the measured commit (`late_settlement.py`, which owns the order the
+steps below run in and writes the exemption itself). The candidate is already committed in the developer's own
+worktree, and the ordinary implementing publication is what pushes it and hands it to review — so what this step
 owes is a durable record that this exact commit has been adjudicated, or the gate would measure the same candidate
 past the same ceiling and adjudicate it again forever. `late_exempt_sha` names the measured commit and only it, which
 is the whole invalidation rule: work committed on top of an accepted candidate is work nobody adjudicated, and it is
 measured as the fresh candidate it is
 ([`../state-machine/labels-and-state.md#late-generation-state`][late-state]).
 
-Beside the exemption goes the **exact-commit reconciliation** of the pull request the issue records, and it is the
-half the ordinary publication cannot do: that one searches for an OPEN pull request on the branch, while `pr_number`
-by this point may name a plan PR a human merged, or the commit may already be sitting on a pull request a crashed
-publication opened and never recorded. Neither is cosmetic. `implementing` asks its recorded pull request first, and
+Beside the exemption goes the **exact-commit reconciliation** of the pull request the issue records
+(`late_reconcile.py`, with the hold release beside it and the head a published-side verdict is proved against one
+owner over in `late_proof.py`), and it is the half the ordinary publication cannot do: that one searches for an OPEN
+pull request on the branch, while `pr_number` by this point may name a plan PR a human merged, or the commit may
+already be sitting on a pull request a crashed publication opened and never recorded. Neither is cosmetic.
+`implementing` asks its recorded pull request first, and
 a **merged** one that is no longer the plan ends the issue as `done` — with the adjudicated candidate never
 published; and a commit already on a pull request nobody records is published a second time, since the reuse looks
 for an open one and finds none. So the commit is what the pull request is found by, in any state
@@ -692,8 +694,9 @@ candidate goes on to.
 
 The order is chosen so every window a crash can land in is one the next tick repairs. The hold is released first,
 while nothing else has moved; the exemption is written next, with the generation still live behind it; only then is
-`workflow:implementing` handed back; and only after that is the generation retired — behind the one comment naming the
-accepted commit and the measurement it was judged on, posted immediately before the write that drops the generation,
+`workflow:implementing` handed back; and only after that is the generation retired (`late_handback.py` owns that
+half) — behind the one comment naming the accepted commit and the measurement it was judged on, posted immediately
+before the write that drops the generation,
 so a crash between them costs at most a repeated comment. What that write keeps is the two external ledgers: an
 obligation the remote is owed does not stop being owed because the adjudication that recorded it ended well. A
 `decomposing` issue with no generation on it is one the INITIAL decomposer would pick up and re-decompose, and an
