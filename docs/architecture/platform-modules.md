@@ -49,6 +49,14 @@ last is held by the loader itself rather than by a check.
   session record through `credentials` rather than importing the three by name, and `tests/git/test_imports.py`
   asserts each is bound on that owner and nowhere in `authentication` — a copy there would read as the patch target
   a test aims at while the session a call actually opens stayed the owner's.
+- **One road to a process.** The `agents/` chain is reached at one point from above and one per hop below it: only
+  `workflow/engine/usage.py` calls `run_agent`, and the initializer republishing it as the package API is the one
+  other module that names it at all; only `runner.py` names `codex.run_codex` / `claude.run_claude`; and only the two
+  backends name `processes.run_subprocess`. That is what makes the lifetime agent-run charge taken around that single
+  call a charge every role pays, since a second caller anywhere would be runs nothing counts.
+  `tests/repository/test_agent_spawn_boundary.py` reads the whole chain off the source, counting a reference rather
+  than a call so a spawn bound into a variable is caught where its name is written, and holds the call itself to
+  `_run_agent_tracked`'s own body with the circuit asked on a line above it.
 - **Operator log channels.** Four names are spelled literally rather than derived from `__name__`, because an
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/authentication.py`,
   `git/credentials.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that log, which all report on
