@@ -8,6 +8,7 @@ import unittest
 from dataclasses import replace
 from types import MappingProxyType
 
+from orchestrator.git.measurement.models import MeasurementFailure
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import formats as _formats, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
@@ -27,10 +28,16 @@ _CANDIDATE_KEY = "late_candidate_sha"
 _BASE_KEY = "late_base_sha"
 _TITLE_HASH_KEY = "late_title_body_hash"
 _COMMENT_HASH_KEY = "late_comment_hash"
+_MISS_COUNT_KEY = "late_measurement_miss_count"
+_MEASUREMENT_FAILURE_KEY = "late_measurement_failure"
 _POST_PUBLICATION_KEY = "late_post_publication"
 _SOURCE_STAGE_KEY = "late_source_stage"
 _PUBLISHED_PR_KEY = "late_published_pr_number"
 _PUBLISHED_SHA_KEY = "late_published_sha"
+
+# What a reading that did not happen leaves behind, scoped to the frozen pair
+# it is the absence of -- so a generation that ends takes both along.
+_MEASUREMENT_RETRY_KEYS = (_MISS_COUNT_KEY, _MEASUREMENT_FAILURE_KEY)
 
 # The three the marker is only a publication with: each is read fail-closed,
 # so one of them gone leaves the flag standing over a context nothing could
@@ -53,13 +60,22 @@ _TRUNCATED_DIGEST = "d" * (_support.DIGEST_LENGTH - 1)
 
 # One damaged value per field contract: an identity that is not positive, a
 # measurement that is not a count, a commit field that is not spelled like
-# one, a depth outside the lineage, and a restart target no restart applies.
+# one, a depth outside the lineage, a step no measurement of this domain's
+# ever stops at, and a restart target no restart applies.
 _NOT_LIVE_STATE = (
     ("late_root_issue", 0),
     ("late_current_issue", -9),
     ("late_generation", -1),
     ("late_threshold", -1),
     ("late_additions", -4000),
+    # A reading that did not happen is a count and a typed step: a negative
+    # miss counts nothing, a bool is not a number anybody wrote, and a
+    # `LateFailure` names a reconciliation step rather than a measurement one.
+    (_MISS_COUNT_KEY, -1),
+    (_MISS_COUNT_KEY, True),
+    (_MISS_COUNT_KEY, "3"),
+    (_MEASUREMENT_FAILURE_KEY, "measurement_failed"),
+    (_MEASUREMENT_FAILURE_KEY, "the diff would not read"),
     (_CANDIDATE_KEY, "rationale: inspect /srv/private/key"),
     (_BASE_KEY, "HEAD~1"),
     (_TITLE_HASH_KEY, "not a digest"),
@@ -125,6 +141,7 @@ class RoundTripTest(unittest.TestCase):
         # rather than here.
         written = json.loads(json.dumps(_written(_support.full_generation()).data))
         self.assertEqual(written["late_phase"], "snapshotting")
+        self.assertEqual(written[_MEASUREMENT_FAILURE_KEY], "diff_unreadable")
         self.assertEqual(written["late_cancelled_phase"], "splitting")
         self.assertEqual(
             written[_RESOURCES_KEY],
@@ -215,6 +232,53 @@ class FieldContractTest(unittest.TestCase):
                     key,
                     _support.rewritten_state(_damaged(key, damaged)).data,
                 )
+
+
+class MeasurementRetryTest(unittest.TestCase):
+    """What a reading that did not happen records, and how long it lasts."""
+
+    def test_the_typed_step_survives_a_round_trip(self) -> None:
+        # Asserted by identity rather than by equality: a `StrEnum` member
+        # compares equal to its own wire string, so a whole-record comparison
+        # cannot tell a failure read back as a member from one read back as
+        # the text somebody typed.
+        read_back = _support.read_state(self._recorded())
+        self.assertEqual(
+            read_back.measurement_miss_count, _support.MEASUREMENT_MISS_COUNT,
+        )
+        self.assertIs(
+            read_back.measurement_failure, MeasurementFailure.DIFF_UNREADABLE,
+        )
+
+    def test_a_reading_that_happened_adds_no_key(self) -> None:
+        # No misses and no failure is what every pinned comment written
+        # before the pair says, so a generation measured first time is that
+        # comment rather than a second spelling of it.
+        state = _written(_support.measured_generation())
+        for key in _MEASUREMENT_RETRY_KEYS:
+            with self.subTest(key=key):
+                self.assertNotIn(key, state.data)
+        read_back = _support.read_state(state)
+        self.assertEqual(read_back.measurement_miss_count, 0)
+        self.assertIsNone(read_back.measurement_failure)
+
+    def test_the_record_dies_with_the_generation(self) -> None:
+        # Both are about ONE frozen pair, so the retirement that ends the
+        # generation ends them: a count carried into the next cycle would
+        # park a reading that has not failed yet.
+        state = self._recorded()
+        for key in _MEASUREMENT_RETRY_KEYS:
+            self.assertIn(key, state.data)
+
+        _late_state.clear_late_generation(state)
+
+        for key in _MEASUREMENT_RETRY_KEYS:
+            with self.subTest(key=key):
+                self.assertNotIn(key, state.data)
+
+    def _recorded(self) -> PinnedState:
+        """A pinned comment carrying the miss and the step it stopped at."""
+        return _written(_support.full_generation())
 
 
 class PublicationProvenanceTest(unittest.TestCase):

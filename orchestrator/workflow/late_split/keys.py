@@ -35,6 +35,8 @@ CANDIDATE_SHA = "late_candidate_sha"
 BASE_SHA = "late_base_sha"
 THRESHOLD = "late_threshold"
 ADDITIONS = "late_additions"
+MEASUREMENT_MISS_COUNT = "late_measurement_miss_count"
+MEASUREMENT_FAILURE = "late_measurement_failure"
 PHASE = "late_phase"
 TITLE_BODY_HASH = "late_title_body_hash"
 COMMENT_HASH = "late_comment_hash"
@@ -72,6 +74,8 @@ LATE_STATE_KEYS = (
     BASE_SHA,
     THRESHOLD,
     ADDITIONS,
+    MEASUREMENT_MISS_COUNT,
+    MEASUREMENT_FAILURE,
     PHASE,
     TITLE_BODY_HASH,
     COMMENT_HASH,

@@ -816,11 +816,12 @@ The keys that matter for the state machine fall into a few groups:
   `orchestrator_comment_ids`. This is a read-only verdict — no budget breaker or control behavior gates on it.
 - **Late generation.** The additive `late_*` group an oversized committed candidate is adjudicated under — cycle and
   generation identity, root / current issue and lineage depth, the declared scope, the frozen candidate and base SHAs,
-  the measurement, the reconciliation phase, the local content fingerprints, the held pull request, how the gate was
-  entered and what it was entered from, the external-resource ledgers, the owner read a finished run still owes, the
-  cancellation marker, and the pending-restart marker. The one commit an accepted candidate publishes under sits
-  beside that group rather than in it, since clearing the generation is exactly what it has to survive. Every key,
-  and what an absent one means, is in [Late generation state](#late-generation-state) below.
+  the measurement and the readings that did not produce one, the reconciliation phase, the local content fingerprints,
+  the held pull request, how the gate was entered and what it was entered from, the external-resource ledgers, the
+  owner read a finished run still owes, the cancellation marker, and the pending-restart marker. The one commit an
+  accepted candidate publishes under sits beside that group rather than in it, since clearing the generation is
+  exactly what it has to survive. Every key, and what an absent one means, is in
+  [Late generation state](#late-generation-state) below.
 
 The legacy `codex_session_id` key (written before `dev_agent` existed) is still honored on read by `_read_dev_session`:
 it round-trips to `spec="codex"` with no args so an older orchestrator's pin keeps running on codex.
@@ -1079,8 +1080,8 @@ holds anything — and drops the rest rather than keeping a half-record no audit
 correlated to. Every field is read defensively: a hand-edited or older value that cannot be typed reads back as
 absent rather than raising on a tick that has committed work to reconcile. Which reader a field goes through
 is the field's own contract rather than its Python type — an identity has to be positive, a measurement non-negative,
-a depth inside the lineage, a flag literally `true`, a source stage one of this workflow's own labels, and a restart
-target one of the two labels a restart may apply.
+a depth inside the lineage, a flag literally `true`, a source stage one of this workflow's own labels, a measurement
+failure one of the steps `git/measurement/` names, and a restart target one of the two labels a restart may apply.
 The hex fields are read at their exact lengths: a frozen commit is a whole git object id (40 or 64), because nothing
 here ever records an abbreviation, and a local fingerprint is a whole SHA-256 digest (64), because a truncated one is
 not a hash anything could be compared against. Only a real integer counts as a number at all: a bool, a float, and
@@ -1116,6 +1117,26 @@ rather than preserving.
   through rewrites it to `owner_check`, so a step that has to know whether it already ran keys on its own durable
   fact instead — the ledger entry for the snapshot and the branch, the recorded `children` for the children, and
   `decomposed_at` for the one comment a split owes its parent.
+- **Measurement retries.** `late_measurement_miss_count` and `late_measurement_failure` are the record of a reading
+  that did *not* happen: how many consecutive readings this generation has lost, and the `MeasurementFailure` step the
+  last one stopped at (`base_unreadable`, `base_absent`, `candidate_unreadable`, `candidate_absent`,
+  `diff_unpinnable`, `diff_failed`, `diff_unreadable` — the vocabulary
+  [`orchestrator/git/measurement/models.py`](../../orchestrator/git/measurement/models.py) owns). They are durable
+  because nothing else remembers a miss — every tick is a fresh process, so a gate counting in memory would either
+  re-read a permanently broken pair forever or spend a human on the first reading a fetch happened to interrupt — and
+  the ceiling a bounded retry is held to is `_MEASUREMENT_MISSES_BEFORE_PARK` (3), spelled on
+  [`orchestrator/workflow/stages/implementing/state.py`](../../orchestrator/workflow/stages/implementing/state.py)
+  beside the silent-park bound. They are that record and that ceiling and nothing more: no reading is counted
+  against them, so a reading nobody could take parks `late_measurement_failed` and keeps the pair it froze for the
+  bare `/orchestrator continue` that re-measures it, as
+  [`delivery-stages.md`](delivery-stages.md#_handle_implementing-label-workflowimplementing) describes.
+  The count is read as a non-negative whole number and the failure as one of that vocabulary's own members, so a
+  hand-edited count, a bool, or a `LateFailure` spelling in the failure field reads back as no miss recorded rather
+  than as one a retry would count. Both are scoped to the pair frozen beside them and go with
+  `clear_late_generation`: a fresh generation freezes a fresh pair, so its misses start at zero rather than
+  inheriting a count taken over commits nobody measures any more. Absence is the same answer — no misses and no
+  failure is what every pinned comment written before the pair says, so the write leaves both off rather than
+  spelling that state a second way.
 - **Local fingerprints.** `late_title_body_hash`, and `late_comment_hash` beside the `late_comment_watermark_id` it
   covers from, are what tell a scope edit apart from a trusted answer arriving after the late baseline. They are
   local by design: the global `user_content_hash` above keeps its single baseline and its meaning unchanged, so

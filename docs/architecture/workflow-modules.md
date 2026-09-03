@@ -227,7 +227,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     models.py               the phase / verdict / failure / resource vocabularies, the boundaries a split
                             transaction owns among them, the frozen generation record with the transforms that
                             return a new one -- including the boundary move that refuses to rewind out of one of
-                            those, which is the rule every retry above the transaction is held to, and the
+                            those, which is the rule every retry above the transaction is held to, the record of
+                            a reading that did NOT happen, which is on the generation because a fresh process
+                            remembers no miss and is scoped to the frozen pair beside it, and the
                             post-publication entry no record carries unless it can name the stage, the pull
                             request, and the head at once -- and the lineage bound it is read against
     identity.py             the monotonic cycle and generation identities, the child depth the bound still allows,
@@ -238,8 +240,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     ledgers.py              what the two external ledgers read back as, the exact entry shape one of ours has, the
                             verbatim copy anything else is preserved through, and the all-or-nothing reading of the
                             ordered child register, whose entries are positional and so may not be skipped past
-    keys.py                 the `late_*` pinned keys one GENERATION owns -- the frozen evidence, the publication
-                            provenance, the ledgers, the hold's route bookkeeping, and the cancellation and
+    keys.py                 the `late_*` pinned keys one GENERATION owns -- the frozen evidence, the misses a
+                            reading of it lost and the step the last one stopped at, the publication provenance,
+                            the ledgers, the hold's route bookkeeping, and the cancellation and
                             pending-owner-check markers -- spelled once, as the tuple a clear is defined as
                             dropping exactly
     encoding.py             what each of those fields is spelled as on the way out: the wire string a vocabulary
@@ -1183,7 +1186,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       plan_handoff.py       the reconcile that keeps an accepted plan handoff in step with its PR until a
                             developer commits, and the marker that makes its own re-anchor recoverable
       models.py             the frozen records the owners hand each other
-      state.py              the pinned-state keys and CLI marker tuples they share
+      state.py              the pinned-state keys and CLI marker tuples they share, and the two retry bounds
+                            beside them: the silent parks a session survives, and the readings one frozen pair
+                            may lose
     in_review/              `in_review`
       handler.py            the order one tick asks its questions in, and the missing-`pr_number` park asked before
                             the rest

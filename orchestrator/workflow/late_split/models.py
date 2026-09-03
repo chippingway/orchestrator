@@ -51,6 +51,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
+from orchestrator.git.measurement.models import MeasurementFailure
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.state import (
     WorkflowLabel,
@@ -229,6 +230,20 @@ class LateGeneration:
     read -- a below-threshold revision and an issue parked for a human both
     stop the tick long before the guard would run again.
 
+    `measurement_miss_count` and `measurement_failure` are the record of a
+    reading that did NOT happen, and they are durable because nothing else
+    remembers one: every tick is a fresh process, so a gate holding the count
+    in memory would either re-read a permanently broken pair forever or spend
+    a human on the first reading a fetch happened to interrupt. The count is
+    how many consecutive readings this generation has lost and the failure is
+    the step the last one stopped at, kept typed because the two answers are
+    different next moves -- a base this clone does not hold is a fetch that
+    brought nothing back, and a diff nothing here can pin is a checkout an
+    operator has to clear first. Both are scoped to the pair frozen beside
+    them: a fresh generation freezes a fresh pair, so its misses start at zero
+    rather than inheriting a count taken over commits nobody measures any
+    more.
+
     `plan_pr_number`, `plan_pr_head`, and `plan_pr_body` are one hold's whole
     record: the pull request a cycle-marked notice was written onto, the tip
     it was standing on when that happened, and the description the notice
@@ -265,6 +280,8 @@ class LateGeneration:
     base_sha: str = ""
     threshold: int | None = None
     additions: int | None = None
+    measurement_miss_count: int = 0
+    measurement_failure: MeasurementFailure | None = None
     phase: LatePhase | None = None
     title_body_hash: str | None = None
     comment_hash: str | None = None
