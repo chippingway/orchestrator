@@ -722,29 +722,40 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             stand between the first ask and the terminal; and the `rejected` terminal, written last,
                             only for a closed owner, and only once nothing is owed -- which is what takes the issue
                             out of the sweep for good
-      late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the exemption
-                            naming the measured commit, the hold released and the pull request reconciled
-                            against that commit in any state -- with a settled pointer dropped rather than handed on
-                            -- or, where the verdict was taken PAST publication, the frozen pull request proved
-                            rather than searched for: still open and still standing where the reading found it -- or
-                            already standing on the accepted candidate WHERE the approval, or the receipt read with
-                            the head it replaced, vouches for it, which is this settlement's own push having landed
-                            before the tick died and is finished rather than refused (that head on a fresh pass,
-                            ahead of both writes, is something else's push and refuses with every other) -- and
-                            otherwise
-                            refused, since dropping the number there would push onto a branch whose pull request a
-                            human settled and open a second one for a change adjudicated against the first; the push
-                            itself made HERE, named and leased by the evidence only this tick still holds, and the
-                            label then handed to the stage the record names rather than to implementing --
-                            before a pre-publication candidate goes back to the ordinary publication, with the
-                            latch asked between every one of those steps and the retirement behind them answered
-                            by REINSTATING
-                            the cycle rather than refusing, since past that write there is none left to end --
-                            the write and that barrier held inside the observations owner's retirement window, so
-                            a poll reading the record between them is not told there is nothing to end -- and
-                            the split passed on to the transaction that creates its children, and the cycle that
-                            retirement dropped recorded outside the group the write clears, so a process that dies
-                            before its own barrier leaves a receipt something can still be adopted against
+      late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the split
+                            passed on to the transaction that creates its children, and the ORDER a `single` is
+                            settled in -- the hold and the pull request reconciled first, then the exemption naming
+                            the measured commit written with the commit a push is still owed for beside it, then
+                            the handoff -- with the latch asked between every one of those steps, and never a
+                            snapshot, since an accepted candidate is superseded by nothing and publishes as itself
+      late_reconcile.py     the two reconciliations that order opens with, shared with the handoff of a candidate a
+                            remeasurement put back under the ceiling: the hold RESTORED rather than rewritten, and
+                            the pull request settled against the measured commit in any state -- searched for by
+                            commit where nothing had published it, with a settled pointer dropped rather than handed
+                            on, and where the verdict was taken PAST publication proved rather than searched for,
+                            still open, and refused otherwise, since dropping the number there would push onto a
+                            branch whose pull request a human settled and open a second one for a change
+                            adjudicated against the first
+      late_proof.py         where that publication has to be STANDING, and the refusal every unconfirmed
+                            reconciliation takes: the head the reading was frozen at, or the accepted candidate
+                            WHERE the approval, or the receipt read with the head it replaced, vouches for it --
+                            which is the settlement's own push having landed before the tick died, and is finished
+                            rather than refused (that same head on a fresh pass, ahead of both writes, is something
+                            else's push and refuses with every other moved one)
+      late_verdict_push.py  the push a verdict taken past publication earns, made HERE because only this tick still
+                            holds the evidence -- named against the accepted commit and leased to the head the
+                            reading was taken over -- plus the checkout proved on the road out, since every stage
+                            the label hands the issue to works from it and one carrying loose edits or an unmeasured
+                            descendant would reach a review, a squash, and a merge with nobody having read it
+      late_handback.py      the effects that record licenses, in the order a crash in them is safe in: the push,
+                            the label handed to the stage the record names rather than to implementing -- a
+                            pre-publication candidate goes back to the ordinary publication -- the accepted notice,
+                            and the retirement behind them answered by REINSTATING the cycle rather than refusing,
+                            since past that write there is none left to end, with the write and that barrier held
+                            inside the observations owner's retirement window so a poll reading the record between
+                            them is not told there is nothing to end, and the cycle that retirement dropped
+                            recorded outside the group the write clears, so a process that dies before its own
+                            barrier leaves a receipt something can still be adopted against
       late_publication.py   the pull request a verdict taken PAST the first push was measured on, read once for
                             both roads out of the adjudication: a `single` publishes onto it and a `split` closes
                             it over a supersession, and neither may look it up -- the entry the gate froze names

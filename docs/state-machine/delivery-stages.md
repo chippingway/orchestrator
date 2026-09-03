@@ -706,8 +706,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
     comes back, which stops the remeasure that would write a fresh candidate over a cycle a close already ended.
     The poisoned-session retry inside the shared resume is guarded with them, since that is a *second* agent and an
     issue somebody closed is owed neither;
-  - **the `single` publication** (`late_settlement`), asked between *each* of its own steps — the reconciliations,
-    the exemption write, the handoff label, and the accepted notice — because these are the barriers protecting the
+  - **the `single` publication** (`late_settlement`, and `late_handback` behind it), asked between *each* of its own
+    steps — the reconciliations, the exemption write, the handoff label, and the accepted notice — because these are
+    the barriers protecting the
     *record* rather than an effect: the last write drops the generation entirely, and both the sweep and a receipt
     adopted from the thread read that generation to decide there is anything to end. Past that write a refusal is
     too late, so the answer there is a **reinstatement**: the generation is still in the call's own memory, and it
@@ -1490,8 +1491,8 @@ such pushes and no others:
 - and the final documentation pass `documenting/publication._push_docs_and_advance`.
 
 One more seam pushes without measuring, and it skips the reading for a reason and nothing else beside it.
-`decomposition/late_settlement`'s `_publishes_approved` ships a commit a human's adjudication already accepted: the
-checkout is re-proved, the push is named and leased from the record, and the debt is spent exactly as it is here.
+`decomposition/late_verdict_push`'s `_publishes_approved` ships a commit a human's adjudication already accepted:
+the checkout is re-proved, the push is named and leased from the record, and the debt is spent exactly as it is here.
 `git/publication/squash` is not one of them: the squash-on-approval goes through the whole gate, through
 `late_rewrite`. What it publishes is a NEW object — a squash collapses the approved commits into one commit that did
 not exist when any earlier push was measured — so that commit is the candidate, proved, frozen against the base the
