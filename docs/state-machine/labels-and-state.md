@@ -315,7 +315,10 @@ commit that does not exist yet: `pre_implement_sha` is the tip the killed run ST
 comparison against what the checkout has become since. On the commonest shape of that park — a run killed before its
 first commit — the branch carries nothing of its own, so a base that advances fast-forwards the checkout straight
 onto the new tip, and the next tick's silent recovery reads a head that moved with no developer having written a
-line. Both parks end the way every park does, by being answered.
+line. Both parks end the way every park does, by being answered — with one exception on the size gate's side: a
+`late_measurement_failed` standing over a split that has already become children is retired by the reconciliation
+itself, since nothing about that record is a human's to answer, and the branch it was freezing goes back into base
+sync with it.
 `late_exempt_sha` and `implementing_published_sha` freeze the branch too, but on conditions rather than on their
 presence: neither is ended by a write — the exemption is never cleared at all and the publication record is
 overwritten rather than spent — so read by presence they would take a branch out of the refresh for the rest of its
@@ -539,7 +542,14 @@ The keys that matter for the state machine fall into a few groups:
   the five states that push onto one the remote already carries. It is answered wherever it was taken, one step
   ahead of the generic continue
   classifier, since a content-free `/orchestrator continue` on it means "take the reading again" rather than the
-  guidance a park needing a real answer would be refused for. `late_candidate_moved` is the second taken outside the
+  guidance a park needing a real answer would be refused for. It is also the one of them a tick can retire with no
+  answer at all, and under a label it is never taken on: a park standing over a record whose split has already
+  become children is the
+  reconciliation's own false positive — what a settled split keeps the publication group for is the releases and the
+  branch delete its umbrella still owes, not a reading anybody is waiting on — so the guard clears it under
+  `workflow:umbrella` and lets that handler run (see
+  [`delivery-stages.md`](delivery-stages.md#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr)).
+  `late_candidate_moved` is the second taken outside the
   adjudication, and it is the publication's own: the checkout is not the one the gate approved, so
   nothing is pushed and the issue is not handed on. It reaches the same five states for the same reason — every
   gated push proves its checkout again on the far side of the effect, not just the one that opens the pull
@@ -1286,7 +1296,13 @@ rather than preserving.
   implemented an oversized candidate still carries the old ones — so a transaction reading `children` would adopt
   **completed** issues by manifest index, and `decomposed_at` would suppress the very announcement the split owes.
   The stage's list and graph are written *from* the register instead, which replaces the earlier decomposition's
-  rather than leaving one standing. The register is read all-or-nothing: an entry this binary did not write makes
+  rather than leaving one standing. The register answers one thing more, and to a reader outside the transaction: a
+  non-empty one says this generation's candidate has already become children, which is what tells a settled split's
+  retained publication group from a pair somebody froze and never counted (see
+  [`delivery-stages.md`](delivery-stages.md#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr)).
+  `late_phase` carries that answer in the window the register cannot — a child is created before the write that
+  records it — and the register carries it from there on, including through a retry that rewound the phase to the
+  boundary it started from. The register is read all-or-nothing: an entry this binary did not write makes
   the whole field read back empty, because skipping one would shift every child after it onto somebody else's slice
   — and an empty answer costs a marker lookup rather than a wrong adoption. That lookup is the other half: every
   child is created carrying `<!--orchestrator-late-child:issue=…:cycle=…:generation=…:index=…-->`, so a child created
