@@ -380,6 +380,16 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   stays held, and the reason is logged on every tick that holds. It costs one lookup per release and one per delete;
   an umbrella the initial decomposer made, or one from a split entered before publication, reads back as no
   publication and pays nothing.
+- **And the record that group sits on is not an unfinished size reading.** The same retirement that keeps the group
+  drops the measurement, so what an umbrella a late split made carries on its pinned comment is a whole publication
+  group, a candidate, and no count — which is also the shape of a tick that died between the freeze and the diff.
+  The reconciliation the dispatcher runs
+  [ahead of every handler](#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr) asks whether the
+  split has settled before it reads any of that: a `late_phase` of `splitting`, `superseding`, or `cleaning_up`, or
+  a non-empty `late_split_children` register, and the tick goes to this handler. Without that question the group
+  names the stage the gate was entered from while the issue wears `workflow:umbrella`, so every poll is held for a
+  human as a reading read off a stage the issue has left, and the walk below never runs — the children of a split
+  would be the one thing a split can leave permanently unreleased.
 - **What the terminal waits on.** An umbrella made by a late split
   ([`../workflow/roles.md`](../workflow/roles.md#what-a-cleared-split-actually-does)) owes two things — the branch its
   superseded candidate was committed on, and the immutable ref that candidate was preserved under — and this is the
@@ -1877,6 +1887,22 @@ through instead is worse: the reading is unresolved and the commit it named is u
 reviewer a head the pull request never received, and the roads that publish would push a candidate nobody read. The
 label was moved by something outside the gate and only a human can say whether it goes back or the record is dropped,
 so the tick stops with nothing pushed, nothing discarded, and one notice on the thread rather than one per poll.
+
+**A settled split's retained publication group is not an outstanding reading.** A candidate the adjudication turned
+into children owes no count, and the record says so by carrying none: the split's retirement drops the measurement
+on purpose — one still answering "oversized" pins `workflow:decomposing` and would put the umbrella label back on
+every tick — and keeps the publication group, because the umbrella re-asks it in front of every child it releases
+and every branch it deletes. Read as a pair somebody froze, that record is the shape above with the label already
+moved: the group names the stage the gate was entered from and the issue is on `workflow:umbrella` by design, so the
+stranded-reading refusal would hold every tick in front of the walk that releases the children — the one way a split
+can leave its own children permanently unreleased. So the reading is asked of the record's own settlement first
+(`LateGeneration.split_has_settled`): a `late_phase` of `splitting`, `superseding`, or `cleaning_up`, or a non-empty
+`late_split_children` register, and the tick goes to the label's own handler. `snapshotting` is not one of them —
+that boundary cuts the ref and creates no child, and a record standing there still carries the reading that sent it
+to the adjudication. Neither is the measurement re-added to the settled record: `_adjudication_is_live` and the
+`workflow:decomposing` relabel guard are keyed on it. A `late_measurement_failed` park an earlier tick left on such a
+record is retired in the same pass, since nothing about it is a human's to answer and the reason is what holds the
+branch out of the pre-tick base refresh.
 
 **A push that landed leaves a receipt where it landed.** `implementing_published_sha` is written in the same durable
 write that drops the approval, at the moment the push returns, on every seam this gate stands in front of. The window

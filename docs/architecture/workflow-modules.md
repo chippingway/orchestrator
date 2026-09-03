@@ -231,7 +231,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             a reading that did NOT happen, which is on the generation because a fresh process
                             remembers no miss and is scoped to the frozen pair beside it, and the
                             post-publication entry no record carries unless it can name the stage, the pull
-                            request, and the head at once -- and the lineage bound it is read against
+                            request, and the head at once, the answer that tells a candidate already made into
+                            children from one nobody counted -- and the lineage bound it is read against
     identity.py             the monotonic cycle and generation identities, the child depth the bound still allows,
                             the two local content fingerprints a scope edit and a trusted answer are told apart by,
                             and the bounded name-free print one ledger entry is reported under
@@ -1068,7 +1069,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             `late_debt` beside this answers it.
                             It stops the tick outright where the checkout that pair names is not on this host and
                             where the label has left the stage the pair was frozen on, since neither a re-entry nor
-                            the handler is this process's to pick
+                            the handler is this process's to pick -- and it retires its own measurement park on a
+                            record whose split has settled, which is a group with no count that owes no reading
       late_claims.py        what a post-publication record claims and what it cannot produce: whether a live one
                             still owes its count, and -- ahead of both reconciliations -- the four refusals a record
                             that cannot make a claim whole earns. Read off the RAW fields, because the parse is what

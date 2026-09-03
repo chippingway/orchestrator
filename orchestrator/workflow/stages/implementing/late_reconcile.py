@@ -123,6 +123,17 @@ def _reconciles_published_work(
     unresolved, the commit it named is still unpushed, and whichever stage the
     label now names would run over both.
 
+    And only a generation that still OWES a count. A split that settled keeps
+    the group for the releases and the branch delete its umbrella has left to
+    do, and drops the measurement because a record answering "oversized"
+    would pin `workflow:decomposing` -- which is the group with no number the
+    reading above looks for, on an issue whose label has moved to
+    `workflow:umbrella` by design. Read as a pair somebody froze, the finished
+    adjudication is refused as one read off its own stage and the umbrella
+    never releases another child; a park this owner already left on such a
+    record is retired here rather than carried, since nothing about it is a
+    human's to answer.
+
     True is a tick this owner finished. False is every other issue on every
     other tick, and also the small candidate this call just published: the
     record is gone, the pull request carries the commit, the debt it earned is
@@ -150,6 +161,14 @@ def _reconciles_published_work(
     if not damage and not owed and not _claims._awaits_its_count(
         recorded,
     ):
+        if _parks._retire_settled_park(state, recorded):
+            log.info(
+                "issue=#%d carried a measurement park over a split that has "
+                "already become children; clearing it and letting the "
+                "label's own handler run",
+                issue.number,
+            )
+            gh.write_pinned_state(issue, state)
         return False
     gate = _records._gate(
         gh, spec, issue, state,
