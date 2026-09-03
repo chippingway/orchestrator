@@ -304,7 +304,7 @@ class PublishedSupersessionRefusalTest(
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(
             self._pinned().get(KEYS.park_reason),
-            _late_transaction._late_outcome.PARK_SUPERSESSION_FAILED,
+            _late_transaction._late_parks.PARK_SUPERSESSION_FAILED,
         )
         self.assertEqual(
             label_of(self.github, LATE_ISSUE_NUMBER),
@@ -415,7 +415,7 @@ class PublishedSupersessionRetryTest(PublishedSplitCase, unittest.TestCase):
         parked = self.github.posted_comments[-1][1]
         self.assertEqual(
             self._pinned().get(KEYS.park_reason),
-            _late_transaction._late_outcome.PARK_SUPERSESSION_FAILED,
+            _late_transaction._late_parks.PARK_SUPERSESSION_FAILED,
         )
         self.assertIn(MOVED_PUBLISHED_HEAD, parked)
         self.assertNotIn("could not be superseded", parked)
@@ -510,7 +510,7 @@ class PublishedSupersessionRaceTest(PublishedSplitCase, unittest.TestCase):
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(
             self._pinned().get(KEYS.park_reason),
-            _late_transaction._late_outcome.PARK_SUPERSESSION_FAILED,
+            _late_transaction._late_parks.PARK_SUPERSESSION_FAILED,
         )
         self.assertEqual(
             label_of(self.github, LATE_ISSUE_NUMBER),

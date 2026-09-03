@@ -119,6 +119,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_hold as _late_hold,
     late_outcome as _late_outcome,
     late_owner as _late_owner,
+    late_parks as _late_parks,
     late_retry_cap as _late_retry_cap,
     late_session as _late_session,
     late_settlement as _late_settlement,
@@ -233,7 +234,7 @@ def _adjudicate_late_generation(
     blocked = _blocked_before_running(context)
     if blocked is not None:
         return _late_outcome._finished(context, blocked)
-    retired = _late_outcome._retire_park(context)
+    retired = _late_parks._retire_park(context)
     settled = _late_guidance._reconcile_late_content(context)
     if settled.disposition is not None:
         return _late_outcome._finished(context, settled.disposition)
@@ -278,11 +279,11 @@ def _blocked_before_running(
     Everything below the live-generation gate is one short circuit, because
     every one of them parks on its own and every one of them stops the tick.
     """
-    _late_outcome._reconcile_notice_delivery(context)
+    _late_parks._reconcile_notice_delivery(context)
     owed = _late_owner._reconcile_pending_owner_check(context)
     if owed is not None:
         return owed
-    _late_outcome._redeliver_park_notice(context)
+    _late_parks._redeliver_park_notice(context)
     if not _is_adjudicable(context.generation):
         return _LateDisposition.NOT_LATE
     if _parks_before_running(context):
@@ -344,9 +345,9 @@ def _holds_the_objects(context: _LateContext) -> bool:
         context.spec, context.issue.number,
     )
     if not worktree.exists():
-        _late_outcome._park(
+        _late_parks._park(
             context, _MISSING_WORKTREE_PARK,
-            reason=_late_outcome.PARK_WORKTREE_MISSING,
+            reason=_late_parks.PARK_WORKTREE_MISSING,
         )
         return False
     missing = _absent_object(context, worktree)
@@ -358,9 +359,9 @@ def _holds_the_objects(context: _LateContext) -> bool:
         context.issue.number, missing,
     )
     _late_outcome._emit_failure(context, LateFailure.MEASUREMENT_FAILED)
-    _late_outcome._park(
+    _late_parks._park(
         context, _MISSING_OBJECTS_PARK.format(missing=missing),
-        reason=_late_outcome.PARK_EVIDENCE_MISSING,
+        reason=_late_parks.PARK_EVIDENCE_MISSING,
     )
     return False
 
@@ -456,10 +457,10 @@ def _has_frozen_evidence(context: _LateContext) -> bool:
         "adjudicated (%s); parking rather than spawning",
         context.issue.number, unusable,
     )
-    _late_outcome._park(
+    _late_parks._park(
         context,
         _INCOMPLETE_PARK.format(reason=unusable),
-        reason=_late_outcome.PARK_INCOMPLETE,
+        reason=_late_parks.PARK_INCOMPLETE,
     )
     return False
 
@@ -514,8 +515,8 @@ def _hold_pull_request(context: _LateContext) -> bool:
     if not hold.failed:
         return True
     _late_outcome._emit_failure(context, LateFailure.PLAN_PR_HOLD_FAILED)
-    _late_outcome._park(
-        context, _HOLD_FAILED_PARK, reason=_late_outcome.PARK_HOLD_FAILED,
+    _late_parks._park(
+        context, _HOLD_FAILED_PARK, reason=_late_parks.PARK_HOLD_FAILED,
     )
     return False
 
@@ -550,18 +551,18 @@ def _run_and_decide(context: _LateContext) -> _LateAdjudicationRun:
     """
     if context.displaced_hold:
         _late_outcome._emit_failure(context, LateFailure.PLAN_PR_HOLD_FAILED)
-        _late_outcome._park(
+        _late_parks._park(
             context, _HOLD_DISPLACED_PARK,
-            reason=_late_outcome.PARK_HOLD_FAILED,
+            reason=_late_parks.PARK_HOLD_FAILED,
         )
         return _late_outcome._finished(context, _LateDisposition.PARKED)
     worktree = _worktree_paths._worktree_path(
         context.spec, context.issue.number,
     )
     if not worktree.exists():
-        _late_outcome._park(
+        _late_parks._park(
             context, _MISSING_WORKTREE_PARK,
-            reason=_late_outcome.PARK_WORKTREE_MISSING,
+            reason=_late_parks.PARK_WORKTREE_MISSING,
         )
         return _late_outcome._finished(context, _LateDisposition.PARKED)
     unspent = _accounting(context.state)
@@ -649,7 +650,7 @@ def _begin(
     _late_session._record_late_spawn(context.state, run)
     spent = _accounting(context.state)
     _apply_accounting(context.state, unspent)
-    _late_outcome._persist(context)
+    _late_parks._persist(context)
     _apply_accounting(context.state, spent)
 
 
@@ -690,7 +691,7 @@ def _declined_run(
             context,
             agent_result,
             _TIMEOUT_PARK.format(seconds=config.AGENT_TIMEOUT),
-            reason=_late_outcome.PARK_TIMEOUT,
+            reason=_late_parks.PARK_TIMEOUT,
         )
     mutated = _candidate_mutation(context.generation, worktree)
     if mutated is not None:
@@ -701,7 +702,7 @@ def _declined_run(
         )
         return _late_outcome._parked_run(
             context, agent_result, mutated,
-            reason=_late_outcome.PARK_WORKTREE_MUTATED,
+            reason=_late_parks.PARK_WORKTREE_MUTATED,
         )
     if _guards._ignore_if_interrupted(context.issue, agent_result):
         return _late_outcome._finished(context, _LateDisposition.DEFERRED)

@@ -89,10 +89,10 @@ class ExhaustionTest(LateRetryCapCase):
         self.assertIn(CAP_SENTENCE, self._bodies()[0])
 
     def test_the_record_rides_the_same_write(self) -> None:
-        # The reason the park is staged through the late outcome owner: the
-        # frozen candidate and the hold's record of the pull request it stands
-        # under are what the refusal leaves standing, and a park written past
-        # them would lose them or have to write them twice.
+        # The reason the park is staged through this mode's own park owner:
+        # the frozen candidate and the hold's record of the pull request it
+        # stands under are what the refusal leaves standing, and a park
+        # written past them would lose them or have to write them twice.
         self._spend_the_budget(**HELD_PLAN_PR)
 
         self._tick()

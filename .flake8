@@ -46,6 +46,7 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/late_hold.py:WPS202,WPS204
     orchestrator/workflow/stages/decomposition/late_models.py:WPS202
     orchestrator/workflow/stages/decomposition/late_outcome.py:WPS202
+    orchestrator/workflow/stages/decomposition/late_parks.py:WPS202
     orchestrator/workflow/stages/decomposition/late_owner.py:WPS202
     orchestrator/workflow/stages/decomposition/late_settlement.py:WPS202
     orchestrator/workflow/stages/decomposition/late_children.py:WPS201,WPS202

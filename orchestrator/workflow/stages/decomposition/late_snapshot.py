@@ -59,6 +59,7 @@ from orchestrator.workflow.late_split.models import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_outcome as _late_outcome,
+    late_parks as _late_parks,
 )
 from orchestrator.workflow.stages.decomposition.late_models import _LateContext
 
@@ -188,7 +189,7 @@ def _recorded(
     context.generation = replace(
         updated, phase=LatePhase.SNAPSHOTTING,
     )
-    _late_outcome._persist(context)
+    _late_parks._persist(context)
     return True
 
 
@@ -248,8 +249,8 @@ def _emit(
 def _parked(context: _LateContext, reason: str) -> None:
     """Hand the issue back, saying which part of the snapshot did not hold."""
     _late_outcome._emit_failure(context, LateFailure.SNAPSHOT_FAILED)
-    _late_outcome._park(
+    _late_parks._park(
         context,
         _SNAPSHOT_FAILED_PARK.format(reason=reason),
-        reason=_late_outcome.PARK_SNAPSHOT_FAILED,
+        reason=_late_parks.PARK_SNAPSHOT_FAILED,
     )

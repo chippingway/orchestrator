@@ -411,7 +411,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             run passes through on its way to settlement, and the split transaction that read hands
                             a cleared `split` on to
       late_retry_cap.py     the same standing park on the adjudication's own road: the gate its fresh spawn is
-                            charged to, the refusal staged through this mode's outcome owner so the generation,
+                            charged to, the refusal staged through this mode's park owner so the generation,
                             the frozen pair, and the hold on the pull request the candidate stands under all ride
                             the one write, the hold asked ahead of the evidence probe and the content settlement
                             so a held tick writes, spawns, and says nothing, the sentence it waits to have said
@@ -438,18 +438,27 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             binary wrote beside the two this one does, and the one question that recognizes any of
                             the three as ours, the head that moved under a standing hold reported and never
                             restamped, and the retry, the refusal, and the settled pull request it reconciles to
-      late_outcome.py       what one finished reply becomes: the lineage-bound refusal, the durable write that precedes
-                            every external effect and closes a completion by carrying the owner read it now owes --
-                            under `owner_check` unless a split transaction was interrupted, whose boundary the
-                            record itself refuses to let any pre-split write rewind, since the phase is all that
-                            says a loop was in flight when nothing is recorded yet -- the
-                            announcement a recorded question is reconciled by, and the parks
-                            and emissions every late exit shares -- staged for the owner read to release, released
-                            anyway where nothing would ever say them, and re-said at the top of a later tick when the
-                            comment that should have said them was refused. The shared spawn budget's `retry_cap`
-                            is the one park here whose reason this owner did not invent: it is staged like the
-                            rest so the late record rides its write, and it is the only one audited on the
-                            budget's own stream rather than as a late verdict or a typed late failure
+      late_outcome.py       what one finished reply becomes: the lineage-bound refusal recorded as the categorized
+                            question it actually is, the record written and persisted before anything is posted,
+                            the completion that closes by carrying the owner read it now owes -- under
+                            `owner_check` unless a split transaction was interrupted, whose boundary the record
+                            itself refuses to let any pre-split write rewind, since the phase is all that says a
+                            loop was in flight when nothing is recorded yet -- the answer a crashed tick reads
+                            back rather than paying an agent for a second time, the announcement a recorded
+                            question is reconciled by, and the three emissions each written straight after the
+                            state they describe: a verdict, a typed late failure, and the cancellation an owner
+                            read earns
+      late_parks.py         every reason a late exit hands the issue back under, and the durable write each of
+                            them rides out on: the park staged for the owner read to release, released anyway
+                            where nothing would ever say it, and re-said at the top of a later tick when the
+                            comment that should have said it was refused; the obligation discharged from what the
+                            thread already carries where a failed write left the record claiming the opposite; the
+                            parks a fresh attempt retires ahead of itself and the ones only a human's answer
+                            clears; and the shared consumed-comment watermark every one of those answers
+                            ratchets. The shared spawn budget's `retry_cap` is the one park here whose reason this
+                            owner did not invent: it is staged like the rest so the late record rides its write,
+                            and it is the only one audited on the budget's own stream rather than as a late
+                            verdict or a typed late failure
       late_notice.py        the sentence a park owes the issue until it is actually on the thread: the durable
                             `{reason, message}` beside the flag, matched against the park it explains, the thread
                             read that discharges one a failed write left claiming the opposite of what GitHub holds,

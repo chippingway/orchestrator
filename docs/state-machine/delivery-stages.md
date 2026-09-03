@@ -201,7 +201,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      request, read no thread as an answer to a question about the requirements, spawned nothing, and written
      nothing. What lifts it is the same trusted `/orchestrator continue`, buying the same single attempt, spent at
      the same gate in front of the adjudicator's own spawn. The refusal that TAKES that park is staged through the
-     late outcome owner, so the generation, the frozen candidate, the hold's record of the pull request, and the
+     late park owner, so the generation, the frozen candidate, the hold's record of the pull request, and the
      sentence the thread is owed (`late_park_notice`, not `retry_cap_notice`) all land on one write before a word of
      it is posted — and the redelivery, the already-posted reconciliation, and the audit phases are the ones every
      other late park gets. No session is retired by the grant there: the pre-spawn record already opens a fresh
