@@ -510,7 +510,8 @@ the per-issue checkout only has to survive a tick when an unsafe park keeps it f
   the write happens first and the same PR is then read against the commit it just recorded — so every tick that has
   not reached this write still reads the recorded PR as a design however its head has moved, and only the ticks after
   it can read a moved head as this stage's own push. Which is why the head that PR is on NOW is read before the guard
-  rules and recorded in the path record's place. Between the publication and the relabel the humans have the design
+  rules — `plan_reading.py` owns that read, and the accepted handoff takes the same one every tick after — and
+  recorded in the path record's place. Between the publication and the relabel the humans have the design
   on a PR and can move its head —
   a correction to the Markdown, the base merged in to make it mergeable — and the commit publication recorded would
   then be a stale answer: the tick after the handoff would read their own edit as an implementation and close the issue
