@@ -26,6 +26,7 @@ from orchestrator.git.worktrees import eligibility, evidence, paths
 from orchestrator.git.worktrees.models import (
     BranchTip,
     ProbeAnswer,
+    ProvenTip,
     RetentionReason,
 )
 from tests.git.worktrees.artifact_test_support import (
@@ -59,6 +60,9 @@ PR_NUMBER = 42
 OTHER_ISSUE_NUMBER = 315
 LOOSE_FILE = "left-behind.txt"
 LOOSE_CONTENT = "an agent's unfinished work\n"
+IGNORE_FILE = ".gitignore"
+HIDDEN_FILE = "secrets.env"
+HIDDEN_CONTENT = "TOKEN=an operator's own\n"
 TRACKED_FILE = "tracked.txt"
 TRACKED_CONTENT = "committed work\n"
 # A timestamp no checkout was ever made at, so the entry git cached at
@@ -117,7 +121,13 @@ class _CandidateTestCase(unittest.TestCase):
 
 
 class ArtifactShapeTest(_CandidateTestCase):
-    """Each of the three shapes a scan reports is classified as itself."""
+    """Each shape a scan reports is classified as itself.
+
+    The three a candidate arrives in, and the fourth one it can have turned
+    into by the time this pass runs: a branch the scan named and something
+    deleted from this clone in between, which is a branch the remote may
+    still be carrying.
+    """
 
     def test_every_shape_is_eligible(self) -> None:
         # The three shapes a scan reports -- a checkout on its own, a branch
@@ -134,6 +144,50 @@ class ArtifactShapeTest(_CandidateTestCase):
 
                 self.assertEqual(verdict.retentions, ())
                 self.assertTrue(verdict.eligible)
+
+    def test_every_shape_hands_over_what_it_cleared(self) -> None:
+        # What an eligible verdict is worth to the teardown that spends it:
+        # the exact commit each artifact was found standing on, named the way
+        # a retention names its own subject. The checkout comes first because
+        # that is the order it is taken down in, and a shape the report
+        # leaves an artifact out of hands over nothing for it.
+        tip = self.landed()
+        worktree = self.checkout()
+        cleared = (
+            (ProvenTip(str(worktree), tip),),
+            (ProvenTip(self.branch, tip),),
+            (ProvenTip(str(worktree), tip), ProvenTip(self.branch, tip)),
+        )
+
+        for artifacts, proven in zip(self.shapes(worktree), cleared):
+            with self.subTest(shape=tuple(artifacts)):
+                self.assertEqual(self.classify(**artifacts).proven, proven)
+
+    def test_a_branch_only_the_remote_has_is_proven(self) -> None:
+        # The window between the scan naming a branch and this pass judging
+        # it: something deleted it here in between, and the copy the remote
+        # carries is an artifact of this issue exactly as the local one was.
+        # What the verdict clears, and hands over, is the commit that copy
+        # stands on -- without it the reclamation of the remote branch would
+        # be a deletion nobody proved and nothing recorded.
+        tip = self.landed()
+        self.world.publish(self.clone, self.branch, self.branch)
+        _branch_at(self.clone, self.branch)
+
+        verdict = self.classify()
+
+        self.assertTrue(verdict.eligible)
+        self.assertEqual(verdict.proven, (ProvenTip(self.branch, tip),))
+
+    def test_a_branch_only_the_remote_has_must_prove(self) -> None:
+        # And it owes what any tip owes: this one is ahead of base and on no
+        # pull request, so the copy left on the remote keeps the candidate.
+        self.world.publish(self.clone, self.branch, self.commit())
+        _branch_at(self.clone, self.branch)
+
+        self.assertEqual(
+            self.kept(), (RetentionReason.UNACCOUNTED_COMMITS,),
+        )
 
     def test_every_shape_of_a_rejection_agrees(self) -> None:
         # The same three shapes over an issue whose work was published and
@@ -225,17 +279,34 @@ class RemoteGateTest(_CandidateTestCase):
 class CheckoutStateTest(_CandidateTestCase):
     """What the checkout itself has to be before it may be removed."""
 
-    def test_loose_work_in_the_checkout_keeps_it(self) -> None:
+    def test_what_the_checkout_carries_keeps_it(self) -> None:
+        # Two reads because git draws the line between them. A path the
+        # repository's own rules hide is not what it calls dirty and not what
+        # a removal refuses over, so a tree carrying only that answers clean
+        # to every status -- and is still an `.env` somebody left there. They
+        # are charged apart for what an operator is sent to look at: `git
+        # status` shows them nothing about the first.
+        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
         self.landed()
         worktree = self.checkout()
-        (worktree / LOOSE_FILE).write_text(LOOSE_CONTENT)
+        (worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
 
-        verdict = self.classify(worktree=worktree)
+        hiding = self.classify(worktree=worktree)
 
         self.assertEqual(
-            _reasons(verdict.retentions), (RetentionReason.WORKTREE_DIRTY,),
+            _reasons(hiding.retentions), (RetentionReason.WORKTREE_IGNORED,),
         )
-        self.assertEqual(verdict.retentions[0].subject, str(worktree))
+        self.assertEqual(hiding.retentions[0].subject, str(worktree))
+        # And it hands over nothing: what a retention establishes is that
+        # these commits stay, so a proof beside it would be a permission
+        # nothing here gave.
+        self.assertEqual(hiding.proven, ())
+
+        (worktree / LOOSE_FILE).write_text(LOOSE_CONTENT)
+
+        self.assertEqual(
+            self.kept(worktree=worktree), (RetentionReason.WORKTREE_DIRTY,),
+        )
 
     def test_a_checkout_that_is_not_ours_keeps_it(self) -> None:
         # A repository of somebody else's at the path this issue's checkout
@@ -406,10 +477,14 @@ class BranchTipProofTest(_CandidateTestCase):
         self.assertEqual(self.kept(), (RetentionReason.REMOTE_DIVERGENCE,))
 
     def test_a_branch_already_gone_is_nothing(self) -> None:
-        # The scan named it and it has been deleted since. There is nothing
-        # left to reclaim, and a retention over it is one no operator could
-        # ever settle.
-        self.assertTrue(self.classify().eligible)
+        # Gone from this clone and never on the remote. There is nothing left
+        # to reclaim, and a retention over it is one no operator could ever
+        # settle -- and nothing is handed over for it either, since there is
+        # no longer a branch holding a commit to clear.
+        verdict = self.classify()
+
+        self.assertTrue(verdict.eligible)
+        self.assertEqual(verdict.proven, ())
 
 
 class UnreadableReadTest(_CandidateTestCase):

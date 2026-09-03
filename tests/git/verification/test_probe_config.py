@@ -47,6 +47,13 @@ NAMES_ONLY = "--name-only"
 MESSAGE_FLAG = "-m"
 SEED_FILE = "seed"
 LEFTOVER_FILE = "leftover.txt"
+IGNORE_FILE = ".gitignore"
+HIDDEN_FILE = "secrets.env"
+HIDDEN_TEXT = "TOKEN=an operator's own\n"
+IGNORED_DIR = "build"
+# More individually hidden files than the probe carries back, so what it
+# answers with says the cap ran rather than that the tree was small.
+HIDDEN_SPREAD = 14
 CODE_PATH = "code.py"
 PLAN_PATH = "plans/issue-42.md"
 PLAN_TEXT = "# the plan\n"
@@ -120,6 +127,17 @@ class _RealRepoMixin:
         self.git("commit", QUIET_FLAG, MESSAGE_FLAG, message)
         return self.git("rev-parse", "HEAD").strip()
 
+    def ignore(self, *paths: str) -> None:
+        """Commit a rule file that hides every one of `paths`."""
+        self.write(IGNORE_FILE, "".join(f"{path}\n" for path in paths))
+        self.commit(IGNORE_FILE)
+
+    def _linked_worktree(self) -> Path:
+        """A second checkout of this repository, as the orchestrator makes one."""
+        linked = self.work.parent / LINKED_DIR
+        self.git("worktree", "add", QUIET_FLAG, "-b", FEATURE_BRANCH, str(linked))
+        return linked
+
 
 class StatusFlagOverrideTest(_RealRepoMixin, unittest.TestCase):
     """`_worktree_status` reports what the worktree would have hidden.
@@ -136,20 +154,46 @@ class StatusFlagOverrideTest(_RealRepoMixin, unittest.TestCase):
     running inside it agrees with.
     """
 
-    def test_an_untracked_file_survives_the_knob(self) -> None:
+    def test_untracked_and_ignored_survive_the_knob(self) -> None:
         # `status.showUntrackedFiles=no` is one line an agent can add to the
         # config inside its own worktree, and it turns every untracked file
         # into a clean tree for anything reading defaults -- including a
         # publication that must prove the tree is clean before it pushes.
+        #
+        # It empties the ignored half of the report with it, since that half
+        # is what the untracked walk turned up and then classified: asked for
+        # defaults, a tree holding a secret its own rules hide answers that it
+        # holds nothing, which is the answer that gets the tree deleted.
+        self.ignore(HIDDEN_FILE)
         self.git(GIT_CONFIG, "status.showUntrackedFiles", "no")
         self.write(LEFTOVER_FILE, "left behind\n")
+        self.write(HIDDEN_FILE, HIDDEN_TEXT)
 
         self.assertEqual(self.git("status", "--porcelain"), "")
+        self.assertEqual(self.git("status", "--porcelain", "--ignored"), "")
 
         status = probes._worktree_status(self.work)
 
         self.assertTrue(status.readable)
         self.assertIn(LEFTOVER_FILE, status.paths)
+        self.assertEqual(probes._ignored_paths(self.work), (HIDDEN_FILE,))
+
+    def test_the_ignored_report_is_kept_small(self) -> None:
+        # `--untracked-files=all` is what the other half of this read needs and
+        # what this half must not have: under it an ignored directory is
+        # reported as every file beneath it, so a dependency root or a build
+        # tree answers with a walk nobody reads. Collapsed, the root is one
+        # entry -- and what is left is capped, since the answer is spent on a
+        # yes-or-no and a line naming what to go and look at.
+        self.ignore(IGNORED_DIR, f"{HIDDEN_FILE}*")
+        for buried in range(HIDDEN_SPREAD):
+            self.write(f"{IGNORED_DIR}/deep/{buried}", HIDDEN_TEXT)
+            self.write(f"{HIDDEN_FILE}{buried}", HIDDEN_TEXT)
+
+        hidden = probes._ignored_paths(self.work)
+
+        self.assertIn(f"{IGNORED_DIR}/", hidden)
+        self.assertEqual(len(hidden), probes._IGNORED_LIMIT)
 
     def test_a_redirected_worktree_is_not_read(self) -> None:
         # The knob no `-c` override wins against. With `extensions.
@@ -249,12 +293,6 @@ class StatusFlagOverrideTest(_RealRepoMixin, unittest.TestCase):
         self.assertIn(SEED_FILE, probes._worktree_dirty_files(self.work))
         # Withheld, since nothing here established what the rest of the tree is.
         self.assertFalse(status.readable)
-
-    def _linked_worktree(self) -> Path:
-        """A second checkout of this repository, as the orchestrator makes one."""
-        linked = self.work.parent / LINKED_DIR
-        self.git("worktree", "add", QUIET_FLAG, "-b", FEATURE_BRANCH, str(linked))
-        return linked
 
 
 class CommittedPathFlagOverrideTest(_RealRepoMixin, unittest.TestCase):

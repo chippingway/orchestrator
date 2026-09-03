@@ -2,11 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 """The reads an artifact has to survive before it can be reclaimed.
 
-Six questions: whether a checkout is carrying anything loose, whether it is
-the checkout this issue's own creator made, what its branch is on, what its
-HEAD is on, what the remote says a branch is at, and whether the base the
-remote named already contains a given tip. What the answers are spent on is
-``eligibility``'s subject; what they ARE is this module's.
+Seven questions: whether a checkout is carrying anything loose, whether it is
+hiding anything besides, whether it is the checkout this issue's own creator
+made, what its branch is on, what its HEAD is on, what the remote says a branch
+is at, and whether the base the remote named already contains a given tip.
+What the answers are spent on is ``eligibility``'s subject; what they ARE is
+this module's.
+
+Loose and hidden are two questions because git treats them as two. Untracked
+and modified paths are what it calls dirty and what `worktree remove` refuses
+over; a path the ignore rules hide is neither, so a tree carrying nothing else
+reports clean and comes down without a word. What is under those rules is
+still somebody's -- an `.env`, a key, a build root somebody is mid-way through
+-- and a caller whose next move is deleting the directory has to be told about
+it even though a caller about to publish would rightly pass it over.
 
 A checkout's HEAD is asked about beside the branches because it is a tip in
 its own right. A linked worktree keeps a HEAD and a reflog no branch has to
@@ -318,6 +327,44 @@ def _clean_worktree(worktree: Path) -> ProbeAnswer:
         log.debug("the checkout %s would not report its status", worktree)
         return ProbeAnswer.UNREADABLE
     if status.paths:
+        return ProbeAnswer.REFUTED
+    return ProbeAnswer.CONFIRMED
+
+
+def _nothing_ignored(worktree: Path) -> ProbeAnswer:
+    """Whether this checkout PROVED it is hiding nothing under its own rules.
+
+    The half of "carrying nothing" that `_clean_worktree` does not answer, and
+    the one that only a caller about to delete the tree has to ask. A file the
+    repository's ignore rules cover is invisible to every status a publication
+    takes and to git's own refusal to remove a dirty worktree, so without this
+    the whole proof that a checkout may go rests on a reading that was never
+    about those files.
+
+    `REFUTED` names them rather than merely counting them, in the log: what an
+    operator does about a retention here is look at what is there and decide,
+    and "something is hidden in that tree" sends them through the whole of it.
+
+    Total and tri-state like the read beside it, and for the same reasons. The
+    scan named the directory some moments earlier and an agent owns what is
+    under it, so the path can be gone by now or be a symlink loop -- and a
+    probe whose contract is three answers may not have a fourth.
+    """
+    try:
+        hidden = verification_probes._ignored_paths(worktree)
+    except Exception:
+        log.warning(
+            "the checkout %s could not be reached", worktree, exc_info=True,
+        )
+        return ProbeAnswer.UNREADABLE
+    if hidden is None:
+        log.debug("the checkout %s would not report what it hides", worktree)
+        return ProbeAnswer.UNREADABLE
+    if hidden:
+        log.info(
+            "the checkout %s is hiding %s under its own ignore rules",
+            worktree, ", ".join(hidden),
+        )
         return ProbeAnswer.REFUTED
     return ProbeAnswer.CONFIRMED
 
