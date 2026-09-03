@@ -440,8 +440,9 @@ reclaim rather than editing what they are deciding about.
 
 One more class sits on the individual call, and for the opposite reason: these ARE settings git reads, but it reads
 them from the environment, where a `-c` on the command line does not win. `_git_hardened` therefore takes an
-`env_extra` a caller applies over both the process environment and the hardening above, and the added-line
-measurement (`git/measurement/additions.py`) is what spends it — `GIT_ATTR_SOURCE` pinned to the candidate commit, so
+`env_extra` a caller applies over both the process environment and the hardening above, and two readings spend it.
+
+The added-line measurement (`git/measurement/additions.py`) pins `GIT_ATTR_SOURCE` to the candidate commit, so
 the `.gitattributes` the count honours are the ones inside what is being measured rather than whatever the agent left
 uncommitted in the checkout (an inherited value beats the `attr.tree` config a `-c` could set, and a `* -diff` planted
 either way makes a textual candidate measure as zero), plus `GIT_ATTR_NOSYSTEM=1` so the host's own attributes stay
@@ -457,6 +458,15 @@ repository's own config turns a path binary the moment any attribute assigns it.
 worktree, so a measurement that finds either records a typed `diff_unpinnable` failure instead of a count — and it
 inspects that path without opening it (`lstat`, no link followed, anything but a regular file refused), since a FIFO
 or a `/dev/zero` symlink planted there would otherwise block or exhaust the tick that read it.
+
+The reclaim ledger (`git/worktrees/obligations.py`) pins `GIT_NO_LAZY_FETCH=1`, and every command it runs carries it,
+because nothing in the envelope above keeps a local read local. A clone made with a filter keeps a promisor remote,
+and git answers an object it is missing by fetching it rather than by failing — so the `update-ref` that checks what
+a note would stand at, the `for-each-ref` that asks what one stands at now, and the `cat-file` under both would each
+reach that remote on their own. Two things go wrong at once: an owner that reads and writes nothing but this host's
+own notes contacts a network it never otherwise touches, and a note left at an object nothing here has comes back as
+one somebody adjudicated — so the leftover the ledger exists to carry across a restart is the one thing it stops
+failing closed on.
 
 ## Push path (`git.branch_transport._push_branch`)
 
