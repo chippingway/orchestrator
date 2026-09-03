@@ -98,6 +98,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_hold as _late_hold,
     late_outcome as _late_outcome,
     late_owner as _late_owner,
+    late_parks as _late_parks,
     late_publication as _late_publication,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
@@ -108,7 +109,7 @@ from orchestrator.workflow.stages.decomposition.late_models import (
 )
 from orchestrator.workflow.stages.implementing import (
     late_accepted as _late_accepted,
-    late_parks as _late_parks,
+    late_parks as _gate_parks,
     late_records as _late_records,
 )
 from orchestrator.workflow.state import WorkflowLabel
@@ -322,7 +323,7 @@ def _handed_back(context: _LateContext) -> _LateDisposition | None:
         context.state, context.generation.candidate_sha,
     )
     _recorded_debt(context)
-    _late_outcome._persist(context)
+    _late_parks._persist(context)
     stopped = _late_owner._latch_stops(context)
     if stopped is not None:
         return stopped
@@ -340,9 +341,9 @@ def _recorded_debt(context: _LateContext) -> None:
     branch out of the pre-tick base refresh for the rest of the issue's life.
     """
     if context.already_published:
-        _late_parks._forget_approval(context.state)
+        _gate_parks._forget_approval(context.state)
         return
-    _late_parks._approve(
+    _gate_parks._approve(
         context.state,
         context.generation.candidate_sha,
         _settled_lease(context),
@@ -455,9 +456,9 @@ def _accepted_push_landed(context: _LateContext, worktree) -> bool:
         context.generation.published_pr_number,
     )
     _late_outcome._emit_failure(context, LateFailure.PR_RECONCILE_FAILED)
-    _late_outcome._park(
+    _late_parks._park(
         context, _ACCEPTED_PUSH_FAILED_PARK,
-        reason=_late_outcome.PARK_PR_UNRECONCILED,
+        reason=_late_parks.PARK_PR_UNRECONCILED,
     )
     return False
 
@@ -490,12 +491,12 @@ def _proved_before_the_handoff(context: _LateContext, worktree) -> bool:
     ):
         return True
     _late_outcome._emit_failure(context, LateFailure.PR_RECONCILE_FAILED)
-    _late_outcome._park(
+    _late_parks._park(
         context,
         _UNPROVED_CHECKOUT_PARK.format(
             candidate=context.generation.candidate_sha,
         ),
-        reason=_late_outcome.PARK_PR_UNRECONCILED,
+        reason=_late_parks.PARK_PR_UNRECONCILED,
     )
     return False
 
@@ -533,8 +534,8 @@ def _released_hold(context: _LateContext) -> bool:
     if not release.failed:
         return True
     _late_outcome._emit_failure(context, LateFailure.PLAN_PR_HOLD_FAILED)
-    _late_outcome._park(
-        context, _RELEASE_FAILED_PARK, reason=_late_outcome.PARK_HOLD_FAILED,
+    _late_parks._park(
+        context, _RELEASE_FAILED_PARK, reason=_late_parks.PARK_HOLD_FAILED,
     )
     return False
 
@@ -710,8 +711,8 @@ def _this_settlements_own_push(context: _LateContext) -> str:
     """
     candidate = context.generation.candidate_sha
     vouched = (
-        _late_parks._approved_commit(context.state),
-        _late_parks._publication_from(
+        _gate_parks._approved_commit(context.state),
+        _gate_parks._publication_from(
             context.state, context.generation.published_sha,
         ),
     )
@@ -778,8 +779,8 @@ def _dropped_settled_pr(context: _LateContext) -> bool:
 def _unreconciled(context: _LateContext, message: str) -> bool:
     """Park rather than publish against a pull request nobody could confirm."""
     _late_outcome._emit_failure(context, LateFailure.PR_RECONCILE_FAILED)
-    _late_outcome._park(
-        context, message, reason=_late_outcome.PARK_PR_UNRECONCILED,
+    _late_parks._park(
+        context, message, reason=_late_parks.PARK_PR_UNRECONCILED,
     )
     return False
 
@@ -844,7 +845,7 @@ def _published(context: _LateContext) -> _LateDisposition | None:
             opaque_consumers=live.opaque_consumers,
         )
         _late_state.record_retired_cycle(context.state, live.cycle_id)
-        _late_outcome._persist(context)
+        _late_parks._persist(context)
     return _reinstated(context, live, retiring)
 
 

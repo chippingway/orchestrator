@@ -105,6 +105,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_content as _late_content,
     late_outcome as _late_outcome,
     late_owner as _late_owner,
+    late_parks as _late_parks,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateContentSettlement,
@@ -262,14 +263,14 @@ def _stranded_by_effects(
                     for number in context.generation.split_children
                 ),
             ),
-            reason=_late_outcome.PARK_REVISION_UNANSWERED,
+            reason=_late_parks.PARK_REVISION_UNANSWERED,
         )
     if not _owes_a_snapshot(context.generation):
         return None
     return _parked(
         context,
         _STRANDED_SNAPSHOT_PARK,
-        reason=_late_outcome.PARK_REVISION_UNANSWERED,
+        reason=_late_parks.PARK_REVISION_UNANSWERED,
     )
 
 
@@ -328,7 +329,7 @@ def _revise_from_guidance(
         context.gh, context.issue, context.state, _REVISING_NOTICE,
     )
     _consume(context, signal)
-    _late_outcome._answer_park(context)
+    _late_parks._answer_park(context)
     return _resumed(context, signal)
 
 
@@ -441,13 +442,13 @@ def _reconcile_revised_candidate(
     if not tree.readable or tree.paths:
         return _parked(
             context, _DIRTY_PARK,
-            reason=_late_outcome.PARK_REVISION_DIRTY,
+            reason=_late_parks.PARK_REVISION_DIRTY,
         )
     revised = _verification_probes._head_sha(worktree)
     if not revised:
         return _parked(
             context, _UNREADABLE_HEAD_PARK,
-            reason=_late_outcome.PARK_REVISION_UNMEASURED,
+            reason=_late_parks.PARK_REVISION_UNMEASURED,
         )
     if revised == context.generation.candidate_sha and not _vouched_for(
         agent_result,
@@ -455,7 +456,7 @@ def _reconcile_revised_candidate(
         return _parked(
             context,
             _UNANSWERED_PARK.format(reply=_quoted_reply(agent_result)),
-            reason=_late_outcome.PARK_REVISION_UNANSWERED,
+            reason=_late_parks.PARK_REVISION_UNANSWERED,
         )
     return _remeasured(context, worktree, revised)
 
@@ -507,7 +508,7 @@ def _remeasured(
             _UNMEASURED_PARK.format(
                 revised=revised, failure=measured.failure,
             ),
-            reason=_late_outcome.PARK_REVISION_UNMEASURED,
+            reason=_late_parks.PARK_REVISION_UNMEASURED,
         )
     context.generation = replace(
         context.generation,
@@ -535,8 +536,8 @@ def _remeasured(
         # the issue.
         owner_check_pending=True,
     )
-    _late_outcome._answer_park(context)
-    _late_outcome._persist(context)
+    _late_parks._answer_park(context)
+    _late_parks._persist(context)
     _telemetry.emit_late_event(
         context.gh,
         _events.LateEvent(family=_events.LateEventFamily.MEASUREMENT),
@@ -598,7 +599,7 @@ def _guarded_revision(
         _comments._post_issue_comment(
             context.gh, context.issue, context.state, announce,
         )
-        _late_outcome._persist(context)
+        _late_parks._persist(context)
     return _LateContentSettlement(disposition=settled, persisted=True)
 
 
@@ -621,7 +622,7 @@ def _consume(context: _LateContext, signal: _LateContentSignal) -> None:
     context.generation = _late_content._rebaselined(
         context.generation, signal.fingerprint,
     )
-    _late_outcome._mark_replies_read(
+    _late_parks._mark_replies_read(
         context, signal.fingerprint.comment_watermark_id,
     )
 
@@ -678,6 +679,6 @@ def _parked(
         "issue=#%d the revised candidate could not be reconciled (%s)",
         context.issue.number, reason,
     )
-    _late_outcome._stage_park(context, message, reason=reason)
+    _late_parks._stage_park(context, message, reason=reason)
     _late_outcome._completed(context)
     return _guarded_revision(context, _LateDisposition.PARKED)

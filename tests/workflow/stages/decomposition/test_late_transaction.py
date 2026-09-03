@@ -151,7 +151,7 @@ class SupersessionTest(HeldPlanPrSplitCase, unittest.TestCase):
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(
             self._pinned().get(KEYS.park_reason),
-            _late_transaction._late_outcome.PARK_SUPERSESSION_FAILED,
+            _late_transaction._late_parks.PARK_SUPERSESSION_FAILED,
         )
         self.assertEqual(
             label_of(self.github, LATE_ISSUE_NUMBER), WorkflowLabel.DECOMPOSING,

@@ -41,9 +41,11 @@ read that stands between a finished run and anything it earns,
 the same spent-budget park on this mode's road -- the gate its one spawn is
 charged to, and the hold that keeps a park nothing supersedes ahead of the
 evidence probe, the pull-request hold, and the content read -- `late_notice`
-owns the sentence any late park still owes the thread, `late_coordinator` owns
-the order those are asked in and `late_outcome` what one finished reply
-becomes, and `late_models` carries what they hand each other. The budget both
+owns the sentence any late park still owes the thread, `late_parks` every
+reason a late exit hands the issue back under and the durable write each of
+them rides out on, `late_coordinator` owns the order those are asked in and
+`late_outcome` what one finished reply becomes, and `late_models` carries what
+they hand each other. The budget both
 `retry_cap` owners are decided by is neither of theirs: it is the shared
 `engine/retry_budget.py`, so a park taken on either road is the same durable
 reason, answered by the same command, and audited on the same stream.

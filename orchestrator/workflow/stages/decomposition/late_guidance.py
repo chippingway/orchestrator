@@ -54,7 +54,7 @@ import logging
 from orchestrator.workflow.engine import comments as _comments, messages as _messages
 from orchestrator.workflow.stages.decomposition import (
     late_content as _late_content,
-    late_outcome as _late_outcome,
+    late_parks as _late_parks,
     late_revision as _late_revision,
     late_session as _late_session,
 )
@@ -80,9 +80,9 @@ _PARK_REASON = "park_reason"
 # commit was missing. A park left out of this set would be no park at all: the
 # next tick would fall through to adjudicating the very candidate it holds.
 _REVISION_PARKS = frozenset((
-    _late_outcome.PARK_REVISION_DIRTY,
-    _late_outcome.PARK_REVISION_UNMEASURED,
-    _late_outcome.PARK_REVISION_UNANSWERED,
+    _late_parks.PARK_REVISION_DIRTY,
+    _late_parks.PARK_REVISION_UNMEASURED,
+    _late_parks.PARK_REVISION_UNANSWERED,
 ))
 
 _DRIFT_PARK = (
@@ -140,7 +140,7 @@ def _baselined(
     context.generation = _late_content._rebaselined(
         context.generation, signal.fingerprint,
     )
-    _late_outcome._persist(context)
+    _late_parks._persist(context)
     return _LateContentSettlement(persisted=True)
 
 
@@ -154,7 +154,7 @@ def _drifted(
     the park stands does a reply resolve it, and which reply it is decides
     whether the frozen candidate is certified or the developer is resumed.
     """
-    if _standing_park(context) != _late_outcome.PARK_CONTENT_DRIFT:
+    if _standing_park(context) != _late_parks.PARK_CONTENT_DRIFT:
         return _parked_drift(context)
     if signal.guidance:
         return _late_revision._revise_from_guidance(context, signal)
@@ -198,11 +198,11 @@ def _park_answer(standing: str | None):
     None for an issue standing on nothing of this mode's -- including a park
     another stage left, which is not this owner's to answer.
     """
-    if standing == _late_outcome.PARK_CONTENT_DRIFT:
+    if standing == _late_parks.PARK_CONTENT_DRIFT:
         return _reverted
     if standing in _REVISION_PARKS:
         return _late_revision._retry_revision
-    if standing == _late_outcome.PARK_QUESTION:
+    if standing == _late_parks.PARK_QUESTION:
         return _answered_question
     return None
 
@@ -229,7 +229,7 @@ def _reverted(
     """
     if signal.guidance:
         return _late_revision._revise_from_guidance(context, signal)
-    _late_outcome._answer_park(context)
+    _late_parks._answer_park(context)
     _comments._post_issue_comment(
         context.gh, context.issue, context.state, _REVERTED_NOTICE,
     )
@@ -243,8 +243,8 @@ def _parked_drift(context: _LateContext) -> _LateContentSettlement:
         "parking without discarding it",
         context.issue.number, context.generation.candidate_sha,
     )
-    _late_outcome._park(
-        context, _DRIFT_PARK, reason=_late_outcome.PARK_CONTENT_DRIFT,
+    _late_parks._park(
+        context, _DRIFT_PARK, reason=_late_parks.PARK_CONTENT_DRIFT,
     )
     return _LateContentSettlement(
         disposition=_LateDisposition.PARKED, persisted=True,
@@ -268,7 +268,7 @@ def _certified(
     a scope nobody is asking for any more.
     """
     _late_session._drop_late_result(context.state)
-    _late_outcome._answer_park(context)
+    _late_parks._answer_park(context)
     _comments._post_issue_comment(
         context.gh, context.issue, context.state, _CERTIFIED_NOTICE,
     )
@@ -296,7 +296,7 @@ def _answered_question(
     if signal.guidance:
         _late_session._drop_late_result(context.state)
         context.answering = True
-        _late_outcome._answer_park(context)
+        _late_parks._answer_park(context)
         _comments._post_issue_comment(
             context.gh, context.issue, context.state, _REOPENED_NOTICE,
         )
@@ -330,10 +330,10 @@ def _consumed(
     context.generation = _late_content._rebaselined(
         context.generation, signal.fingerprint,
     )
-    _late_outcome._mark_replies_read(
+    _late_parks._mark_replies_read(
         context, signal.fingerprint.comment_watermark_id,
     )
-    _late_outcome._persist(context)
+    _late_parks._persist(context)
     return _LateContentSettlement(disposition=disposition, persisted=True)
 
 

@@ -8,7 +8,7 @@ run does, so the gate in front of its fresh spawn is the shared one on
 deliberately does not own: the park a refusal takes, the sentence it owes the
 thread, and the one reply that buys another attempt.
 
-The park is staged through this mode's own outcome owner rather than through
+The park is staged through this mode's own park owner rather than through
 the shared parking form beside the gate. That is not a preference: everything
 a late tick holds is durable state under a live generation -- the frozen pair,
 the phase the record reached, the hold standing on the pull request the
@@ -52,7 +52,7 @@ from orchestrator.workflow.engine import (
 )
 from orchestrator.workflow.stages.decomposition import (
     late_notice as _late_notice,
-    late_outcome as _late_outcome,
+    late_parks as _late_parks,
 )
 from orchestrator.workflow.stages.decomposition.late_models import _LateContext
 
@@ -98,7 +98,7 @@ def _park_owns_the_tick(context: _LateContext) -> bool:
         return False
     if _park_is_explained(context):
         if _continuation_is_bought(context):
-            _late_outcome._persist(context)
+            _late_parks._persist(context)
             return False
         log.info(
             "issue=#%d stands on a spent spawn budget; holding its late "
@@ -141,7 +141,7 @@ def _charge_fresh_spawn(context: _LateContext) -> bool:
         "parking with the frozen candidate and its hold untouched",
         context.issue.number,
     )
-    _late_outcome._park_on_spent_budget(context, decision)
+    _late_parks._park_on_spent_budget(context, decision)
     return False
 
 
@@ -214,10 +214,10 @@ def _continuation_is_bought(context: _LateContext) -> bool:
         "issue=#%d was continued by a trusted operator command; granting one "
         "more late adjudication attempt", context.issue.number,
     )
-    _late_outcome._mark_replies_read(
+    _late_parks._mark_replies_read(
         context, max(reply.id for reply in answered),
     )
-    _late_outcome._answer_park(context)
+    _late_parks._answer_park(context)
     _retry_budget._grant_continuation(
         context.gh, context.issue, context.state,
     )
