@@ -38,7 +38,7 @@ from unittest.mock import MagicMock
 from orchestrator.git.verification import probes
 from orchestrator.workflow.stages.discussion import (
     models as _models,
-    publication as _publication,
+    recovery as _recovery,
 )
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import KEY_PARK_REASON
@@ -138,7 +138,7 @@ class DiscussionAmendedPlanHeadTest(unittest.TestCase):
             seam_patch(_support.AUTHED_TARGET_FETCH, fetch),
             seam_patch(_support.PUSH_BRANCH, push),
         ):
-            self.assertTrue(_publication._settle_pending_publication(
+            self.assertTrue(_recovery._settle_pending_publication(
                 _models._DiscussionRun.start(gh, self._spec, issue),
             ))
         return gh, issue, push

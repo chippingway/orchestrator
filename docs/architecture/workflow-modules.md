@@ -785,8 +785,24 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             branch and SHA it records opening on
       outcomes.py           the pause, timeout, write, and response decisions one finished round is classified by, and
                             their routing
-      publication.py        which commits are this stage's to publish, the push and found-or-opened plan PR they earn,
-                            and the records handed to the next tick
+      publication.py        the re-runnable order a publishable commit earns: the durable marker that makes the
+                            attempt recognizable, the lease the push is held to, the push itself, and the hold that
+                            stops where GitHub could not say whether the commit is already on a PR
+      artifact.py           one reading of what the branch carries -- the tree, the base-relative diff, the plan in
+                            HEAD, and whether HEAD is the branch -- taken from the checkout the round ran in and
+                            rebuilt only where that directory has gone, plus the fetch that makes a remote tip
+                            askable there
+      settled_prs.py        the pull requests that leave a commit nothing to publish: the merged or closed one found
+                            by commit, and the open one whose head the humans moved past it
+      recovery.py           a publication a tick died in the middle of: the marker that answers for the branch, the
+                            remote reading that tells a plan that landed from a branch an operator reset, and the
+                            stale refusal written once
+      plan_pr.py            the plan's own pull request: the open one reused or the new one opened and announced, the
+                            session line a body of unknown provenance is rewritten to carry, and the refusal of a
+                            plan no session can be named for
+      records.py            what a finished publication writes down: the adoption of a PR already carrying the
+                            commit, and the plan path, branch, number, PR head, and moved round anchor one durable
+                            write leaves behind
       parks.py              the funnel every way the stage hands the issue back goes through, which stamps each
                             park's reason and restores the consumed ceiling
       checkout_parks.py     the endings the per-issue checkout earns: the agent's loose edits and the stranded tree

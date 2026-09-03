@@ -93,6 +93,7 @@ from orchestrator.workflow.stages.discussion import (
     outcomes as _outcomes,
     publication as _publication,
     publication_parks as _publication_parks,
+    recovery as _recovery,
     run as _run,
     session as _session,
     state as _state,
@@ -159,7 +160,7 @@ def _hold_resume_for_repair(
     the next tick.
     """
     already_asked = _state._repair_already_requested(run.state)
-    if _publication._settle_pending_publication(run, tuple(replies)):
+    if _recovery._settle_pending_publication(run, tuple(replies)):
         return True
     checkout = _checkout_reading(run)
     if checkout.moved:
@@ -274,7 +275,7 @@ def _handle_discussion(
     discussion_run = _models._DiscussionRun.start(gh, spec, issue)
     if _terminal._drain_discussion_terminals(discussion_run):
         return
-    if _publication._finish_interrupted_publication(discussion_run):
+    if _recovery._finish_interrupted_publication(discussion_run):
         return
     if _state._parked_by_discussion(discussion_run.state):
         _resume_parked_discussion(discussion_run)
