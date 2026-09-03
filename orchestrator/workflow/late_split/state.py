@@ -28,6 +28,7 @@ validating an identity is its own contract.
 """
 from __future__ import annotations
 
+from orchestrator.git.measurement.models import MeasurementFailure
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import (
     encoding as _encoding,
@@ -53,8 +54,9 @@ def read_late_generation(state: PinnedState) -> LateGeneration:
     Which reader a field is read through is the field's contract, not its
     Python type: an identity has to be positive, a measurement non-negative, a
     frozen commit a whole object id and a fingerprint a whole digest, a flag
-    literally `true`, a source stage one of this workflow's own labels, and a
-    restart target one of the two labels a restart may apply. Anything else
+    literally `true`, a source stage one of this workflow's own labels, a
+    measurement failure one of the steps the git domain names, and a restart
+    target one of the two labels a restart may apply. Anything else
     reads back absent, so a hand-edited or older value never becomes live
     state -- a threshold of -1 does not make an unmeasured candidate oversized,
     and a `"false"` string does not arm a cancellation or a pending restart.
@@ -89,6 +91,12 @@ def read_late_generation(state: PinnedState) -> LateGeneration:
         ) or "",
         threshold=_payloads.as_count(state.get(_keys.THRESHOLD)),
         additions=_payloads.as_count(state.get(_keys.ADDITIONS)),
+        measurement_miss_count=_payloads.as_count(
+            state.get(_keys.MEASUREMENT_MISS_COUNT),
+        ) or 0,
+        measurement_failure=_payloads.as_member(
+            MeasurementFailure, state.get(_keys.MEASUREMENT_FAILURE),
+        ),
         phase=_payloads.as_member(LatePhase, state.get(_keys.PHASE)),
         title_body_hash=_payloads.as_hex(
             state.get(_keys.TITLE_BODY_HASH), _formats.DIGEST_LENGTHS,

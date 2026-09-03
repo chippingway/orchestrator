@@ -71,8 +71,9 @@ def _wire(member: StrEnum | None) -> str | None:
     """Return the wire string one vocabulary field is recorded under, or None.
 
     Every field holding a member goes through it -- the boundary a generation
-    reached, the one it was cancelled from, and the stage it was entered at --
-    so each is written exactly as the vocabulary that reads it back spells it.
+    reached, the one it was cancelled from, the stage it was entered at, and
+    the step a reading that did not happen stopped at -- so each is written
+    exactly as the vocabulary that reads it back spells it.
     """
     return None if member is None else str(member)
 
@@ -83,6 +84,12 @@ def _evidence_fields(generation: LateGeneration) -> dict[str, Any]:
     A lineage depth of 0 is written as itself: it is the root of a lineage,
     and what is dropped instead is an unknown depth, which is not the same
     thing and must not be recorded as if it were.
+
+    The record of a reading that did not happen is here too, beside the
+    measurement it is the absence of, and it is written only while there is
+    one: no misses and no failure is what every pinned comment written before
+    the pair says, so a generation that measured first time is the same
+    comment rather than a second spelling of one.
     """
     return {
         _keys.CYCLE_ID: generation.cycle_id or None,
@@ -95,6 +102,10 @@ def _evidence_fields(generation: LateGeneration) -> dict[str, Any]:
         _keys.BASE_SHA: generation.base_sha or None,
         _keys.THRESHOLD: generation.threshold,
         _keys.ADDITIONS: generation.additions,
+        _keys.MEASUREMENT_MISS_COUNT: (
+            generation.measurement_miss_count or None
+        ),
+        _keys.MEASUREMENT_FAILURE: _wire(generation.measurement_failure),
         _keys.PHASE: _wire(generation.phase),
         _keys.TITLE_BODY_HASH: generation.title_body_hash,
         _keys.COMMENT_HASH: generation.comment_hash,

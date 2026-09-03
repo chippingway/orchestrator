@@ -18,6 +18,15 @@ from __future__ import annotations
 
 _SILENT_PARKS_BEFORE_FRESH_SESSION = 2
 
+# How many consecutive readings one frozen pair may lose before the size gate
+# stops re-reading it and hands the issue to a human. The retry is worth
+# taking because some of the steps a measurement stops at clear themselves --
+# a fetch that brought nothing back, a checkout caught mid-write -- and it has
+# to be bounded because the rest never do: a candidate whose size is unknown
+# is not a small one, so every tick past this bound is a poll spent on a
+# reading that is not going to succeed while committed work waits behind it.
+_MEASUREMENT_MISSES_BEFORE_PARK = 3
+
 _CLAUDE_STALE_SESSION_STDERR_MARKERS: tuple[str, ...] = (
     "no conversation found with session id",
     "no conversation found with id",

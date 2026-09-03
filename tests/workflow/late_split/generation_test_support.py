@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from types import MappingProxyType
 
+from orchestrator.git.measurement.models import MeasurementFailure
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import events as _events, state as _late_state
 from orchestrator.workflow.late_split.identity import RESOURCE_FINGERPRINT_LENGTH
@@ -41,6 +42,10 @@ CURRENT_ISSUE = 9
 LINEAGE_DEPTH = 1
 THRESHOLD = 4000
 ADDITIONS = 9123
+# What a reading that did not happen leaves on the record: the misses this
+# frozen pair has lost, and the step the last one stopped at.
+MEASUREMENT_MISS_COUNT = 2
+MEASUREMENT_FAILURE = MeasurementFailure.DIFF_UNREADABLE
 SHA_LENGTH = 40
 DIGEST_LENGTH = 64
 CANDIDATE_SHA = "a" * SHA_LENGTH
@@ -188,6 +193,8 @@ def full_generation() -> LateGeneration:
         plan_pr_number=PLAN_PR_NUMBER,
         plan_pr_head=PLAN_PR_HEAD,
         plan_pr_body=PLAN_PR_BODY,
+        measurement_miss_count=MEASUREMENT_MISS_COUNT,
+        measurement_failure=MEASUREMENT_FAILURE,
         **ENTERED_ON_PUBLICATION,
         resources=(SNAPSHOT,),
         consumers=(21, 22),
