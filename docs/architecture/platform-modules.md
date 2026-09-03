@@ -281,7 +281,10 @@ orchestrator/
       probes.py         the HEAD reads, the porcelain status in both its answers (the paths, whether git could be
                         asked, and the `is_clean` a caller whose next step is a push asks instead of truth-testing
                         the list) -- taken without optional locks, so asking what a tree holds does not refresh
-                        and rewrite its index -- and the two a named commit is judged by
+                        and rewrite its index -- the ignored-path read beside it, which is what git leaves out of
+                        every one of those and out of its own refusal to remove a dirty worktree, so a caller
+                        about to DELETE a tree can be told about the `.env` a caller about to publish rightly
+                        passes over, and the two a named commit is judged by
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
@@ -302,7 +305,11 @@ orchestrator/
       models.py         one issue's local artifacts and the whole answer a scan gives -- the issues it attributed
                         beside the repositories it will not answer for -- plus what a classification over them
                         says: the three answers a fail-closed read has, the ref reading that carries a commit
-                        with them, and the reasons, subjects, and verdict a retained candidate is reported as
+                        with them, the reasons, subjects, and verdict a retained candidate is reported as, and
+                        the commits an eligible one hands over as cleared. Then what a teardown over one of
+                        those verdicts answers in: the surfaces an artifact lives on, the cleaned / absent /
+                        failed one step leaves, and the whole per-surface record a caller reads a
+                        partly-finished reclamation off
       probes.py         the two local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
                         per-issue checkout directories -- a real directory under the exact name, never a symlink
                         into a tree the creators never wrote, read through the `lstat` that reports what the
@@ -318,13 +325,18 @@ orchestrator/
                         derives, or whose read failed left out of the answer rather than reported empty -- and
                         still put to the attribution, since a repository this scan will not answer for is one the
                         flat branch on its clone could equally belong to
-      evidence.py       the six hardened reads a candidate is judged by -- a checkout that is a worktree of this
-                        clone and on one of this issue's own branch names, a tree that PROVED it carries nothing
-                        loose, a local branch tip, the commit the checkout's own HEAD stands on and which branch
+      evidence.py       the seven hardened reads a candidate is judged by -- a checkout that is a worktree of
+                        this clone and on one of this issue's own branch names, a tree that PROVED it carries
+                        nothing loose and one that PROVED it hides nothing besides, a local branch tip, the
+                        commit the checkout's own HEAD stands on and which branch
                         that HEAD is, what the REMOTE
                         says a branch is at, and whether the base the remote named already contains a given tip
                         -- each answering "could not read" apart from git's own no, and a base nobody named
-                        counted as the first. The two remote questions go over the authenticated `ls-remote`
+                        counted as the first. Loose and hidden are two reads because git treats them as two:
+                        untracked and modified paths are what it calls dirty and what `worktree remove` refuses
+                        over, while a path the repository's own rules cover is neither -- so a tree carrying
+                        nothing else answers clean and comes down with all of it inside.
+                        The two remote questions go over the authenticated `ls-remote`
                         rather than to `refs/remotes/...`, which is a local ref the per-issue worktrees can write:
                         a base mirror repointed at an agent's own tip would otherwise read as a base that carries
                         its work. That read spawns processes, so it is behind a boundary of its own -- a probe
@@ -347,8 +359,12 @@ orchestrator/
                         reflog alone -- and is excused only when a reported branch is standing on that same
                         commit, so the three shapes one issue can be reported in reach one verdict. Inside the
                         proof the remote is asked before the base ancestry can release anything, since a merged
-                        tip can still sit under a branch the remote has been pushed past. Reported as one verdict
-                        per candidate carrying every reason it is kept for
+                        tip can still sit under a branch the remote has been pushed past. A branch this clone no
+                        longer holds is proven through the copy the remote carries rather than waved through:
+                        the scan named it moments earlier and something deleted it since, and a remote copy
+                        nobody proved is one a teardown may neither delete nor write down. Reported as one
+                        verdict per candidate carrying every reason it is kept for, and -- when it keeps none --
+                        the commit each artifact was cleared at
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends

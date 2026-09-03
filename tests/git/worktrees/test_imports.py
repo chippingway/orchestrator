@@ -78,6 +78,7 @@ _FLAT_MODULES = (
 # it, never on the package itself.
 _OWNER_ONLY_NAMES = (
     "ArtifactInventory",
+    "ArtifactReclamation",
     "ArtifactVerdict",
     "IssueArtifacts",
     "RetentionReason",
@@ -110,15 +111,23 @@ _OWNER_ONLY_NAMES = (
 # under it, the attribution rules for a branch and for a checkout directory,
 # the clone resolution, the grouping over it and the shape that grouping
 # takes, and the per-clone, per-repository, and per-issue assembly. Then the
-# classification over what that scan found: the three-answer probe vocabulary
-# and the two records a verdict is made of, the six fail-closed reads and the
-# two runners under them, the issue, pinned-state, and pull-request reads
+# classification over what that scan found: the three-answer probe vocabulary,
+# the two records a verdict is made of and the commit it hands over when it
+# clears one, the seven fail-closed reads -- the ignored-path one that answers
+# for what a status leaves out among them -- and the two runners under them,
+# the issue, pinned-state, and pull-request reads
 # GitHub answers with and the boundaries around each of them, and the
-# composition that turns both into one verdict per candidate. Naming the
+# composition that turns both into one verdict per candidate, with the
+# checkout's own three-read order, the tables each of those is charged
+# through, the tip read that falls back to the remote, the HEAD read spent
+# twice, and the proof an eligible verdict is handed over as. Then the four
+# records a teardown over one of those verdicts answers in. Naming the
 # whole surface makes a helper added to an owner an edit here rather than a
 # definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
+    ("ArtifactReclamation", models),
+    ("ArtifactSurface", models),
     ("ArtifactVerdict", models),
     ("AttributedIssues", attribution),
     ("BranchTip", models),
@@ -126,12 +135,16 @@ _OWNER_DEFINED = (
     ("IssueArtifacts", models),
     ("IssueBranches", attribution),
     ("ProbeAnswer", models),
+    ("ProvenTip", models),
     ("Retention", models),
     ("RetentionReason", models),
+    ("SurfaceOutcome", models),
+    ("SurfaceResult", models),
     ("TERMINAL_LABELS", claims),
     ("_CLEANLINESS_REASONS", eligibility),
     ("_GIT_NEGATIVE", evidence),
     ("_HEAD", evidence),
+    ("_HIDDEN_REASONS", eligibility),
     ("_IDENTITY_REASONS", eligibility),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
@@ -148,18 +161,23 @@ _OWNER_DEFINED = (
     ("_WORKTREE_REMOVE_FORCE", creation),
     ("_anchor_pr_worktree", creation),
     ("_anchor_target", creation),
-    ("_artifact_retentions", eligibility),
+    ("_artifact_reading", eligibility),
+    ("_artifact_verdict", eligibility),
     ("_attributed_issues", attribution),
     ("_base_contains", evidence),
     ("_branch_attribution", attribution),
     ("_branch_commit_count", recovery),
     ("_branch_has_unpushed_commits", recovery),
     ("_branch_name", paths),
+    ("_branch_reasons", eligibility),
     ("_branch_retentions", eligibility),
+    ("_branch_tip", eligibility),
     ("_candidate_issue_branches", recovery),
     ("_carrying_pull_request", claims),
     ("_checkout_entries", probes),
+    ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
+    ("_checkout_reason", eligibility),
     ("_checkout_retentions", eligibility),
     ("_checkout_tip", evidence),
     ("_checkout_tip_retentions", eligibility),
@@ -195,8 +213,10 @@ _OWNER_DEFINED = (
     ("_matching_owners", attribution),
     ("_merged", inventory),
     ("_move_branch_onto", creation),
+    ("_nothing_ignored", evidence),
     ("_open_pull_request_retentions", claims),
     ("_pr_branch_start_point", creation),
+    ("_proven_tips", eligibility),
     ("_published_tip", evidence),
     ("_read_orchestrator_refs", probes),
     ("_read_state", claims),

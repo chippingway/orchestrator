@@ -2,18 +2,24 @@
 # SPDX-License-Identifier: Apache-2.0
 """What a scan of this host's per-issue artifacts found, and what it decided.
 
-Data only, for both halves of the artifact domain. `IssueArtifacts` is one
-issue as one repository's clone and worktrees root show it, and
-`ArtifactInventory` is the whole answer a single scan gives; the scan that
-fills them lives in ``inventory``, the two local reads under it in ``probes``,
-and the rules deciding which configured repository a discovered branch belongs
-to in ``attribution``.
+Data only, for both halves of the artifact domain and for the answer a
+teardown over them owes. `IssueArtifacts` is one issue as one repository's
+clone and worktrees root show it, and `ArtifactInventory` is the whole answer
+a single scan gives; the scan that fills them lives in ``inventory``, the two
+local reads under it in ``probes``, and the rules deciding which configured
+repository a discovered branch belongs to in ``attribution``.
 
 `ProbeAnswer` and `BranchTip` are what one fail-closed read of those artifacts
-comes back with, and `RetentionReason`, `Retention`, and `ArtifactVerdict` are
-what a classification over them concludes. The reads live in ``evidence``, the
-GitHub side of the same question in ``claims``, and the classifier composing
-the two in ``eligibility``.
+comes back with, and `RetentionReason`, `Retention`, `ProvenTip`, and
+`ArtifactVerdict` are what a classification over them concludes. The reads
+live in ``evidence``, the GitHub side of the same question in ``claims``, and
+the classifier composing the two in ``eligibility``.
+
+`ArtifactSurface`, `SurfaceOutcome`, `SurfaceResult`, and `ArtifactReclamation`
+are the shape a teardown answers in once an eligible verdict has been spent:
+one outcome per place an artifact had to be taken from, since a caller told
+only that "something is left" would have to go and re-derive which part of the
+issue is still standing.
 
 The refusals are carried in the answer rather than logged and dropped because
 of what a reader does with an absence: "this repository has no artifacts" and
@@ -124,9 +130,10 @@ class RetentionReason(StrEnum):
 
     The three families the classifier fails closed on are all here and stay
     apart. What was ASKED and answered no -- an open pull request, a dirty
-    tree, commits nothing accounts for -- is a fact about the artifact. What
-    could not be asked -- an issue, a pinned comment, a pull-request lookup,
-    a git read -- is the absence of one. And what was asked and answered
+    tree, a tree hiding files its own rules cover, commits nothing accounts
+    for -- is a fact about the artifact. What could not be asked -- an issue,
+    a pinned comment, a pull-request lookup, a git read -- is the absence of
+    one. And what was asked and answered
     something nobody here can act on -- an issue in two workflow states at
     once, a pinned comment carrying something that is not a state, a checkout
     on a branch this issue never published -- is neither.
@@ -150,6 +157,7 @@ class RetentionReason(StrEnum):
     FOREIGN_CHECKOUT = "foreign_checkout"
     WORKTREE_UNREADABLE = "worktree_unreadable"
     WORKTREE_DIRTY = "worktree_dirty"
+    WORKTREE_IGNORED = "worktree_ignored"
     BRANCH_UNREADABLE = "branch_unreadable"
     BASE_UNREADABLE = "base_unreadable"
     REMOTE_UNREADABLE = "remote_unreadable"
@@ -174,6 +182,28 @@ class Retention:
 
 
 @dataclass(frozen=True)
+class ProvenTip:
+    """One commit a classification cleared, and the artifact holding it.
+
+    What an eligible verdict hands over to the teardown that spends it. Every
+    proof a classification takes is about a COMMIT -- the base already carries
+    it, a pull request that has ended published it -- and the artifact it was
+    read from is standing on that commit and no other. A teardown holding only
+    the artifact's name would delete whatever that name resolves to by the
+    time it gets there, which is not necessarily what anybody proved: a branch
+    an agent has committed onto since is the same branch by name and a
+    different one by every test that cleared it.
+
+    The subject is spelled the way a retention's is -- a branch by name, a
+    checkout by path -- so a caller holding either half of the answer names
+    the artifact the same way.
+    """
+
+    subject: str
+    sha: str
+
+
+@dataclass(frozen=True)
 class ArtifactVerdict:
     """What one classification decided about one issue's artifacts.
 
@@ -190,8 +220,88 @@ class ArtifactVerdict:
 
     artifacts: IssueArtifacts
     retentions: tuple[Retention, ...] = ()
+    proven: tuple[ProvenTip, ...] = ()
 
     @property
     def eligible(self) -> bool:
         """Whether every artifact reported for this issue may be reclaimed."""
         return not self.retentions
+
+
+class ArtifactSurface(StrEnum):
+    """The four places a finished issue leaves something to be taken from.
+
+    Named beside the subject rather than folded into it, because two of them
+    carry the same subject: a branch this host holds and the branch of that
+    name on the remote are one name over two hosts, and a report saying only
+    that `orchestrator/acme__widget/issue-7` is still there does not say
+    which of them an operator has to go and look at.
+
+    The first three are the artifacts themselves. `ANCHOR` is what a teardown
+    can leave behind rather than something it found: the commit a checkout was
+    standing on when it came down, kept under a ref of this orchestrator's own
+    because nothing else names it. It is reported like the rest because the
+    same thing is true of it -- until somebody settles it, this host is still
+    holding something for that issue.
+    """
+
+    WORKTREE = "worktree"
+    LOCAL_BRANCH = "local_branch"
+    REMOTE_BRANCH = "remote_branch"
+    ANCHOR = "anchor"
+
+
+class SurfaceOutcome(StrEnum):
+    """What one teardown step left on the surface it was for.
+
+    `ABSENT` is a success, and it is kept apart from `CLEANED` for what it
+    says about the pass rather than about the artifact: a surface with
+    nothing on it to take is how every retry of a half-finished teardown
+    reports the part that already went, and a caller reading it as a deletion
+    would be counting one artifact twice.
+
+    `FAILED` covers both a step that ran and did not finish and one this
+    teardown would not take at all -- a tree written in since the proof, a
+    branch that has moved. What separates them is in the log, because what a
+    caller does with either is the same: leave the artifact where it is, and
+    let the next pass find it again.
+    """
+
+    CLEANED = "cleaned"
+    ABSENT = "absent"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SurfaceResult:
+    """What became of one artifact on one of the surfaces it lived on."""
+
+    surface: ArtifactSurface
+    subject: str
+    outcome: SurfaceOutcome
+
+
+@dataclass(frozen=True)
+class ArtifactReclamation:
+    """Every surface one teardown named, and what it left on each.
+
+    Whole rather than filtered down to the failures: a caller holding only
+    those cannot tell a surface this pass refused from one it never reached,
+    and the second is what a teardown that ended early looks like.
+
+    Nothing here is a retry list. A surface that failed is one whose artifact
+    is still on this host or still on the remote, and the scan that found it
+    once finds it again -- which is what carries an interrupted reclamation
+    across a restart that no in-memory record would survive.
+    """
+
+    artifacts: IssueArtifacts
+    surfaces: tuple[SurfaceResult, ...] = ()
+
+    @property
+    def settled(self) -> bool:
+        """Whether every surface this teardown named is now clear."""
+        return all(
+            taken.outcome is not SurfaceOutcome.FAILED
+            for taken in self.surfaces
+        )

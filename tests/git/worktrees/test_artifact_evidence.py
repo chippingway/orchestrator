@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The five reads a terminal artifact is judged by, one answer at a time.
+"""The reads a terminal artifact is judged by, one answer at a time.
 
 Driven against real clones, real checkouts, real refs, and a real bare remote,
 because the third answer is the whole point of these probes and it only exists
@@ -37,6 +37,9 @@ from tests.git.worktrees.candidate_host_test_support import (
     _tracking_ref,
 )
 from tests.git.worktrees.eligibility_test_support import ISSUE_NUMBER
+from tests.workflow.stages.question.question_real_git_test_support import (
+    _run_git,
+)
 
 ANOTHER_BRANCH = "orchestrator/acme__widget/issue-99"
 LOOSE_FILE = "left-behind.txt"
@@ -46,6 +49,9 @@ NOT_A_CLONE = "no-repository-here"
 NOTHING_AT_ALL = "never-created"
 LOOPING_LINK = "looping"
 LOOPING_BACK = "looping-back"
+IGNORE_FILE = ".gitignore"
+HIDDEN_FILE = "secrets.env"
+HIDDEN_CONTENT = "TOKEN=an operator's own\n"
 
 
 def _named(sha: str) -> BranchTip:
@@ -131,7 +137,12 @@ class CheckoutIdentityTest(_HostTestCase):
 
 
 class WorktreeCleanlinessTest(_HostTestCase):
-    """Whether a checkout PROVED it is carrying nothing loose."""
+    """Whether a checkout PROVED it is carrying nothing an operator wants.
+
+    Two reads rather than one, because git draws the line between them: what
+    it calls dirty is what a removal refuses over, and a path the
+    repository's own rules hide is neither.
+    """
 
     def setUp(self) -> None:
         super().setUp()
@@ -144,12 +155,32 @@ class WorktreeCleanlinessTest(_HostTestCase):
         self.assertIs(
             evidence._clean_worktree(self.worktree), ProbeAnswer.CONFIRMED,
         )
+        self.assertIs(
+            evidence._nothing_ignored(self.worktree), ProbeAnswer.CONFIRMED,
+        )
 
     def test_an_untracked_file_refutes(self) -> None:
         (self.worktree / LOOSE_FILE).write_text(LOOSE_CONTENT)
 
         self.assertIs(
             evidence._clean_worktree(self.worktree), ProbeAnswer.REFUTED,
+        )
+
+    def test_an_ignored_file_refutes_one_read(self) -> None:
+        # The gap the two reads exist to cover between them. A path the
+        # repository's own rules hide is neither untracked nor modified, so
+        # the status read goes on confirming a tree that is carrying it --
+        # which is the reading a removal would otherwise be run on.
+        (self.worktree / IGNORE_FILE).write_text(f"{HIDDEN_FILE}\n")
+        _run_git("add", IGNORE_FILE, cwd=self.worktree)
+        _run_git("commit", "-q", "-m", "ignore it", cwd=self.worktree)
+        (self.worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
+
+        self.assertIs(
+            evidence._clean_worktree(self.worktree), ProbeAnswer.CONFIRMED,
+        )
+        self.assertIs(
+            evidence._nothing_ignored(self.worktree), ProbeAnswer.REFUTED,
         )
 
     def test_a_tree_that_will_not_report_is_unread(self) -> None:
@@ -165,7 +196,9 @@ class WorktreeCleanlinessTest(_HostTestCase):
                 self.assertIs(
                     evidence._clean_worktree(tree), ProbeAnswer.UNREADABLE,
                 )
-
+                self.assertIs(
+                    evidence._nothing_ignored(tree), ProbeAnswer.UNREADABLE,
+                )
 
     def test_a_tree_that_will_not_resolve_is_unread(self) -> None:
         # The read names the tree it reports on, and naming it resolves the

@@ -34,11 +34,20 @@ has since pushed past.
 A commit nobody can say where it went is kept, and so is every question that
 could not be put: they are all one answer to a caller that only asks whether
 it may delete, and that answer has to be no.
+
+What an eligible verdict hands back is the commits it cleared, not only the
+permission. The proof is about an object id and the artifact standing on it,
+so the teardown that spends the verdict can tell the branch that was cleared
+from the branch of that name it finds when it gets there. Every artifact this
+scan reported gets one, the branch that has since been deleted from this clone
+included: the remote may still carry that branch, and a copy nobody proved is
+a copy the teardown may neither delete nor write down.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable
 from itertools import chain
+from pathlib import Path
 from types import MappingProxyType
 
 from orchestrator.git.worktrees import claims, evidence
@@ -47,6 +56,7 @@ from orchestrator.git.worktrees.models import (
     BranchTip,
     IssueArtifacts,
     ProbeAnswer,
+    ProvenTip,
     Retention,
     RetentionReason,
 )
@@ -71,6 +81,14 @@ _CLEANLINESS_REASONS = MappingProxyType({
     ProbeAnswer.REFUTED: RetentionReason.WORKTREE_DIRTY,
 })
 
+# What a tree hiding files under its own ignore rules costs. Apart from the
+# table above because what an operator does with it differs: `git status` shows
+# them nothing, and what they have to go and look at is what the rules cover.
+_HIDDEN_REASONS = MappingProxyType({
+    ProbeAnswer.UNREADABLE: RetentionReason.WORKTREE_UNREADABLE,
+    ProbeAnswer.REFUTED: RetentionReason.WORKTREE_IGNORED,
+})
+
 
 def _checkout_retentions(artifacts: IssueArtifacts) -> tuple[Retention, ...]:
     """Why this issue's checkout may not be removed, if it may not.
@@ -90,17 +108,39 @@ def _checkout_retentions(artifacts: IssueArtifacts) -> tuple[Retention, ...]:
     worktree = artifacts.worktree
     if worktree is None:
         return ()
+    kept_for = _checkout_reason(artifacts, worktree)
+    if kept_for is None:
+        return ()
+    return (Retention(kept_for, str(worktree)),)
+
+
+def _checkout_reason(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> RetentionReason | None:
+    """The first thing about this checkout that keeps it, if anything does.
+
+    Three reads in the order they may be spent, each skipped once one before
+    it has refused. Identity gates both of the others for the reason given
+    above; the two about what the tree holds are asked in the order git
+    itself would meet them, since a tree that is dirty is one `worktree
+    remove` refuses without being asked anything further.
+
+    What is hidden is asked at all because git does not ask it. Untracked and
+    modified paths are what a removal that does not force refuses over; a path
+    the repository's own rules cover is neither, so a tree carrying nothing
+    else answers clean and comes down with whatever is under those rules
+    inside it.
+    """
     identity = evidence._checkout_identity(
         artifacts.spec, artifacts.issue_number, worktree,
     )
     kept_for = _IDENTITY_REASONS.get(identity)
-    if kept_for is None:
-        kept_for = _CLEANLINESS_REASONS.get(
-            evidence._clean_worktree(worktree),
-        )
-    if kept_for is None:
-        return ()
-    return (Retention(kept_for, str(worktree)),)
+    if kept_for is not None:
+        return kept_for
+    kept_for = _CLEANLINESS_REASONS.get(evidence._clean_worktree(worktree))
+    if kept_for is not None:
+        return kept_for
+    return _HIDDEN_REASONS.get(evidence._nothing_ignored(worktree))
 
 
 def _checkout_tip_retentions(
@@ -108,6 +148,7 @@ def _checkout_tip_retentions(
     artifacts: IssueArtifacts,
     base: BranchTip,
     tips: tuple[BranchTip, ...],
+    head: BranchTip,
 ) -> tuple[Retention, ...]:
     """Why the commit this checkout stands on may not be removed with it.
 
@@ -128,7 +169,9 @@ def _checkout_tip_retentions(
     reported as a checkout nothing could be established about. `update-ref -d`
     removes a branch a live checkout is on, and afterwards every other reading
     comes back unchanged: the symbolic ref still spells this issue's branch,
-    and a tree whose commits went with it still reports clean.
+    and a tree whose commits went with it still reports clean. That read is
+    handed in rather than taken here, because the commit it resolves is also
+    what an eligible verdict has to hand over -- one reading, spent twice.
 
     What is left runs the proof a branch runs, on the branch HEAD is on. The
     commit is a branch tip whichever artifact the report names it through, so
@@ -139,7 +182,6 @@ def _checkout_tip_retentions(
     worktree = artifacts.worktree
     if worktree is None:
         return ()
-    head = evidence._checkout_tip(worktree)
     on_branch, branch = evidence._head_ref(worktree)
     reads = (head.answer, on_branch)
     if any(read is not ProbeAnswer.CONFIRMED for read in reads):
@@ -212,10 +254,12 @@ def _branch_retentions(
     branch has to know what it is standing on to tell whether the branch is
     already holding it.
 
-    A branch that has gone since the scan named it is eligible rather than a
-    problem. There is nothing left to delete, and the alternative -- keeping
-    an issue back over an artifact that no longer exists -- is a retention no
-    operator could ever settle.
+    A branch that has gone from BOTH hosts since the scan named it is eligible
+    rather than a problem. There is nothing left to delete, and the
+    alternative -- keeping an issue back over an artifact that no longer
+    exists -- is a retention no operator could ever settle. Which hosts still
+    have it is `_branch_tip`'s answer, not this one's: what arrives here is
+    the commit the branch is standing on wherever it still stands.
     """
     if tip.answer is ProbeAnswer.UNREADABLE:
         return (Retention(RetentionReason.BRANCH_UNREADABLE, branch),)
@@ -224,10 +268,75 @@ def _branch_retentions(
     return _tip_retentions(gh, artifacts, base, branch, tip.sha)
 
 
-def _artifact_retentions(
+def _branch_tip(artifacts: IssueArtifacts, branch: str) -> BranchTip:
+    """The commit one of this issue's branches stands on, wherever it stands.
+
+    The clone's own ref first, because a branch this host holds is the
+    artifact a teardown takes and the commit it would take with it. A branch
+    the clone no longer has is not the same thing as an artifact that has
+    gone: the scan named it moments earlier, something deleted it since, and
+    the copy the remote carries is an artifact of this issue exactly as the
+    local one was. So the remote is asked, and what it answers is what the
+    proof runs on -- which is what lets an eligible verdict hand over a commit
+    for that branch at all. Without one, the reclamation of the copy left on
+    the remote would be a deletion nobody had proved and nothing had recorded.
+
+    Both readings that failed come back as the tip that could not be read.
+    Which side would not answer is not something an operator settles
+    differently, and the retention over it names the branch either way.
+    """
+    tip = evidence._local_branch_tip(artifacts.spec, branch)
+    if tip.answer is not ProbeAnswer.REFUTED:
+        return tip
+    return evidence._published_tip(artifacts.spec, branch)
+
+
+def _checkout_head(
+    artifacts: IssueArtifacts, kept: tuple[Retention, ...],
+) -> BranchTip:
+    """The commit this issue's checkout stands on, when it is worth resolving.
+
+    Answered as the read that established nothing in the two cases where it is
+    not taken at all: an issue with no checkout on this host, and a checkout
+    something about the tree itself already refuses. The second is the reason
+    the read is skipped rather than merely ignored -- a directory that is not
+    this issue's checkout is one whose HEAD says nothing about what removing
+    it would cost.
+    """
+    if artifacts.worktree is None or kept:
+        return BranchTip(answer=ProbeAnswer.UNREADABLE)
+    return evidence._checkout_tip(artifacts.worktree)
+
+
+def _proven_tips(
+    artifacts: IssueArtifacts, head: BranchTip, tips: tuple[BranchTip, ...],
+) -> tuple[ProvenTip, ...]:
+    """Every commit this reading found an artifact of this issue standing on.
+
+    The proof an eligible verdict is spent on, in the artifacts' own order:
+    the checkout first, since that is the order the teardown takes them down
+    in, and then one entry per branch the clone still carries.
+
+    A branch that has gone since the scan named it contributes nothing, which
+    is the same answer the classification gives it: there is no commit to
+    clear because there is no longer a branch holding one. A teardown that
+    found the name back in place would then be holding no proof for it, and
+    proof is what it deletes on.
+    """
+    proven = tuple(
+        ProvenTip(branch, tip.sha)
+        for branch, tip in zip(artifacts.branches, tips)
+        if tip.answer is ProbeAnswer.CONFIRMED
+    )
+    if artifacts.worktree is None or head.answer is not ProbeAnswer.CONFIRMED:
+        return proven
+    return (ProvenTip(str(artifacts.worktree), head.sha), *proven)
+
+
+def _artifact_reading(
     gh: GitHubClient, artifacts: IssueArtifacts,
-) -> tuple[Retention, ...]:
-    """Every reason the artifacts themselves give for keeping this candidate.
+) -> tuple[tuple[Retention, ...], tuple[ProvenTip, ...]]:
+    """What the artifacts say: why they are kept, and what they are holding.
 
     Both sides are read even when the first one already refuses, because what
     an operator is being handed is a list of what to go and look at. A dirty
@@ -246,20 +355,43 @@ def _artifact_retentions(
     What the base is on is asked of the remote once and handed to every
     proof, since every artifact under this issue is measured against the same
     commit -- and it is asked only when there is an artifact to measure.
+
+    The tips come back beside the reasons because they are the same readings.
+    A caller that took the verdict and then re-read them would be acting on
+    commits nobody adjudicated: between the two readings an agent can commit,
+    and the branch that comes back is the one the proof is not about.
     """
     checkout = _checkout_retentions(artifacts)
     if artifacts.worktree is None and not artifacts.branches:
-        return checkout
+        return checkout, ()
     base = evidence._published_tip(
         artifacts.spec, artifacts.spec.base_branch,
     )
     tips = tuple(
-        evidence._local_branch_tip(artifacts.spec, branch)
-        for branch in artifacts.branches
+        _branch_tip(artifacts, branch) for branch in artifacts.branches
     )
+    head = _checkout_head(artifacts, checkout)
     if not checkout:
-        checkout = _checkout_tip_retentions(gh, artifacts, base, tips)
-    return checkout + tuple(chain.from_iterable(
+        checkout = _checkout_tip_retentions(gh, artifacts, base, tips, head)
+    return (
+        checkout + _branch_reasons(gh, artifacts, base, tips),
+        _proven_tips(artifacts, head, tips),
+    )
+
+
+def _branch_reasons(
+    gh: GitHubClient,
+    artifacts: IssueArtifacts,
+    base: BranchTip,
+    tips: tuple[BranchTip, ...],
+) -> tuple[Retention, ...]:
+    """Every reason this issue's branches give, in the order they were named.
+
+    Each branch is put to the proof against the tip already read for it, so
+    the reading the proof is about and the reading the caller hands on as what
+    it cleared are one and the same.
+    """
+    return tuple(chain.from_iterable(
         _branch_retentions(gh, artifacts, base, branch, tip)
         for branch, tip in zip(artifacts.branches, tips)
     ))
@@ -285,6 +417,10 @@ def _classify_artifacts(
     never one read back off the fetched issue: the artifacts are what this
     verdict is about, and the attribute naming them on the issue is one more
     lazy read that can fail.
+
+    Only the verdict that clears the artifacts carries what it cleared. A
+    retained one has established that these commits stay, and a proof beside
+    that answer would be a permission nothing here gave.
     """
     issue = claims._fetched_issue(gh, artifacts.issue_number)
     if issue is None:
@@ -302,7 +438,22 @@ def _classify_artifacts(
     )
     if claimed:
         return ArtifactVerdict(artifacts, claimed)
-    return ArtifactVerdict(artifacts, _artifact_retentions(gh, artifacts))
+    return _artifact_verdict(gh, artifacts)
+
+
+def _artifact_verdict(
+    gh: GitHubClient, artifacts: IssueArtifacts,
+) -> ArtifactVerdict:
+    """The verdict the artifacts' own reading comes to, once GitHub is done.
+
+    The two halves of that reading are exclusive by construction: a candidate
+    is cleared for exactly the commits it was found holding, and one that is
+    kept hands over nothing at all.
+    """
+    kept, proven = _artifact_reading(gh, artifacts)
+    if kept:
+        return ArtifactVerdict(artifacts, kept)
+    return ArtifactVerdict(artifacts, proven=proven)
 
 
 def _classified_candidates(
