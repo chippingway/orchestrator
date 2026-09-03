@@ -11,10 +11,12 @@ is the only thing left to assert.
 from __future__ import annotations
 
 from pathlib import Path
+from types import MappingProxyType
 from unittest.mock import patch
 
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import run_ledger as _run_ledger
 from orchestrator.workflow.late_split import lineage as _lineage, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from tests.support.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
@@ -30,6 +32,23 @@ GATE_ISSUE_NUMBER = 300
 GATE_THRESHOLD = 4000
 SMALL_ADDITIONS = 12
 OVERSIZED_ADDITIONS = 9123
+
+# The lifetime ledger a gate run is asked under, in both readings that could
+# change what a commit-id decision means: runs to spare, and none left. The
+# gate spawns nothing either way, so a case naming one is naming the state the
+# ISSUE is in rather than a run it is about to pay for.
+GATE_ALLOWANCE = 4
+
+LEDGERS = MappingProxyType({
+    "some": {
+        _run_ledger.AGENT_RUN_ALLOWANCE: GATE_ALLOWANCE,
+        _run_ledger.AGENT_RUNS_USED: 1,
+    },
+    "none": {
+        _run_ledger.AGENT_RUN_ALLOWANCE: GATE_ALLOWANCE,
+        _run_ledger.AGENT_RUNS_USED: GATE_ALLOWANCE,
+    },
+})
 
 CHILD_ROOT_ISSUE = 7
 CHILD_PARENT_ISSUE = 8
@@ -171,6 +190,18 @@ class _PublicationAssertions:
     def _assert_no_agent(self, mocks) -> None:
         """Nothing was re-run: the reading is what a retry buys."""
         mocks[RUN_AGENT].assert_not_called()
+
+    def _assert_charged_nothing(self, ledger) -> None:
+        """The issue is exactly as far through its lifetime as it was.
+
+        The gate is a reading rather than a run, so no path through it may
+        move the count -- least of all on the issue that has none left, where
+        a charge taken here would be one nothing spawned.
+        """
+        self.assertEqual(
+            self._pinned().get(_run_ledger.AGENT_RUNS_USED),
+            ledger[_run_ledger.AGENT_RUNS_USED],
+        )
 
     def _assert_resumed(self, mocks) -> None:
         """The developer ran, which is what guidance buys."""

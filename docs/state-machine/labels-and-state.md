@@ -1021,6 +1021,36 @@ drives the real handlers against a spent ledger so an unwired road is caught as 
   shape, and the count is what makes the id name a charge — so the tick that charged a run and the tick that spawned
   on it join. The contract is in
   [`../observability/event-streams.md`](../observability/event-streams.md#agent-run-budget-records-both-sinks).
+- **What the number actually buys is measured end to end.** Every owner above answers for its own step, and none of
+  them answers the question the setting is written in: how many agent processes one issue can start before something
+  stops it.
+  [`tests/workflow/engine/test_lifetime_journeys.py`](../../tests/workflow/engine/test_lifetime_journeys.py) walks a
+  real issue through the loops that have no natural end — a fix answered by a review answered by a fix, a review round
+  reset by a recovered conflict, a review round reset by a base synchronization, a session retired and replaced every
+  round, and an issue moved back to `workflow:decomposing` and out again — running it once per tick under a small
+  allowance and summing what each tick spawned. The two reset loops are entered on a round the reviewer has already
+  spent and the tick itself is what puts it back, so what is asserted is a reset that happened rather than one a
+  fixture staged; the base refresh in particular rebases, force-pushes, hands the issue back to `workflow:validating`
+  and resets the round while starting no process at all, and the ledger is exactly where it found it. Every other cap
+  is pinned wide for the length of a walk, because each of them is a setting the environment can carry and any of them
+  left live could be the thing that ended the walk instead. The runner stops at exactly the configured total on every
+  journey — under the issue's own allowance and under `MAX_AGENT_RUNS_PER_ISSUE` for an issue carrying none — the
+  park's sentence is said once however many ticks reach it afterwards, a trusted `/orchestrator add-agent-runs N` buys
+  exactly N further starts and no more, and a request past `MAX_RUNS_PER_COMMAND` buys none. The total is read back off
+  the issue's own pinned comment through a client rebuilt from nothing else, which is what a restarted process would
+  have.
+  [`tests/workflow/engine/test_lifetime_compatibility.py`](../../tests/workflow/engine/test_lifetime_compatibility.py)
+  holds the three things the ceiling may not change: an issue that predates it starts from `issue_agent_runs` rather
+  than from zero, a stage cap that is spent at the same time still parks its own way with the lifetime count
+  untouched, and a closed issue's terminal still drains — posting the receipt for what the whole issue spent and
+  leaving both meters and the park exactly as it found them. The adjudicator's own sequence is
+  [`tests/workflow/stages/decomposition/test_late_lifetime.py`](../../tests/workflow/stages/decomposition/test_late_lifetime.py),
+  which freezes one fresh candidate after another over the same issue and shows the ledger — rather than the day's
+  spawn budget, pinned wider than the sequence is long — ending it, plus the restart that projects a new cycle and no
+  new runs; the exact-SHA exemption policy is asked of an issue with runs
+  to spare and of one with none in
+  [`tests/workflow/stages/implementing/test_late_gate.py`](../../tests/workflow/stages/implementing/test_late_gate.py),
+  since a spent lifetime is neither a way past the size gate nor a reason to re-adjudicate an accepted commit.
 - **There is no second road to a process.** The gate is worth what the number of places a run can start makes it
   worth, so the shape is also read off the source rather than only driven:
   [`tests/repository/test_agent_spawn_boundary.py`](../../tests/repository/test_agent_spawn_boundary.py) holds the
