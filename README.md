@@ -324,8 +324,7 @@ Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE) for the
 
 [ci-badge]: https://github.com/chippingway/orchestrator/actions/workflows/ci.yml/badge.svg
 [ci-link]: https://github.com/chippingway/orchestrator/actions/workflows/ci.yml
-<!-- Use the canonical JSON feed while https://github.com/ossf/scorecard/issues/5197 leaves the badge path stale. -->
-[scorecard-badge]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2Fchippingway%2Forchestrator&query=%24.score&label=openssf%20scorecard&color=green&cacheSeconds=600
+[scorecard-badge]: https://api.scorecard.dev/projects/github.com/chippingway/orchestrator/badge
 [scorecard-link]: https://scorecard.dev/viewer/?uri=github.com/chippingway/orchestrator
 [best-practices-badge]: https://www.bestpractices.dev/projects/14235/badge
 [best-practices-link]: https://www.bestpractices.dev/projects/14235
