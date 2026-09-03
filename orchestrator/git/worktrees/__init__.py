@@ -15,7 +15,11 @@ in ``probes``, the artifact-to-repository rules in ``attribution``, and the
 answer both of them fill in ``models``. The classification that decides which
 of those candidates may be reclaimed lives in ``eligibility``, over the
 fail-closed local reads in ``evidence`` and the issue, pinned-state, and
-pull-request reads in ``claims``. Every worktree name is defined on one of these
+pull-request reads in ``claims``. The ledger a teardown over one of those
+verdicts writes its own notes to itself into -- the record carrying a remote
+deletion nothing local is left to lead a later pass back to, and the anchor
+holding what a checkout was standing on while it came down -- lives in
+``obligations``. Every worktree name is defined on one of these
 owners, and callers import the owner they need directly, so this initializer
 binds nothing and importing one owner never drags the others in.
 
@@ -24,7 +28,7 @@ republishes these names either, so each answers on the owner that defines it
 and a test intercepting one targets that owner: the stage handlers name it
 just as the ``git/base_sync/`` and ``workflow/engine/`` callers do.
 ``attribution``, ``claims``, ``cleanup``, ``creation``, ``decomposition``,
-``evidence``, ``inventory``, ``probes``, and ``terminal`` name their logger
-``orchestrator.worktree_lifecycle`` rather than after this package, because
-that is the name operator log filters select on.
+``evidence``, ``inventory``, ``obligations``, ``probes``, and ``terminal``
+name their logger ``orchestrator.worktree_lifecycle`` rather than after this
+package, because that is the name operator log filters select on.
 """
