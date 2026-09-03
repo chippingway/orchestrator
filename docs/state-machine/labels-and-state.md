@@ -982,6 +982,21 @@ drives the real handlers against a spent ledger so an unwired road is caught as 
   durable `agent_run_limit` park the refusal had just taken** with a reason about a process that never existed. Each
   of those roads therefore asks `guards._ignore_if_never_invoked` first, ahead of every reading it would otherwise
   classify the run by.
+- **What is charged is a process, not a tick.** A developer resume that lands on a transcript the backend has lost
+  buys a second spawn in the same tick — a fresh one, in the same worktree — and pays for it, because it is a second
+  run. A run the shutdown sweep killed and a run an operator paused mid-flight are charged too: both cost the same
+  compute as one that finished, and only the disposition is thrown away.
+  [`tests/workflow/engine/test_charged_launches.py`](../../tests/workflow/engine/test_charged_launches.py) drives
+  every developer road — the fresh implementation, the resumes `implementing`, `fixing`, `documenting`, `in_review`
+  and `resolving_conflict` make, and the poisoned-session retry behind them — plus the fresh reviewer round, and
+  reads the spend back off each issue's own pinned comment on the far side of the handler's write.
+- **The caps that were already there still refuse first.** The 24h retry budget, `MAX_REVIEW_ROUNDS`, and
+  `MAX_CONFLICT_ROUNDS` each park ahead of the spawn, so a tick they turn away reaches no boundary and spends
+  nothing; `DEV_SESSION_MAX_RESUMES` refuses the resume rather than the tick, retiring the transcript before the
+  charge so what is paid for is one fresh spawn. The lifetime ledger is the backstop under them, not a replacement
+  for any of them, and a cap that fired only after the charge would spend a run on work nothing ran.
+  [`tests/workflow/engine/test_capped_launches.py`](../../tests/workflow/engine/test_capped_launches.py) drives each
+  one against an issue whose ledger has room to spare.
 
 ### Late generation state
 
