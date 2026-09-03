@@ -35,7 +35,7 @@ crash), and comparing it to the branch says whether that round left a commit.
 On a parked issue it is a statement about the branch: everything the branch
 carries AT that SHA predates this stage, so a tip still sitting there is
 certified and one that has moved is not.
-`workflow/stages/implementing/read_only_relabel.py` reads it that way, which is
+`workflow/stages/implementing/relabel_evidence.py` reads it that way, which is
 how a discussion held on an inherited PR branch is relabeled to implementing
 without being accused of the dev's commits.
 

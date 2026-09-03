@@ -65,6 +65,19 @@ the park a spent spawn budget leaves and the one command that lifts it
 -- over the records they hand each other (`models`) and the pinned-state keys
 and CLI markers they share (`state`).
 
+The relabel divides again, because screening one is not the same act as
+honouring the plan it hands over. `read_only_relabel` owns the screen itself --
+which park it answers for, and the acceptance write that retires the
+conversation's records -- while what the branch and the checkout are carrying is
+`relabel_hazard`, what anything here has grounds to vouch for a tip sitting on
+is `relabel_evidence`, and the idempotent park a finding earns, with the
+remediation that clears it without destroying work worth keeping, is
+`relabel_refusal`. The plan PR under the handoff is two more: `plan_reading`
+says what its reviewers left on it and where that puts the checkout, and
+`plan_handoff` takes that same reading again every tick until a developer
+publishes, since the humans can move the head all through the window the
+acceptance opens.
+
 Callers import the owner they need, so this initializer binds nothing: the
 dispatcher resolves one handler per issue, and an eager binding here would
 charge a park or a session read for the publication path it never reaches.

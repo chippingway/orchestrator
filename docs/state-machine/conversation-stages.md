@@ -458,9 +458,10 @@ the per-issue checkout only has to survive a tick when an unsafe park keeps it f
   `ALLOWED_TRANSITIONS` grants the state; or a human relabel: to either of those same two by hand, or, through the
   GitHub UI, to `workflow:implementing` once the thread settles on building it. That last one is not a
   graph edge, so it arrives as an operator relabel and is screened by the read-only guard in
-  `workflow/stages/implementing/read_only_relabel.py`: a `discussion_*` park whose worktree is dirty, whose recorded
-  branch no longer sits at the SHA the round anchored on, or whose CHECKOUT is on a commit no record vouches for,
-  re-parks as `discussion_unsafe_relabel` rather than
+  `workflow/stages/implementing/read_only_relabel.py` — over the readings `relabel_hazard.py` takes, against the tips
+  `relabel_evidence.py` can vouch for, and refused through `relabel_refusal.py`: a `discussion_*` park whose worktree
+  is dirty, whose recorded branch no longer sits at the SHA the round anchored on, or whose CHECKOUT is on a commit no
+  record vouches for, re-parks as `discussion_unsafe_relabel` rather than
   letting the recovered-worktree shortcut push that work as a dev implementation; a clean one clears the park and the
   dev spawns fresh. The checkout is read for its own `HEAD` because a commit does not have to be on a ref anybody here
   names: an agent that committed while detached leaves every branch exactly where the round opened it and the plan in

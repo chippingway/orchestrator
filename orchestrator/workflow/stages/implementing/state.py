@@ -154,7 +154,7 @@ _READ_ONLY_BASELINE_SHA = "read_only_baseline_sha"
 # sitting on the plan PR's live head -- from a developer's own commit, and the
 # recovered-worktree shortcut would push the reviewers' amendment as the
 # implementation with no agent having run. Written and spent by
-# `read_only_relabel._readvance_plan_handoff`.
+# `plan_handoff._readvance_plan_handoff`.
 _HANDOFF_ANCHOR_SHA = "read_only_anchor_sha"
 
 _BRANCH = "branch"

@@ -1076,8 +1076,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             for an answer, and the trusted `/orchestrator continue` -- looked for anywhere in the
                             unread batch, taken with whatever else its comment carries -- that retires the session
                             and renews the budget for exactly one spawn, written down before the spawn it pays for
-      read_only_relabel.py  the `question` / `discussion` relabel guards, and the reconcile that keeps an accepted
-                            plan handoff in step with its PR
+      read_only_relabel.py  the `question` / `discussion` relabel screen: which park it answers for, and the
+                            acceptance write that retires the conversation's records and hands its round anchor
+                            on as the floor the dev run is measured against
+      relabel_hazard.py     what a relabeled issue's branch and checkout are carrying, with every reading that
+                            convicts reported together so one refusal names all of it
+      relabel_evidence.py   what those readings have grounds to vouch for a tip sitting on -- the tip the round
+                            opened on, the head the plan PR is on, and the ahead-of-base question a merged plan
+                            takes back
+      relabel_refusal.py    the idempotent `<stage>_unsafe_relabel` park a finding earns, and the remediation
+                            aimed at the tip worth keeping
+      plan_reading.py       what the recorded plan PR carries and where that leaves the branch, read afresh by
+                            both halves rather than remembered
+      plan_handoff.py       the reconcile that keeps an accepted plan handoff in step with its PR until a
+                            developer commits, and the marker that makes its own re-anchor recoverable
       models.py             the frozen records the owners hand each other
       state.py              the pinned-state keys and CLI marker tuples they share
     in_review/              `in_review`

@@ -74,7 +74,6 @@ per-file-ignores =
     orchestrator/workflow/stages/implementing/models.py:WPS202
     orchestrator/workflow/stages/implementing/parks.py:WPS202
     orchestrator/workflow/stages/implementing/publication.py:WPS201,WPS202
-    orchestrator/workflow/stages/implementing/read_only_relabel.py:WPS201,WPS202
     orchestrator/workflow/stages/validating/approval.py:WPS201
     orchestrator/workflow/stages/validating/dev_fix.py:WPS201
     orchestrator/workflow/stages/validating/drift.py:WPS201
