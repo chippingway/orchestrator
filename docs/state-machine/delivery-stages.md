@@ -708,12 +708,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
     issue somebody closed is owed neither;
   - **the `single` publication** (`late_settlement`, and `late_handback` behind it), asked between *each* of its own
     steps — the reconciliations, the exemption write, the handoff label, and the accepted notice — because these are
-    the barriers protecting the
-    *record* rather than an effect: the last write drops the generation entirely, and both the sweep and a receipt
-    adopted from the thread read that generation to decide there is anything to end. Past that write a refusal is
-    too late, so the answer there is a **reinstatement**: the generation is still in the call's own memory, and it
-    is written back and cancelled from there. What was published stays published — the exemption, the notice, and
-    the handoff label are none of them this owner's to take back;
+    the barriers protecting the *record* rather than an effect: the last write drops the generation entirely, and
+    both the sweep and a receipt adopted from the thread read that generation to decide there is anything to end.
+    Past that write a refusal is too late, so the answer there is a **reinstatement**: the generation is still in
+    the call's own memory, and it is written back and cancelled from there. What was published stays published —
+    the exemption, the notice, and the handoff label are none of them this owner's to take back;
   - **the reclamation itself** (`late_cleanup.py`), between every obligation it settles, between every two of the
     receipts a reclaimed ref owes its children — each is a comment on somebody *else's* issue, so a close observed
     after the first is one the second may not be written over — between the fresh consumer
