@@ -297,7 +297,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      next tick re-runs the decomposer from durable state.
   6. **Read-only check.** If the worktree now has commits or dirty files, park awaiting human and KEEP the worktree for
      operator inspection. The decomposer is read-only — without this guard, `_handle_implementing`'s recovery path
-     would later push decomposer-authored work as implementation.
+     would later push decomposer-authored work as implementation. A launch that never became a process
+     (`invoked=False` — the agent-run circuit refused it) short-circuits ahead of this check and of the pause
+     re-check above it: nothing in that worktree is its doing, and a `decomposer_dirty` park in its name would
+     overwrite the durable `agent_run_limit` one the refusal took
+     ([The agent-run circuit](labels-and-state.md#the-agent-run-circuit)).
   7. **Parse the manifest** via `_parse_manifest` (regex captures the fenced ` ```orchestrator-manifest ` block):
      - invalid manifest → park with the parse error.
      - no fenced block → treat as a question; park.

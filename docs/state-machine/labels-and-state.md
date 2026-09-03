@@ -956,7 +956,10 @@ drives the real handlers against a spent ledger so an unwired road is caught as 
   invocation is what happens next). A charge taken behind the spawn is one a crash, a timeout, or a shutdown kill
   collects for free. A tick that dies between the two writes leaves `reserved`, and the launch it was taken for
   reuses that charge; a tick that dies anywhere after `started` leaves a run nobody can prove did not happen, so the
-  next launch charges a new attempt. Nothing settles a charge by giving it back.
+  next launch charges a new attempt. Nothing settles a charge by giving it back. A spawn spends one pinned read and
+  one or two pinned writes on this — two when it charges, one when it takes over a pending `reserved` — which is
+  work proportional to agent runs rather than to ticks, so it does not move the idle per-tick floor in
+  [`configuration.md`](../configuration.md#github-rate-limits).
 - **The launch is matched, not just the phase.** A standing `reserved` is reused only when `agent_run_fingerprint`
   names this same request; a charge some other road recorded is one this launch never paid for.
 - **Durable state is re-read, and only the circuit's own fields come back.** The charge is written onto a fresh
