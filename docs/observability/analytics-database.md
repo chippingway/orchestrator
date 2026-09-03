@@ -56,9 +56,12 @@ matching `ANALYTICS_LOG_PATH`.
   `skills_evidence` tier map, the name-to-source-level `skill_levels` map, and the `skills_incidental` /
   `skills_incidental_count` path-only references) are exactly such additions, so they need **zero DDL**: an
   operator-deployed database ingests them the moment
-  `TRACK_SKILL_TRIGGERS` is enabled, with no migration and no schema reapply. `source_path` / `source_line` are forensic
-  context; the authoritative dedup key is `content_hash` — SHA-256 over the canonical (`sort_keys=True`) JSON form of
-  the record.
+  `TRACK_SKILL_TRIGGERS` is enabled, with no migration and no schema reapply. The `agent_run_budget` family's payload
+  is another: `stage` and `agent_role` are already promoted columns, and `phase`, `configured`, `allowance`, `used`,
+  `remaining`, `reservation_id`, and `reason` all land in `extras` unchanged
+  ([`event-streams.md`](event-streams.md#agent-run-budget-records-both-sinks)). `source_path` / `source_line` are
+  forensic context; the authoritative dedup key is `content_hash` — SHA-256 over the canonical (`sort_keys=True`)
+  JSON form of the record.
 - **Indexes.** A plain (non-partial) unique index on `content_hash` plus `INSERT ... ON CONFLICT (content_hash) DO
   NOTHING` makes repeated sync runs idempotent. Additional indexes cover the expected query dimensions: `ts`; `(event,
   ts)`; `(repo, issue)`; a partial index on non-null `stage`; per-event-kind partial indexes on `(repo, ts DESC)` for

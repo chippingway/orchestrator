@@ -32,6 +32,8 @@ per-file-ignores =
     orchestrator/workflow/engine/messages.py:WPS202
     orchestrator/workflow/engine/prompts.py:WPS202
     orchestrator/workflow/engine/retry_budget.py:WPS202
+    orchestrator/workflow/engine/run_budget.py:WPS202
+    orchestrator/workflow/engine/run_circuit.py:WPS202
     orchestrator/workflow/engine/run_grant.py:WPS202
     orchestrator/workflow/engine/run_ledger.py:WPS202
     orchestrator/workflow/engine/run_limit.py:WPS202
@@ -90,6 +92,11 @@ per-file-ignores =
     orchestrator/git/worktrees/paths.py:WPS202
     orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
+    tests/workflow/engine/run_circuit_test_support.py:WPS202
+    tests/workflow/engine/run_limit_test_support.py:WPS202
+    tests/workflow/engine/test_run_budget.py:WPS202
+    tests/workflow/engine/test_run_limit.py:WPS202
+    tests/workflow/engine/test_run_grant.py:WPS202
     tests/workflow/engine/usage_test_support.py:WPS202
     tests/workflow/patch_models.py:WPS202
     tests/workflow/stages/conflicts/test_settled_round.py:WPS202

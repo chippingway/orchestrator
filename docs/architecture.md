@@ -327,7 +327,11 @@ agent-run ledger is charged. `workflow/engine/run_circuit.py` is asked immediate
 mid-flight is still spent and a tick that died between the two is recognized rather than charged twice. A launch it
 refuses — an unreadable pinned comment, a write that failed, or an allowance with nothing left — invokes nothing and
 returns an `interrupted` result, which is the answer spawning handlers already return without writing durable state
-for. That "only call" is held rather than assumed:
+for. Each durable step of that charge, the park a spent lifetime takes, and the operator command that widens one are
+recorded to both observability sinks by `workflow/engine/run_budget.py` as one `agent_run_budget` family, always
+after the write that makes the step durable
+([`observability/event-streams.md`](observability/event-streams.md#agent-run-budget-records-both-sinks)). That "only
+call" is held rather than assumed:
 [`../tests/repository/test_agent_spawn_boundary.py`](../tests/repository/test_agent_spawn_boundary.py) reads the
 production tree and fails on any second module that so much as names `run_agent`, on anything but `runner.py` naming
 a backend entry, and on anything but the two backends naming `run_subprocess`. Details in

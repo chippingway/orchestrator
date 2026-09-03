@@ -25,7 +25,10 @@ the pinned state its caller holds -- and names it as a required argument, so a
 spawn road added without one does not run rather than running uncounted. It is
 deliberately outside the bookend: the audit pair and the record between them
 describe a run that happened, and a launch the circuit turned away never
-became one.
+became one. A refusal is not silent for that reason -- the circuit's own
+`agent_run_budget` records (`run_budget.py`) carry the charge a launch paid and
+the ceiling that stopped one, on both sinks, under the stage and role this
+request names.
 
 Everything after the spawn is fail-open. The record and the trajectory write
 behind it ride guards inside `recording.record_agent_exit`, and the skill
@@ -66,7 +69,11 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.observability.analytics import recording
 from orchestrator.observability.usage.metrics import UsageMetrics
-from orchestrator.workflow.engine import comments as _comments, run_circuit as _run_circuit
+from orchestrator.workflow.engine import (
+    comments as _comments,
+    run_budget as _run_budget,
+    run_circuit as _run_circuit,
+)
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -119,6 +126,21 @@ class _AgentRunRequest:
         )
         parts = ["" if part is None else str(part) for part in named]
         return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
+
+    @property
+    def launch(self) -> _run_budget.AgentRunLaunch:
+        """What the circuit charges this request under, and records it as.
+
+        The fingerprint identifies the launch to a charge taken across ticks;
+        the stage and the role are what the budget record is read BY, and they
+        are the literals the `agent_spawn` pair below already carries, so the
+        charge and the spawn cannot name different work.
+        """
+        return _run_budget.AgentRunLaunch(
+            fingerprint=self.fingerprint,
+            stage=self.stage,
+            agent_role=self.agent_role,
+        )
 
 
 def _agent_run_kwargs(request: _AgentRunRequest) -> dict[str, Any]:
@@ -216,7 +238,9 @@ def _run_agent_tracked(
     low-level `run_agent` call in the repository, so a gate here is a gate no
     road walks around. A launch the circuit refuses returns an interrupted
     result WITHOUT emitting `agent_spawn`, invoking a process, or recording an
-    exit -- there is no run to bookend. The charge goes to freshly read
+    exit -- there is no run to bookend. What it leaves instead is on the
+    circuit's own budget stream, which is where the charge an ordinary launch
+    pays is recorded too. The charge goes to freshly read
     durable state and only the fields it wrote come back onto the caller's
     object, so a reviewer spec, a moved watermark, or a session id staged
     before the spawn is still the handler's own write to make.
@@ -284,7 +308,7 @@ def _run_agent_tracked(
     if request is not None and request_fields:
         raise TypeError("pass either request or keyword request fields, not both")
     run_request = request or _AgentRunRequest(**request_fields)
-    if not _run_circuit._charge_launch(gh, budget, run_request.fingerprint):
+    if not _run_circuit._charge_launch(gh, budget, run_request.launch):
         return _run_circuit._refused_run()
     start = time.monotonic()
     gh.emit_event(

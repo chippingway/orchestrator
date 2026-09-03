@@ -18,8 +18,12 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.workflow.engine import run_grant as _run_grant
+from orchestrator.workflow.engine import (
+    run_budget as _run_budget,
+    run_grant as _run_grant,
+)
 from tests.workflow.engine import (
+    run_budget_test_support as budget,
     run_grant_test_support as grant,
     run_limit_test_support as support,
 )
@@ -43,6 +47,9 @@ _OVERLONG_DIGITS = 5000
 # What somebody writes while the tick is answering the command above it. Not a
 # command itself: what it stands for is any word a stage below is still owed.
 _RACING_WORDS = "hold off on this until Friday please"
+
+# What the read that builds a budget record answers with when it cannot.
+_LABEL_FAILURE = "label read refused"
 
 # A count is the whole of what this command says, so everything that is not
 # one whole number inside the bound reads the same way: nothing bought.
@@ -90,6 +97,11 @@ _NOT_A_REQUEST = (
         ),
     ),
 )
+
+
+def _asking(body: str = _VALID):
+    """One comment carrying a request, buyable unless the caller says else."""
+    return grant.command(body)
 
 
 class CommandGrammarTest(unittest.TestCase):
@@ -145,6 +157,26 @@ class _RacingPost:
             _RACING_WORDS, comment_id=grant.RACING_COMMENT_ID,
         ))
         return self._posting(issue, body)
+
+
+class _FlakyLabel:
+    """The label read that answers once and fails after.
+
+    A grant reads the label twice: the park's own audit phase asks ahead of
+    the write that persists the grant, and the budget record asks on the far
+    side of it. Only the second read is past the point of no return, so only
+    a failure there can strand a tick that has already changed the issue.
+    """
+
+    def __init__(self, gh) -> None:
+        self._reading = gh.workflow_label
+        self._reads = 0
+
+    def __call__(self, issue):
+        self._reads += 1
+        if self._reads > 1:
+            raise RuntimeError(_LABEL_FAILURE)
+        return self._reading(issue)
 
 
 class _ParkCase(unittest.TestCase):
@@ -263,6 +295,70 @@ class GrantTest(_ParkCase):
         self.assertFalse(lifted)
         self.assertEqual(self.gh.posted_comments, [])
         self._assert_ledger_untouched()
+
+
+class GrantRecordTest(_ParkCase):
+    """What the budget stream is told when a human buys past a ceiling.
+
+    The record is tied to the write that widens the allowance, which is what
+    an operator is counting: how often a deployment's limit has to be bought
+    past, and by how much.
+    """
+
+    def test_a_grant_records_the_ceiling_it_bought(self) -> None:
+        self._lift(_asking())
+
+        recorded = budget.audited(self.gh)[0]
+        self.assertEqual(recorded[budget.PHASE], budget.EXTENDED)
+        self.assertEqual(recorded[budget.ALLOWANCE], _GRANTED_ALLOWANCE)
+        # Nothing gives a run back, so what the grant bought is what is left.
+        self.assertEqual(recorded[budget.USED], support.ALLOWANCE)
+        self.assertEqual(recorded[budget.REMAINING], _ADDED)
+        self.assertNotIn(budget.AGENT_ROLE, recorded)
+        self.assertNotIn(budget.RESERVATION_ID, recorded)
+
+    def test_a_replayed_command_records_one_grant(self) -> None:
+        # The tick whose write was lost bought nothing durable, so the
+        # extension the next tick makes is the only one there is to report.
+        self._lost_the_write(_asking())
+
+        self._replayed()
+
+        self.assertEqual(
+            budget.phases(budget.audited(self.gh)), [budget.EXTENDED],
+        )
+
+    def test_a_record_cannot_break_the_tick_it_rides(self) -> None:
+        # The budget record is built on the far side of the grant: the park is
+        # already down and the tick is on its way to the stage its label
+        # names. A read that fails there must cost the field it was for, never
+        # the grant, the tick, or the transition both sinks are owed.
+        self._thread(_asking())
+        self.state = grant.spent_state()
+        with (
+            patch.object(
+                self.gh, "workflow_label", side_effect=_FlakyLabel(self.gh),
+            ),
+            self.assertLogs(_run_budget.log, level="ERROR"),
+        ):
+            lifted = _run_grant._lifts_the_park(
+                self.gh, self.issue, self.state,
+            )
+
+        self.assertTrue(lifted)
+        self.assertEqual(
+            self._recorded()[support.ALLOWANCE_FIELD], _GRANTED_ALLOWANCE,
+        )
+        recorded = budget.audited(self.gh)[0]
+        self.assertEqual(recorded[budget.PHASE], budget.EXTENDED)
+        self.assertNotIn(budget.STAGE, recorded)
+
+    def test_a_request_buying_nothing_records_nothing(self) -> None:
+        # A refusal moved neither count, so there is no transition for the
+        # budget stream to carry -- the receipt it earned is the whole answer.
+        self._lift(_asking("/orchestrator add-agent-runs three"))
+
+        self.assertEqual(budget.audited(self.gh), [])
 
 
 class RefusalTest(_ParkCase):

@@ -14,6 +14,7 @@ from tests.workflow.engine import usage_test_support as support
 
 BACKEND_CLAUDE = support.BACKEND_CLAUDE
 BACKEND_CODEX = support.BACKEND_CODEX
+EVENT_AGENT_EXIT = support.EVENT_AGENT_EXIT
 STAGE_IMPLEMENTING = support.STAGE_IMPLEMENTING
 ROLE_DEVELOPER = support.ROLE_DEVELOPER
 _ANALYTICS_FILENAME = support._ANALYTICS_FILENAME
@@ -107,7 +108,7 @@ class AgentAnalyticsModelFallbackTest(
                 retry_count=1,
             )
 
-        records = _analytics_records(path)
+        records = _analytics_records(path, event=EVENT_AGENT_EXIT)
         self.assertEqual(len(records), 1)
         record = records[0]
         _assert_codex_fallback_model(self, record)
@@ -149,6 +150,6 @@ class AgentAnalyticsModelFallbackTest(
                 retry_count=1,
             )
 
-        records = _analytics_records(path)
+        records = _analytics_records(path, event=EVENT_AGENT_EXIT)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["models"], [_CLAUDE_MODEL])

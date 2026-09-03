@@ -166,7 +166,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             analytics_log_path=path,
         )
 
-        records = _analytics_records(path)
+        records = _analytics_records(path, event=EVENT_AGENT_EXIT)
         self.assertEqual(len(records), 1)
         record = records[0]
         _assert_record_context(self, record)
@@ -200,7 +200,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             analytics_log_path=path,
         )
 
-        record = _analytics_records(path)[0]
+        record = _analytics_records(path, event=EVENT_AGENT_EXIT)[0]
         _assert_redacted_record(
             self,
             record,
@@ -259,7 +259,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
 
         reviewer_record = next(
             record
-            for record in _analytics_records(path)
+            for record in _analytics_records(path, event=EVENT_AGENT_EXIT)
             if record.get(_AGENT_ROLE_KEY) == ROLE_REVIEWER
         )
         _assert_reviewer_record(self, reviewer_record)
@@ -289,7 +289,7 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
             analytics_log_path=path,
         )
 
-        records = _analytics_records(path)
+        records = _analytics_records(path, event=EVENT_AGENT_EXIT)
         self.assertEqual(len(records), 1)
         record = records[0]
         self.assertEqual(record["exit_code"], -1)
@@ -336,7 +336,9 @@ class AgentAnalyticsTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
         self.assertEqual(exit_event["session_id"], "sess-x")
         self.assertEqual(exit_event["exit_code"], 0)
-        self.assertEqual(len(_analytics_records(path)), 1)
+        self.assertEqual(
+            len(_analytics_records(path, event=EVENT_AGENT_EXIT)), 1,
+        )
 
     def test_disabled_sink_writes_no_analytics_file(self) -> None:
         sentinel = _analytics_path(

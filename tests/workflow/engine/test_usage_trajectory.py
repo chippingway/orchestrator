@@ -196,7 +196,9 @@ class TrajectoryRecordingTest(unittest.TestCase):
         trajectory_records = _analytics_records(trajectory_path)
         self.assertEqual(len(trajectory_records), 1)
         _assert_trajectory_record(self, trajectory_records[0])
-        base_records = _analytics_records(analytics_path)
+        base_records = _analytics_records(
+            analytics_path, event=EVENT_AGENT_EXIT,
+        )
         self.assertEqual(len(base_records), 1)
         _assert_base_record(self, base_records[0])
 
@@ -215,7 +217,7 @@ class TrajectoryRecordingTest(unittest.TestCase):
                 sorted(path.name for path in Path(td).iterdir()),
                 [_ANALYTICS_FILENAME],
             )
-            base = _analytics_records(a_path)
+            base = _analytics_records(a_path, event=EVENT_AGENT_EXIT)
             self.assertEqual(len(base), 1)
             self.assertNotIn("user_input", base[0])
 

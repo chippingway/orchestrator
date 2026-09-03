@@ -153,6 +153,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             four audit phases over them. The late adjudication is decided by the same gate and
                             renewed by the same step, and owns its park's delivery itself, since what a refusal
                             leaves standing there is a generation's whole record
+    run_budget.py           the one record every agent-run budget transition leaves on both observability sinks:
+                            the `agent_run_budget` family, its four durable phases -- a charge reserved, the spawn
+                            it paid for, the lifetime a refusal ended, and the ceiling a command widened -- the
+                            launch identity a charge is taken under and the id a record correlates on -- the bounded
+                            head of that identity and the count the charge moved, since the identity alone repeats
+                            across charges -- the whole ledger reading every phase repeats (the configured ceiling,
+                            the allowance in force, the runs spent, and what is left of them, spelled out as a word
+                            where nothing bounds them rather than dropped), the closed vocabulary a refusal explains
+                            itself from, and the
+                            two guarded writes that reach the audit and analytics streams without either being
+                            able to cost the other or the tick -- along with the one guarded read that builds a
+                            record, since an extension's stage is asked past the write that widened the ceiling.
+                            It decides nothing and is asked only once a transition is durable, so what the stream
+                            counts is what an issue actually spent
     run_circuit.py          the charge one launch takes at the boundary a process is invoked from: the launch
                             identity a request is fingerprinted under, the two durable writes the crash window
                             lives between -- `reserved` before anything is invoked, `started` before the
@@ -160,7 +174,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             durable read the pair is written onto, the merge that carries back its own fields and
                             nothing the caller staged, and the interrupted answer every refusal returns. The park
                             below is taken here, on the reading the refusal was made on, and no process is invoked
-                            unless the charge landed
+                            unless the charge landed. Each of the three durable steps is recorded to both sinks
+                            through `run_budget.py` and recorded AFTER the write that takes it, so a reused charge
+                            reports only the spawn it paid for and a refused write reports nothing
     run_grant.py            the one command that answers the spent-ledger park below: a trusted
                             `/orchestrator add-agent-runs N`, read only while that park stands and only as an exact
                             positive count no larger than `MAX_RUNS_PER_COMMAND`. It persists an allowance of
@@ -173,7 +189,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             Both answers are marked with the comment that asked, so a post whose write never landed
                             is recognized rather than said twice, and the bare-command reading the drift hash filters
                             on lives here too -- the tick that answers the command is the tick the stage below runs
-                            on, so a hash counting it would call a body nobody edited changed requirements
+                            on, so a hash counting it would call a body nobody edited changed requirements. Only
+                            the ending that moves the ceiling reaches the shared budget stream, and only once the
+                            write that moves it has landed
     run_ledger.py           the lifetime agent-run ledger one issue is read against: the allowance in force -- the
                             issue's own where it carries one, the configured ceiling everywhere else -- the
                             monotonic count of runs it has spent, seeded and floored by the legacy `issue_agent_runs`
@@ -189,14 +207,17 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             says it once, the reconciliation that reads a bot-authored notice back off the thread
                             before repeating it, the replay the dispatcher's hold makes when nothing ever said it,
                             and the five audit phases over them -- the two the command beside it ends on included.
+                            The moment the park is TAKEN goes to the shared budget stream instead, once per park and
+                            on the write that makes it durable, carrying the launch the ceiling stopped.
                             Nothing here decides an issue is out: the ledger reading is handed in, so the park
                             quotes the numbers the refusal was made on
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the
                             skill-catalog emission, and the scheduler handoff or in-tick execution behind them
-    usage.py                the tracked agent run: the request model and the launch fingerprint taken off it, the
-                            required budget every caller names the issue and its pinned state through, the circuit
+    usage.py                the tracked agent run: the request model, the launch fingerprint taken off it and the
+                            stage / role identity a charge is recorded under,
+                            the required budget every caller names the issue and its pinned state through, the circuit
                             the sole low-level spawn is gated on, the audit spawn / exit pair, the analytics record,
                             the `skill_triggered` emission, and the per-issue counters a terminal receipt is read off
   late_split/               the late size gate's own domain: what one generation IS, apart from anything that drives

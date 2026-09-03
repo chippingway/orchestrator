@@ -73,11 +73,21 @@ def _open_pr_for(
     return pull_request
 
 
-def _analytics_records(path: Path) -> list[dict]:
+def _analytics_records(path: Path, *, event: str | None = None) -> list[dict]:
+    """Every record the sink at `path` holds, or only those of one kind.
+
+    The sink is shared by every recorder: one tracked agent run appends the
+    budget transitions its charge went through beside the exit record it
+    earned, so a caller counting one kind of record names it rather than
+    counting the lines in the file.
+    """
     if not path.exists():
         return []
-    return [
+    written = [
         json.loads(line)
         for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    if event is None:
+        return written
+    return [record for record in written if record.get("event") == event]

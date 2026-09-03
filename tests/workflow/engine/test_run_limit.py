@@ -6,7 +6,8 @@ Four things are pinned here, each one a promise the hold above this owner is
 written on: a park that is durable and stable before a word of it is said, a
 sentence scoped to the exhaustion it explains, that sentence owed until the
 thread is shown to carry it, and a park that says nothing new on the ticks
-after the one that took it.
+after the one that took it -- neither to the thread nor to the budget stream,
+which is told about a lifetime ending once because a lifetime ends once.
 """
 from __future__ import annotations
 
@@ -16,7 +17,10 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.workflow.engine import run_limit as _run_limit
 from tests.support.fakes import FakeComment, FakeUser
-from tests.workflow.engine import run_limit_test_support as support
+from tests.workflow.engine import (
+    run_budget_test_support as budget,
+    run_limit_test_support as support,
+)
 
 _MESSAGE = "message"
 
@@ -128,13 +132,22 @@ class ParkStagingTest(unittest.TestCase):
                 )
 
 
-class ParkExhaustedTest(unittest.TestCase):
-    """The composition: persist the whole park, then say it once."""
+class _ParkCase(unittest.TestCase):
+    """One issue the spent-ledger park is taken on, and the ledger it reads."""
 
     def setUp(self) -> None:
         client, issue = support.issue_and_client()
         self.gh = client
         self.issue = issue
+
+    def _park(self, state) -> None:
+        _run_limit._park_exhausted(
+            self.gh, self.issue, state, support.ledger(), support.LAUNCH,
+        )
+
+
+class ParkExhaustedTest(_ParkCase):
+    """The composition: persist the whole park, then say it once."""
 
     def test_the_park_is_durable_before_a_word_of_it(self) -> None:
         # A notice on a thread no pinned state backs is one nothing would
@@ -208,10 +221,33 @@ class ParkExhaustedTest(unittest.TestCase):
         self.assertIn(support.NOTICE, state.data)
         self.assertEqual(support.phases(self.gh), [])
 
-    def _park(self, state) -> None:
-        _run_limit._park_exhausted(
-            self.gh, self.issue, state, support.ledger(),
-        )
+
+class ParkRecordTest(_ParkCase):
+    """What the shared budget stream is told about a lifetime ending.
+
+    Once per park, on the write that makes it durable: a park is met again by
+    every launch the issue has left, so a record per meeting would report one
+    ending as a stream of them.
+    """
+
+    def test_the_tick_that_takes_the_park_records_it(self) -> None:
+        # The one budget transition a park is: the launch the ceiling turned
+        # away, with the reading the refusal was made on under it.
+        self._park(support.state_with())
+
+        recorded = budget.audited(self.gh)[0]
+        self.assertEqual(recorded[budget.PHASE], budget.EXHAUSTED)
+        self.assertEqual(recorded[budget.USED], support.ALLOWANCE)
+        self.assertEqual(recorded[budget.REMAINING], 0)
+        self.assertEqual(recorded[budget.REASON], budget.ALLOWANCE_SPENT)
+
+    def test_a_park_owing_its_sentence_records_none(self) -> None:
+        # The sentence is re-said because the thread was never told, but the
+        # lifetime ended on the tick that took the park -- and it ends once.
+        self._park(support.owing_park())
+
+        self.assertEqual(len(self.gh.posted_comments), 1)
+        self.assertEqual(budget.audited(self.gh), [])
 
 
 class NoticeDeliveryTest(unittest.TestCase):

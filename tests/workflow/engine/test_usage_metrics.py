@@ -163,7 +163,7 @@ class RunUsageSurfacedTest(unittest.TestCase):
             )
         self.assertEqual(agent_result.session_id, "sess-usage")
         self.assertIsNone(agent_result.usage)
-        self.assertEqual(_analytics_records(path), [])
+        self.assertEqual(_analytics_records(path, event=EVENT_AGENT_EXIT), [])
         self.assertIn(
             EVENT_AGENT_EXIT,
             {
@@ -181,7 +181,7 @@ class RunUsageSurfacedTest(unittest.TestCase):
             track=True,
             analytics_path=path,
         )
-        exit_record = _analytics_records(path)[0]
+        exit_record = _analytics_records(path, event=EVENT_AGENT_EXIT)[0]
         self.assertEqual(exit_record[_EVENT_KEY], EVENT_AGENT_EXIT)
         self.assertEqual(exit_record[_INPUT_TOKENS_KEY], 1000)
         self.assertEqual(
