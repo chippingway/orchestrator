@@ -997,6 +997,28 @@ drives the real handlers against a spent ledger so an unwired road is caught as 
   for any of them, and a cap that fired only after the charge would spend a run on work nothing ran.
   [`tests/workflow/engine/test_capped_launches.py`](../../tests/workflow/engine/test_capped_launches.py) drives each
   one against an issue whose ledger has room to spare.
+- **The three roles that talk pay the same meter.** The decomposer's fresh spawn and its awaiting-human resume, the
+  question stage's opening round and its resume, and the discussion stage's opening round and its resume are six
+  roads to an agent, and a road can reach the boundary naming an issue that is not the one it is spending.
+  [`tests/workflow/engine/test_charged_conversations.py`](../../tests/workflow/engine/test_charged_conversations.py)
+  drives all six through their real handlers and reads the spend back off each issue's own pinned comment — on a run
+  that finished, one the shutdown sweep killed, and one an operator paused mid-flight. The late adjudicator is a
+  seventh road and not a dispatched handler, so its case sits beside it in
+  [`tests/workflow/stages/decomposition/test_late_charged_run.py`](../../tests/workflow/stages/decomposition/test_late_charged_run.py).
+- **The charge carries nothing else out of the tick with it.** Each resumed round marks the batch of replies it quotes
+  as read BEFORE it spawns and leaves that watermark unpersisted on purpose: a round that never reports is replayed,
+  and it has to be replayed against the same replies rather than against an answer already recorded as read. The late
+  coordinator holds the retry slot it charged out of its own pre-spawn write for the same reason. Both sit inside the
+  window the two charge writes land in, so the merge that carries back only the circuit's own fields is what keeps
+  them unpublished — the paused-round cases in the two modules above are what hold it.
+- **There is no second road to a process.** The gate is worth what the number of places a run can start makes it
+  worth, so the shape is also read off the source rather than only driven:
+  [`tests/repository/test_agent_spawn_boundary.py`](../../tests/repository/test_agent_spawn_boundary.py) holds the
+  whole chain — `run_subprocess` named only by the two backends, `run_claude` / `run_codex` named only by the runner
+  that dispatches between them, and `run_agent` named only by the agents facade that republishes it and the tracked
+  boundary that calls it — and holds that call to `_run_agent_tracked` itself, with the circuit asked on a line above
+  it. A reference counts rather than a call, because a spawn bound into a variable is invoked where its name is no
+  longer written.
 
 ### Late generation state
 
