@@ -249,20 +249,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     ledger_encoding.py      what the two external ledgers are written back as: the verbatim copy that outranks the
                             typed view wherever the reader could not type the whole of one, and the only fields a
                             record with no identity still records
-    state.py                the round trip over that group, which leaves a legacy comment untouched and an
-                            unreadable obligation intact: the fail-closed read, the write that drops every late key
+    state.py                the round trip over the generation's own group, which leaves a legacy comment untouched
+                            and an unreadable obligation intact: the fail-closed read, the write that drops every key
                             first and supersedes the retirement correlation on an identity, the clear defined as
-                            that list and nothing else, and the all-or-nothing read and write of the hold's route
+                            that group and nothing else, and the all-or-nothing read and write of the hold's route
                             bookkeeping
     spends.py               the vocabulary that bounds a restored spend: every field a route may close, paired with
                             what that field may be set TO, since what comes back is applied to the pinned comment
                             and then read by the owner that knows what it is
-    endings.py              what a cycle's ending leaves behind past the write that clears it, both keys
-                            deliberately outside the group a cleared generation drops: the cycle a retirement
-                            dropped, and the two-phase terminal record beside it -- the decision naming the
-                            cycle a `rejected` is owed for, and the proof that one landed on the issue, which
-                            together are the only durable evidence that the label an operator removes to
-                            authorize a restart was ever applied, and which an attempt alone is not
+    endings.py              what a cycle's ending leaves behind past the write that clears it, both records
+                            deliberately outside the group a cleared generation drops -- three keys between them:
+                            the cycle a retirement dropped, and the two-phase terminal record beside it -- the
+                            decision naming the cycle a `rejected` is owed for, and the proof that one landed on
+                            the issue, which together are the only durable evidence that the label an operator
+                            removes to authorize a restart was ever applied, and which an attempt alone is not
     lineage.py              what a child born of a split inherits and reads back fail-closed: the lineage it
                             continues, the adjudication that created it, the snapshot ref and exact commit it may
                             reuse, and the slice it owns -- plus the two markers that claim a lineage outside the
