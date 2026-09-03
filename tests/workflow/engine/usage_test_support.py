@@ -8,8 +8,10 @@ import tempfile
 from pathlib import Path
 
 from orchestrator.agents import runner as _agent_runner
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.observability.usage import trajectory as _trajectory
-from tests.support.fakes import FakeGitHubClient
+from orchestrator.workflow.engine import run_circuit as _run_circuit
+from tests.support.fakes import FakeGitHubClient, make_issue
 from tests.workflow import (
     patch_runner as _runner,
     repo_values as _repo,
@@ -98,6 +100,20 @@ _TRAJECTORY_FAILURE_ISSUE_NUMBER = 303
 _TRAJECTORY_SINK_ISSUE_NUMBER = 562
 _SKILL_AGENT_ISSUE_NUMBER = 201
 _SKILL_REUSE_ISSUE_NUMBER = 202
+
+
+def _tracked_budget(
+    gh: FakeGitHubClient, issue_number: int,
+) -> _run_circuit.AgentRunBudget:
+    """The budget a directly driven tracked run is charged against.
+
+    The issue is registered on the client because the charge the boundary
+    takes is written to it -- these cases are about what the run behind that
+    charge records, so the issue has to be one the client can answer for.
+    """
+    issue = make_issue(issue_number, label=LABEL_IMPLEMENTING)
+    gh.add_issue(issue)
+    return _run_circuit.AgentRunBudget(issue=issue, state=PinnedState())
 
 
 def _codex_stdout_no_model(

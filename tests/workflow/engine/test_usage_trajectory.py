@@ -48,6 +48,7 @@ _TRAJECTORY_SINK_ISSUE_NUMBER = support._TRAJECTORY_SINK_ISSUE_NUMBER
 _TYPE_KEY = support._TYPE_KEY
 _USAGE_KEY = support._USAGE_KEY
 _analytics_path = support._analytics_path
+_tracked_budget = support._tracked_budget
 _analytics_records = support._analytics_records
 _claude_stdout_with_skills = support._claude_stdout_with_skills
 
@@ -132,7 +133,7 @@ def _run_trajectory(
             stderr="",
         )
         return engine_usage._run_agent_tracked(
-            gh, _TRAJECTORY_ISSUE_NUMBER,
+            gh, _tracked_budget(gh, _TRAJECTORY_ISSUE_NUMBER),
             agent_role=ROLE_DEVELOPER,
             stage=STAGE_IMPLEMENTING,
             backend=BACKEND_CLAUDE,
@@ -163,7 +164,7 @@ class TrajectoryRecordingTest(unittest.TestCase):
                 timed_out=False, stdout="", stderr="",
             )
             engine_usage._run_agent_tracked(
-                gh, _PROMPT_FORWARDING_ISSUE_NUMBER,
+                gh, _tracked_budget(gh, _PROMPT_FORWARDING_ISSUE_NUMBER),
                 agent_role=ROLE_DEVELOPER,
                 stage=STAGE_IMPLEMENTING,
                 backend=BACKEND_CLAUDE,
@@ -244,7 +245,8 @@ class TrajectoryRecordingTest(unittest.TestCase):
                     stderr="",
                 )
                 engine_usage._run_agent_tracked(
-                    gh, _TRAJECTORY_FAILURE_ISSUE_NUMBER,
+                    gh,
+                    _tracked_budget(gh, _TRAJECTORY_FAILURE_ISSUE_NUMBER),
                     agent_role=ROLE_DEVELOPER,
                     stage=STAGE_IMPLEMENTING,
                     backend=BACKEND_CLAUDE,
@@ -281,7 +283,7 @@ def _drive_trajectory_sink(
             stderr="",
         )
         engine_usage._run_agent_tracked(
-            gh, _TRAJECTORY_SINK_ISSUE_NUMBER,
+            gh, _tracked_budget(gh, _TRAJECTORY_SINK_ISSUE_NUMBER),
             agent_role=ROLE_DEVELOPER,
             stage=STAGE_IMPLEMENTING,
             backend=BACKEND_CLAUDE,

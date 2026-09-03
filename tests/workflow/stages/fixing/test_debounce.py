@@ -11,6 +11,7 @@ from tests.workflow.stages.fixing import fixing_test_support as support
 IssueScenario = support.IssueScenario
 
 ALICE = support.ALICE
+AGENT_RUN_CHARGE_WRITES = support.AGENT_RUN_CHARGE_WRITES
 AWAITING_HUMAN = support.AWAITING_HUMAN
 CONTINUE_WORD = support.CONTINUE_WORD
 DEBOUNCE_CONFIG = support.DEBOUNCE_CONFIG
@@ -237,8 +238,11 @@ class FixingDebounceAndAckTest(unittest.TestCase, _FixingFixtureMixin):
         # pre-resume bail) but produced no commit and was killed.
         mocks[RUN_AGENT].assert_called_once()
         mocks[PUSH_BRANCH].assert_not_called()
-        # Nothing persisted this tick: the seeded state stands untouched.
-        self.assertEqual(scenario.github.write_state_calls, 0)
+        # Nothing but the spawn's own charge persisted this tick: the rest of
+        # the seeded state stands untouched.
+        self.assertEqual(
+            scenario.github.write_state_calls, AGENT_RUN_CHARGE_WRITES,
+        )
         # No relabel, no ACK FYI comment.
         self.assertEqual(scenario.github.label_history, [])
         self.assertEqual(scenario.github.posted_comments, [])
@@ -286,7 +290,9 @@ class FixingDebounceAndAckTest(unittest.TestCase, _FixingFixtureMixin):
         mocks[RUN_AGENT].assert_called_once()
         # The interrupted commit is NOT pushed and nothing is consumed.
         mocks[PUSH_BRANCH].assert_not_called()
-        self.assertEqual(scenario.github.write_state_calls, 0)
+        self.assertEqual(
+            scenario.github.write_state_calls, AGENT_RUN_CHARGE_WRITES,
+        )
         self.assertEqual(scenario.github.label_history, [])
         self.assertEqual(scenario.github.posted_comments, [])
         self._pinned_data = scenario.github.pinned_data(ISSUE)

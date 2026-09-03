@@ -35,6 +35,7 @@ _RUN_AGENT_ATTR = support._RUN_AGENT_ATTR
 _agent_runner = support.agent_runner
 _TRAJECTORY_PATH_ATTR = support._TRAJECTORY_PATH_ATTR
 _analytics_path = support._analytics_path
+_tracked_budget = support._tracked_budget
 _analytics_records = support._analytics_records
 _claude_stdout = support._claude_stdout
 _codex_stdout_no_model = support._codex_stdout_no_model
@@ -95,7 +96,7 @@ class AgentAnalyticsModelFallbackTest(
             github = FakeGitHubClient()
             engine_usage._run_agent_tracked(
                 github,
-                _CODEX_FALLBACK_ISSUE_NUMBER,
+                _tracked_budget(github, _CODEX_FALLBACK_ISSUE_NUMBER),
                 agent_role=ROLE_DEVELOPER,
                 stage=STAGE_IMPLEMENTING,
                 backend=BACKEND_CODEX,
@@ -137,7 +138,7 @@ class AgentAnalyticsModelFallbackTest(
             github = FakeGitHubClient()
             engine_usage._run_agent_tracked(
                 github,
-                _CLAUDE_FALLBACK_ISSUE_NUMBER,
+                _tracked_budget(github, _CLAUDE_FALLBACK_ISSUE_NUMBER),
                 agent_role=ROLE_DEVELOPER,
                 stage=STAGE_IMPLEMENTING,
                 backend=BACKEND_CLAUDE,

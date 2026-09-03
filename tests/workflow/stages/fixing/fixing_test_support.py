@@ -160,6 +160,8 @@ PARK_AGENT_SILENT = "agent_silent"
 PARK_AGENT_QUESTION = "agent_question"
 
 AWAITING_HUMAN = "awaiting_human"
+
+AGENT_RUN_CHARGE_WRITES = fixtures.AGENT_RUN_CHARGE_WRITES
 PARK_REASON = "park_reason"
 LAST_ACTION_COMMENT_ID = fixtures.LAST_ACTION_COMMENT_ID
 REVIEW_ROUND = "review_round"

@@ -38,6 +38,7 @@ _STAGE_KEY = support._STAGE_KEY
 _TRACK_SKILLS_ATTR = support._TRACK_SKILLS_ATTR
 _TRAJECTORY_PATH_ATTR = support._TRAJECTORY_PATH_ATTR
 _claude_stdout = support._claude_stdout
+_tracked_budget = support._tracked_budget
 _claude_stdout_with_skills = support._claude_stdout_with_skills
 _skill_events = support._skill_events
 
@@ -62,7 +63,7 @@ def _run_skill_agent(
             stderr="",
         )
         return engine_usage._run_agent_tracked(
-            gh, _SKILL_AGENT_ISSUE_NUMBER,
+            gh, _tracked_budget(gh, _SKILL_AGENT_ISSUE_NUMBER),
             agent_role=ROLE_DEVELOPER,
             stage=STAGE_IMPLEMENTING,
             backend=backend,
@@ -171,7 +172,7 @@ class SkillTriggeredEventTest(unittest.TestCase):
                 timed_out=False, stdout="ignored-not-reparsed", stderr="",
             )
             engine_usage._run_agent_tracked(
-                gh, _SKILL_REUSE_ISSUE_NUMBER,
+                gh, _tracked_budget(gh, _SKILL_REUSE_ISSUE_NUMBER),
                 agent_role=ROLE_REVIEWER,
                 stage=STAGE_VALIDATING,
                 backend=BACKEND_CODEX,

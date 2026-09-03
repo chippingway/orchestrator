@@ -11,6 +11,7 @@ from tests.support.fakes import (
     make_issue,
 )
 from tests.workflow.fixtures import (
+    AGENT_RUN_CHARGE_WRITES,
     MEASURED_CANDIDATE_SHA,
     _agent,
     _issue_branch,
@@ -131,7 +132,9 @@ class HandleResolvingConflictHashDriftTest(
         mocks["_push_branch"].assert_not_called()
         # No durable state churn: the refreshed `user_content_hash`,
         # consumed-comment, and session mutations are all discarded.
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         _assert_interrupted_drift_state(self, gh)
 
 

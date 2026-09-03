@@ -302,10 +302,15 @@ per-handler routing in
 `run_agent(backend, prompt, cwd, ...)` dispatches to the per-backend runner (`codex.run_codex` /
 `claude.run_claude`); `backend` is one of `"codex"` / `"claude"` and is re-validated at call time so a
 misuse fails loudly. Both runners return a unified
-`AgentResult(session_id, last_message, exit_code, timed_out, stdout, stderr, interrupted, usage)`. `interrupted`
+`AgentResult(session_id, last_message, exit_code, timed_out, stdout, stderr, interrupted, usage, invoked)`.
+`interrupted`
 (default `False`) flags a run the runner observed exiting on SIGTERM/SIGKILL — the shape the orchestrator's
 shutdown sweep (`terminate_all_running`) produces when it kills an in-flight agent group — and is distinct
-from `timed_out` (the orchestrator's own `AGENT_TIMEOUT` firing). `usage` (default `None`) is the parsed
+from `timed_out` (the orchestrator's own `AGENT_TIMEOUT` firing). `invoked` (default `True`) says whether a process
+existed at all: every result either backend produced carries `True`, including the killed and timed-out ones, and
+only a launch the agent-run circuit turned away before the spawn carries `False`. The two are not the same
+question, and the stages that read a worktree *before* they ask about interruption need both — see
+[The agent-run circuit](state-machine/labels-and-state.md#the-agent-run-circuit). `usage` (default `None`) is the parsed
 `UsageMetrics` -- the one on `observability/usage/metrics.py` -- that `recording.record_agent_exit` attaches during a
 tracked run so callers can read token / cost metrics off the result without re-parsing stdout; it stays `None` for a
 result that never flowed through
@@ -315,6 +320,14 @@ counters `_accumulate_issue_usage` folds each run into, and the one visible rece
 [`state-machine/labels-and-state.md#pinned-state`][pinned-state] and
 [`observability/usage.md`](observability/usage.md); nothing gates on the figure. `CodexResult` is kept as a
 transitional alias.
+
+Being the only call that starts an agent process is also what makes `_run_agent_tracked` the place the lifetime
+agent-run ledger is charged. `workflow/engine/run_circuit.py` is asked immediately around it: two durable writes
+(`reserved`, then `started`) land before a process exists, so a run that crashed, timed out, or was killed
+mid-flight is still spent and a tick that died between the two is recognized rather than charged twice. A launch it
+refuses — an unreadable pinned comment, a write that failed, or an allowance with nothing left — invokes nothing and
+returns an `interrupted` result, which is the answer spawning handlers already return without writing durable state
+for. Details in [`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#the-agent-run-circuit).
 
 The role command specs (`DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT`), their parsing, the durable per-session
 lock, and the resume mechanic are documented in

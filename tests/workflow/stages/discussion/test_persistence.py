@@ -6,7 +6,8 @@ The spec and the session id are staged on the `PinnedState` the tick read at
 the top and are made durable by one write, the same contract every spawning
 stage keeps, plus the anchor and the spec that are written before it. Four
 things follow and are pinned here: a round costs one write on each side of the
-spawn, the park's write lands after the comment it records, the spec is the
+spawn -- beside the pair its own spawn charge takes between them -- the park's
+write lands after the comment it records, the spec is the
 full configured command string and is already there when the agent is invoked
 rather than after it succeeds, and a round that dies before its disposition
 leaves that provenance behind -- which is what lets the next tick classify the
@@ -27,7 +28,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-from tests.workflow.fixtures import KEY_PARK_REASON, _agent
+from tests.workflow.fixtures import (
+    AGENT_RUN_CHARGE_WRITES,
+    KEY_PARK_REASON,
+    _agent,
+)
 from tests.workflow.stages.discussion.discussion_test_support import (
     DISCUSSION_RESPONSE,
     DISCUSSION_SESSION,
@@ -98,9 +103,11 @@ class _SpawnObserver:
 class DiscussionPersistenceTest(unittest.TestCase, _DiscussionWorkflowMixin):
 
     def test_a_round_costs_one_write_each_side(self) -> None:
-        # Two writes and no more: the provenance a round that never comes back
-        # is judged by, then the disposition. The session id belongs to the
-        # second, so it never outlives the analysis it points at.
+        # One write on each side and no more: the provenance a round that
+        # never comes back is judged by, then the disposition. The session id
+        # belongs to the second, so it never outlives the analysis it points
+        # at. Between them sit only the writes the spawn's own charge takes,
+        # which carry the provenance forward and nothing of the round.
         gh, issue = _seed_discussion(_ONE_WRITE_ISSUE_NUMBER)
         recorder = _WriteRecorder(gh)
 
@@ -114,12 +121,16 @@ class DiscussionPersistenceTest(unittest.TestCase, _DiscussionWorkflowMixin):
                 ),
             )
 
-        self.assertEqual(len(recorder.writes), 2)
+        # Opened: the provenance, and nothing a park would carry -- which is
+        # also what each of the charge's own writes carries forward.
+        opened = (config.DECOMPOSE_AGENT_SPEC, HEAD_BEFORE_ROUND, None, None)
+
+        self.assertEqual(len(recorder.writes), 2 + AGENT_RUN_CHARGE_WRITES)
         self.assertEqual(
             [self._written_round(written) for written, _ in recorder.writes],
             [
-                # Opened: the provenance, and nothing a park would carry.
-                (config.DECOMPOSE_AGENT_SPEC, HEAD_BEFORE_ROUND, None, None),
+                opened,
+                *(opened for _ in range(AGENT_RUN_CHARGE_WRITES)),
                 # Parked: the session it opened and the outcome, over an
                 # anchor that stands because the round did not move the branch.
                 (
@@ -151,7 +162,9 @@ class DiscussionPersistenceTest(unittest.TestCase, _DiscussionWorkflowMixin):
 
         self.assertEqual(
             [comments_at_write for _, comments_at_write in recorder.writes],
-            [0, 1],
+            # The provenance write and the spawn's charge all predate the
+            # comment; only the park's write follows it.
+            [0 for _ in range(1 + AGENT_RUN_CHARGE_WRITES)] + [1],
         )
 
     def test_the_full_spec_is_staged_before_the_spawn(self) -> None:

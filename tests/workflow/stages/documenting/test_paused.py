@@ -29,6 +29,7 @@ from tests.support.fakes import (
 )
 from tests.workflow.fixtures import (
     _TEST_SPEC,
+    AGENT_RUN_CHARGE_WRITES,
     MEASURED_CANDIDATE_SHA,
     _agent,
     _PatchedWorkflowMixin,
@@ -173,7 +174,9 @@ class DocumentingLivePauseInitialPassTest(unittest.TestCase, _PatchedWorkflowMix
         self.assertEqual(gh.posted_pr_comments, [])
         # Durable state untouched: the pre-spawn `docs_checked_sha` write is
         # discarded and no `docs_verdict` lands.
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         state = gh.pinned_data(INITIAL_PASS_ISSUE_NUMBER)
         self.assertNotIn("docs_verdict", state)
 
@@ -218,7 +221,9 @@ class DocumentingLivePauseAwaitingHumanTest(unittest.TestCase, _PatchedWorkflowM
         self.assertEqual(gh.posted_pr_comments, [])
         # Durable state untouched: park stays put, consumed-comment watermark
         # NOT advanced, so the next tick re-consumes the reply.
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         state = gh.pinned_data(FOLLOWUP_ISSUE_NUMBER)
         self.assertTrue(state.get("awaiting_human"))
         self.assertEqual(

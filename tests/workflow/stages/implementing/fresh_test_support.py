@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from orchestrator import config
+from tests.workflow.fixtures import AGENT_RUN_CHARGE_WRITES
 from tests.workflow.stages import implementing_fixing_test_cases
 
 
@@ -67,7 +68,9 @@ def assert_interrupted_resume_state(
     issue_number,
     action_comment_id,
 ) -> None:
-    test_case.assertEqual(github.write_state_calls, before_writes)
+    test_case.assertEqual(
+        github.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+    )
     state = github.pinned_data(issue_number)
     test_case.assertTrue(state.get("awaiting_human"))
     test_case.assertEqual(

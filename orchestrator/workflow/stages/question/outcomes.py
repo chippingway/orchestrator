@@ -16,6 +16,11 @@ a clean tree gets to be an answer, and an empty message on a clean tree is a
 backend failure wearing an answer's clothes, which is why that park is the one
 carrying stderr diagnostics.
 
+A launch that never became a process is the exception to that ordering, and it
+comes before even the pause. There is no tree reading it can be blamed for: a
+checkout dirty from some earlier run is not its doing, and a `question_dirty`
+park in its name would overwrite the durable park the refusal itself took.
+
 Assessment and routing are split because the park has to be selected before any
 of it is published: the cleanup policy the outcome carries is applied by the
 caller first, so an exception while posting the park comment still leaves the
@@ -39,6 +44,13 @@ def _assess_question_outcome(
     run: _models._QuestionRun, question_result: AgentResult,
 ) -> _models._QuestionOutcome:
     """Inspect a completed agent run in the stage's required order."""
+    # A launch that never reached a process is declined ahead of everything,
+    # because everything below reads a worktree or a message for what THIS run
+    # left -- and it left nothing. The refusal has already been recorded
+    # wherever it was decided.
+    if _guards._ignore_if_never_invoked(run.issue, question_result):
+        return _models._QuestionOutcome(None, run.keep_worktree)
+
     # A live pause must leave every in-memory session and watermark mutation
     # unpersisted so the next active tick can replay the same durable state.
     if _guards._paused_during_agent_run(run.gh, run.issue):

@@ -170,6 +170,13 @@ def _process_decomposer_run(
     if decomposer_result is None:
         return
 
+    # A launch the agent-run circuit refused reached no process, so nothing
+    # below is about this run: the worktree it would be judged on carries
+    # whatever an earlier one left, and a `decomposer_dirty` park in its name
+    # would overwrite the durable park the refusal itself took.
+    if _guards._ignore_if_never_invoked(issue, decomposer_result):
+        return
+
     if _settle_decomposer_run(gh, issue, state, decomposer_result):
         return
 

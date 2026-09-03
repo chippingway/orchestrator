@@ -12,6 +12,7 @@ from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.fixtures import (
     _FAKE_WT,
     _TEST_SPEC,
+    AGENT_RUN_CHARGE_WRITES,
     MEASURED_CANDIDATE_SHA,
     _agent,
 )
@@ -282,7 +283,9 @@ class ResolvingConflictAwaitingHumanResumeTest(unittest.TestCase, _ResolvingConf
 
         mocks[RUN_AGENT].assert_called_once()
         merge_mock.assert_not_called()
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         # Park not consumed, reply watermark not advanced -- the next process
         # re-resumes on the same comment.
         _assert_interrupted_resume_state(self, gh)

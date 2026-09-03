@@ -37,6 +37,11 @@ accuse it of work it never did. Only a clean tree gets to be a design analysis,
 and an empty message on a clean tree is a backend failure wearing an analysis's
 clothes, which is why that park is the one carrying stderr diagnostics.
 
+A launch that never became a process is the exception to that whole ordering,
+and it comes before even the pause. No reading below is about it: a head that
+would not resolve and a tree an earlier round dirtied are not its doing, and a
+park in its name would overwrite the durable one the refusal itself took.
+
 Assessment and routing are the whole of this owner because the park has to be
 selected before any of it is published: what each selection then says to the
 human belongs to `parks` beside it, so a message can be reworded without
@@ -80,17 +85,34 @@ def _round_committed(
     return head_after != round_result.head_before
 
 
+def _declined_round(
+    run: _models._DiscussionRun, discussion_result,
+) -> bool:
+    """The two ways this tick turns out not to be a round at all.
+
+    A launch that never reached a process comes first, because every reading
+    below it -- the head this round is measured against, the tree it may have
+    dirtied, the reply it may have written -- is about a process that did not
+    exist, and the refusal already carries a durable park of its own that a
+    park taken here would replace.
+
+    A live pause suppresses every disposition below, leaving each in-memory
+    mutation unpersisted so the next active tick replays the same durable
+    state. A commit made by the withheld round is not lost with it: the anchor
+    written before the spawn outlives this return, and the next tick reads it
+    back rather than adopting the commit as its own baseline.
+    """
+    if _guards._ignore_if_never_invoked(run.issue, discussion_result):
+        return True
+    return _guards._paused_during_agent_run(run.gh, run.issue)
+
+
 def _assess_discussion_outcome(
     run: _models._DiscussionRun, round_result: _models._DiscussionRound,
 ) -> _models._DiscussionOutcome:
     """Inspect a completed agent round in the stage's required order."""
     discussion_result = round_result.agent_result
-    # A live pause suppresses every disposition below, leaving each in-memory
-    # mutation unpersisted so the next active tick replays the same durable
-    # state. A commit made by the withheld round is not lost with them: the
-    # anchor written before the spawn outlives this return, and the next tick
-    # reads it back rather than adopting the commit as its own baseline.
-    if _guards._paused_during_agent_run(run.gh, run.issue):
+    if _declined_round(run, discussion_result):
         return _models._DiscussionOutcome(None)
 
     run.state.set(_state._LAST_DISCUSSION_AT, _usage._now_iso())

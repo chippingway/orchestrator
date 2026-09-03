@@ -131,8 +131,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the two bare operator commands among them, since answering one edits nothing -- the dev
                             resume a drift earns, and the decomposition reset the pre-implementation route takes
                             -- manifest, session, and every claim that manifest made about the children it created
-    guards.py               what a finished agent run may leave behind: the shutdown-interruption and freshly-read
-                            pause refusals, and the awaiting-human park
+    guards.py               what a finished agent run may leave behind: the never-invoked, shutdown-interruption,
+                            and freshly-read pause refusals, and the awaiting-human park. The first is asked ahead
+                            of the second wherever a stage reads the worktree before it asks whether the run
+                            happened -- what a killed run left there is the operator's to see, and what a launch
+                            that never started left is nothing
     messages.py             the markers read out of an agent's last message, and the redact-before-truncate stderr
                             diagnostics a park carries when there was none
     pickup.py               an unlabeled issue's first tick: the author allowlist, the `DECOMPOSE` route, and the
@@ -150,6 +153,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             four audit phases over them. The late adjudication is decided by the same gate and
                             renewed by the same step, and owns its park's delivery itself, since what a refusal
                             leaves standing there is a generation's whole record
+    run_circuit.py          the charge one launch takes at the boundary a process is invoked from: the launch
+                            identity a request is fingerprinted under, the two durable writes the crash window
+                            lives between -- `reserved` before anything is invoked, `started` before the
+                            invocation -- the standing charge only the launch that took it may reuse, the fresh
+                            durable read the pair is written onto, the merge that carries back its own fields and
+                            nothing the caller staged, and the interrupted answer every refusal returns. The park
+                            below is taken here, on the reading the refusal was made on, and no process is invoked
+                            unless the charge landed
     run_grant.py            the one command that answers the spent-ledger park below: a trusted
                             `/orchestrator add-agent-runs N`, read only while that park stands and only as an exact
                             positive count no larger than `MAX_RUNS_PER_COMMAND`. It persists an allowance of
@@ -167,9 +178,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             issue's own where it carries one, the configured ceiling everywhere else -- the
                             monotonic count of runs it has spent, seeded and floored by the legacy `issue_agent_runs`
                             meter and kept running while the ceiling is off, the `reserved` / `started` phases of the
-                            launch currently holding a charge, the typed snapshot carrying what is left of the
-                            allowance, and the two fields an issue-state projection keeps of the group. It decides
-                            nothing and posts nothing: what to do about a spent ledger is the reader's
+                            launch currently holding a charge and the fingerprint naming which launch that is, the
+                            typed snapshot carrying what is left of the allowance and whether the charge standing on
+                            it is this launch's, and the two fields an issue-state projection keeps of the group. It
+                            decides nothing and posts nothing: what to do about a spent ledger is the reader's
     run_limit.py            what a spent lifetime ledger leaves: the durable `agent_run_limit` park, the sentence it
                             owes the thread scoped to the exhaustion that minted it -- the allowance in force and
                             the runs spent against it, so a notice quoting numbers the issue has moved off is
@@ -183,9 +195,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the
                             skill-catalog emission, and the scheduler handoff or in-tick execution behind them
-    usage.py                the tracked agent run: the request model, the audit spawn / exit pair, the analytics
-                            record, the `skill_triggered` emission, and the per-issue counters a terminal receipt is
-                            read off
+    usage.py                the tracked agent run: the request model and the launch fingerprint taken off it, the
+                            required budget every caller names the issue and its pinned state through, the circuit
+                            the sole low-level spawn is gated on, the audit spawn / exit pair, the analytics record,
+                            the `skill_triggered` emission, and the per-issue counters a terminal receipt is read off
   late_split/               the late size gate's own domain: what one generation IS, apart from anything that drives
                             one
     formats.py              what any late value has to look like -- a real integer, a git object id, a bounded

@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.github.labels import PAUSED_LABEL
 from tests.support.fakes import FakeGitHubClient, FakeLabel, FakePR, make_issue
-from tests.workflow.fixtures import _agent, _PatchedWorkflowMixin
+from tests.workflow.fixtures import AGENT_RUN_CHARGE_WRITES, _agent, _PatchedWorkflowMixin
 
 ISSUE = 85
 PR_NUMBER = 805
@@ -81,7 +81,9 @@ class InReviewLivePauseDriftTest(unittest.TestCase, _PatchedWorkflowMixin):
         get_issue_mock.assert_called_with(ISSUE)
         mocks["_push_branch"].assert_not_called()
         # Nothing persisted, no relabel: the drift stays unconsumed.
-        self.assertEqual(gh.write_state_calls, before_writes)
+        self.assertEqual(
+            gh.write_state_calls, before_writes + AGENT_RUN_CHARGE_WRITES,
+        )
         self.assertNotIn((ISSUE, "workflow:validating"), gh.label_history)
         self.assertNotIn((ISSUE, "workflow:documenting"), gh.label_history)
         self.assert_pause_state(gh)
