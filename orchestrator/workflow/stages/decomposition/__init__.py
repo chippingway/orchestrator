@@ -37,15 +37,20 @@ earns, `late_revision` owns the developer run guidance buys and the re-measured
 candidate it comes back with, `late_relabel` owns the label a live generation
 pins against the kill switch and a hand relabel, `late_owner` owns the fresh
 read that stands between a finished run and anything it earns,
-`late_settlement` owns what a guarded verdict becomes, `late_retry_cap` owns
-the same spent-budget park on this mode's road -- the gate its one spawn is
-charged to, and the hold that keeps a park nothing supersedes ahead of the
-evidence probe, the pull-request hold, and the content read -- `late_notice`
-owns the sentence any late park still owes the thread, `late_parks` every
-reason a late exit hands the issue back under and the durable write each of
-them rides out on, `late_coordinator` owns the order those are asked in and
-`late_outcome` what one finished reply becomes, and `late_models` carries what
-they hand each other. The budget both
+`late_settlement` owns what a guarded verdict becomes and the order a settled
+one is acted on in -- `late_reconcile` takes the hold off and settles which
+pull request the issue records, `late_proof` decides whether the publication a
+candidate was measured against is still standing somewhere the verdict may act
+on, `late_verdict_push` makes the push only this tick still holds the evidence
+for, and `late_handback` hands the label on and retires the cycle --
+`late_retry_cap` owns the same spent-budget park on this mode's road -- the
+gate its one spawn is charged to, and the hold that keeps a park nothing
+supersedes ahead of the evidence probe, the pull-request hold, and the content
+read -- `late_notice` owns the sentence any late park still owes the thread,
+`late_parks` every reason a late exit hands the issue back under and the
+durable write each of them rides out on, `late_coordinator` owns the order
+those are asked in and `late_outcome` what one finished reply becomes, and
+`late_models` carries what they hand each other. The budget both
 `retry_cap` owners are decided by is neither of theirs: it is the shared
 `engine/retry_budget.py`, so a park taken on either road is the same durable
 reason, answered by the same command, and audited on the same stream.

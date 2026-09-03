@@ -26,8 +26,8 @@ from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.stages.decomposition import (
     late_parks as _late_parks,
+    late_reconcile as _late_reconcile,
     late_relabel as _late_relabel,
-    late_settlement as _late_settlement,
     state as _state,
 )
 from orchestrator.workflow.stages.decomposition.late_models import _LateContext
@@ -193,9 +193,9 @@ def _settled_candidate_owns_the_tick(
         gh=gh, spec=spec, issue=issue, state=state,
         generation=_late_state.read_late_generation(state),
     )
-    if not _late_settlement._released_hold(context):
+    if not _late_reconcile._released_hold(context):
         return True
-    if not _late_settlement._reconciled_pr(context):
+    if not _late_reconcile._reconciled_pr(context):
         return True
     _comments._post_issue_comment(
         gh, issue, state, _SETTLED_NOTICE.format(label=WorkflowLabel.IMPLEMENTING),
