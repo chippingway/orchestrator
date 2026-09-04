@@ -34,6 +34,13 @@ branch is at, whether the base carries it, the lease a delete is pinned to --
 is asked of that same remote, so a repository it cannot reach is one this pass
 could not finish anyway, and a candidate list that quietly narrows to the local
 half would report a remote-only artifact as an issue with nothing left.
+
+The scan's own per-issue refusals are honored on both halves. An issue it
+withheld is one this host holds something for that nobody can be charged for --
+a flat pre-namespacing checkout several entries on one clone could equally own
+-- and the remote has no idea: its copy of that branch would otherwise come
+back as a remote-only candidate, and the pass would take the local ref out from
+under a checkout nothing may remove.
 """
 from __future__ import annotations
 
@@ -275,7 +282,9 @@ def _candidate_order(key: CandidateKey) -> tuple[str, int]:
 
 
 def _candidate_keys(
-    local: dict[CandidateKey, IssueArtifacts], published: PublishedBranches,
+    local: dict[CandidateKey, IssueArtifacts],
+    published: PublishedBranches,
+    withheld: frozenset[tuple[str, int]],
 ) -> tuple[CandidateKey, ...]:
     """Every repository and issue either half of the discovery named, in order.
 
@@ -283,13 +292,25 @@ def _candidate_keys(
     remote lands where the same issue would have landed had this host still
     held it -- which is what lets two discoveries of an unchanged world be
     compared.
+
+    An issue the scan withheld is dropped from BOTH halves. The scan withholds
+    one because something on this host is standing on that issue's artifacts
+    and nobody can be charged for it, and the remote knows nothing about that:
+    left in, its copy of the branch would come back as a remote-only candidate
+    and the pass would go on to take the local ref beneath a live checkout.
     """
     keyed = set(local) | {
         (spec, issue_number)
         for spec, branched in published.items()
         for issue_number in branched
     }
-    return tuple(sorted(keyed, key=_candidate_order))
+    return tuple(sorted(
+        (
+            key for key in keyed
+            if (key[0].slug, key[1]) not in withheld
+        ),
+        key=_candidate_order,
+    ))
 
 
 def _keyed_candidate(
@@ -358,7 +379,9 @@ def _maintenance_candidates(
     return MaintenanceScan(
         candidates=tuple(
             _keyed_candidate(key, local, published)
-            for key in _candidate_keys(local, published)
+            for key in _candidate_keys(
+                local, published, frozenset(scanned.withheld),
+            )
         ),
         refused=tuple(sorted(refused)),
     )

@@ -81,12 +81,23 @@ class ArtifactInventory:
     nothing to adopt or clean up -- has to skip those repositories, and this
     field is how it knows which.
 
-    `issues` is ordered by slug and then issue number, so two scans of an
-    unchanged host produce equal answers.
+    `withheld` is the same refusal one granularity down: a repository and an
+    issue number this scan will not answer for, while still answering for the
+    rest of that repository. It exists for the artifact whose name says nothing
+    -- the flat pre-namespacing checkout, which several entries on one clone
+    derive identically -- because a tree nobody may take is standing on one of
+    that issue's branches, and reporting the branch alone would hand a teardown
+    a ref to delete out from under a live checkout. A caller reading only
+    `issues` would see that issue absent and go looking for it somewhere else,
+    which is exactly what a wider scan does.
+
+    `issues` is ordered by slug and then issue number, and so are both
+    refusals, so two scans of an unchanged host produce equal answers.
     """
 
     issues: tuple[IssueArtifacts, ...]
     refused: tuple[str, ...]
+    withheld: tuple[tuple[str, int], ...] = ()
 
 
 class ProbeAnswer(StrEnum):
@@ -330,6 +341,12 @@ class MaintenanceReason(StrEnum):
     pass re-runs from the start. `TIP_UNREADABLE` is that reading not coming
     back at all.
 
+    `BRANCH_CHECKED_OUT` is the one reason about a tree this candidate does
+    not own. Some worktree of the clone is still standing on the branch --
+    an operator's own, or one this scan could not attribute -- and the
+    plumbing delete would take the ref without a word and leave that tree
+    holding a HEAD nothing resolves.
+
     The three failures name the step that would not run, because that is what
     separates the operator's next move: a checkout git refuses to remove is a
     tree on this host, a remote delete refused is a token or a branch
@@ -345,6 +362,7 @@ class MaintenanceReason(StrEnum):
     CLAIM_UNREADABLE = "claim_unreadable"
     TIP_MOVED = "tip_moved"
     TIP_UNREADABLE = "tip_unreadable"
+    BRANCH_CHECKED_OUT = "branch_checked_out"
     WORKTREE_REMOVAL_FAILED = "worktree_removal_failed"
     REMOTE_DELETE_FAILED = "remote_delete_failed"
     LOCAL_DELETE_FAILED = "local_delete_failed"

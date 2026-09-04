@@ -2,13 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """The reads an artifact has to survive before it can be reclaimed.
 
-Eight questions: whether a checkout is carrying anything loose, whether it is
+Nine questions: whether a checkout is carrying anything loose, whether it is
 hiding anything besides, whether it is the checkout this issue's own creator
 made, whether anything has touched it lately, what its branch is on, what its
-HEAD is on, what the remote says a branch is at, and whether the base the
-remote named already contains a given tip. What the answers are spent on is
-``eligibility``'s and ``maintenance``'s subject; what they ARE is this
-module's.
+HEAD is on, which branches some tree of the clone is standing on, what the
+remote says a branch is at, and whether the base the remote named already
+contains a given tip. What the answers are spent on is ``eligibility``'s and
+``maintenance``'s subject; what they ARE is this module's.
 
 Loose and hidden are two questions because git treats them as two. Untracked
 and modified paths are what it calls dirty and what `worktree remove` refuses
@@ -92,6 +92,10 @@ _HEAD = "HEAD"
 _INDEX = "index"
 
 _HEAD_REFLOG = "logs/HEAD"
+
+# How `worktree list --porcelain` spells the branch a worktree is on. A
+# detached one carries no such line at all.
+_WORKTREE_BRANCH = "branch "
 
 
 def _hardened_read(
@@ -419,6 +423,44 @@ def _last_touched(paths_touched: Iterable[Path]) -> float | None:
             return None
         newest = touched if newest is None else max(newest, touched)
     return newest
+
+
+def _checked_out_branches(spec: config.RepoSpec) -> frozenset[str] | None:
+    """Every branch a worktree of this clone still has checked out, or None.
+
+    The one thing `update-ref -d` gives up in exchange for its commit pin.
+    `branch -D` refuses to delete a branch a worktree is on, and the plumbing
+    form does it without a word -- leaving that tree holding a HEAD that names
+    a ref nothing resolves. So a caller deleting through the plumbing has to
+    ask this question itself, and it has to ask the clone rather than reason
+    from the candidate: a worktree an operator added by hand to look at a
+    finished branch is on it just as squarely as one this orchestrator made,
+    and no scan of the per-issue paths would ever name it.
+
+    `None` where the listing could not be taken, which is not the empty set a
+    clone with nothing checked out anywhere gives. A caller must not spend the
+    first as proof that no tree is standing on the branch it is about to
+    delete.
+
+    The names come back stripped of `refs/heads/`, which is how every
+    derivation in ``paths`` spells a branch, so a caller compares against them
+    without either side adjusting. A detached worktree names no branch and
+    contributes nothing.
+    """
+    listed = _clone_read(spec, "worktree", "list", "--porcelain")
+    if listed is None or listed.returncode != 0:
+        log.debug(
+            "could not list the worktrees of %s: %s",
+            spec.target_root,
+            None if listed is None else (listed.stderr or "").strip(),
+        )
+        return None
+    on_branch = f"{_WORKTREE_BRANCH}{_LOCAL_REF_PREFIX}"
+    return frozenset(
+        line[len(on_branch):]
+        for line in (listed.stdout or "").splitlines()
+        if line.startswith(on_branch)
+    )
 
 
 def _quiet_checkout(worktree: Path, since: float) -> ProbeAnswer:

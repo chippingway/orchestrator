@@ -244,22 +244,19 @@ class SharedCloneDiscoveryTest(_MaintenanceTestCase):
         self.assertEqual(found.artifacts.spec.slug, WIDGET_SLUG)
         self.assertEqual(found.layout, CandidateLayout.REMOTE_ONLY)
 
-    def test_a_shared_flat_checkout_is_nobody_s(self) -> None:
+    def test_a_shared_flat_checkout_withholds_it_all(self) -> None:
         # The path counterpart of the flat branch rule, and it is wider: the
         # flat checkout sits under a directory every entry shares, so a second
-        # configured repository is enough to make it unattributable.
+        # configured repository is enough to make it unattributable. What it
+        # takes with it is the whole issue -- the branch that tree is standing
+        # on included, on this host and on the remote.
         self.published()
         self.legacy_checkout()
 
         with self.assertLogs(LIFECYCLE_LOGGER, level=WARNING):
             found = self.discovered(self.specs)
 
-        self.assertEqual(
-            tuple(
-                candidate.artifacts.worktrees for candidate in found
-            ),
-            ((),),
-        )
+        self.assertEqual(found, ())
 
     def test_a_sibling_s_name_here_is_not_ours(self) -> None:
         # A branch spelled for the other entry that turned up on this remote is

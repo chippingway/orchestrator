@@ -143,6 +143,17 @@ class _MaintenanceTestCase(unittest.TestCase):
         _settle(worktree)
         return worktree
 
+    def sibling_on_this_clone(self) -> config.RepoSpec:
+        """A second configured repository over the very same clone.
+
+        A public and a private remote across one checkout, which is the shape
+        branch namespacing exists for -- and the one shape in which an artifact
+        carrying no slug cannot be charged to either of them.
+        """
+        sibling = _spec(GADGET_SLUG, self.clone)
+        self.world.serve_beside(sibling, SIBLING_REMOTE_DIR)
+        return sibling
+
     def sibling_on_its_own_clone(self) -> config.RepoSpec:
         """A second configured repository, on a clone and a remote of its own.
 

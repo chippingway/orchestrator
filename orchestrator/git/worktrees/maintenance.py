@@ -91,6 +91,7 @@ _OUTCOMES = MappingProxyType({
     MaintenanceReason.CLAIM_UNREADABLE: MaintenanceOutcome.RETAINED,
     MaintenanceReason.TIP_MOVED: MaintenanceOutcome.RETAINED,
     MaintenanceReason.TIP_UNREADABLE: MaintenanceOutcome.RETAINED,
+    MaintenanceReason.BRANCH_CHECKED_OUT: MaintenanceOutcome.RETAINED,
     MaintenanceReason.WORKTREE_REMOVAL_FAILED: MaintenanceOutcome.FAILED,
     MaintenanceReason.REMOTE_DELETE_FAILED: MaintenanceOutcome.FAILED,
     MaintenanceReason.LOCAL_DELETE_FAILED: MaintenanceOutcome.FAILED,
@@ -315,23 +316,52 @@ def _take_branches(
     gone: the next discovery does not name it, and that pass reports the rest
     cleaned.
 
+    Which branches some tree of this clone is still standing on is read once
+    here, after every checkout of this candidate has come down and before any
+    branch goes. It is read at all because the plumbing delete does not ask:
+    `branch -D` refuses a branch a worktree is on and `update-ref -d` takes it
+    without a word, leaving that tree holding a HEAD nothing resolves. The
+    trees that can be on it are not only this candidate's -- an operator's own
+    `worktree add` is on the branch just as squarely, and so is a checkout this
+    scan could not attribute.
+
     The first stop ends the candidate. What is left is exactly what the next
     discovery finds, and going on past a refusal would spend deletions on a
     host that has just said it is not in the state anybody read.
     """
+    standing = evidence._checked_out_branches(candidate.artifacts.spec)
     for branch in candidate.artifacts.branches:
-        proven = cleared.get(branch)
-        if proven is None:
-            return _answered(
-                candidate, MaintenanceReason.TIP_UNREADABLE, branch,
-            )
-        stopped = (
-            _take_remote_branch(candidate, branch, proven)
-            or _take_local_branch(candidate, branch, proven)
-        )
+        stopped = _take_branch(candidate, branch, cleared, standing)
         if stopped is not None:
             return stopped
     return None
+
+
+def _take_branch(
+    candidate: MaintenanceCandidate,
+    branch: str,
+    cleared: dict[str, str],
+    standing: frozenset[str] | None,
+) -> MaintenanceResult | None:
+    """Take one branch off both hosts, or say why the pass stops on it.
+
+    A listing that could not be taken keeps the branch, as every unread
+    question here does: without it nothing establishes that no tree is standing
+    on the ref about to be deleted.
+    """
+    proven = cleared.get(branch)
+    if proven is None:
+        return _answered(candidate, MaintenanceReason.TIP_UNREADABLE, branch)
+    if standing is None:
+        return _answered(candidate, MaintenanceReason.TIP_UNREADABLE, branch)
+    if branch in standing:
+        return _answered(
+            candidate, MaintenanceReason.BRANCH_CHECKED_OUT, branch,
+        )
+    return (
+        _take_remote_branch(candidate, branch, proven)
+        or _take_local_branch(candidate, branch, proven)
+    )
 
 
 def _reclaimed(

@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
 
@@ -56,13 +57,32 @@ log = logging.getLogger("orchestrator.worktree_lifecycle")
 # what that store holds.
 CloneGroups = dict[Path, tuple[config.RepoSpec, ...]]
 
-# The flat pre-namespacing checkouts, by the repository each was found to be
-# a worktree of. A repository nothing was attributed to is absent rather than
+# The flat pre-namespacing checkouts, by the repository each concerns.
+# A repository nothing was found for is absent from either map rather than
 # present with an empty entry, so a caller reads the same shape whether the
-# host holds one entry's flat checkouts or several entries' -- and one nobody
-# could be attributed to is in no entry at all.
-LegacyCheckouts = dict[config.RepoSpec, frozenset[int]]
+# host holds one entry's flat checkouts or several entries'.
+IssueNumbers = dict[config.RepoSpec, frozenset[int]]
 
+
+@dataclass(frozen=True)
+class LegacyCheckouts:
+    """What the flat pre-namespacing checkouts mean for each repository.
+
+    `held` is the attribution: the issues whose flat checkout is a worktree of
+    exactly that repository's clone, reported as its artifacts. `ambiguous` is
+    the refusal beside it: the issues whose flat checkout could be that
+    repository's or a sibling's on the same clone, which are left out of the
+    scan entirely rather than reported without the tree nobody may take.
+
+    The two are kept apart rather than collapsed into "attributed or not",
+    because they cost a caller different things. What is held is something to
+    act on; what is ambiguous is something no repository may act on at all, and
+    a scan that merely dropped it would report the branches beside it as an
+    issue with nothing standing on them.
+    """
+
+    held: IssueNumbers
+    ambiguous: IssueNumbers
 
 def _resolved_root(spec: config.RepoSpec) -> Path | None:
     """The clone this spec configures, as the one path its spellings agree on.
@@ -170,7 +190,7 @@ def _issue_artifacts(
 def _spec_inventory(
     spec: config.RepoSpec,
     branched: Mapping[int, tuple[str, ...]],
-    legacy: frozenset[int],
+    legacy: LegacyCheckouts,
 ) -> ArtifactInventory:
     """Every issue one repository has an artifact for, or a refusal for it.
 
@@ -181,20 +201,33 @@ def _spec_inventory(
     with another was refused before the scan reached here. The flat ones were
     read once for the whole host and are handed in already attributed, since
     the directory they sit in is nobody's alone.
+
+    An issue whose flat checkout could be this repository's or a sibling's is
+    left out of the answer whole -- its branches with it, and whether or not
+    this repository holds anything else for it. What makes that necessary is
+    what the checkout IS rather than what it is called: a live worktree
+    standing on one of that issue's branches. Reporting the branch while the
+    tree stayed unattributable would hand a teardown a ref to delete under a
+    checkout nobody may remove, and `update-ref` does exactly that without
+    complaint -- leaving the tree holding a HEAD that resolves to nothing.
     """
     checkouts = probes._worktree_issue_numbers(spec)
     if checkouts is None:
         return ArtifactInventory(issues=(), refused=(spec.slug,))
+    held = legacy.held.get(spec, frozenset())
+    ambiguous = legacy.ambiguous.get(spec, frozenset())
+    reportable = (checkouts | held | branched.keys()) - ambiguous
     return ArtifactInventory(
         issues=tuple(
             _issue_artifacts(
-                spec, issue_number, (checkouts, legacy), branched,
+                spec, issue_number, (checkouts, held), branched,
             )
-            for issue_number in sorted(
-                checkouts | legacy | branched.keys(),
-            )
+            for issue_number in sorted(reportable)
         ),
         refused=(),
+        withheld=tuple(
+            (spec.slug, issue_number) for issue_number in sorted(ambiguous)
+        ),
     )
 
 
@@ -235,9 +268,7 @@ def _root_inventory(
         )
     owned = attribution._attributed_issues(branches, root_specs)
     return _merged(tuple(
-        _spec_inventory(
-            spec, owned.get(spec, {}), legacy.get(spec, frozenset()),
-        )
+        _spec_inventory(spec, owned.get(spec, {}), legacy)
         for spec in reportable
     ))
 
@@ -259,16 +290,19 @@ def _merged(
         refused=tuple(sorted({
             slug for scan in inventories for slug in scan.refused
         })),
+        withheld=tuple(sorted({
+            held for scan in inventories for held in scan.withheld
+        })),
     )
 
 
-def _legacy_owner(
+def _legacy_claimants(
     issue_number: int,
     clones: dict[config.RepoSpec, Path | None],
-) -> config.RepoSpec | None:
-    """Which configured repository one flat checkout is a worktree of."""
+) -> tuple[config.RepoSpec, ...]:
+    """Which configured repositories one flat checkout could be a worktree of."""
     worktree = paths._legacy_worktree_path(issue_number)
-    return attribution._legacy_checkout_owner(
+    return attribution._legacy_checkout_claimants(
         probes._checkout_clone(worktree), clones, str(worktree),
     )
 
@@ -276,7 +310,14 @@ def _legacy_owner(
 def _attributed_legacy(
     configured: tuple[config.RepoSpec, ...], flat: frozenset[int],
 ) -> LegacyCheckouts:
-    """Which repository each flat pre-namespacing checkout belongs to.
+    """Which repository each flat pre-namespacing checkout concerns, and how.
+
+    Two answers rather than one, because a checkout nobody can be charged for
+    is not the same as one that is not there. A single claimant HOLDS it, and
+    the checkout is reported as that repository's artifact. Several claimants
+    hold an issue this scan must not report at all: the tree is standing on one
+    of that issue's branches, and reporting the branch without the tree hands a
+    teardown a ref to delete out from under a live checkout.
 
     The clones are resolved once for the whole host and only when there is
     something to attribute, because that read costs a git process per
@@ -285,16 +326,31 @@ def _attributed_legacy(
     """
     counted = attribution._countable_legacy_checkouts(configured, flat)
     if not counted:
-        return {}
+        return LegacyCheckouts(held={}, ambiguous={})
+    legacy = LegacyCheckouts(held={}, ambiguous={})
     clones = {
         spec: probes._checkout_clone(spec.target_root) for spec in configured
     }
-    owned: LegacyCheckouts = {}
     for issue_number in sorted(counted):
-        owner = _legacy_owner(issue_number, clones)
-        if owner is not None:
-            owned[owner] = owned.get(owner, frozenset()) | {issue_number}
-    return owned
+        _file_claimants(
+            legacy, issue_number, _legacy_claimants(issue_number, clones),
+        )
+    return legacy
+
+
+def _file_claimants(
+    legacy: LegacyCheckouts,
+    issue_number: int,
+    claimants: tuple[config.RepoSpec, ...],
+) -> None:
+    """File one flat checkout under every repository it concerns.
+
+    One claimant holds it; several mean nobody may act on that issue at all,
+    and each of them has to be told which issue to leave alone.
+    """
+    filed = legacy.held if len(claimants) == 1 else legacy.ambiguous
+    for spec in claimants:
+        filed[spec] = filed.get(spec, frozenset()) | {issue_number}
 
 
 def _scanned(

@@ -35,6 +35,7 @@ from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,
     WIDGET_SLUG,
     _legacy_branch,
+    _namespaced_branch,
 )
 from tests.git.worktrees.candidate_host_test_support import (
     _branch_at,
@@ -48,6 +49,7 @@ from tests.git.worktrees.eligibility_test_support import (
     _terminal_issue,
 )
 from tests.git.worktrees.maintenance_test_support import (
+    LIFECYCLE_LOGGER,
     SETTLED_SECONDS,
     _always_claimed,
     _MaintenanceTestCase,
@@ -67,6 +69,9 @@ IGNORE_FILE = ".gitignore"
 HIDDEN_FILE = "secrets.env"
 HIDDEN_CONTENT = "TOKEN=an operator's own\n"
 IMPLEMENTING_LABEL = "workflow:implementing"
+OTHER_ISSUE_NUMBER = 315
+# Where an operator puts a worktree to look at a finished branch.
+INSPECTED_DIR = "inspected"
 OBJECT_ID_LENGTH = 40
 # The teardown step several cases install a refusal on.
 REMOTE_DELETE = "_delete_remote_branch_at"
@@ -178,6 +183,109 @@ class LegacyLayoutCleanupTest(_MaintenanceTestCase):
         )
         self.assertTrue(flat.exists())
         self.assertEqual(self.remote_branches(), (self.branch, legacy))
+
+
+class SharedCloneCleanupTest(_MaintenanceTestCase):
+    """An unattributable flat checkout takes its whole issue out of the pass.
+
+    Two entries over one clone, and a flat checkout standing on one of that
+    issue's branches. Nothing on disk says which entry made the tree, so
+    nothing may take it -- and the branch it is standing on may not go either.
+    A pass that reported the branch alone would delete the ref under a live
+    checkout and answer `cleaned`, leaving that tree holding a HEAD nothing
+    resolves and no artifact any later discovery could find it by.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.specs = (self.spec, self.sibling_on_this_clone())
+
+    def test_an_ambiguous_flat_checkout_stops_it(self) -> None:
+        self.landed()
+        flat = self.legacy_checkout()
+
+        with self.assertLogs(LIFECYCLE_LOGGER, level=WARNING):
+            swept = self.swept(self.discovered(self.specs))
+
+        self.assertEqual(swept, ())
+        self.assertTrue(flat.exists())
+        self.assertEqual(self.local_branches(), self.only_branch)
+        self.assertEqual(self.remote_branches(), self.only_branch)
+
+    def test_the_tree_left_alone_still_has_a_head(self) -> None:
+        # What the branch deletion would have cost: the checkout is standing on
+        # that ref, so taking it leaves the tree pointing at nothing.
+        self.landed()
+        flat = self.legacy_checkout()
+
+        with self.assertLogs(LIFECYCLE_LOGGER, level=WARNING):
+            self.swept(self.discovered(self.specs))
+
+        self.assertEqual(
+            _run_git("rev-parse", "--verify", "HEAD", cwd=flat).returncode, 0,
+        )
+
+    def test_another_issue_there_is_still_swept(self) -> None:
+        # The refusal is about the issue whose tree nobody can attribute, not
+        # about the repositories sharing the clone.
+        other = _namespaced_branch(WIDGET_SLUG, OTHER_ISSUE_NUMBER)
+        self.gh.add_issue(_terminal_issue(OTHER_ISSUE_NUMBER))
+        self.gh.seed_state(OTHER_ISSUE_NUMBER)
+        tip = self.landed()
+        self.legacy_checkout()
+        _branch_at(self.clone, other, tip)
+        self.world.publish(self.clone, other, tip)
+
+        with self.assertLogs(LIFECYCLE_LOGGER, level=WARNING):
+            swept = self.swept(self.discovered(self.specs))
+
+        self.assertEqual(len(swept), 1)
+        self.assertEqual(swept[0].outcome, MaintenanceOutcome.CLEANED)
+        self.assertEqual(
+            swept[0].candidate.artifacts.issue_number, OTHER_ISSUE_NUMBER,
+        )
+        self.assertEqual(self.local_branches(), self.only_branch)
+
+
+class CheckedOutBranchTest(_MaintenanceTestCase):
+    """A branch some tree of the clone is standing on is never deleted.
+
+    The safety `update-ref -d` gives up for its commit pin. The trees that can
+    be on a branch are not only the ones a scan names: an operator adding a
+    worktree to look at a finished branch is standing on it just as squarely,
+    and nothing about the per-issue paths would ever report that.
+    """
+
+    def test_a_worktree_elsewhere_keeps_the_branch(self) -> None:
+        self.landed()
+        inspected = self.world.checkout_at(
+            self.spec, self.world.path(INSPECTED_DIR), self.branch,
+        )
+
+        swept = self.only_result()
+
+        self.assertEqual(swept.outcome, MaintenanceOutcome.RETAINED)
+        self.assertEqual(swept.reason, MaintenanceReason.BRANCH_CHECKED_OUT)
+        self.assertEqual(swept.subject, self.branch)
+        self.assertEqual(self.local_branches(), self.only_branch)
+        self.assertEqual(
+            _run_git("rev-parse", "--verify", "HEAD", cwd=inspected).returncode,
+            0,
+        )
+
+    def test_a_listing_that_failed_keeps_the_branch(self) -> None:
+        # Without it nothing establishes that no tree is standing on the ref,
+        # which is the one thing this read is spent on.
+        self.landed()
+
+        with patch.object(
+            maintenance.evidence, "_checked_out_branches", return_value=None,
+        ):
+            swept = self.only_result()
+
+        self.assertEqual(swept.outcome, MaintenanceOutcome.RETAINED)
+        self.assertEqual(swept.reason, MaintenanceReason.TIP_UNREADABLE)
+        self.assertEqual(self.local_branches(), self.only_branch)
 
 
 class DistinctCloneCleanupTest(_MaintenanceTestCase):

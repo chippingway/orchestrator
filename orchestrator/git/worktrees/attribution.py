@@ -195,12 +195,12 @@ def _countable_legacy_checkouts(
     )
 
 
-def _legacy_checkout_owner(
+def _legacy_checkout_claimants(
     clone: Path | None,
     clones: Mapping[config.RepoSpec, Path | None],
     subject: str,
-) -> config.RepoSpec | None:
-    """The one configured repository a flat checkout belongs to, or none.
+) -> tuple[config.RepoSpec, ...]:
+    """Every configured repository a flat checkout could be a worktree of.
 
     The flat layout carries no slug, so unlike every other rule here the
     question cannot be settled by re-deriving a name: `WORKTREES_DIR/issue-<n>`
@@ -210,21 +210,29 @@ def _legacy_checkout_owner(
     several repositories on several clones still attributes each flat checkout
     to the one entry whose clone it is a worktree of.
 
-    Three answers come back as nobody's, and each is the fail-closed reading of
-    its case. A clone that could not be read establishes nothing. A clone no
-    configured entry is on is somebody else's repository sitting where this
-    orchestrator used to put a checkout. And a clone more than one entry is on
-    is the shared-clone ambiguity the legacy BRANCH rule already refuses over,
-    reaching the paths one derivation later: the two entries published to that
-    store under one name, and nothing on disk says which of them checked it
-    out.
+    Every claimant is returned rather than only the answer, because the caller
+    needs both halves of it. ONE claimant is an attribution: that entry holds
+    the checkout and reports it as an artifact. SEVERAL is the shared-clone
+    ambiguity the legacy BRANCH rule already refuses over, reaching the paths
+    one derivation later -- and it is not enough to drop the checkout, because
+    a tree nobody may touch is standing on one of that issue's branches, and
+    deleting the branch under it would leave it holding a HEAD that resolves to
+    nothing. Naming those claimants is how the caller knows whose issue to
+    leave alone entirely.
+
+    A clone that could not be read is answered as EVERY configured entry, for
+    the same reason: nothing was established, so nothing about that issue may
+    be acted on anywhere. A clone no configured entry is on is a repository
+    somebody else made where this orchestrator used to put a checkout, and it
+    claims nobody: no branch of ours is under it, so no deletion of ours can
+    strand it.
     """
     if clone is None:
         log.warning(
             "could not tell which clone the flat checkout %s is of; leaving "
-            "it alone", subject,
+            "every repository's copy of that issue alone", subject,
         )
-        return None
+        return tuple(clones)
     owners = tuple(
         spec for spec, configured_at in clones.items()
         if configured_at is not None and configured_at == clone
@@ -232,17 +240,16 @@ def _legacy_checkout_owner(
     if len(owners) > 1:
         log.warning(
             "the flat checkout %s could belong to any of %s; refusing to "
-            "attribute it rather than charging one of them for it",
+            "attribute it, and leaving that issue's artifacts alone in all "
+            "of them",
             subject, _LISTED.join(spec.slug for spec in owners),
         )
-        return None
-    if not owners:
+    elif not owners:
         log.debug(
             "the flat checkout %s is no configured repository's; leaving it "
             "alone", subject,
         )
-        return None
-    return owners[0]
+    return owners
 
 
 def _colliding_worktree_slugs(

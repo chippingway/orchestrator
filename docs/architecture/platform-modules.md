@@ -342,7 +342,8 @@ orchestrator/
       decomposition.py  the decomposer scratch path, its detached creation, and its best-effort removal
       terminal.py       question-stage teardown and terminal local and remote branch cleanup
       models.py         one issue's local artifacts and the whole answer a scan gives -- the issues it attributed
-                        beside the repositories it will not answer for -- plus what a classification over them
+                        beside the repositories it will not answer for and the single issues it withholds from
+                        one that it otherwise does -- plus what a classification over them
                         says: the three answers a fail-closed read has, the ref reading that carries a commit
                         with them, the reasons, subjects, and verdict a retained candidate is reported as, and
                         the commits an eligible one hands over as cleared
@@ -362,10 +363,14 @@ orchestrator/
                         none of them. The flat pre-namespacing checkout is the one artifact no name can settle,
                         since every entry derived it identically, so it is attributed by the clone the directory
                         turns out to be a worktree of -- which leaves exactly the shared-clone case ambiguous and
-                        every host whose entries keep their own clones answered
+                        every host whose entries keep their own clones answered. That one case names every
+                        claimant rather than nobody, because a tree none of them may take is standing on one of
+                        that issue's branches: the scan has to withhold the issue, not just the directory
       inventory.py      the read-only scan over those reads: the flat checkouts read once for the host and put
-                        to the clone each is a worktree of, paid for only where that listing found something;
-                        which entries share a clone, one listing per clone,
+                        to the clone each is a worktree of, paid for only where that listing found something --
+                        one claimant holds the checkout, several withhold the whole issue from every one of them,
+                        branches included, since reporting a branch whose tree nobody may remove is handing out a
+                        ref to delete under a live checkout; which entries share a clone, one listing per clone,
                         worktree-only and branch-only candidates deduplicated into one entry per issue -- both
                         checkout layouts of one issue among them, since a host running across the migration can
                         hold the flat tree and the per-repository one at once -- and a
@@ -373,13 +378,15 @@ orchestrator/
                         derives, or whose read failed left out of the answer rather than reported empty -- and
                         still put to the attribution, since a repository this scan will not answer for is one the
                         flat branch on its clone could equally belong to
-      evidence.py       the eight hardened reads a candidate is judged by -- a checkout that is a worktree of
+      evidence.py       the nine hardened reads a candidate is judged by -- a checkout that is a worktree of
                         this clone (asked of `probes`, which owns that identity read) and on one of this issue's
                         own branch names, a tree that PROVED it carries
                         nothing loose and one that PROVED it hides nothing besides, a tree that PROVED nothing
                         has touched it since a caller-named instant -- its own directory for what is created or
                         removed at the top of it, and the index and reflog under its own git directory for the
-                        edit-and-commit that moves neither -- a local branch tip, the
+                        edit-and-commit that moves neither -- which branches some tree of the clone is standing on,
+                        since the plumbing delete takes a ref out from under a live checkout where `branch -D`
+                        refuses, a local branch tip, the
                         commit the checkout's own HEAD stands on and which branch
                         that HEAD is, what the REMOTE
                         says a branch is at, and whether the base the remote named already contains a given tip
@@ -428,7 +435,8 @@ orchestrator/
                         every artifact it holds, branches and checkouts alike, with the last decided on where the
                         artifacts are rather than what they are called. A repository whose remote will
                         not answer is refused outright, since every question after this one goes to that same
-                        remote
+                        remote; an issue the scan withheld is dropped from both halves, since the remote's copy of
+                        its branch would otherwise revive exactly the candidate the host refused
       reclaim.py        the three commit-pinned teardown steps, each behind a total boundary and each refused
                         by git or by the remote rather than
                         by the reading in front of it: the removal that does not force, so a tree written in
@@ -444,7 +452,9 @@ orchestrator/
                         clone, so a failed remote delete leaves the local ref standing and the candidate
                         discoverable. Every tip is re-read against the proof immediately before the mutation it
                         gates, and an artifact the classification cleared no commit for ends the pass rather than
-                        being passed over: a name that is gone at one reading can be back at the next. One
+                        being passed over: a name that is gone at one reading can be back at the next. A branch
+                        any tree of the clone is standing on ends it too -- an operator's own `worktree add` is on
+                        it as squarely as a checkout this scan named. One
                         bounded result per candidate: `cleaned`, `retained`, or `failed`, the closed reason that
                         fixes which, the artifact it names, and the classification's own retentions where those
                         are what kept it. Nothing is written down and no label, pinned state, comment, or session
