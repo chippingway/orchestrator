@@ -64,7 +64,7 @@ last is held by the loader itself rather than by a check.
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
   `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that
   log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the ten `git/worktrees/`
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the nine `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
   `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
