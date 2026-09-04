@@ -6,7 +6,8 @@ from __future__ import annotations
 import unittest
 from types import MappingProxyType
 
-from orchestrator.workflow.late_split import records as _records
+from orchestrator.git.measurement.models import MeasurementFailure
+from orchestrator.workflow.late_split import events as _events, records as _records
 from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.state import WorkflowLabel
 from tests.workflow.late_split import generation_test_support as _support
@@ -36,6 +37,9 @@ _ENTERED_APART = (
     {"published_pr_number": _support.PUBLISHED_PR_NUMBER + 1},
     {"published_sha": "f" * _support.SHA_LENGTH},
 )
+# The same step, reported by a transport that failed a different way: what a
+# human reads to tell an expired token from a host that was down.
+_SAID_OTHERWISE = "fatal: unable to access: Could not resolve host"
 
 
 def _keyed(event, generation_fields=None, **envelope) -> tuple:
@@ -186,6 +190,34 @@ class OutcomeFieldTest(unittest.TestCase):
             for target in (_support.DECOMPOSING, _IMPLEMENTING)
         )
         self.assertNotEqual(aimed[0], aimed[1])
+
+    def test_two_refused_readings_apart_are_two_steps(self) -> None:
+        # Both reach a sink as `measurement_failed`, so a key blind to the
+        # step and the line under it would collapse a base a fetch cannot
+        # bring and a diff nothing can pin into one retried reading -- and
+        # with them the run of misses an operator counts them by.
+        stopped = _keyed(_events.measurement_failure_event(
+            _support.MEASUREMENT_STEP, _support.FAILURE_DETAIL,
+        ))
+        for apart in (
+            (MeasurementFailure.DIFF_UNPINNABLE, _support.FAILURE_DETAIL),
+            (_support.MEASUREMENT_STEP, _SAID_OTHERWISE),
+        ):
+            with self.subTest(step=str(apart[0])):
+                self.assertNotEqual(
+                    _keyed(_events.measurement_failure_event(*apart)), stopped,
+                )
+
+    def test_one_refused_reading_retried_is_one_step(self) -> None:
+        retried = _events.measurement_failure_event(
+            _support.MEASUREMENT_STEP, _support.FAILURE_DETAIL,
+        )
+        self.assertEqual(
+            _keyed(retried),
+            _keyed(_events.measurement_failure_event(
+                _support.MEASUREMENT_STEP, _support.FAILURE_DETAIL,
+            )),
+        )
 
     def test_two_measurements_apart_are_two_steps(self) -> None:
         # What a candidate was measured against, and what the measurement

@@ -38,6 +38,29 @@ answers `UNKNOWN` for everything it does not recognize, so an adjudication's
 rationale -- the sentences, the file names in them -- has no path into a record
 at all. That is deliberate: the vocabulary can be widened here, in a review,
 and cannot be widened by what an agent happened to write.
+
+The failure family has two companions of its own, and both are optional
+because most of its members answer for a step that took no reading at all. A
+size measurement that did not happen carries `measurement_failure` -- the git
+layer's own vocabulary for WHICH step it stopped at -- so an analysis can tell
+a base the remote would not name from a diff nothing here can pin, both of
+which reach the sinks as `measurement_failed` and neither of which is the same
+operator's next move. Beside it `detail` carries the one line that step wrote
+for itself: free text, and the only field in this domain that is, because the
+member says which step and nothing whatever about why. It is bounded rather
+than trusted -- one line, capped, and already scrubbed of the credential by
+the transport that produced it -- and `measurement_failure_event` is the one
+constructor that shapes a raw diagnostic into what the contract will accept,
+so an emitter cannot widen the field by handing over more than it holds.
+
+Both are pinned to `measurement_failed` and the line to the step, because a
+field allowed beside every member describes none of them. A snapshot the
+remote refused and a restart GitHub declined took no reading, so neither has
+a step to name or a line to carry; and the roads that refuse a RECORD rather
+than a reading -- a pinned comment too damaged to act on, a debt no push can
+pay -- hold a sentence written for a human instead, which is exactly the prose
+this domain gives no field to. So the contract refuses the companions on any
+other failure, and refuses a line with no step over it.
 """
 from __future__ import annotations
 
@@ -46,6 +69,7 @@ from enum import StrEnum
 from types import MappingProxyType
 from typing import Any
 
+from orchestrator.git.measurement.models import MeasurementFailure
 from orchestrator.workflow.late_split import formats as _formats
 from orchestrator.workflow.late_split.models import (
     MAX_RESOURCE_TARGET,
@@ -65,6 +89,8 @@ _VERDICT = "verdict"
 _CATEGORY = "category"
 _CHILD_COUNT = "child_count"
 _FAILURE = "failure"
+_MEASUREMENT_FAILURE = "measurement_failure"
+_DETAIL = "detail"
 _RESOURCE = "resource"
 _RESTART_STEP = "restart_step"
 
@@ -74,9 +100,17 @@ _DETAIL_FIELDS = (
     _CATEGORY,
     _CHILD_COUNT,
     _FAILURE,
+    _MEASUREMENT_FAILURE,
+    _DETAIL,
     _RESOURCE,
     _RESTART_STEP,
 )
+
+# How much of a failed step's own line a record may carry. Long enough for the
+# sentence git leads with -- which is where it names the fault -- and short
+# enough that a field no vocabulary bounds cannot become a transcript in two
+# append-only sinks.
+MAX_FAILURE_DETAIL = 200
 
 
 class LateEventFamily(StrEnum):
@@ -120,7 +154,7 @@ class LateRestartStep(StrEnum):
 _FAMILY_FIELDS = MappingProxyType({
     LateEventFamily.MEASUREMENT: ((), ()),
     LateEventFamily.VERDICT: ((_VERDICT,), (_CATEGORY, _CHILD_COUNT)),
-    LateEventFamily.FAILURE: ((_FAILURE,), ()),
+    LateEventFamily.FAILURE: ((_FAILURE,), (_MEASUREMENT_FAILURE, _DETAIL)),
     LateEventFamily.SNAPSHOT: ((_RESOURCE,), ()),
     LateEventFamily.CLEANUP: ((_RESOURCE,), ()),
     LateEventFamily.CANCELLATION: ((), ()),
@@ -133,6 +167,8 @@ _DETAIL_TYPES = MappingProxyType({
     _CATEGORY: LateVerdictCategory,
     _CHILD_COUNT: int,
     _FAILURE: LateFailure,
+    _MEASUREMENT_FAILURE: MeasurementFailure,
+    _DETAIL: str,
     _RESOURCE: LateResource,
     _RESTART_STEP: LateRestartStep,
 })
@@ -143,6 +179,13 @@ _DETAIL_TYPES = MappingProxyType({
 _COUNTED_VERDICT = LateVerdict.SPLIT
 
 _CATEGORIZED_VERDICT = LateVerdict.QUESTION
+
+# The failure the two measurement companions belong to and only to. Every
+# other member of that vocabulary names a step that took no reading -- a
+# snapshot the remote refused, a hold nobody could release, a restart GitHub
+# declined -- so one of them carrying `base_absent` would report a measurement
+# stopping where no measurement was taken.
+_MEASURING_FAILURE = LateFailure.MEASUREMENT_FAILED
 
 
 @dataclass(frozen=True)
@@ -158,6 +201,8 @@ class LateEvent:
     category: LateVerdictCategory | None = None
     child_count: int | None = None
     failure: LateFailure | None = None
+    measurement_failure: MeasurementFailure | None = None
+    detail: str | None = None
     resource: LateResource | None = None
     restart_step: LateRestartStep | None = None
 
@@ -173,7 +218,7 @@ class LateEvent:
         reaching it came through this constructor.
         """
         self._check_family()
-        self._check_verdict()
+        self._check_companions()
         self._check_types()
 
     def _check_family(self) -> None:
@@ -185,13 +230,25 @@ class LateEvent:
         self._refuse(supplied - set(required) - set(optional), _NOT_CARRIED)
         self._refuse(set(required) - supplied, _REQUIRES)
 
-    def _check_verdict(self) -> None:
-        """Refuse a companion field paired with the wrong verdict.
+    def _check_companions(self) -> None:
+        """Refuse a companion field paired with the wrong member.
+
+        Two families qualify one of their own required fields, and in both
+        the pairing is exact rather than merely permitted -- a field allowed
+        beside every member says nothing about which one it describes.
 
         A child count is a split's and nobody else's, in both directions. A
         category is required of a question and allowed of any verdict, because
         why a candidate stayed one change is exactly as worth counting as why
         a human was asked.
+
+        The failure's two describe a MEASUREMENT that did not happen, so they
+        belong to that member alone, and the line belongs to the step rather
+        than to the family: a refusal naming no step took no reading whose
+        line this could be, and what those roads have instead is their own
+        prose about which part of a record a human has to repair. Allowed
+        loose, that sentence is a field for prose to reach two append-only
+        sinks through.
         """
         supplied = self._supplied_fields()
         if self.verdict == _COUNTED_VERDICT:
@@ -200,6 +257,10 @@ class LateEvent:
             self._refuse({_CHILD_COUNT} & supplied, _NOT_CARRIED)
         if self.verdict == _CATEGORIZED_VERDICT:
             self._refuse({_CATEGORY} - supplied, _REQUIRES)
+        if self.failure != _MEASURING_FAILURE:
+            self._refuse({_MEASUREMENT_FAILURE, _DETAIL} & supplied, _NOT_CARRIED)
+        elif _MEASUREMENT_FAILURE not in supplied:
+            self._refuse({_DETAIL} & supplied, _NOT_CARRIED)
 
     def _check_types(self) -> None:
         """Refuse a detail that is a lookalike rather than a member."""
@@ -232,6 +293,41 @@ class LateEvent:
             raise _formats.InvalidLateValue(f"{named!s} {reason}: {listed}")
 
 
+def measurement_failure_event(asked: Any, detail: Any = "") -> LateEvent:
+    """The `late_failure` one refused size reading is recorded as.
+
+    The single constructor for the family's widened shape, published here
+    rather than left to each seam that measures, because every one of them
+    holds the same two raw values and none of them owns what the record may
+    say about them. Both are reduced to what the contract accepts rather than
+    offered as they arrived: an unbounded diagnostic refused at construction
+    would cost the whole record, and the record is the only account there is
+    of a reading that did not happen.
+
+    `asked` is the step the git layer stopped at, and it is recorded only when
+    it IS a member. The size gate parks on refusals that name no measurement
+    at all -- a pinned record too damaged to act on, a debt nothing can pay --
+    and those are still `measurement_failed` on both sinks, saying nothing
+    about a step no reading reached.
+
+    The line goes with the step and never without it. A refusal that named no
+    step took no reading whose line this could be, and what those roads hold
+    instead is the sentence they were about to tell a human -- which is prose,
+    and prose has no field on a late record. So the two are recorded together
+    or not at all, and the contract refuses the pair the other way round.
+    """
+    step = asked if isinstance(asked, MeasurementFailure) else None
+    return LateEvent(
+        family=LateEventFamily.FAILURE,
+        failure=LateFailure.MEASUREMENT_FAILED,
+        measurement_failure=step,
+        detail=(
+            None if step is None
+            else _formats.bounded_line(detail, MAX_FAILURE_DETAIL)
+        ),
+    )
+
+
 def verdict_category(asked: str | None) -> LateVerdictCategory:
     """Map a parsed adjudication category onto the closed vocabulary.
 
@@ -253,15 +349,23 @@ def verdict_category(asked: str | None) -> LateVerdictCategory:
 
 
 def _is_typed(given: Any, wanted: type) -> bool:
-    """Whether one detail is the member, count, or resource it claims to be.
+    """Whether one detail is the member, count, text, or resource it claims.
 
     A resource is checked through to its own fields, because the kind is what
     a record reports: a `LateResource` built with a string for its kind would
     otherwise put that string in the payload under the field named for the
     vocabulary.
+
+    Free text is the one field with no vocabulary behind it, so what stands in
+    for membership is the bound: one line, capped, and nothing trailing. A
+    diagnostic that arrived as a transcript is refused here rather than
+    written, which is why the emitters reduce theirs through
+    `measurement_failure_event` instead of handing over what they were given.
     """
     if wanted is int:
         return _formats.whole_number(given) and given >= 0
+    if wanted is str:
+        return _formats.is_bounded_text(given, MAX_FAILURE_DETAIL)
     if not isinstance(given, wanted):
         return False
     if wanted is not LateResource:

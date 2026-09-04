@@ -38,6 +38,7 @@ from tests.workflow.stages.decomposition.late_revision_support import (
     DIRTY_TREE,
     REMEASURED_OVERSIZED,
     UNMEASURED,
+    UNMEASURED_DETAIL,
     PausedDuringRun,
     RevisionCase,
 )
@@ -186,12 +187,24 @@ class RevisedCandidateTest(RevisionCase):
         pinned = self._pinned()
         self.assertEqual(pinned[KEYS.park_reason], PARK_REVISION_UNMEASURED)
         self.assertEqual(pinned[KEYS.candidate_sha], CANDIDATE_SHA)
+        # The same family and typed failure the size gate writes, and the
+        # same two companions: a re-measurement is taken in a checkout an
+        # agent has been running in, so the step it stopped at is what tells
+        # a base a fetch cannot bring from a tree something made unreadable.
         self.assertEqual(
             [
-                record["failure"]
+                (
+                    record["failure"],
+                    record["measurement_failure"],
+                    record["detail"],
+                )
                 for record in self._events_named(EVENT_LATE_FAILURE)
             ],
-            [str(LateFailure.MEASUREMENT_FAILED)],
+            [(
+                str(LateFailure.MEASUREMENT_FAILED),
+                str(UNMEASURED.failure),
+                UNMEASURED_DETAIL,
+            )],
         )
 
 

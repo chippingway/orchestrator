@@ -24,6 +24,12 @@ _VERDICT_EVENT = _events.LateEvent(
     family=_events.LateEventFamily.VERDICT,
     verdict=LateVerdict.SINGLE,
 )
+_LATE_FAILURE = "late_failure"
+# One reading the size gate could not take, as the seam that refused it hands
+# it over: the step it stopped at, and the line that step wrote for itself.
+_REFUSED_READING = _events.measurement_failure_event(
+    _support.MEASUREMENT_STEP, _support.FAILURE_DETAIL,
+)
 # An agent's rationale, naming a path, offered as the state an issue was in.
 _PROSE = "rationale: inspect /srv/private/key before splitting"
 
@@ -80,6 +86,27 @@ class DualEmissionTest(unittest.TestCase):
         for sink, record in _sink_records(gh, appended).items():
             with self.subTest(sink=sink):
                 self.assertLessEqual(set(record), allowed)
+
+    def test_both_sinks_carry_the_refused_step(self) -> None:
+        # The point of writing twice: an operator with only the JSONL audit
+        # copy has to be able to tell a base a fetch cannot bring from a diff
+        # nothing can pin, which is what the database answers.
+        gh = FakeGitHubClient()
+        appended: list = []
+        with patch(_ANALYTICS_APPEND, appended.append):
+            _telemetry.emit_late_event(
+                gh, _REFUSED_READING, _support.measured_generation(),
+                stage=_STAGE,
+            )
+        for sink, record in _sink_records(gh, appended).items():
+            with self.subTest(sink=sink):
+                self.assertEqual(record[_EVENT_KEY], _LATE_FAILURE)
+                self.assertEqual(record["failure"], "measurement_failed")
+                self.assertEqual(
+                    record["measurement_failure"],
+                    str(_support.MEASUREMENT_STEP),
+                )
+                self.assertEqual(record["detail"], _support.FAILURE_DETAIL)
 
     def test_the_returned_payload_is_what_landed(self) -> None:
         gh = FakeGitHubClient()

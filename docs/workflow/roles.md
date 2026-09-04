@@ -410,7 +410,10 @@ branch has already overtaken.
 - **No reading at all** — never "small". What a failed `git` invocation writes to stdout is what a candidate
   that changes nothing writes, so a typed `late_failure` carrying `measurement_failed` goes to both sinks — for
   every refusal, including one taken before a generation existed, which is reported under a minted identity —
-  the issue parks `late_measurement_failed`, and the pair that was frozen stays on the record. A base the
+  the issue parks `late_measurement_failed`, and the pair that was frozen stays on the record. The record says the
+  same three things the notice does: the family, the `measurement_failure` step it stopped at, and the `detail` line
+  that step wrote, so an operator reading only the stream can tell these apart the way the human on the thread can
+  ([`../observability/event-streams.md`](../observability/event-streams.md#late-split-records-both-sinks)). A base the
   TRANSPORT could not reach is the one exception, and a bounded one: `base_unreadable` and `base_absent` clear
   themselves, so the first three consecutive misses on a pair record the miss, emit that same typed failure, log
   at WARNING and stop with nothing parked and nothing said — the next tick re-reads the pair by itself, spawning

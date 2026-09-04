@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from orchestrator.workflow.late_split import formats as _formats, records as _records
+from orchestrator.workflow.late_split import events as _events, formats as _formats, records as _records
 from orchestrator.workflow.late_split.models import LateGeneration, LateVerdict
 from orchestrator.workflow.state import WorkflowLabel
 from tests.workflow.late_split import generation_test_support as _support
@@ -13,7 +13,10 @@ from tests.workflow.late_split import generation_test_support as _support
 _PREDECESSOR = 1
 _REFUSED = _formats.InvalidLateValue
 _MEASUREMENT, _VERDICT = _support.family_cases()[:2]
+_FAILURE = _support.family_cases()[2]
 _CLEANUP = _support.family_cases()[4]
+_MEASUREMENT_FAILURE = "measurement_failure"
+_DETAIL = "detail"
 _CATEGORY = _support.CATEGORY
 # What a generation must never carry into a record: prose, a path, a quoted
 # secret -- offered through the fields that are typed only by annotation.
@@ -122,6 +125,25 @@ class BoundedRecordTest(unittest.TestCase):
             len(recorded["resource_id"]),
             _support.RESOURCE_PRINT_LENGTH,
         )
+
+    def test_a_refused_reading_names_its_step(self) -> None:
+        # `measurement_failed` is what every refused reading reaches a sink
+        # as, so the member beside it is the whole of what tells a remote
+        # that would not answer from a diff nothing here can pin -- and the
+        # line is the whole of what says which of the three the remote was.
+        # The members that reached no reading at all name neither, and an
+        # absent field is dropped by both envelope builders.
+        recorded = _payload(_events.measurement_failure_event(
+            _support.MEASUREMENT_STEP, _support.FAILURE_DETAIL,
+        ))
+        unnamed = _payload(_FAILURE)
+
+        self.assertEqual(recorded["failure"], unnamed["failure"])
+        self.assertEqual(
+            recorded[_MEASUREMENT_FAILURE], str(_support.MEASUREMENT_STEP),
+        )
+        self.assertEqual(recorded[_DETAIL], _support.FAILURE_DETAIL)
+        self.assertFalse(set(unnamed) & {_MEASUREMENT_FAILURE, _DETAIL})
 
     def test_a_restart_names_its_step_and_predecessor(self) -> None:
         restarting = {

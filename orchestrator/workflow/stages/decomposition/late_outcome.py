@@ -313,6 +313,27 @@ def _emit_failure(context: _LateContext, failure: LateFailure) -> None:
     )
 
 
+def _emit_measurement_failure(
+    context: _LateContext, failure, detail: str,
+) -> None:
+    """Report a revision nobody could measure, with the step it stopped at.
+
+    The same family and the same typed failure the size gate writes, so a
+    reading that did not happen reads alike wherever it was taken -- and with
+    the same two companions, because the question an operator asks of one of
+    these is the question they ask of all of them: which step, and what did it
+    say. A re-measurement is taken in a checkout an agent has been running in,
+    so the step it stops at is the one thing telling a base a fetch cannot
+    bring from a diff something in that tree made unreadable.
+    """
+    _telemetry.emit_late_event(
+        context.gh,
+        _events.measurement_failure_event(failure, detail),
+        context.generation,
+        stage=_DECOMPOSING_STAGE,
+    )
+
+
 def _emit_cancellation(context: _LateContext) -> None:
     """Report that this generation's owner was observed gone.
 
