@@ -4,9 +4,10 @@
 
 Every probe here runs while the original branch is still intact, so a
 failure raises `_SquashPreparationError` and the caller aborts with nothing
-to undo. The plan also pins `original_head` -- the rollback target and the
-lease the force-push is made with -- so the rewrite never has to re-read a
-HEAD its own reset has already moved.
+to undo. The plan also pins `original_head` -- the rollback target, the head
+the entry takes its lease from, and the commit the gate is told this rewrite
+collapsed -- so the rewrite never has to re-read a HEAD its own reset has
+already moved.
 """
 from __future__ import annotations
 

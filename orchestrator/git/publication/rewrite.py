@@ -206,6 +206,17 @@ def _published_squash(
 ) -> models._SquashOutcome:
     """Measure the squashed commit, publish it, or leave it to be adjudicated.
 
+    The base the plan was collapsed onto goes with the commit, and so does
+    the head it replaced, because the gate needs both ends of BOTH
+    contributions to recognize a rewrite of a change a human already
+    adjudicated -- and the plan taken before the reset is the only thing that
+    still holds either. The pre-squash head is the plan's own rather than
+    whatever the pull request is standing on: the two are checked against each
+    other when the entry is frozen, but that check has a carve-out for a tip a
+    durable record says this issue's own push put there, so the remote head is
+    the head a push is LEASED against and only the plan says which commit was
+    collapsed.
+
     A hold is not one state, and only some of them leave the rewrite standing.
     Where the push landed, where the adjudication now owns the commit, or
     where something committed over the checkout, the squash is somebody's and
@@ -221,7 +232,10 @@ def _published_squash(
     describe a failure that did not happen.
     """
     gated = _gated_rewrite()
-    published = gated._publishes_rewrite(gate, branch, entry, new_sha)
+    published = gated._publishes_rewrite(
+        gate, branch, entry, new_sha,
+        gated._Collapsed(head=plan.original_head, base_sha=plan.base_sha),
+    )
     if published.held:
         if gated._rewrite_stands(gate, new_sha):
             return models._SquashOutcome(held=True)

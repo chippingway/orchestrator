@@ -41,6 +41,7 @@ _OWNERS = (
     "late_reconcile",
     "late_records",
     "late_rewrite",
+    "late_transfer",
     "late_verdict",
     "models",
     "parks",

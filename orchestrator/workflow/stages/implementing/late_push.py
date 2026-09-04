@@ -100,7 +100,10 @@ def _publishes(
     then re-proves here.
     """
     gate = _replace(
-        gate, candidate=entered.candidate, spends=entered.spends,
+        gate,
+        candidate=entered.candidate,
+        spends=entered.spends,
+        rewrite=entered.rewrite,
     )
     published = _publication_gate._holds_published_work(gate, entered)
     if published.held:

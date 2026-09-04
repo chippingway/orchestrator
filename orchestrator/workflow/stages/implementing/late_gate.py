@@ -56,7 +56,7 @@ fresh candidate. A reconciliation has no such run, so a head that moved
 between the proof its caller took and the one taken here is a checkout
 something moved mid-tick, and it is refused rather than measured or pushed.
 
-Four candidates skip the measurement, and none is a bypass. Three of them are
+Five candidates skip the measurement, and none is a bypass. Three of them are
 commits this workflow has already DECIDED about, and they are recognized the
 same way, by naming one commit and only it -- work committed on top of any of
 them is measured as the fresh candidate it is. One is the exact commit an
@@ -65,7 +65,11 @@ approval still owes a push: a crash between the write that approves a
 candidate and the push it licenses brings the same commit back here with its
 generation already retired, and re-deciding it there would re-measure a
 settled question against a base that has moved since -- routing work a human
-may already have adjudicated back into adjudication. One is the commit this
+may already have adjudicated back into adjudication. One approval is not that,
+and it defers: a commit an approval names only because a rewrite TRANSFER let
+it past was never read here at all, so the permit that licensed it is re-asked
+over the record the grant left rather than answered on the object id. One is
+the commit this
 stage already PUSHED, which is that window one step further on: past the push
 a pull request carries the work and only the relabel is owed, so a reading
 that came back oversized there would hold nothing back and route a published
@@ -78,10 +82,33 @@ resumed developer's fresh commit has moved past, so the fresh commit is the
 new work the switch publishes untouched and the superseded record is retired
 rather than left over a commit nothing will push.
 
+The fifth is the only one no record names in advance: a REWRITE of the exact
+commit an adjudication accepted. A squash on approval replaces that commit
+with an object carrying the identical contribution, and the one-commit rule
+that makes the exemption safe is what stops it answering for the replacement
+-- so the same change would be measured past the same ceiling and adjudicated
+again, on the last push before the merge button. It is the only candidate here
+that EARNS its way past the reading rather than being recognized, and
+`late_transfer` is the whole of what it is earned on: a permit granted only
+over a semantic record that PROVES itself -- re-fingerprinted over its own
+recorded pair, so the base it names is checked rather than stepped around --
+beside a publication confirmed unmoved, a clean checkout standing on the
+rewritten commit, a leased head that peels to a commit this host holds, an
+issue re-read and found unchanged -- open, unpaused, and still on the stage the
+rewrite was entered from -- no unreadable authorization already standing for
+the exempt commit, and a rewritten contribution that fingerprints to the same
+digest. Refused, nothing moves and the candidate is measured like
+any other. Granted, one write carries the PERMISSION and the debt the push
+it licenses is still owed -- the exemption itself does not move, here or
+anywhere in this build, since a verdict rotated onto a commit no remote has is
+one a failed push would strand. What moves it is the write that receipts the
+landed push, and until that write exists a granted permission simply stands.
+
 This owner is the order those questions are asked in and nothing else. What a
 tick is ABOUT is `late_records`, the pair it measures over is `late_freeze`,
 the reading itself is `late_reading`, what a recovery proves first is
-`late_evidence`, what an answer earns is `late_verdict`, and what a refusal
+`late_evidence`, what a rewrite of an accepted commit may carry with it is
+`late_transfer`, what an answer earns is `late_verdict`, and what a refusal
 costs is `late_parks`.
 """
 from __future__ import annotations
@@ -106,6 +133,7 @@ from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
     late_reading as _reading,
     late_records as _records,
+    late_transfer as _transfer,
     late_verdict as _verdict_owner,
     models as _models,
 )
@@ -215,8 +243,18 @@ def _decided(
     commit this workflow has already ruled on publishes without a reading, and
     everything else is measured -- the recorded count acted on where there is
     one, a fresh pair frozen and counted where there is not.
+
+    Between them sits the one commit that is neither yet: a REWRITE of a
+    change a human already ruled on. It is asked second because every question
+    ahead of it is a record read off the pinned comment and this one spends
+    two fingerprints and a fresh owner read, and because a commit the record
+    already calls decided has nothing left to earn. Refused, the candidate
+    falls through to the measurement exactly as it always did.
     """
-    unmeasured = _needs_no_measuring(gate, recorded, candidate_sha)
+    unmeasured = (
+        _needs_no_measuring(gate, recorded, candidate_sha)
+        or _transfer._carried_over(gate, candidate_sha)
+    )
     if unmeasured:
         log.info(
             "issue=#%d candidate %s %s; publishing it without a reading",
@@ -236,6 +274,36 @@ def _decided(
     if held:
         return _records._HELD
     return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
+
+
+def _approved_on_a_reading(
+    gate: _records._Gate, candidate_sha: str,
+) -> bool:
+    """Whether this commit's debt rests on a decision this gate already made.
+
+    An approval is the gate's own answer brought back by a crash, which is
+    what makes skipping the reading for it a repeat rather than a bypass. One
+    exception, and it is the only approval that was never a reading at all: a
+    commit an approval names because a rewrite TRANSFER let it past. What
+    licensed that push is a permit, granted on terms -- a pull request, a
+    stage, a record, two fingerprints -- that can each stop being true between
+    the grant and the tick that comes back to pay the debt.
+
+    So a debt an OUTSTANDING permission stands beside defers to the permit,
+    which `late_transfer` re-asks in full over the record the grant left. That
+    is asked of the permission rather than of the commit it names, because the
+    two go down in one write for one commit: an approval beside an outstanding
+    permission is either the one it licensed or evidence the record disagrees
+    with itself, and a hand-edited target would otherwise make the permit
+    invisible and leave the approval looking ordinary.
+
+    Refused, the ordinary cumulative gate measures the rewrite like any other
+    candidate: an oversized change nothing may publish unmeasured is exactly
+    what an unvalidatable permission leaves behind.
+    """
+    if _parks._approved_commit(gate.state) != candidate_sha:
+        return False
+    return not _transfer._licensed_by_a_permit(gate.state)
 
 
 def _moved_off_the_caller(
@@ -325,8 +393,10 @@ def _needs_no_measuring(
 
     The exemption is a verdict a human's adjudication reached, and it outlives
     the publication because the gate would otherwise measure the same
-    candidate past the same ceiling forever. The approval is this gate's own,
-    and it lives only until the push it licenses lands: the write that
+    candidate past the same ceiling forever. The approval is this gate's own
+    -- with the one exception a permit granted it, which defers to that permit
+    rather than answering on the object id alone -- and it lives only until
+    the push it licenses lands: the write that
     approves a candidate drops the generation naming it, so a crash before the
     push brings the same commit back here with nothing left to say it was
     already settled. Measuring it again is not a second opinion -- the base
@@ -371,7 +441,7 @@ def _needs_no_measuring(
     """
     if _exemption.is_exempt(gate.state, candidate_sha):
         return _ADJUDICATED
-    if _parks._approved_commit(gate.state) == candidate_sha:
+    if _approved_on_a_reading(gate, candidate_sha):
         return _APPROVED
     if _parks._published_commit(gate.state) == candidate_sha:
         # The receipt is a local note, and what it is evidence FOR is that the

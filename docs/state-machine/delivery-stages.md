@@ -1565,6 +1565,25 @@ merge. A **routed** candidate is deliberately not rolled back: the squashed comm
 publishes from the branch, so restoring the pre-squash head would leave the record naming a commit this host no
 longer has — and the approval handoff stops without parking, since the gate owns the issue from there.
 
+One squash is not counted at all, and it is the one the exemption would otherwise punish. Where the head being
+rewritten is the exact commit an adjudication accepted, the squash hands the gate its own before-state — the head
+it replaced, the merge base both sides are read over, and the publication it was entered on — and `late_transfer`
+may carry the exemption onto the object it produced. Only over the whole of the evidence: a semantic record whose
+exempt commit is the one being rewritten and which proves itself when re-fingerprinted over its own recorded pair,
+no authorization this build cannot read already standing for that exemption, a publication this call itself froze
+and the issue still records, a provably clean checkout on the squash, an issue re-read open, unpaused and still on the
+stage the rewrite was entered from, and a rewritten
+contribution that fingerprints to the same digest. The PERMISSION is durable before the push, in ONE write that
+also records the debt that push is owed — split in two, a crash between them leaves a one-commit branch the next
+squash reports success on without pushing. The exemption does not move there, and nothing in this build moves it:
+that rotation belongs to the receipt of the landed push, so a verdict is never left on a commit no remote carries.
+A digest the standing permission already recorded is held to the reading the permit just took, since a grant that
+carried on would write its own answer over evidence nobody checked. Refused, nothing changes and the squash is
+measured exactly as above. And the permission is droppable in exactly one window — a force-push the remote refuses
+resets the branch back onto the commit the exemption never left, so the rollback takes the permission back and
+nothing else, while past the receipt the pull request carries the rewritten commit and there is nothing to take
+back.
+
 A candidate whose count never came back keeps the rewrite too, and for the same reason read one step earlier: the
 freeze is durable and the diff is not, so a reading that fails leaves a live generation naming the **squash** with no
 number on it — and the reconciliation ahead of the next handler answers that pair by measuring the checkout it was
@@ -1584,7 +1603,12 @@ squashes, measures, and publishes them afresh. It still reports `held` — the g
 its own reading earned, and a squash-failed park on top of that would describe a failure that did not happen. Two
 other holds keep the rewrite for the same reason the recorded ones do: a push that LANDED and only held the handoff
 (the receipt names the squash, so the remote carries it), and a checkout something committed over (a reset would
-destroy work nobody here can account for).
+destroy work nobody here can account for). The debt counts as a record too, and it has to: a transfer whose grant
+landed and whose push the remote took leaves the **approval** naming the squash while the receipt still names the
+head that squash was pushed over. A reset there would take the checkout off an object the remote already carries.
+
+The transfer's own write is handled where it happens rather than allowed out: a refused grant puts its staged
+payload back and falls through to the ordinary reading, so a lost write costs the permit and not the tick.
 
 The squashed commit is checked on **both sides** of that gate. The gate proves the checkout for itself, and a first
 generation has no record to prove it against, so something committing over the worktree between the squash and the

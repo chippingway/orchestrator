@@ -18,8 +18,9 @@ ledgers do instead (``ledgers``), the pinned keys the group is spelled by
 vocabulary a restored spend is bounded by (``spends``), what a cycle's ending
 leaves behind past the clear (``endings``), the one commit an accepted
 candidate is let past the gate on, which deliberately outlives them
-(``exemption``), the two-phase restart marker over them
-(``restart``), what one event of its life may say (``events``), what a
+(``exemption``), what authorized that commit to become the one a workflow
+rewrite replaced it with (``rewrites``), the two-phase restart marker over
+them (``restart``), what one event of its life may say (``events``), what a
 generation has to prove before any of it may be recorded (``validation``), the
 bounded record both observability sinks carry (``records``), and the dual
 emission that writes them (``telemetry``).

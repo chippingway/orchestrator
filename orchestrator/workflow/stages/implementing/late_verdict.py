@@ -450,10 +450,32 @@ def _owed_by_an_unmeasured_push(
     that instead. What the switch decides is the measurement; the account of
     what a push is putting where is not its to turn off.
     """
+    if _stages_unmeasured_debt(gate, candidate_sha, lease):
+        gate.gh.write_pinned_state(gate.issue, gate.state)
+
+
+def _stages_unmeasured_debt(
+    gate: _records._Gate, candidate_sha: str, lease: str,
+) -> bool:
+    """Put the debt an unmeasured push owes in memory, and say whether it did.
+
+    The rule above without the write, so an owner that has its OWN write to
+    make can carry the debt out on it rather than one behind it. The two are
+    not interchangeable orderings of the same thing: a record that LICENSES a
+    rewritten commit to publish is the account of what the branch carries, and
+    the debt is the account of where it has still to go -- split
+    across two writes, a process dying between them comes back to a branch the
+    record explains and no debt naming the push it is still owed, and the
+    reconciliation that would have finished it never runs.
+
+    Answering rather than writing is also what keeps the caller's write
+    honest: an owner that staged nothing has nothing of this to make durable
+    and says so, instead of spending a request on a comment it did not change.
+    """
     if _parks._approved_commit(gate.state) == candidate_sha:
-        return
+        return False
     if not lease or lease == candidate_sha:
-        return
+        return False
     log.info(
         "issue=#%d is publishing unmeasured candidate %s onto a pull request "
         "standing at %s; recording the debt before the push that pays it",
@@ -461,7 +483,7 @@ def _owed_by_an_unmeasured_push(
     )
     _parks._approve(gate.state, candidate_sha, lease)
     _late_state.write_late_spends(gate.state, gate.spends.fields)
-    gate.gh.write_pinned_state(gate.issue, gate.state)
+    return True
 
 
 def _spent(gate: _records._Gate) -> None:
