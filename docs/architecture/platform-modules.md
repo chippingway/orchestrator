@@ -186,8 +186,9 @@ orchestrator/
     ref_transport.py    the two remote reads -- one refname, with the scrubbed line saying why nothing was
                         established, and every refname under one pattern, which is the only way a branch this
                         host holds no copy of is found -- and the lease-pinned write and delete an immutable ref
-                        namespace is owned through; the single-ref read the branch transport spends for its own
-                        lease too
+                        namespace is owned through, the delete spent as well on a terminal issue's branch once
+                        the artifact pass has proved the commit it stands on; the single-ref read the branch
+                        transport spends for its own lease too
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
                         in -- including the label scope on the two freezes no write ever ends -- and the
@@ -455,8 +456,11 @@ orchestrator/
                         since the proof stands; the remote delete leased to the proved commit, so a branch
                         pushed past it is turned down there; and the local `update-ref -d` naming that commit and
                         refusing to dereference, so a branch an agent committed onto survives and a symbolic ref
-                        planted under a branch name is deleted as itself rather than followed onto the base. An
-                        artifact already gone is each step's success
+                        planted under a branch name is deleted as itself rather than followed onto the base. A
+                        checkout already gone is the removal's own success; the two branch steps leave that to
+                        the caller, which reads what each host carries before it decides there is a deletion to
+                        attempt at all -- so the pinned local delete reports a ref that is not there as the
+                        refusal git gave it rather than papering over it
       maintenance.py    the pass that spends one classification: the injected active/claimed guard, the
                         classification itself, and the quiet period every checkout is left alone for, asked in
                         that order and each failing closed. Then the teardown -- every checkout first, since a

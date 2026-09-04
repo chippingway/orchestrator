@@ -108,12 +108,15 @@ orchestrator/
                         both layouts of each, widened by what the remote still
                         carries, so an issue this host holds nothing for is
                         still found -- the classification that says which of
-                        them a finished issue may have reclaimed, the per-tick
-                        base sync, branch publication, verify runs, the
-                        added-line measurement of a committed candidate and the
-                        digest naming which contribution it carries, and the
-                        immutable ref namespace one is preserved under when a
-                        split supersedes it
+                        them a finished issue may have reclaimed and the
+                        bounded pass that spends one, re-reading every proven
+                        tip immediately before the mutation it gates and
+                        leaving whatever it did not reach for the next
+                        discovery to find, the per-tick base sync, branch
+                        publication, verify runs, the added-line measurement
+                        of a committed candidate and the digest naming which
+                        contribution it carries, and the immutable ref namespace
+                        one is preserved under when a split supersedes it
   observability/        the four surfaces that watch a run without steering
                         it: the analytics sink and everything downstream of
                         it, the parser that meters one finished agent run, the
