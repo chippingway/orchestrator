@@ -1117,11 +1117,23 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             decides whether a moved head is fresh output, and the narrower one that it is answering
                             a reading the gate itself recorded, which is what the switch is asked against -- the
                             answer it hands back, the identities a record of it
-                            is minted under, and the validated-or-minted identity every refusal is reported
+                            is minted under -- the readings already lost travelling with the CANDIDATE rather than
+                            with the generation counter, since a base the remote would not name records no base and
+                            freezes the same commit afresh next tick -- and the validated-or-minted identity every
+                            refusal is reported
                             under so a damaged record cannot take its own refusal down with it
-      late_freeze.py        the pair a count is taken over -- the candidate proved, the base frozen or
-                            re-proved -- whether a recorded one is whole enough to act on, its
-                            identity and the issue it names included, and the one state the switch answers
+      late_freeze.py        the pair a count is taken over -- the candidate proved, the base frozen or re-proved,
+                            and a base neither of those could reach counted as one of the readings this pair may
+                            lose rather than parked outright -- and whether a recorded one may be acted on at all,
+                            its identity and the issue it names included, asked as the REUSED pair's own
+                            precondition rather than at each road into one, since the miss that retry writes back
+                            would otherwise repair a record recorded against another issue under this one's
+                            identity. A pair still waiting for its base is held to the same evidence less the base
+                            itself, which is the one field the failure being retried leaves absent: the mint the
+                            retry freezes under keeps the record's cycle, scope and spent readings while re-stamping
+                            the issue number, the ceiling and the boundary from the process running NOW, so a
+                            generation short of the ceiling it was frozen under would otherwise be re-judged against
+                            whatever the setting has been retuned to since. Also the one state the switch answers
                             outright, which every seam that measures asks the same way
       late_evidence.py      what a recovery proves before it acts: the checkout, both recorded objects, a
                             head that is still the candidate, and a head that is still the commit an approval
@@ -1137,15 +1149,27 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             otherwise leave the branch on the remote with nothing on the issue naming it, and
                             the retirement each is durable behind, that write held inside the observations
                             owner's retirement window with the latch asked ahead of it and the window's own
-                            answer behind it, where a close is answered by putting the cycle back cancelled
+                            answer behind it, where a close is answered by putting the cycle back cancelled; both
+                            verdicts are also where a measurement park is retired, since an answer is what it was
+                            waiting for and a tick that only re-read the pair has not given it one
       late_parks.py         the one park shape every unreadable reading takes, worded on the side of publication it
-                            was taken on, the typed failure both sinks carry under the stage the reading happened
-                            in, the bare continue that re-reads rather than re-runs, the measurement park a fresh
-                            reading retires -- latch and all, since a reconciliation has no run behind it to clear
-                            the flag -- the same park retired on a record whose split has already become children,
-                            where no reading is owed and nothing about it is a human's to answer, and the commits a
-                            publication is read by: the one an approval owes a push for with the head it is pinned
-                            to, and the one this stage made
+                            was taken on, the typed failure both sinks carry under the stage the reading happened in,
+                            the bounded quiet retry the two TRANSPORT steps get instead -- the miss counted on the
+                            record and written before anything is reported or said, since a fresh process remembers no
+                            miss, with the park taken only past the bound, a tick that finds that park already
+                            standing over THE SAME PAIR, and still latched, held silently rather than counted and
+                            mentioned again -- silent to the thread alone, since the typed failure still reaches both
+                            sinks and a base id the remote finally named is written even there -- a park standing over
+                            some other pair retired inside the write that records that pair rather than obeyed, since
+                            nothing on the comment says which commit a park was taken over and a resumed developer's
+                            fresh commit owes its own bound, and the count ended by a base that was reached -- the
+                            bare continue that re-reads rather than re-runs, the measurement park a reading that
+                            SETTLED retires -- latch and all, since a reconciliation has no run behind it to clear the
+                            flag, and from the verdict rather than from the gate's door, since entering the gate is
+                            not answering the question the park was taken for -- the same park retired on a record
+                            whose split has already become children, where no reading is owed and nothing about it is
+                            a human's to answer, and the commits a publication is read by: the one an approval owes a
+                            push for with the head it is pinned to, and the one this stage made
       publication.py        the push -- named against the commit the gate decided and pinned to the head a
                             published approval was frozen against, where there is one -- the PR reuse (re-bodied
                             when it was opened elsewhere) or open, and the

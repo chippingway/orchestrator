@@ -67,7 +67,8 @@ per-file-ignores =
     orchestrator/workflow/stages/fixing/resume.py:WPS201
     orchestrator/workflow/stages/implementing/disposition.py:WPS202
     orchestrator/workflow/stages/implementing/late_evidence.py:WPS201,WPS202
-    orchestrator/workflow/stages/implementing/late_parks.py:WPS202
+    orchestrator/workflow/stages/implementing/late_freeze.py:WPS202
+    orchestrator/workflow/stages/implementing/late_parks.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/late_records.py:WPS202
     orchestrator/workflow/stages/implementing/late_verdict.py:WPS202
     orchestrator/workflow/stages/implementing/models.py:WPS202

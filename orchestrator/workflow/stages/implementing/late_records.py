@@ -274,6 +274,15 @@ def _minted(
     is the root of its own lineage at depth 0; one whose ancestry records no
     readable depth stays unknown, which reads as "may not split" rather than
     as a root with room to spare.
+
+    The readings a retry has already lost travel with the CANDIDATE rather
+    than with the generation counter beside it, and that is what makes the
+    bound reachable at all: a base the remote would not name records no base,
+    so the next tick freezes afresh -- under a new generation, over the same
+    commit -- and a count reset there would start every retry of that pair
+    back at nothing. A candidate that MOVED is fresh work whose reading nobody
+    has lost yet, so its own count starts at zero rather than inheriting one
+    taken over a commit nothing measures any more.
     """
     return replace(
         _identified(gate, recorded),
@@ -281,7 +290,18 @@ def _minted(
         base_sha=base_sha,
         threshold=config.MAX_ADDED_LINES,
         additions=None,
+        **_misses_of(recorded, candidate_sha),
     )
+
+
+def _misses_of(recorded: LateGeneration, candidate_sha: str) -> dict:
+    """What a mint over this commit carries of the readings already lost."""
+    if recorded.candidate_sha != candidate_sha:
+        return {"measurement_miss_count": 0, "measurement_failure": None}
+    return {
+        "measurement_miss_count": recorded.measurement_miss_count,
+        "measurement_failure": recorded.measurement_failure,
+    }
 
 
 def _identified(gate: _Gate, recorded: LateGeneration) -> LateGeneration:

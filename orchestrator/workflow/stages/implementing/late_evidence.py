@@ -274,6 +274,14 @@ def _holds_absent_base(
     False where no base is recorded at all. A freeze that got as far as the
     candidate and no further has nothing to prove here, and the reconciliation
     behind this takes a fresh one.
+
+    A record too damaged to act on, or one recorded against another issue,
+    parks here rather than having its base retried, and the proof that says so
+    is the reused pair's own. It matters most on this road: nothing has
+    checked the record yet -- the gate that would is behind the spawn this
+    call exists to come before -- and the retry is durable, so a record
+    adopted here would be publishable under this issue's identity as soon as
+    the base came back.
     """
     recorded = _late_state.read_late_generation(state)
     if not recorded.base_sha:

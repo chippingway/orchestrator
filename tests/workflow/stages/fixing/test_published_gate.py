@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.implementing import state as _implementing_state
 from tests.workflow.stages.fixing import (
     fixing_test_support as fixing,
     published_gate_support as support,
@@ -61,6 +62,20 @@ OTHER_PR_NUMBER = PR_NUMBER + 1
 ABSENT_WORKTREE = fixing.Path("/tmp/orchestrator-absent-checkout")
 REVIEW_ROUND = fixing.REVIEW_ROUND
 PENDING_FIX_AT = fixing.PENDING_FIX_AT
+
+# How many readings one frozen pair may lose to the transport before the gate
+# stops taking them again by itself. Read off the owner rather than spelled
+# again, so a case names the bound rather than a number beside it.
+_MISS_BOUND = _implementing_state._MEASUREMENT_MISSES_BEFORE_PARK
+
+
+def _after_misses(lost: int) -> dict:
+    """The record a pair that has lost `lost` readings in a row is retried from."""
+    return recorded_generation(
+        measurement_miss_count=lost,
+        measurement_failure=support.MeasurementFailure.BASE_ABSENT,
+    )
+
 
 class CumulativeCountTest(unittest.TestCase, _SizeGateFixtureMixin):
     """What the count is taken over once a pull request carries the work."""
@@ -264,6 +279,110 @@ class RecordedPairRetryTest(unittest.TestCase, _SizeGateFixtureMixin):
         self._assert_unmeasured(mocks)
         self._assert_held(scenario, mocks)
         self.assertEqual(scenario.github.label_history, [_HELD])
+
+    def test_a_base_the_fetch_lost_is_counted(self) -> None:
+        # The object the recorded count is taken against is not here and a
+        # fetch did not bring it back: the transport rather than the pull
+        # request, so the reading is counted and nothing is said. The pair
+        # stays exactly as it is, the remote is not asked for a different
+        # base, and nothing is pushed onto a pull request nobody measured.
+        scenario = self._seed_fix_round(**recorded_generation())
+
+        mocks = self._run_fix_round(scenario, base_object_present=False)
+
+        mocks[FREEZE_BASE_COMMIT].assert_not_called()
+        self._assert_unmeasured(mocks)
+        self._assert_held(scenario, mocks)
+        self._assert_missed(scenario, support.MeasurementFailure.BASE_ABSENT)
+        pinned = self._pinned(scenario)
+        self.assertEqual(pinned[support.KEY_BASE_SHA], MEASURED_BASE_SHA)
+        self.assertEqual(
+            pinned[support.KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA,
+        )
+
+    def test_the_bound_hands_the_pair_over_once(self) -> None:
+        # Driven as the consecutive polls it really is, because the mention is
+        # what a seeded count cannot check: this reading is re-entered ahead
+        # of the handler on EVERY poll, so a bound counted afresh each time --
+        # or a park cleared on the way into the gate -- reads exactly like a
+        # working retry while it asks a human once a poll and never stops
+        # counting. Three readings the pair may lose in a row, a fourth that
+        # hands it over, and past that a tick that holds silently: the park it
+        # already took is still true, and the stage below still may not run
+        # over an unmeasured candidate.
+        scenario = self._seed_fix_round(**recorded_generation())
+
+        for poll in range(1, _MISS_BOUND + 3):
+            with self.subTest(poll=poll):
+                handled, _mocks = self._poll(
+                    scenario, base_object_present=False,
+                )
+
+                self.assertFalse(handled)
+                if poll <= _MISS_BOUND:
+                    self._assert_missed(
+                        scenario,
+                        support.MeasurementFailure.BASE_ABSENT,
+                        count=poll,
+                    )
+                    continue
+                self._assert_parked(scenario)
+                self.assertEqual(len(scenario.github.posted_comments), 1)
+                self.assertIn(
+                    config.HITL_MENTIONS, scenario.github.posted_comments[0][1],
+                )
+                self.assertEqual(
+                    self._pinned(scenario)[support.KEY_MISS_COUNT],
+                    _MISS_BOUND + 1,
+                )
+
+    def test_a_reading_that_lands_unparks_the_pair(self) -> None:
+        # The other half of the park above, and the only thing that ends it
+        # here: no human answers a reading on this road, so what retires the
+        # park is the reading itself, taken on an ordinary poll once the
+        # transport is back. The row of lost readings ends with it.
+        scenario = self._seed_fix_round(**_after_misses(_MISS_BOUND))
+        self._poll(scenario, base_object_present=False)
+
+        with patch.object(config, support.MAX_ADDED_LINES, CEILING):
+            mocks = self._poll(scenario, added_lines=PAST_THE_CEILING)[1]
+
+        mocks[COUNT_ADDED_LINES].assert_called_once()
+        pinned = self._pinned(scenario)
+        self.assertFalse(pinned[fixing.AWAITING_HUMAN])
+        self.assertIsNone(pinned[fixing.PARK_REASON])
+        self.assertNotIn(support.KEY_MISS_COUNT, pinned)
+        self.assertNotIn(support.KEY_MEASUREMENT_FAILURE, pinned)
+
+    def test_the_count_is_durable_before_the_mention(self) -> None:
+        # Every tick is a fresh process, so a miss a human is told about
+        # before it is written down is one a crash in that window loses --
+        # and the next reading would start the bound over. Read off what the
+        # pinned comment carried when the notice went out.
+        scenario = self._seed_fix_round(**_after_misses(_MISS_BOUND))
+        mentioned = support._RecordAtNotice(scenario.github)
+
+        with mentioned.held():
+            self._run_fix_round(scenario, base_object_present=False)
+
+        self.assertEqual(
+            mentioned.pinned[support.KEY_MISS_COUNT],
+            _MISS_BOUND + 1,
+        )
+
+    def _assert_missed(self, scenario, failure, count: int = 1) -> None:
+        """One reading the transport lost, counted and otherwise unsaid.
+
+        The count and the step are the whole of what a miss inside the bound
+        leaves: nothing is waiting on a human, so nothing on the issue says it
+        is, and the next tick re-enters the same pair by itself.
+        """
+        pinned = self._pinned(scenario)
+        self.assertEqual(pinned[support.KEY_MISS_COUNT], count)
+        self.assertEqual(pinned[support.KEY_MEASUREMENT_FAILURE], failure)
+        self.assertFalse(pinned.get(fixing.AWAITING_HUMAN))
+        self.assertIsNone(pinned.get(fixing.PARK_REASON))
+        self.assertEqual(scenario.github.posted_comments, [])
 
 
 class SwitchedOffTest(unittest.TestCase, _SizeGateFixtureMixin):

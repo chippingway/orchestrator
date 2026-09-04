@@ -8,6 +8,11 @@ record names. Guidance buys the opposite: the developer is resumed, and what
 it leaves is judged against the floor the park left on the branch rather than
 against the base, so a clarifying question is not answered by publishing the
 work it was asked about.
+
+Some readings never reach a human at all. A base this host could not get to is
+the transport rather than the work, so a bounded number of them in a row are
+counted on the record and nothing else is done: no park, no mention, and a
+pair the next tick re-reads by itself.
 """
 
 from __future__ import annotations
@@ -17,6 +22,7 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit, MeasurementFailure
+from orchestrator.workflow.stages.implementing import state as _implementing_state
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     MEASURED_CANDIDATE_SHA,
@@ -76,6 +82,28 @@ _GUIDANCE = "drop the generated fixtures from this"
 _FINISHED = "done"
 # What a resumed run says when it answered instead of building.
 _ASKED = "which half of this did you mean?"
+
+# The steps a second reading cannot change: nothing here can pin the diff,
+# git refused it, or what came back was unreadable. Each is a park on the
+# first miss, since the retry a transport fault is owed would buy the same
+# answer over and over.
+_UNRETRIED_STEPS = (
+    MeasurementFailure.DIFF_UNPINNABLE,
+    MeasurementFailure.DIFF_FAILED,
+    MeasurementFailure.DIFF_UNREADABLE,
+)
+
+# How many readings one frozen pair may lose to the transport before the gate
+# stops taking them again by itself. Read off the owner rather than spelled
+# again, so a case names the bound rather than a number beside it.
+_MISS_BOUND = _implementing_state._MEASUREMENT_MISSES_BEFORE_PARK
+
+# The readings a pair has already lost, and whether the next one is the one
+# that hands the issue over: the bound is on consecutive misses, so the tick
+# that takes the last of them is quiet and the one past it is not.
+_BOUNDED_MISSES = tuple(
+    (lost, lost >= _MISS_BOUND) for lost in range(_MISS_BOUND + 1)
+)
 
 
 class LateGateTimeoutRecoveryTest(support._GateCase, unittest.TestCase):
@@ -163,10 +191,36 @@ class LateGateStrandedPairTest(support._GateCase, unittest.TestCase):
         self._assert_measured(mocks)
         self._assert_published(mocks)
 
-    def test_a_missing_recorded_base_parks(self) -> None:
+    def test_a_lost_reading_re_enters_by_itself(self) -> None:
+        # What a reading the transport lost leaves: a count on the record and
+        # nothing anywhere saying a human is owed a reply. So the next tick is
+        # this same reconciliation -- the recorded pair, no remote read, no
+        # agent -- and the reading that lands is what ends the run of misses
+        # on the record it is settled under.
+        self._seed(**support.recorded_generation(
+            measurement_miss_count=_MISS_BOUND - 1,
+            measurement_failure=MeasurementFailure.BASE_ABSENT,
+        ))
+
+        mocks = self._run_gate(
+            has_new_commits=False, added_lines=support.OVERSIZED_ADDITIONS,
+        )
+
+        self._assert_no_agent(mocks)
+        mocks[support.FREEZE_BASE_COMMIT].assert_not_called()
+        self._assert_measured(mocks)
+        self.assertIn(_DECOMPOSING, self.github.label_history)
+        pinned = self._pinned()
+        self.assertEqual(pinned[support.KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertNotIn(support.KEY_MISS_COUNT, pinned)
+        self.assertNotIn(support.KEY_MEASUREMENT_FAILURE, pinned)
+
+    def test_a_missing_recorded_base_stops_the_tick(self) -> None:
         # The other end of the pair, proved for the same reason: a host that
         # cannot show the object the count is taken against can neither
-        # measure it nor defend a verdict over it.
+        # measure it nor defend a verdict over it. A fetch that brought
+        # nothing back is the transport, so what the tick costs is one of the
+        # readings this pair may lose and no second developer either way.
         mocks = self._run_gate(
             has_new_commits=False, base_object_present=False,
         )
@@ -174,7 +228,7 @@ class LateGateStrandedPairTest(support._GateCase, unittest.TestCase):
         self._assert_no_agent(mocks)
         self._assert_unmeasured(mocks)
         self._assert_held(mocks)
-        self._assert_parked()
+        self._assert_missed(MeasurementFailure.BASE_ABSENT)
 
 
 class LateGateMovedPairTest(support._GateCase, unittest.TestCase):
@@ -296,7 +350,8 @@ class LateGateContinueTest(support._ParkedRetryCase, unittest.TestCase):
     def test_a_bare_continue_remeasures(self) -> None:
         # What failed was a reading, and the developer that produced the commit
         # finished long ago: another run would buy a second answer to a
-        # question nobody asked.
+        # question nobody asked. A reading that lands is the answer, so the
+        # park it was taken behind goes with it.
         self._park(support.BARE_CONTINUE)
 
         mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
@@ -306,19 +361,43 @@ class LateGateContinueTest(support._ParkedRetryCase, unittest.TestCase):
         self._assert_published(mocks)
         pinned = self._pinned()
         self.assertFalse(pinned.get(support.AWAITING_HUMAN))
+        self.assertIsNone(pinned.get(support.PARK_REASON))
         self.assertEqual(
             pinned[support.LAST_ACTION_COMMENT_ID], support.REPLY_COMMENT_ID,
         )
 
-    def test_a_failed_retry_parks_again(self) -> None:
+    def test_a_step_no_retry_can_change_parks_at_once(self) -> None:
+        # A diff nothing here can pin, one git refused, one nothing could
+        # read: a second reading of any of them buys the same answer, so the
+        # first is the one worth a human -- and none of them spends one of the
+        # readings a transport fault is allowed to lose.
+        for failure in _UNRETRIED_STEPS:
+            with self.subTest(failure=failure):
+                self.setUp()
+                self._park(support.BARE_CONTINUE)
+
+                mocks = self._run_gate(added_lines=failure)
+
+                self._assert_no_agent(mocks)
+                self._assert_held(mocks)
+                self._assert_parked()
+                self.assertNotIn(support.KEY_MISS_COUNT, self._pinned())
+
+    def test_a_lost_reading_says_nothing(self) -> None:
+        # A fetch that did not bring the base back is the transport rather
+        # than the work, and the next tick is very often the whole of the fix:
+        # the reading this one lost goes on the record, and nothing else
+        # happens at all -- no mention, no reason, and a pair left exactly as
+        # the retry behind it finds it.
         self._park(support.BARE_CONTINUE)
 
-        mocks = self._run_gate(added_lines=MeasurementFailure.DIFF_FAILED)
+        mocks = self._run_gate(base_object_present=False)
 
         self._assert_no_agent(mocks)
+        self._assert_unmeasured(mocks)
         self._assert_held(mocks)
-        self._assert_parked()
-
+        self._assert_missed(MeasurementFailure.BASE_ABSENT)
+        self._assert_frozen()
 
     def test_a_moved_head_refuses_the_bare_retry(self) -> None:
         # No agent ran, so a head somewhere else is not work this workflow
@@ -370,6 +449,234 @@ class LateGateContinueTest(support._ParkedRetryCase, unittest.TestCase):
         self._assert_held(mocks)
         self._assert_parked()
         self._assert_frozen()
+
+
+class LateGateMissBoundTest(support._ParkedRetryCase, unittest.TestCase):
+    """How many readings one pair may lose to the transport, and to whom.
+
+    The bound the quiet retry is held to, and the order the record and the
+    notice about it go out in: a miss nothing wrote down is one the fresh
+    process behind this tick cannot count, so the pinned comment carries it
+    before either sink or a human hears about it.
+    """
+
+    def test_the_bound_is_what_ends_the_quiet_retry(self) -> None:
+        # Three readings this pair may lose in a row, and the fourth is a
+        # transport that is not coming back on its own: committed work is
+        # waiting behind a reading that will not happen, so it is handed over
+        # with one mention rather than re-read every poll forever.
+        for lost, parks in _BOUNDED_MISSES:
+            with self.subTest(lost=lost):
+                self.setUp()
+                self._park_after_misses(lost)
+
+                mocks = self._run_gate(base_object_present=False)
+
+                self._assert_no_agent(mocks)
+                self._assert_held(mocks)
+                if not parks:
+                    self._assert_missed(
+                        MeasurementFailure.BASE_ABSENT, count=lost + 1,
+                    )
+                    continue
+                self._assert_parked()
+                self.assertEqual(len(self.github.posted_comments), 1)
+                mention = self.github.posted_comments[0][1]
+                self.assertIn(config.HITL_MENTIONS, mention)
+                self.assertIn(MeasurementFailure.BASE_ABSENT, mention)
+
+    def test_the_count_precedes_the_report(self) -> None:
+        # Every tick is a fresh process, so a miss reported before it is
+        # recorded is one a crash in that window loses -- and a retry that
+        # cannot remember what it has lost is not bounded at all. Read off
+        # what the pinned comment said when the sinks were handed the failure.
+        self._park(support.BARE_CONTINUE)
+        reported = support._RecordAtHandoff(self.github, support.EMIT_EVENT)
+
+        with reported.held():
+            self._run_gate(base_object_present=False)
+
+        self.assertEqual(reported.pinned[support.KEY_MISS_COUNT], 1)
+
+    def test_the_park_is_taken_over_a_written_record(self) -> None:
+        # The same order where the bound runs out: the mention a human reads
+        # names a pair whose count is already on the comment, so a crash
+        # between the two leaves an issue that has said nothing rather than
+        # one whose next reading starts the bound again.
+        self._park_after_misses(_MISS_BOUND)
+        mentioned = support._RecordAtHandoff(self.github, support.POST_COMMENT)
+
+        with mentioned.held():
+            self._run_gate(base_object_present=False)
+
+        self.assertEqual(
+            mentioned.pinned[support.KEY_MISS_COUNT],
+            _MISS_BOUND + 1,
+        )
+
+    def test_a_base_never_named_keeps_counting(self) -> None:
+        # A base the remote would not answer for records no base at all, so
+        # the pair is frozen afresh next tick -- same commit, new generation.
+        # The misses travel with the CANDIDATE for exactly that reason: reset
+        # with the generation counter beside it, this pair would go on losing
+        # readings quietly forever and never reach the bound.
+        self._park_state(
+            support.BARE_CONTINUE,
+            **support.recorded_generation(
+                base_sha="",
+                measurement_miss_count=1,
+                measurement_failure=MeasurementFailure.BASE_UNREADABLE,
+            ),
+        )
+
+        mocks = self._run_gate(frozen_base=FrozenCommit(
+            failure=MeasurementFailure.BASE_UNREADABLE,
+        ))
+
+        self._assert_unmeasured(mocks)
+        self._assert_missed(MeasurementFailure.BASE_UNREADABLE, count=2)
+        self.assertEqual(self._pinned()[support.KEY_GENERATION], 2)
+
+    def test_a_base_this_host_reaches_ends_the_run(self) -> None:
+        # The count is readings lost IN A ROW, so one that was taken ends the
+        # row -- durably, since the tick after it is the one a stale count
+        # would hand to a human early. Proved on a road that fails afterwards
+        # for a reason of its own, where nothing else rewrites the record.
+        self._park_after_misses(_MISS_BOUND - 1)
+
+        mocks = self._run_gate(added_lines=MeasurementFailure.DIFF_FAILED)
+
+        self._assert_measured(mocks)
+        self._assert_parked()
+        pinned = self._pinned()
+        self.assertNotIn(support.KEY_MISS_COUNT, pinned)
+        self.assertNotIn(support.KEY_MEASUREMENT_FAILURE, pinned)
+
+    def test_a_fresh_candidate_starts_its_own(self) -> None:
+        # Guidance is the opposite reply to a bare continue: the developer is
+        # resumed, and what it commits is a candidate this park was never
+        # about. Read as the parked pair's, the miss over that new commit
+        # would be dropped on the floor -- nothing persisted, nothing
+        # reported, and the record still naming work the branch has moved past
+        # for the next tick to reconcile against.
+        self._park_state(_GUIDANCE, **support.recorded_generation(
+            measurement_miss_count=_MISS_BOUND,
+            measurement_failure=MeasurementFailure.BASE_ABSENT,
+        ))
+
+        mocks = self._run_gate(
+            run_agent=_agent(
+                session_id=support.DEV_SESSION, last_message=_FINISHED,
+            ),
+            head_shas=(MEASURED_CANDIDATE_SHA, _MOVED_SHA),
+            candidate_commit=_MOVED_HEAD,
+            frozen_base=FrozenCommit(
+                failure=MeasurementFailure.BASE_UNREADABLE,
+            ),
+        )
+
+        self._assert_resumed(mocks)
+        self._assert_held(mocks)
+        self._assert_missed(MeasurementFailure.BASE_UNREADABLE)
+        self.assertEqual(self._pinned()[support.KEY_CANDIDATE_SHA], _MOVED_SHA)
+        self.assertEqual(
+            len(self._records(support.EVENT_LATE_FAILURE)), 1,
+        )
+
+    def _park_after_misses(self, lost: int) -> None:
+        """Seed the park a human answered, over a pair that has lost readings.
+
+        Lost to the TRANSPORT, since that is the only step the bound counts:
+        a record carrying misses of any other kind is one no retry wrote.
+        """
+        self._park_state(
+            support.BARE_CONTINUE,
+            **support.recorded_generation(
+                measurement_miss_count=lost,
+                measurement_failure=MeasurementFailure.BASE_ABSENT,
+            ),
+        )
+
+
+class _WritesDuringTheTick:
+    """Every durable write one tick made, as the client was handed it.
+
+    A crash window is only visible in the writes themselves: what it leaves is
+    a pinned comment some later tick reads as ordinary, so an assertion on the
+    state a whole tick ends at cannot see it at all.
+    """
+
+    def __init__(self, github) -> None:
+        self.writes: list[dict] = []
+        self._github = github
+        self._wrapped = github.write_pinned_state
+
+    def __call__(self, issue, state):
+        self.writes.append(dict(state.data))
+        return self._wrapped(issue, state)
+
+    def held(self):
+        """Record the pinned writes of one tick."""
+        return patch.object(self._github, "write_pinned_state", self)
+
+
+class LateGateStalePairParkTest(support._ParkedRetryCase, unittest.TestCase):
+    """A park and a record may never disagree about which pair they are about.
+
+    The window between the durable write that records a FRESH candidate and
+    the verdict that retires the park the last one left. A guided resume
+    clears the latch and keeps the reason, so a crash in between would leave a
+    park taken over one commit beside a record naming another -- and nothing
+    on the comment says which commit a park was taken over, so the next tick
+    reads the two as one pair and holds every later reading of it silently:
+    none counted, none reported, and the notice a human is owed never reached.
+    """
+
+    def test_no_write_leaves_a_park_over_another_pair(self) -> None:
+        self._park_state(_GUIDANCE, **support.recorded_generation(
+            measurement_miss_count=_MISS_BOUND,
+            measurement_failure=MeasurementFailure.BASE_ABSENT,
+        ))
+        writes = _WritesDuringTheTick(self.github)
+
+        with writes.held():
+            self._run_gate(
+                run_agent=_agent(
+                    session_id=support.DEV_SESSION, last_message=_FINISHED,
+                ),
+                head_shas=(MEASURED_CANDIDATE_SHA, _MOVED_SHA),
+                candidate_commit=_MOVED_HEAD,
+                added_lines=support.SMALL_ADDITIONS,
+            )
+
+        fresh = [
+            written for written in writes.writes
+            if written.get(support.KEY_CANDIDATE_SHA) == _MOVED_SHA
+        ]
+        self.assertTrue(fresh)
+        for written in fresh:
+            with self.subTest(park=written.get(support.PARK_REASON)):
+                self.assertIsNone(written.get(support.PARK_REASON))
+
+    def test_a_spent_park_does_not_silence_the_pair(self) -> None:
+        # The reason outlives the latch: a resume consumes the one and leaves
+        # the other standing, which is exactly the state seeded here. Read as
+        # a notice still owed, every later reading of that pair would be held
+        # silently -- a bound that never arrives, on an issue nothing says is
+        # parked and no human is behind.
+        self._seed(**{
+            support.PARK_REASON: support.PARK_MEASUREMENT_FAILED,
+            **support.recorded_generation(),
+        })
+
+        mocks = self._run_gate(
+            has_new_commits=False, base_object_present=False,
+        )
+
+        self._assert_no_agent(mocks)
+        self._assert_held(mocks)
+        self._assert_missed(MeasurementFailure.BASE_ABSENT)
+        self.assertEqual(len(self._records(support.EVENT_LATE_FAILURE)), 1)
 
 
 class LateGateGuidanceTest(support._ParkedRetryCase, unittest.TestCase):

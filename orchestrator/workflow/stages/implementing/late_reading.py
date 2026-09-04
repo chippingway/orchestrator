@@ -56,12 +56,19 @@ def _reconciled_measurement(
     show the diff a verdict is defended by either, and acting on the number
     while the evidence behind it is missing is the substitution this whole
     contract refuses.
+
+    Both halves are asked by the one proof: a record too damaged to act on and
+    a base this host cannot show come back the same way, since neither is a
+    reading anything may be settled on. What that proof hands back is what the
+    verdict is settled on, rather than the record it was asked about -- a base
+    reached after a retry lost readings for it ends that run, and the record
+    carrying the end is the one the write behind the verdict has to be made
+    from.
     """
-    if _freeze._damaged_record(gate, recorded):
+    refrozen = _freeze._refrozen_base(gate, recorded)
+    if refrozen is None:
         return True
-    if _freeze._refrozen_base(gate, recorded) is None:
-        return True
-    return _verdict_owner._settled(gate, recorded)
+    return _verdict_owner._settled(gate, refrozen)
 
 
 def _freshly_measured(

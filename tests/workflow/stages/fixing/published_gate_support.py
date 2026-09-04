@@ -16,15 +16,22 @@ package boundary for it.
 
 from __future__ import annotations
 
+import importlib
+
 # The frozen commit and the worktree status a case seeds the gate with.
 # Every case names this module `support` and reads them off it, so the
 # same-name alias is what declares the import a re-export rather than a
 # dead one -- the same reason the mid-run effects below carry one.
-from orchestrator.git.measurement.models import FrozenCommit as FrozenCommit
+from orchestrator.git.measurement.models import (
+    FrozenCommit as FrozenCommit,
+    MeasurementFailure as MeasurementFailure,
+)
 from orchestrator.git.verification.probes import (
     _WorktreeStatus as _WorktreeStatus,
 )
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import dispatch as _dispatch
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from tests.workflow import fixtures
@@ -53,6 +60,10 @@ KEY_CANDIDATE_SHA = "late_candidate_sha"
 KEY_BASE_SHA = "late_base_sha"
 KEY_THRESHOLD = "late_threshold"
 KEY_ADDITIONS = "late_additions"
+# What a reading the transport lost leaves on the pair it was owed for: the
+# readings lost in a row, and the step the last of them stopped at.
+KEY_MISS_COUNT = "late_measurement_miss_count"
+KEY_MEASUREMENT_FAILURE = "late_measurement_failure"
 KEY_PHASE = "late_phase"
 KEY_APPROVED_SHA = "late_approved_sha"
 KEY_APPROVED_LEASE = "late_approved_lease"
@@ -78,10 +89,12 @@ PARK_MEASUREMENT_FAILED = "late_measurement_failed"
 PARK_CANDIDATE_MOVED = "late_candidate_moved"
 PHASE_MEASURING = "measuring"
 EVENT_LATE_MEASUREMENT = "late_measurement"
+EVENT_LATE_FAILURE = "late_failure"
 
 COUNT_ADDED_LINES = "_count_added_lines"
 FREEZE_BASE_COMMIT = "_freeze_base_commit"
 BASE_OBJECT_PRESENT = "_base_object_present"
+WORKTREE_PATH = "_worktree_path"
 
 # The two keywords a gated push names its commit and pins its ref by.
 REVISION = "revision"
@@ -157,6 +170,29 @@ def recorded_generation(*, stage: str = support.FIXING, **overrides) -> dict:
         ),
     )
     return recorded.data
+
+
+class _RecordAtNotice:
+    """What the pinned comment says at the moment a notice is posted.
+
+    A park posts its mention and leaves the flags to the write behind it, so
+    durable state read once the tick is over cannot tell a record written
+    ahead of the notice from one written after it. This reads it as it stood
+    then.
+    """
+
+    def __init__(self, github) -> None:
+        self.pinned: dict = {}
+        self._github = github
+        self._wrapped = github.comment
+
+    def __call__(self, *called, **options):
+        self.pinned = dict(self._github.pinned_data(support.ISSUE))
+        return self._wrapped(*called, **options)
+
+    def held(self):
+        """Patch the comment this records, for the duration of one tick."""
+        return support.patch.object(self._github, "comment", self)
 
 
 class _SizeGateAssertionsMixin:
@@ -242,3 +278,30 @@ class _SizeGateFixtureMixin(support._FixingFixtureMixin, _SizeGateAssertionsMixi
             return self._run_fixing(
                 scenario.github, scenario.issue, **run_options,
             )
+
+    def _poll(self, scenario, **run_options):
+        """One ordinary poll of this issue: whether the stage ran, and what read.
+
+        The reading a frozen pair is owed is taken ahead of every stage
+        handler rather than inside one, so a SECOND poll of the same issue
+        only reaches it this way -- and reaching it is the point: what a
+        record nobody has measured must never buy is the stage below running
+        over it. So the handler is mocked out and the first half of the answer
+        is whether it was reached at all.
+        """
+        run_options.setdefault("run_agent", support._agent())
+        owner_name, named = _dispatch._STAGE_HANDLER_TARGETS[support.FIXING]
+        with support.patch.object(
+            importlib.import_module(owner_name), named,
+        ) as dispatched, support.patch.object(
+            _worktree_paths, WORKTREE_PATH, return_value=support.TEMP_ROOT,
+        ):
+            mocks = self._run(
+                lambda: _dispatch._route_issue_to_handler(
+                    scenario.github, fixtures._TEST_SPEC, scenario.issue,
+                    scenario.github.workflow_label(scenario.issue),
+                ),
+                **run_options,
+            )
+            handled = dispatched.called
+        return handled, mocks

@@ -4,10 +4,11 @@
 
 A candidate whose size is unknown is not a small one, so nothing is published
 on the strength of one: the pair that was frozen stays on the record, the issue
-parks with the reason it failed for, and the retry re-reads exactly that pair.
-The evidence rules beside it are the same claim from the other end -- a
-recorded SHA is what a later tick acts on, never whatever the branch or the
-remote has become since.
+is handed back with the reason it failed for -- or, where that reason is a base
+the transport could not reach, counted quietly against the bound a retry is
+held to -- and the retry re-reads exactly that pair. The evidence rules
+beside it are the same claim from the other end -- a recorded SHA is what a
+later tick acts on, never whatever the branch or the remote has become since.
 """
 
 from __future__ import annotations
@@ -65,6 +66,20 @@ _DAMAGED_IDENTITIES = (_DROPPED_CYCLE, _DROPPED_ROOT, "late_current_issue")
 # An issue number that is not the one being decided, which is what a record
 # carrying somebody else's generation reads back as.
 _FOREIGN_ISSUE = 4242
+
+# Every way a record can be one this issue may not mint over -- recorded
+# against another issue, carrying no cycle to be joined by, and short of the
+# ceiling or the boundary a reading is settled under -- each seeded with no
+# base beside it: that is the shape the quiet retry itself leaves, so it is
+# the one road into a reuse with no recorded base to be proved by. The base
+# is the only field NOT among them, since being without one is what the
+# failure being retried means.
+_UNMINTABLE_RECORDS = (
+    {"current_issue": _FOREIGN_ISSUE},
+    {"dropping": _DROPPED_CYCLE},
+    {"threshold": None},
+    {"phase": None},
+)
 
 _AGENT_TIMEOUT = "agent_timeout"
 _PRE_IMPLEMENT_SHA = "pre_implement_sha"
@@ -267,7 +282,9 @@ class LateGateDamagedRecordTest(support._GateCase, unittest.TestCase):
     def test_a_counted_record_proves_its_base(self) -> None:
         # The count is done, but the object it was taken against is not here.
         # Acting on the number while its evidence is missing is the
-        # substitution this whole contract refuses.
+        # substitution this whole contract refuses, so the candidate is held
+        # on a reading the fetch lost rather than published on the number
+        # beside it.
         self._seed(
             **support.recorded_generation(additions=support.SMALL_ADDITIONS),
         )
@@ -275,7 +292,7 @@ class LateGateDamagedRecordTest(support._GateCase, unittest.TestCase):
         mocks = self._run_gate(base_object_present=False)
 
         self._assert_held(mocks)
-        self._assert_parked()
+        self._assert_missed(MeasurementFailure.BASE_ABSENT)
 
 
 class LateGateDamagedIdentityTest(support._GateCase, unittest.TestCase):
@@ -386,6 +403,101 @@ class LateGateDamagedIdentityTest(support._GateCase, unittest.TestCase):
         self.assertEqual(reported[0][field], support.GATE_ISSUE_NUMBER)
 
 
+class LateGateUnusableRetryTest(support._GateCase, unittest.TestCase):
+    """A record the gate may not act on is not a pair whose base is retried.
+
+    The two halves of "unusable" meet the one failure this gate retries
+    QUIETLY, and quiet is what makes them dangerous together: the retry writes
+    the record back, so a record reaching it damaged -- or recorded against
+    another issue -- would be repaired under this issue's whole identity and
+    left unparked, publishable by the next tick that finds the base readable.
+    The proof that stops it is the reused pair's own, so the road with nothing
+    in front of it is covered too: the pre-spawn reconciliation runs before
+    the gate that would otherwise catch the damage.
+    """
+
+    def test_a_damaged_record_is_not_retried(self) -> None:
+        # A base this host cannot show is the one failure the gate retries
+        # quietly -- and a quiet retry is a WRITE. A record short of the
+        # fields that give its count meaning may not reach it: repaired under
+        # this issue's identity and left unparked, it would publish on a
+        # ceiling nobody set the moment the base came back. So the damage is
+        # answered first, and no reading of this pair is spent on it.
+        self._seed(**support.recorded_generation(threshold=None))
+
+        mocks = self._run_gate(base_object_present=False)
+
+        self._assert_unmeasured(mocks)
+        self._assert_held(mocks)
+        self._assert_parked()
+        pinned = self._pinned()
+        self.assertNotIn(support.KEY_THRESHOLD, pinned)
+        self.assertNotIn(support.KEY_MISS_COUNT, pinned)
+        self.assertIn("late_threshold", self.github.posted_comments[-1][1])
+
+
+    def test_a_record_with_no_base_is_proved_too(self) -> None:
+        # The road the base proof cannot cover, because there is no base on it
+        # to prove: a remote that would not name one records none at all, so
+        # the retry over that same candidate freezes AFRESH -- and the mint it
+        # freezes under inherits the record beside it, stamping this issue's
+        # number over whatever the record said. Unproved, that is the same
+        # takeover through the one door left open.
+        for damage in _UNMINTABLE_RECORDS:
+            with self.subTest(record=damage):
+                self.setUp()
+                seeded = support.recorded_generation(base_sha="", **damage)
+                self._seed(**seeded)
+
+                mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+                self._assert_unmeasured(mocks)
+                self._assert_held(mocks)
+                self._assert_parked()
+                self.assertNotIn(support.KEY_MISS_COUNT, self._pinned())
+                # Untouched rather than merely unpublished: what the mint
+                # would have done is rewrite it under this issue's own name.
+                self.assertEqual(
+                    {key: self._pinned().get(key) for key in seeded}, seeded,
+                )
+
+    def test_a_lost_ceiling_is_not_restamped(self) -> None:
+        # The sharpest of them, because the repair looks like a success: the
+        # mint the retry goes through stamps the ceiling the process is
+        # running with NOW, so a generation that lost the one it was frozen
+        # under is re-judged against a setting retuned since -- and an
+        # oversized candidate publishes as a small one on a reading nobody
+        # took at that ceiling.
+        self._seed(**support.recorded_generation(base_sha="", threshold=None))
+
+        with patch.object(config, "MAX_ADDED_LINES", _RAISED_THRESHOLD):
+            mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_unmeasured(mocks)
+        self._assert_held(mocks)
+        self._assert_parked()
+        self.assertIn("late_threshold", self.github.posted_comments[-1][1])
+
+    def test_a_foreign_record_is_not_adopted(self) -> None:
+        # The sharpest shape of the same rule, and the one a single tick
+        # cannot show on its own. The quiet retry a missing base earns writes
+        # the record back, so a reading taken over THERE would be rewritten
+        # under this issue's whole identity, left unparked, and published here
+        # by the next tick that finds the base readable. The record is left
+        # naming the issue it was taken on, and no base that comes back makes
+        # it this one's to publish.
+        self._seed(**support.recorded_generation(current_issue=_FOREIGN_ISSUE))
+        self._run_gate(base_object_present=False)
+
+        mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        self._assert_held(mocks)
+        self._assert_parked()
+        pinned = self._pinned()
+        self.assertEqual(pinned[support.KEY_CURRENT_ISSUE], _FOREIGN_ISSUE)
+        self.assertNotIn(support.KEY_MISS_COUNT, pinned)
+
+
 class LateGateRefusalTest(support._GateCase, unittest.TestCase):
     """A reading nobody could take is never a small candidate."""
 
@@ -397,10 +509,12 @@ class LateGateRefusalTest(support._GateCase, unittest.TestCase):
         self._assert_parked()
         self._assert_frozen()
 
-    def test_an_unfrozen_base_parks(self) -> None:
+    def test_an_unfrozen_base_is_counted_and_retried(self) -> None:
         # The failure is reportable because the identity went down with it: a
-        # record no sink could correlate would leave the operator with a park
-        # and nothing to join it to.
+        # record no sink could correlate would leave the operator with a
+        # refusal and nothing to join it to. What the remote would not name is
+        # the transport, so the candidate is recorded with no base beside it
+        # and the reading is taken again rather than handed to a human.
         mocks = self._run_gate(
             frozen_base=FrozenCommit(
                 failure=MeasurementFailure.BASE_UNREADABLE,
@@ -408,7 +522,7 @@ class LateGateRefusalTest(support._GateCase, unittest.TestCase):
         )
 
         self._assert_unmeasured(mocks)
-        self._assert_parked()
+        self._assert_missed(MeasurementFailure.BASE_UNREADABLE)
         pinned = self._pinned()
         self.assertEqual(
             pinned[support.KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA,
@@ -518,14 +632,15 @@ class LateGateBaseIdentityTest(support._GateCase, unittest.TestCase):
             ),
         )
 
-        self._assert_parked()
+        self._assert_missed(MeasurementFailure.BASE_ABSENT)
         self.assertEqual(self._pinned()[support.KEY_BASE_SHA], MEASURED_BASE_SHA)
 
     def test_a_moved_base_is_not_read_again(self) -> None:
         # The regression the recorded identity exists for: the retry asks for
         # the exact object it froze, and a host that still does not hold it
-        # parks -- rather than re-reading a remote whose base has moved on and
-        # measuring a different pair under the same generation.
+        # takes the reading again -- rather than re-reading a remote whose base
+        # has moved on and measuring a different pair under the same
+        # generation.
         self._seed(**support.recorded_generation())
 
         mocks = self._run_gate(base_object_present=False)
@@ -533,7 +648,7 @@ class LateGateBaseIdentityTest(support._GateCase, unittest.TestCase):
         mocks[support.FREEZE_BASE_COMMIT].assert_not_called()
         self._assert_unmeasured(mocks)
         self._assert_held(mocks)
-        self._assert_parked()
+        self._assert_missed(MeasurementFailure.BASE_ABSENT)
         self.assertEqual(self._pinned()[support.KEY_BASE_SHA], MEASURED_BASE_SHA)
 
     def test_a_restored_base_object_measures(self) -> None:
