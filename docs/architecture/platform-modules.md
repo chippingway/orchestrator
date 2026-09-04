@@ -62,8 +62,8 @@ last is held by the loader itself rather than by a check.
   `_run_agent_tracked`'s own body with the circuit asked on a line above it.
 - **Operator log channels.** Four names are spelled literally rather than derived from `__name__`, because an
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
-  `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that
-  log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
+  `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three `git/measurement/` owners
+  that log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
   `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the nine `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
@@ -272,26 +272,24 @@ orchestrator/
                         attributes and a named algorithm, pinned where git consults the environment last, and
                         refusing outright on the attribute file and diff-driver config no pin reaches — and the
                         measurement composing the three steps
-      fingerprint.py    the SHA-256 digest of the whole prospective contribution over the same three-dot range,
-                        taken over git's `--raw -z` listing (modes, unabbreviated object ids, status, and path
-                        bytes) and then over the content of every object that listing names, so nothing that
-                        decides how content would be RENDERED decides the id and no id has to be taken on trust
-                        — git serves a substituted loose object under the name its file sits at, and only
-                        `fsck` ever says otherwise. Renames are left undetected for a representation that does
-                        not move with a similarity threshold, the record order is pinned against
-                        `diff.orderFile`, the shallow file and lazy fetching are pinned in the environment so a
-                        planted history boundary cannot move the range and no step of a reading over a partial
-                        clone reaches its promisor remote — the ends included, since a commit made after such a
-                        clone is exactly what a lazy fetch would supply and what an absent end means — both
-                        commits are proven present before the listing is asked for, the
-                        listing is refused unless every field it has is terminated, and the objects are read in
-                        one `--batch` whose protocol is checked as it arrives — every id asked for, in order, a
-                        blob of the length its header claims — since a store that lost one answers `missing` on
-                        the very stdout the digest is taken over and exits 0, so a check standing in front of
-                        the read would only widen the window it left. A typed failure and no digest for any of
-                        those, since a failed listing writes the empty stdout an unchanged candidate writes; a
-                        gitlink is exempt from the object read, its commit being the submodule repository's to
-                        hold
+      fingerprint.py    the SHA-256 digest of the whole prospective contribution over the same three-dot range, taken
+                        over git's `--raw -z` listing (modes, unabbreviated object ids, status, and path bytes) and
+                        then over the content of every object that listing names, so nothing that decides how content
+                        would be RENDERED decides the id and no id has to be taken on trust — git serves a substituted
+                        loose object under the name its file sits at, and only `fsck` ever says otherwise. Renames are
+                        left undetected for a representation that does not move with a similarity threshold, the record
+                        order is pinned against `diff.orderFile`, the shallow file and lazy fetching are pinned in the
+                        environment so a planted history boundary cannot move the range and no step of a reading over a
+                        partial clone reaches its promisor remote — the ends included, since a commit made after such a
+                        clone is exactly what a lazy fetch would supply and what an absent end means — both commits are
+                        proven present before the listing is asked for, the listing is refused unless every field it
+                        has is terminated, and the objects are read in one `--batch` whose protocol is checked as it
+                        arrives — every id asked for, in order, a blob of the length its header claims — since a store
+                        that lost one answers `missing` on the very stdout the digest is taken over and exits 0, so a
+                        check standing in front of the read would only widen the window it left. A typed failure and no
+                        digest for any of those, since a failed listing writes the empty stdout an unchanged candidate
+                        writes; a gitlink is exempt from the object read, its commit being the submodule repository's
+                        to hold
     snapshots/          the immutable remote copy a superseded candidate is preserved as
       namespace.py      the one `refs/orchestrator/late-split/...` namespace a snapshot may occupy, built from a
                         generation's own identity and refused for anything else, plus the
@@ -419,8 +417,10 @@ off a facade:
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
 - `measurement/` — `models` carries only data. `commits` calls `commands`, `branch_transport`, and the verification
   probes for the two object reads, and `commands` once more for the one line it keeps off a fetch that brought
-  nothing back; `additions` calls `commands` and `commits`. Nothing here reaches the workflow layer, so the ceiling
-  a count is compared against, and the verdict that comparison earns, stay with the caller.
+  nothing back; `additions` calls `commands` and `commits`; `fingerprint` calls `commands` and those same probes and
+  nothing else in the package, since it is handed two ends already proven rather than establishing them. Nothing here
+  reaches the workflow layer, so the ceiling a count is compared against, the verdict that comparison earns, and what
+  two equal digests license all stay with the caller.
 - `snapshots/` — `namespace` is string policy and reaches nothing, which is what lets the late domain's lineage
   record consult it on every pinned read without paying for the transport; `refs` calls `ref_transport` for the
   remote read and the lease-pinned write and delete, `branch_transport` for the fetch, and `commands` for the
