@@ -38,6 +38,7 @@ _OWNERS = (
     "run",
     "session",
     "settled_prs",
+    "settlement",
     "state",
     "terminal",
 )

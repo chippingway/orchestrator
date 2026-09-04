@@ -42,8 +42,8 @@ the SHA before the spawn is what keeps that classifiable: on an issue this
 stage does not have parked, a non-empty anchor means a round opened and never
 finished, and comparing it to the tree says whether it left a commit behind.
 On a parked one the same comparison says something narrower and just as
-load-bearing -- whether the checkout is still the certified one -- which the
-handler asks of both probes here before a reply may open a round on it.
+load-bearing -- whether the checkout is still the certified one -- which
+`settlement` asks of both probes here before a reply may open a round on it.
 
 The spec rides that same pre-spawn write, so a run that returns no session id
 -- a CLI hiccup, an empty `-o` file -- still records which backend and args this
