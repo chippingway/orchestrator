@@ -104,14 +104,16 @@ orchestrator/
                         routes into
   git/                  local git: execution, locks, and authenticated
                         transport, under the worktree lifecycle, the read-only
-                        inventory of the checkouts and branches it leaves, the
-                        classification that says which of them a finished issue
-                        may have reclaimed, the per-tick base sync, branch
-                        publication, verify runs, the added-line measurement of
-                        a committed candidate and the digest naming which
-                        contribution it carries, and the immutable ref
-                        namespace one is preserved under when a split
-                        supersedes it
+                        inventory of the checkouts and branches it leaves --
+                        both layouts of each, widened by what the remote still
+                        carries, so an issue this host holds nothing for is
+                        still found -- the classification that says which of
+                        them a finished issue may have reclaimed, the per-tick
+                        base sync, branch publication, verify runs, the
+                        added-line measurement of a committed candidate and the
+                        digest naming which contribution it carries, and the
+                        immutable ref namespace one is preserved under when a
+                        split supersedes it
   observability/        the four surfaces that watch a run without steering
                         it: the analytics sink and everything downstream of
                         it, the parser that meters one finished agent run, the
