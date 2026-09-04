@@ -59,7 +59,14 @@ matching `ANALYTICS_LOG_PATH`.
   `TRACK_SKILL_TRIGGERS` is enabled, with no migration and no schema reapply. The `agent_run_budget` family's payload
   is another: `stage` and `agent_role` are already promoted columns, and `phase`, `configured`, `allowance`, `used`,
   `remaining`, `reservation_id`, and `reason` all land in `extras` unchanged
-  ([`event-streams.md`](event-streams.md#agent-run-budget-records-both-sinks)). `source_path` / `source_line` are
+  ([`event-streams.md`](event-streams.md#agent-run-budget-records-both-sinks)). The late size gate's seven families
+  are a third, and the one with a test standing over it: `stage` is promoted, and every field of the bounded late
+  payload lands in `extras` — the correlating identities, the frozen commits, the measurement, and the per-family
+  details, including the `measurement_failure` step and the `detail` line a refused size reading names
+  ([`event-streams.md`](event-streams.md#late-split-records-both-sinks)).
+  `tests/observability/analytics/sync/test_live_postgres.py` replays one of those records against a real Postgres and
+  reads both of those fields back out of the blob, so widening that payload stays an emitter change rather than a
+  migration an operator has to apply. `source_path` / `source_line` are
   forensic context; the authoritative dedup key is `content_hash` — SHA-256 over the canonical (`sort_keys=True`)
   JSON form of the record.
 - **Indexes.** A plain (non-partial) unique index on `content_hash` plus `INSERT ... ON CONFLICT (content_hash) DO
