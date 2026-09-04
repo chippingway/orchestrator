@@ -167,15 +167,21 @@ _OWNER_ONLY_NAMES = (
 # once the first two are held, since a HEAD read before its lock is one that
 # can move -- the exclusive creation each is taken by, marked with the process
 # that took it so a lock a killed pass left behind is one a later pass tells
-# from one a running command holds, the bounded no-follow read that says what
-# one carries and the parse of the process it names, the reading that asks
-# whether a name still carries what this pass wrote, and the take-again, the
-# give-back, and the check before the removal that each of them is bound to;
-# the registration the removal is aimed by: opened without following or
-# waiting, told whether the descriptor is a regular file at all, read for what
-# it says from its first byte, told whether it says this checkout, taken over
-# by a copy of this pass's own written under a name of its own and renamed
-# into place, held by the mode taken off the object rather than the name, put
+# from one a running command holds -- staged whole under a name of its own,
+# with the open that name is written under and the suffix keeping it out of
+# every ref listing, and then linked to the name it is for, since a lock
+# created before it is marked is one an incomplete write leaves unrecognisable
+# -- and the staging file dropped however that ended, the bounded no-follow
+# read that says what one carries and the parse of the process it names, the
+# reading that asks whether a name still carries what this pass wrote, and the
+# take-again, the give-back, and the check before the removal that each of them
+# is bound to; the registration the removal is aimed by: opened without
+# following or waiting and held open across the whole take-over, told whether
+# the descriptor is a regular file at all, read for what it says from its first
+# byte, told whether it says this checkout, taken over by a copy of this pass's
+# own staged under a name of its own -- dropped however that ended -- and
+# renamed into place only while the original still is what it was and still
+# says it, held by the mode taken off the object rather than the name, put
 # back the same way, and asked once more -- both what the name resolves to and
 # what the object says -- whether it still means what it meant; the comparison
 # telling a path that IS a tree from one that merely leads to it and the
@@ -224,10 +230,10 @@ _OWNER_DEFINED = (
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
-    ("_LOCK_CREATED", reclamation),
     ("_LOCK_LIMIT", reclamation),
     ("_LOCK_MARK", reclamation),
     ("_LOCK_MODE", reclamation),
+    ("_LOCK_STAGED", reclamation),
     ("_NO_DEREF", obligations),
     ("_NO_LAZY_FETCH", obligations),
     ("_NO_NOTE", obligations),
@@ -250,6 +256,7 @@ _OWNER_DEFINED = (
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
+    ("_STAGED_SUFFIX", reclamation),
     ("_UNFOLLOWED", reclamation),
     ("_VERIFY_QUIETLY", evidence),
     ("_VERIFY_REF", creation),
@@ -333,8 +340,11 @@ _OWNER_DEFINED = (
     ("_let_go", reclamation),
     ("_local_branch_tip", evidence),
     ("_lock_created", reclamation),
+    ("_lock_dropped", reclamation),
+    ("_lock_filed", reclamation),
     ("_lock_names", reclamation),
     ("_lock_says", reclamation),
+    ("_lock_staged", reclamation),
     ("_lock_still", reclamation),
     ("_lock_told", reclamation),
     ("_locks_unchanged", reclamation),
@@ -374,15 +384,19 @@ _OWNER_DEFINED = (
     ("_recorded_obligations", obligations),
     ("_recorded_pull_request", claims),
     ("_records_prefix", obligations),
+    ("_registration_checked", reclamation),
+    ("_registration_dropped", reclamation),
     ("_registration_filed", reclamation),
     ("_registration_held", reclamation),
-    ("_registration_named", reclamation),
     ("_registration_now", reclamation),
+    ("_registration_opened", reclamation),
     ("_registration_read", reclamation),
     ("_registration_replaced", reclamation),
+    ("_registration_staged", reclamation),
+    ("_registration_still", reclamation),
+    ("_registration_taken", reclamation),
     ("_registration_told", reclamation),
     ("_registration_unchanged", reclamation),
-    ("_registration_written", reclamation),
     ("_remind", obligations),
     ("_removal_under_lock", reclamation),
     ("_removal_while_held", reclamation),

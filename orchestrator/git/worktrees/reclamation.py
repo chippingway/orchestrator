@@ -130,11 +130,20 @@ _REF_LOCK = ".lock"
 # holding right now from one a killed pass left behind.
 _LOCK_MARK = "orchestrator-reclaim"
 
-# How one is created: for this process alone, so the create IS the taking, and
-# with the mode git gives its own so an operator reading the directory finds
-# nothing unusual.
-_LOCK_CREATED = os.O_CREAT | os.O_EXCL | os.O_RDWR
+# How one is written before it is filed at its own name: under a name of this
+# pass's own, which nothing else reads and which a leftover of this process's
+# may be written over. The exclusion is the link that files it afterwards, not
+# this.
+_LOCK_STAGED = os.O_CREAT | os.O_TRUNC | os.O_WRONLY
 
+# The suffix that name carries, which is what keeps a staging file out of
+# every ref listing while it is there: git skips a loose file whose name ends
+# in this when it walks `refs/`, and the branch lock a removal takes is a name
+# under exactly that room.
+_STAGED_SUFFIX = ".lock"
+
+# The mode git gives its own locks, so an operator reading the directory finds
+# nothing unusual.
 _LOCK_MODE = 0o666
 
 # How much of one is read back. A lock this host wrote is a mark and a process
@@ -449,33 +458,75 @@ def _registration_held(
     exactly what the original said, and every writer who came before is left
     holding an inode nothing is filed at.
 
+    The original is held open from the reading that validates it to the rename
+    that displaces it, and that is what makes the take-over safe to do at all.
+    What is filed at the name is a copy of what the original SAID, so a
+    `worktree move` landing between the two would have this pass write a path
+    nothing is at over the path git had just recorded -- destroying the
+    registration of a checkout it then refuses to touch. Held open, the
+    original can be asked one last time whether it is still the file that was
+    read and still says what it said, and it is asked immediately before the
+    rename with nothing in between.
+
     `None` for anything that is not this checkout's own registration, and for
     every reading that could not be taken: a removal aimed by a file this pass
     cannot account for is aimed at nothing in particular.
     """
     named = gitdir / _REGISTRATION
-    read = _registration_named(artifacts, named, worktree)
+    opened = _registration_opened(artifacts, named)
+    if opened is None:
+        return None
+    with contextlib.ExitStack() as reading:
+        reading.callback(os.close, opened)
+        return _registration_taken(artifacts, named, worktree, opened)
+
+
+def _registration_opened(artifacts: IssueArtifacts, named: Path) -> int | None:
+    """Open the file a removal is aimed by, without following or waiting.
+
+    Without following, which is the first of the two things this is for. A
+    link left at that name would have every reading here answer about somebody
+    else's file and every write land on it, so a link is not read around -- it
+    is refused, and the removal with it.
+
+    Without waiting, which is the second. A fifo at the name is something an
+    agent can leave there, and an open of one blocks until somebody writes --
+    with this pass holding git's own locks for the checkout and the target
+    root while it waits.
+    """
+    try:
+        return os.open(named, _UNFOLLOWED)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: %s would not open as a file of "
+            "its own (%s)", artifacts.issue_number, named, refused,
+        )
+        return None
+
+
+def _registration_taken(
+    artifacts: IssueArtifacts, named: Path, worktree: Path, opened: int,
+) -> _Registration | None:
+    """Validate what is filed at that name and take it over, still holding it.
+
+    Both halves run against the one descriptor the open established, so what
+    is taken over is the file that was validated rather than whatever the name
+    means by the time the rename runs.
+    """
+    read = _registration_checked(artifacts, worktree, opened)
     if read is None:
         return None
-    was, says = read
-    return _registration_replaced(artifacts, named, was, says)
+    return _registration_replaced(artifacts, named, opened, read)
 
 
-def _registration_named(
-    artifacts: IssueArtifacts, named: Path, worktree: Path,
+def _registration_checked(
+    artifacts: IssueArtifacts, worktree: Path, opened: int,
 ) -> tuple[int, str] | None:
-    """What is filed at that name, and whether it aims at this checkout.
+    """The mode and contents of a registration that aims at this checkout.
 
-    Opened without following, which is the first of the two things this is
-    for. A link left at that name would have every reading here answer about
-    somebody else's file and every write land on it, so a link is not read
-    around -- it is refused, and the removal with it.
-
-    Refusing to wait is the second. A fifo at the name is something an agent
-    can leave there, and a read of one blocks until somebody writes -- with
-    this pass holding git's own locks for the checkout and the target root
-    while it waits. So the open does not block, the descriptor is asked what
-    it is before it is asked what it says, and anything that is not a regular
+    The descriptor is asked what it is before it is asked what it says, since
+    what the open refused to wait for is the read: a fifo answers the open at
+    once and then blocks whoever reads it, and anything that is not a regular
     file is refused rather than read.
 
     A registration names this checkout's own `.git`, which is what says the
@@ -485,14 +536,6 @@ def _registration_named(
     that sits below a link of its own.
     """
     try:
-        opened = os.open(named, _UNFOLLOWED)
-    except OSError as refused:
-        log.warning(
-            "issue=#%d keeping the checkout: %s would not open as a file of "
-            "its own (%s)", artifacts.issue_number, named, refused,
-        )
-        return None
-    try:
         told = _registration_told(opened)
     except (OSError, ValueError) as unread:
         log.warning(
@@ -500,8 +543,6 @@ def _registration_named(
             "read (%s)", artifacts.issue_number, worktree, unread,
         )
         return None
-    finally:
-        os.close(opened)
     if told is not None and _aims_here(worktree, told[1]):
         return told
     log.warning(
@@ -512,12 +553,7 @@ def _registration_named(
 
 
 def _registration_told(opened: int) -> tuple[int, str] | None:
-    """The mode and the contents of a descriptor, if it is a regular file.
-
-    The type is asked of the descriptor before anything is read from it,
-    because what the name is opened without waiting for is the read: a fifo
-    answers the open at once and then blocks whoever reads it.
-    """
+    """The mode and the contents of a descriptor, if it is a regular file."""
     held = os.fstat(opened)
     if not S_ISREG(held.st_mode):
         return None
@@ -535,7 +571,10 @@ def _registration_read(pinned: int) -> str:
 
 
 def _registration_replaced(
-    artifacts: IssueArtifacts, named: Path, was: int, says: str,
+    artifacts: IssueArtifacts,
+    named: Path,
+    opened: int,
+    read: tuple[int, str],
 ) -> _Registration | None:
     """Put a file of this pass's own at that name, and hold that one.
 
@@ -556,17 +595,14 @@ def _registration_replaced(
     name of its own beside the registration. Nothing reads that name, and the
     next pass writes another rather than trusting one it finds.
     """
-    fresh = named.with_name(f"{named.name}{_REPLACED_SUFFIX}{os.getpid()}")
-    try:
-        pinned = os.open(fresh, _REPLACING, was)
-    except OSError as refused:
-        log.warning(
-            "issue=#%d keeping the checkout: its registration could not be "
-            "taken over (%s)", artifacts.issue_number, refused,
-        )
+    was, says = read
+    staged = named.with_name(f"{named.name}{_REPLACED_SUFFIX}{os.getpid()}")
+    pinned = _registration_staged(artifacts, staged, was, says)
+    if pinned is None:
         return None
-    if not _registration_filed(artifacts, fresh, named, pinned, says):
+    if not _registration_filed(artifacts, staged, named, opened, says):
         os.close(pinned)
+        _registration_dropped(staged)
         return None
     if _mode_taken_off(artifacts, pinned, was) is None:
         os.close(pinned)
@@ -574,33 +610,88 @@ def _registration_replaced(
     return _Registration(named, pinned, was, says)
 
 
-def _registration_filed(
-    artifacts: IssueArtifacts,
-    fresh: Path,
-    named: Path,
-    pinned: int,
-    says: str,
-) -> bool:
-    """Write this pass's copy and rename it over the registration."""
+def _registration_staged(
+    artifacts: IssueArtifacts, staged: Path, was: int, says: str,
+) -> int | None:
+    """Write this pass's copy under a name of its own, and hold it open."""
     try:
-        _registration_written(fresh, named, pinned, says)
+        pinned = os.open(staged, _REPLACING, was)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: its registration could not be "
+            "taken over (%s)", artifacts.issue_number, refused,
+        )
+        return None
+    try:
+        os.write(pinned, says.encode())
     except OSError as refused:
         log.warning(
             "issue=#%d keeping the checkout: its registration could not be "
             "written back (%s)", artifacts.issue_number, refused,
         )
-        with contextlib.suppress(OSError):
-            fresh.unlink()
+        os.close(pinned)
+        _registration_dropped(staged)
+        return None
+    return pinned
+
+
+def _registration_filed(
+    artifacts: IssueArtifacts,
+    staged: Path,
+    named: Path,
+    opened: int,
+    says: str,
+) -> bool:
+    """File this pass's copy at the name, while the name still means the same.
+
+    The last thing asked before a rename that cannot be undone: the name still
+    resolves to the object this pass validated, and that object still says
+    what it said. A `worktree move` rewrites this file in place, so the second
+    question is the one that catches it -- and what the rename would otherwise
+    file is a path git has just stopped recording, leaving a checkout that
+    survived registered where it no longer is.
+
+    The asking and the rename are as close together as two calls can be. What
+    a name-based protocol cannot offer is doing them as one, and the writer
+    that would have to land between them is one already racing git's own
+    non-atomic rewrite of the same file.
+    """
+    try:
+        still = _registration_still(named, opened, says)
+    except (OSError, ValueError) as unread:
+        log.warning(
+            "issue=#%d keeping the checkout: %s could not be read back before "
+            "the take-over (%s)", artifacts.issue_number, named, unread,
+        )
+        return False
+    if not still:
+        log.warning(
+            "issue=#%d keeping the checkout: %s stopped being the "
+            "registration this pass read", artifacts.issue_number, named,
+        )
+        return False
+    try:
+        os.replace(staged, named)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: its registration could not be "
+            "taken over (%s)", artifacts.issue_number, refused,
+        )
         return False
     return True
 
 
-def _registration_written(
-    fresh: Path, named: Path, pinned: int, says: str,
-) -> None:
-    """Write this pass's copy out and file it at the registration's name."""
-    os.write(pinned, says.encode())
-    os.replace(fresh, named)
+def _registration_still(named: Path, opened: int, says: str) -> bool:
+    """Whether that name still holds the file that was read, saying the same."""
+    return _same_object(
+        named.lstat(), os.fstat(opened),
+    ) and _registration_read(opened) == says
+
+
+def _registration_dropped(staged: Path) -> None:
+    """Take this pass's copy away, wherever the take-over ended."""
+    with contextlib.suppress(OSError):
+        staged.unlink()
 
 
 def _aims_here(worktree: Path, named: str) -> bool:
@@ -798,38 +889,80 @@ def _taken_once(artifacts: IssueArtifacts, lock: Path) -> _HeldLock | None:
 
 
 def _lock_created(lock: Path) -> _HeldLock | None:
-    """Create one lock file for this process alone, marked as this host's.
+    """File one lock for this process alone, whole, marked as this host's.
 
     The mark is what a later pass reads to tell this host's own leftover from
     a lock some git command is holding right now: git writes its own content
     into each of these -- an index, a ref line, an object id -- and never
     this.
 
-    Room is made for it first, because a ref that has been packed away leaves
-    none: the loose file under `refs/heads/` is what `pack-refs` removes, and
-    the directories above it go with it. Git makes the same room when it takes
-    the same lock, and an empty one it finds instead is one it prunes. A room
-    that could not be made is not answered here -- the creation that follows
-    fails on its own and says so.
+    Written under a name of this pass's own and then LINKED to the lock's, so
+    what appears at that name appears complete. Creating the lock and marking
+    it afterwards leaves a window where the name exists carrying nothing, and
+    a lock carrying nothing is one no later pass can recognise as this host's:
+    it reads as a command's, is never taken again, and refuses every removal
+    for that issue from then on. A write that fails and a process that stops
+    are the same event through that window, and neither can reach it here --
+    the link is the whole of the taking, and it is refused outright when
+    something is already at the name.
 
-    What comes back is the object the create made, so a lock this pass took is
+    Room is made first, because a ref that has been packed away leaves none:
+    the loose file under `refs/heads/` is what `pack-refs` removes, and the
+    directories above it go with it. Git makes the same room when it takes the
+    same lock, and an empty one it finds instead is one it prunes. A room that
+    could not be made is not answered here -- the write that follows fails on
+    its own and says so.
+
+    What comes back is the line the create wrote, so a lock this pass took is
     one it can recognise again whatever has since been done to the name.
     """
     with contextlib.suppress(OSError):
         lock.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        taking = os.open(lock, _LOCK_CREATED, _LOCK_MODE)
-    except OSError:
-        return None
     marked = f"{_LOCK_MARK} {os.getpid()}\n"
+    staged = lock.with_name(f"{lock.name}.{os.getpid()}{_STAGED_SUFFIX}")
     try:
-        os.write(taking, marked.encode())
+        return _lock_filed(lock, staged, marked)
     except OSError as refused:
-        log.warning("the lock %s could not be marked: %s", lock, refused)
+        log.warning("the lock %s could not be written: %s", lock, refused)
         return None
     finally:
-        os.close(taking)
+        _lock_dropped(staged)
+
+
+def _lock_filed(lock: Path, staged: Path, marked: str) -> _HeldLock | None:
+    """Write the whole of one lock, then file it at the name it is for.
+
+    `None` is the name already being taken, which is what the link answers
+    with rather than an exception this reads as a failure to write: a lock
+    somebody else is holding is the ordinary answer, and the caller tells it
+    from a leftover of this host's by reading what is there.
+    """
+    _lock_staged(staged, marked)
+    try:
+        os.link(staged, lock)
+    except OSError:
+        return None
     return _HeldLock(lock, marked)
+
+
+def _lock_staged(staged: Path, marked: str) -> None:
+    """Write one lock's whole content under the name it is staged at.
+
+    Not created exclusively, because the name carries this process's own id:
+    what could be there is this host's own leftover from a pass that stopped
+    between the write and the link, and refusing over one would be refusing
+    every removal for that issue on the strength of a file nothing reads.
+    """
+    writing = os.open(staged, _LOCK_STAGED, _LOCK_MODE)
+    with contextlib.ExitStack() as taking:
+        taking.callback(os.close, writing)
+        os.write(writing, marked.encode())
+
+
+def _lock_dropped(staged: Path) -> None:
+    """Take the staging file away, wherever the taking ended."""
+    with contextlib.suppress(OSError):
+        staged.unlink()
 
 
 def _left_behind(lock: Path) -> str | None:

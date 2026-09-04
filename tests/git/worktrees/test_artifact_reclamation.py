@@ -98,6 +98,14 @@ _GITDIR_SEAM = "_checkout_gitdir"
 # reaches into.
 _OWN_LOCKS_SEAM = "_own_locks"
 
+# The reading a registration's take-over spans, which the case about a
+# checkout git moved inside that window stands in front of.
+_CHECKED_SEAM = "_registration_checked"
+
+# The write that stages a lock before it is filed at its own name, which the
+# case about a lock that never landed stands in front of.
+_STAGED_SEAM = "_lock_staged"
+
 # Where a checkout is moved to for the cases about a link left in its place,
 # and what is left inside it so its survival is something a case can read.
 MOVED_CHECKOUT = "moved-checkout"
@@ -886,6 +894,45 @@ class MovedCheckoutTest(_ReclaimTestCase):
             self.moved()
         return self.hardened(*args, **options)
 
+    def moving(self, artifacts, worktree: Path, opened: int):
+        """Validate as the take-over does, then move the checkout away.
+
+        Installed in place of the reading the take-over is decided on, which
+        is the window it spans: `git worktree move` rewrites the registration
+        in place, so what this pass is about to file at that name is the path
+        git has just stopped recording.
+        """
+        read = self.reading(artifacts, worktree, opened)
+        self.moved = _ran_git(
+            self.clone, WORKTREE, "move", str(worktree), str(self.elsewhere),
+        )
+        return read
+
+    def test_a_tree_moved_mid_take_over_stays_named(self) -> None:
+        # The take-over files a copy of what the registration SAID, so a move
+        # landing between the reading and the rename would have this pass
+        # write a path nothing is at over the one git had just recorded --
+        # destroying the registration of a checkout it then refuses to touch,
+        # and leaving `worktree list` naming somewhere the tree is not. The
+        # original is held open across both, and asked one last time whether
+        # it still says what it said.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.elsewhere = self.world.path(MOVED_CHECKOUT)
+        registration = _registration_of(worktree)
+        self.reading = reclamation._registration_checked
+
+        with patch.object(reclamation, _CHECKED_SEAM, self.moving):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.moved, 0)
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            registration.read_text(), _aiming_at(self.elsewhere),
+        )
+        self.assertTrue(self.elsewhere.is_dir())
+
     def test_a_tree_moved_before_the_read_is_kept(self) -> None:
         # The window the early type check leaves open: everything from that
         # check to the removal, which is where a rename, a repair, and a link
@@ -1078,6 +1125,39 @@ class AnotherPassTest(_ReclaimTestCase):
 
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
         self.assertTrue(_mode(registration) & OWNER_WRITE)
+
+    def staging(self, staged: Path, marked: str) -> None:
+        """Write the staging file and stop there, as a killed pass would."""
+        self.staged = staged
+        self.writing(staged, marked)
+        raise OSError("the pass stopped here")
+
+    def test_a_lock_that_never_landed_leaves_nothing(self) -> None:
+        # A lock is written whole under a name of its own and then linked to
+        # the one it is for, so a write that failed -- or a pass that stopped
+        # in that window -- leaves nothing at the lock's own name. Created
+        # first and marked after, what it would leave is a file carrying
+        # nothing, which no later pass can recognise as this host's: it reads
+        # as a command's, is never taken again, and refuses this issue for
+        # good. The pass after this one finishes instead, over the staging
+        # file the stopped one never cleaned up.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        held = _removal_locks(self.clone, worktree, self.branch)[0]
+        self.writing = reclamation._lock_staged
+
+        with patch.object(reclamation, _STAGED_SEAM, self.staging):
+            stopped = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(stopped), _checkout_surface(FAILED))
+        self.assertFalse(held.exists())
+        self.staged.write_text(HELD_BY_GIT)
+
+        finished = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(finished), _checkout_surface(CLEANED))
+        self.assertFalse(worktree.exists())
 
     def test_a_checkout_another_pass_took_is_absent(self) -> None:
         # Two passes over one host, and the other got there first. The command

@@ -391,7 +391,11 @@ orchestrator/
                         could have moved between the two by the time the ref is frozen -- leaving this pass
                         holding the ref the checkout moved off. Each lock carries the process that took
                         it, so a lock a killed pass left behind is one a later pass tells from one a running
-                        command holds and takes again rather than refusing this issue for good; the
+                        command holds and takes again rather than refusing this issue for good -- and each is
+                        written whole under a name of its own and then LINKED to the name it is for, since a
+                        lock created first and marked afterwards is one a failed write or a stopped process
+                        leaves carrying nothing, which no later pass can recognise as this host's and which
+                        therefore refuses that issue permanently; the
                         registration's mode comes back writable whatever was found, for the same reason. Both
                         the take-again and the give-back are bound to the exact file the line inside it names,
                         never to the name alone -- two passes meeting one leftover would otherwise each delete
@@ -427,7 +431,12 @@ orchestrator/
                         opened without following, refused unless it is a regular one naming this checkout's own
                         tree, and then TAKEN OVER: a copy of this pass's own, carrying exactly what the original
                         said, is written beside it and renamed into place, which leaves every descriptor
-                        somebody opened earlier pointing at an inode no name resolves to. That is the half a
+                        somebody opened earlier pointing at an inode no name resolves to. The original stays
+                        open across both halves and is asked once more -- still the file that was read, still
+                        saying what it said -- immediately before that rename, because what the copy carries is
+                        what the original SAID: a `git worktree move` landing in between rewrites that file in
+                        place, and a take-over that went ahead would write the obsolete path over the one git
+                        had just recorded, deregistering a checkout it then refuses to touch. That is the half a
                         mode cannot buy, since write bits coming off say nothing to a handle that already
                         exists; the no-follow open is what keeps a link left there from having every read and
                         every mode change land on somebody else's file; and what the mode does buy is that the
