@@ -1082,7 +1082,10 @@ round trip through them, and `clear_late_generation` is defined as dropping exac
 that list and nothing else. The late keys that deliberately sit outside it all do for the same reason — each is
 written so the generation CAN be cleared and would be worthless if the clear took it. `late_exempt_sha` and the
 semantic identity beside it, both described below, live on the
-[`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner;
+[`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner; the `late_rewrite_*` authorization that
+says a rewrite was allowed to carry one of those exemptions over lives on the
+[`rewrites`](../../orchestrator/workflow/late_split/rewrites.py) owner, and outlives the generation for the same
+reason the exemption does — the grant is written a whole publication before the receipt that would spend it;
 `late_retired_cycle_id` and the two-phase terminal record beside it live on the
 [`endings`](../../orchestrator/workflow/late_split/endings.py) owner. The typed record the
 group round-trips through is `LateGeneration` on the `models` owner beside
@@ -1092,7 +1095,10 @@ correlated to. Every field is read defensively: a hand-edited or older value tha
 absent rather than raising on a tick that has committed work to reconcile. Which reader a field goes through
 is the field's own contract rather than its Python type — an identity has to be positive, a measurement non-negative,
 a depth inside the lineage, a flag literally `true`, a source stage one of this workflow's own labels, a measurement
-failure one of the steps `git/measurement/` names, and a restart target one of the two labels a restart may apply.
+failure one of the steps `git/measurement/` names, a restart target one of the two labels a restart may apply, and a
+rewrite kind or phase one of the bounded vocabularies the `rewrites` owner publishes — with that owner's source
+stage narrower still, since only the five stages that push onto a pull request the remote already carries can be
+the stage a rewrite was entered from.
 The hex fields are read at their exact lengths: a frozen commit is a whole git object id (40 or 64), because nothing
 here ever records an abbreviation, and a local fingerprint is a whole SHA-256 digest (64), because a truncated one is
 not a hash anything could be compared against. Only a real integer counts as a number at all: a bool, a float, and
@@ -1622,8 +1628,10 @@ rather than preserving.
   Both fields are read fail-closed (a hand-edited identity, or a `"true"` string, is no proof at all) and both
   are dropped by a restart's projection, with the fresh cycle's own ending writing them again.
 - **Approved commit.** `late_approved_sha` is the commit this issue owes a publication and no push has carried yet. It
-  goes down in the same write that approves one — the retirement a small candidate earns, and the exemption a `single`
-  verdict records — and is dropped by whichever handoff spends it (the recovery that republishes, or the ordinary
+  goes down in the same write that approves one — the retirement a small candidate earns, the exemption a `single`
+  verdict records, and the grant that authorizes a rewrite to carry one of those exemptions over, where the
+  permission and the debt have to be one write or neither — and is dropped by whichever handoff spends it (the
+  recovery that republishes, or the ordinary
   `validating` advance, which writes the drop durably ahead of the relabel), by an adjudication that supersedes it,
   and by any publication naming a different commit: a debt recorded for work nothing is going to push would freeze the
   branch for the rest of the issue's life. It is a floor as well as a debt — a run resumed on top of that commit has

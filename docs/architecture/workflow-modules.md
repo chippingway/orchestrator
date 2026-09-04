@@ -1223,8 +1223,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       late_records.py       what one gate call is about -- the publication it was entered on included, where there
                             is one, and the two claims a caller makes about its tick: that no developer ran, which
                             decides whether a moved head is fresh output, and the narrower one that it is answering
-                            a reading the gate itself recorded, which is what the switch is asked against -- the
-                            answer it hands back, the identities a record of it
+                            a reading the gate itself recorded, which is what the switch is asked against -- plus
+                            the before-state a caller that REWROTE its way here destroyed, which is the one thing
+                            no reading taken now could recover and the only evidence a transfer may be granted on --
+                            the answer it hands back, the identities a record of it
                             is minted under -- the readings already lost travelling with the CANDIDATE rather than
                             with the generation counter, since a base the remote would not name records no base and
                             freezes the same commit afresh next tick -- and the validated-or-minted identity every
@@ -1254,7 +1256,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             approval a publication naming another commit supersedes, the same debt recorded for a
                             candidate that skipped the reading -- an exemption's, a supersession the switch let
                             past -- since no generation was frozen for one and the push it licenses would
-                            otherwise leave the branch on the remote with nothing on the issue naming it, and
+                            otherwise leave the branch on the remote with nothing on the issue naming it, that
+                            debt also offered STAGED rather than written, for the one owner that has a record of
+                            its own to make durable in the same breath -- a permission that licenses a rewritten
+                            commit and a debt naming the push it is owed may not be split across two writes, since
+                            a process dying between them comes back to a one-commit branch nothing says a push is
+                            outstanding for -- and
                             the retirement each is durable behind, that write held inside the observations
                             owner's retirement window with the latch asked ahead of it and the window's own
                             answer behind it, where a close is answered by putting the cycle back cancelled; both
