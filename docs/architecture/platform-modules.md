@@ -316,10 +316,7 @@ orchestrator/
                         beside the repositories it will not answer for -- plus what a classification over them
                         says: the three answers a fail-closed read has, the ref reading that carries a commit
                         with them, the reasons, subjects, and verdict a retained candidate is reported as, and
-                        the commits an eligible one hands over as cleared. Then what a teardown over one of
-                        those verdicts answers in: the surfaces an artifact lives on, the cleaned / absent /
-                        failed one step leaves, and the whole per-surface record a caller reads a
-                        partly-finished reclamation off
+                        the commits an eligible one hands over as cleared
       probes.py         the two local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
                         per-issue checkout directories -- a real directory under the exact name, never a symlink
                         into a tree the creators never wrote, read through the `lstat` that reports what the

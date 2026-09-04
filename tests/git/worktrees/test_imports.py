@@ -78,7 +78,6 @@ _FLAT_MODULES = (
 # it, never on the package itself.
 _OWNER_ONLY_NAMES = (
     "ArtifactInventory",
-    "ArtifactReclamation",
     "ArtifactVerdict",
     "IssueArtifacts",
     "RetentionReason",
@@ -120,14 +119,11 @@ _OWNER_ONLY_NAMES = (
 # composition that turns both into one verdict per candidate, with the
 # checkout's own three-read order, the tables each of those is charged
 # through, the tip read that falls back to the remote, the HEAD read spent
-# twice, and the proof an eligible verdict is handed over as. Then the four
-# records a teardown over one of those verdicts answers in. Naming the
+# twice, and the proof an eligible verdict is handed over as. Naming the
 # whole surface makes a helper added to an owner an edit here rather than a
 # definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
-    ("ArtifactReclamation", models),
-    ("ArtifactSurface", models),
     ("ArtifactVerdict", models),
     ("AttributedIssues", attribution),
     ("BranchTip", models),
@@ -138,8 +134,6 @@ _OWNER_DEFINED = (
     ("ProvenTip", models),
     ("Retention", models),
     ("RetentionReason", models),
-    ("SurfaceOutcome", models),
-    ("SurfaceResult", models),
     ("TERMINAL_LABELS", claims),
     ("_CLEANLINESS_REASONS", eligibility),
     ("_GIT_NEGATIVE", evidence),
