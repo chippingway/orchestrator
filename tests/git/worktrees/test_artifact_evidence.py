@@ -16,6 +16,7 @@ disagreeing.
 
 from __future__ import annotations
 
+import time
 import unittest
 from unittest.mock import patch
 
@@ -34,6 +35,8 @@ from tests.git.worktrees.candidate_host_test_support import (
     _CandidateWorld,
     _foreign_checkout,
     _revision,
+    _settle_checkout,
+    _track_file,
     _tracking_ref,
 )
 from tests.git.worktrees.eligibility_test_support import ISSUE_NUMBER
@@ -52,6 +55,10 @@ LOOPING_BACK = "looping-back"
 IGNORE_FILE = ".gitignore"
 HIDDEN_FILE = "secrets.env"
 HIDDEN_CONTENT = "TOKEN=an operator's own\n"
+TRACKED_FILE = "tracked.txt"
+TRACKED_CONTENT = "committed work\n"
+MINUTE = 60
+HOUR = 60 * MINUTE
 
 
 def _named(sha: str) -> BranchTip:
@@ -213,6 +220,75 @@ class WorktreeCleanlinessTest(_HostTestCase):
 
         self.assertIs(
             evidence._clean_worktree(looping), ProbeAnswer.UNREADABLE,
+        )
+
+
+class QuietCheckoutTest(_HostTestCase):
+    """When a checkout was last disturbed, and the two ways that does not answer.
+
+    The one read here that is not about what a tree holds. What it costs to get
+    wrong is a directory somebody is standing in, so a host that will not say
+    answers as one -- never as a tree nobody has been near.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        _branch_at(self.clone, self.branch, BASE_BRANCH)
+        self.worktree = self.world.attached_checkout(
+            self.spec, ISSUE_NUMBER, self.branch,
+        )
+
+    def quiet(self) -> ProbeAnswer:
+        """What the probe says about this checkout a minute-wide window back."""
+        return evidence._quiet_checkout(self.worktree, time.time() - MINUTE)
+
+    def settle(self) -> None:
+        """Leave every trace of this checkout an hour in the past."""
+        _settle_checkout(self.worktree, time.time() - HOUR)
+
+    def test_a_checkout_made_just_now_refutes(self) -> None:
+        self.assertIs(
+            evidence._quiet_checkout(self.worktree, time.time() - HOUR),
+            ProbeAnswer.REFUTED,
+        )
+
+    def test_a_checkout_left_alone_is_confirmed(self) -> None:
+        self.settle()
+
+        self.assertIs(self.quiet(), ProbeAnswer.CONFIRMED)
+
+    def test_an_entry_dropped_in_refutes_again(self) -> None:
+        # The tree's own directory answers for a top-level entry created,
+        # renamed, or removed: somebody working in it, whatever the status
+        # says afterwards.
+        self.settle()
+        (self.worktree / LOOSE_FILE).write_text(LOOSE_CONTENT)
+
+        self.assertIs(self.quiet(), ProbeAnswer.REFUTED)
+
+    def test_a_tracked_edit_just_committed_refutes(self) -> None:
+        # The reading the tree's own directory cannot give: editing a tracked
+        # file and committing it leaves that directory exactly where it was,
+        # and afterwards the tree is clean and every other probe clears it.
+        # What says somebody was here a moment ago is the checkout's own index
+        # and reflog, which the commit rewrote.
+        _track_file(self.clone, TRACKED_FILE, TRACKED_CONTENT)
+        _run_git("merge", "-q", BASE_BRANCH, cwd=self.worktree)
+        self.settle()
+        (self.worktree / TRACKED_FILE).write_text(LOOSE_CONTENT)
+        _run_git("commit", "-q", "-am", "an agent's own round", cwd=self.worktree)
+
+        self.assertIs(
+            evidence._clean_worktree(self.worktree), ProbeAnswer.CONFIRMED,
+        )
+        self.assertIs(self.quiet(), ProbeAnswer.REFUTED)
+
+    def test_a_path_that_is_not_there_is_unread(self) -> None:
+        self.assertIs(
+            evidence._quiet_checkout(
+                self.world.path(NOTHING_AT_ALL), time.time(),
+            ),
+            ProbeAnswer.UNREADABLE,
         )
 
 
