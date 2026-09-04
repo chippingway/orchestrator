@@ -419,11 +419,12 @@ branch has already overtaken.
   already said it stops is held silently, while one that stops at a *different* member is announced once and takes
   its place. The park is retired by the verdict a reading that finally lands settles. Every notice names the member
   and explains it in a line written for the operator — which of a remote, a token, a checkout, or a planted
-  attribute file they are looking at, and where the invocation behind it is logged — with whatever the failing step
-  wrote for itself, scrubbed, carried up beside it. A trusted bare
-  `/orchestrator continue` re-measures exactly that pair and re-publishes through the same seam; it spawns no
-  agent, since the developer that produced the commit finished long ago — and because no agent ran, a checkout
-  that has left the recorded commit is refused rather than measured or published, under either switch setting.
+  attribute file they are looking at, and, for the remote read, the fetch and the two diff steps, the
+  `orchestrator.git_plumbing` channel their invocation is logged under — with whatever the failing step wrote for
+  itself, scrubbed, carried up beside it. A trusted bare `/orchestrator continue` re-measures exactly that pair and
+  re-publishes through the same seam; it spawns no agent, since the developer that produced the commit finished long
+  ago — and because no agent ran, a checkout that has left the recorded commit is refused rather than measured or
+  published, under either switch setting.
   Guidance is the opposite reply and buys the opposite thing: the developer is resumed, and what it leaves is
   judged against the floor the park left on the branch rather than against the base, so a clarifying question is
   answered by parking on it rather than by publishing the very work whose size nobody could read. A worktree
