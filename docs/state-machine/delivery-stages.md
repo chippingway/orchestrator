@@ -1259,6 +1259,10 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        refusal, under a minted identity where no generation exists yet or where the recorded one is not one a sink
        may carry (a damaged identity would otherwise emit nothing, and one naming another issue would file this
        issue's failure over there) — parks `late_measurement_failed`, and keeps the pair it froze for the retry.
+       The record names the step as well as the family: a refusal that WAS a reading carries the
+       `MeasurementFailure` it stopped at and the line that step wrote, while one that reached no reading — a pinned
+       record too damaged to act on, a debt no push can pay — carries the family alone, since those say what they
+       are in their own words rather than in the measurement vocabulary.
        The two steps that name the TRANSPORT rather than the work are the exception, and only for as long as the
        bound allows: a base the remote would not answer for (`base_unreadable`) and one a fetch did not bring back
        (`base_absent`) clear themselves, so the first three consecutive misses on one pair write the pair and the

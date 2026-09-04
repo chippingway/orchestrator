@@ -9,6 +9,13 @@ and a trusted bare `/orchestrator continue` re-reads rather than re-running
 anything. The writes those steps ride out on are here too, since a park and a
 persisted record are the two durable things this domain does.
 
+What reaches those streams is the same three things the thread is told, and
+for the same reason: the family says a reading did not happen, the member
+beside it says which step stopped, and the line the step wrote says why. An
+operator holding only the stream would otherwise have `measurement_failed` for
+a remote that was throttling, a checkout that is gone, and a diff nothing can
+pin, and no way to count one apart from the others.
+
 Two of the steps a reading stops at get a bounded number of tries before that
 happens, and they are the two that name the transport rather than the work: a
 remote that would not answer for the base branch, and a fetch that did not
@@ -60,7 +67,7 @@ from orchestrator.workflow.late_split import (
     state as _late_state,
     telemetry as _telemetry,
 )
-from orchestrator.workflow.late_split.models import LateFailure, LateGeneration
+from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
     late_records as _records,
     state as _state,
@@ -197,6 +204,7 @@ def _described(failure, detail: str) -> str:
 
 def _parked(
     gate: _records._Gate, generation: LateGeneration, failure, message: str,
+    detail: str = "",
 ) -> bool:
     """Record the typed failure on both sinks, then hand the issue back.
 
@@ -205,19 +213,21 @@ def _parked(
     gate could not even name has no record of its own yet, and the identity
     minted for it is what lets the failure be joined to the cycle a later
     freeze writes under the same number.
+
+    `failure` is whatever the caller stopped at, and the roads in do not agree
+    about what that is: the ones a reading refused name a member, while the
+    ones a RECORD refused -- a pinned comment too damaged to act on, a debt no
+    push can pay -- name the repair in their own words, because the whole
+    point of those parks is telling a human which part to fix. The record
+    keeps the member where there is one and says nothing where there is not,
+    so a step nobody reached is never reported as one that was.
     """
     log.error(
         "issue=#%d committed work could not be measured (%s); parking rather "
         "than publishing an unadjudicated candidate",
         gate.issue.number, failure,
     )
-    _emit(
-        gate, generation,
-        _events.LateEvent(
-            family=_events.LateEventFamily.FAILURE,
-            failure=LateFailure.MEASUREMENT_FAILED,
-        ),
-    )
+    _emit(gate, generation, _events.measurement_failure_event(failure, detail))
     _guards._park_awaiting_human(
         gate.gh, gate.issue, gate.state, message,
         reason=PARK_MEASUREMENT_FAILED,
@@ -256,7 +266,7 @@ def _unmeasured(
     member's place.
     """
     if _repeats_a_notice(gate, generation, failure):
-        return _held_quietly(gate, generation, failure)
+        return _held_quietly(gate, generation, failure, detail)
     _records_the_notice(gate, generation, failure)
     unmeasured = _UNMEASURED_PARK
     if gate.entry is not None:
@@ -267,7 +277,9 @@ def _unmeasured(
     described = _described(failure, detail)
     if described:
         refused = f"{refused}\n\n{described}"
-    return _parked(gate, _announced(generation, failure), failure, refused)
+    return _parked(
+        gate, _announced(generation, failure), failure, refused, detail,
+    )
 
 
 def _repeats_a_notice(
@@ -290,6 +302,7 @@ def _repeats_a_notice(
 
 def _held_quietly(
     gate: _records._Gate, generation: LateGeneration, failure,
+    detail: str = "",
 ) -> bool:
     """Report a refusal a human has already been sent, and tell them nothing.
 
@@ -320,13 +333,7 @@ def _held_quietly(
         generation.base_sha
     ):
         _persisted(gate, generation)
-    _emit(
-        gate, generation,
-        _events.LateEvent(
-            family=_events.LateEventFamily.FAILURE,
-            failure=LateFailure.MEASUREMENT_FAILED,
-        ),
-    )
+    _emit(gate, generation, _events.measurement_failure_event(failure, detail))
     return True
 
 
@@ -436,13 +443,7 @@ def _lost_reading(
         missed.measurement_miss_count,
         _state._MEASUREMENT_MISSES_BEFORE_PARK,
     )
-    _emit(
-        gate, missed,
-        _events.LateEvent(
-            family=_events.LateEventFamily.FAILURE,
-            failure=LateFailure.MEASUREMENT_FAILED,
-        ),
-    )
+    _emit(gate, missed, _events.measurement_failure_event(failure, detail))
     return True
 
 

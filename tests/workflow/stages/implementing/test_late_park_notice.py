@@ -8,7 +8,9 @@ different next moves -- a transport to wait out on one side, a checkout to
 clean before any reading of it is worth taking on the other -- and a notice
 that named only the member would leave a human to work out which they are
 looking at. What these pin down is that it says so, and that what the step
-wrote for itself travels the whole way with it.
+wrote for itself travels the whole way with it -- onto the thread, and onto
+both streams, where the run of readings a standing park holds silently is the
+only account there is of a pair nobody can measure.
 
 The other half is how often it is said. A park is re-read for as long as it
 stands, and every one of those readings owes the thread nothing unless it has
@@ -133,10 +135,19 @@ class StandingParkTest(unittest.TestCase):
         # Reported to both sinks all the same: those polls exist nowhere else,
         # and a pair nobody can measure reported by none of them looks exactly
         # like one nobody is looking at. What is spared is the thread.
-        self._lost(MeasurementFailure.BASE_ABSENT)
+        self._lost(MeasurementFailure.BASE_ABSENT, detail=_SAID)
 
         self.assertEqual(self.github.posted_comments, [])
-        self.assertEqual(len(self._failures()), 1)
+        held = self._failures()
+        self.assertEqual(len(held), 1)
+        # And the record says as much as the notice would have: the thread is
+        # what a repeat spares, so a stream that reported only
+        # `measurement_failed` would leave the whole silent run unreadable.
+        self.assertEqual(held[0]["failure"], "measurement_failed")
+        self.assertEqual(
+            held[0]["measurement_failure"], MeasurementFailure.BASE_ABSENT,
+        )
+        self.assertEqual(held[0]["detail"], _SAID)
         pinned = self._pinned()
         self.assertEqual(pinned[support.KEY_MISS_COUNT], _MISS_BOUND + 1)
         self.assertEqual(
@@ -167,6 +178,20 @@ class StandingParkTest(unittest.TestCase):
         )
         self.assertEqual(
             self._pinned()[support.KEY_MISS_COUNT], _MISS_BOUND + 1,
+        )
+        # Both readings are on the stream, and both name the step that broke
+        # the silence rather than only the one a human was told about. The
+        # line travels with the reading that had one, so a retry the
+        # transport said nothing about carries none.
+        self.assertEqual(
+            [
+                (record["measurement_failure"], record.get("detail"))
+                for record in self._failures()
+            ],
+            [
+                (MeasurementFailure.BASE_UNREADABLE, _SAID),
+                (MeasurementFailure.BASE_UNREADABLE, None),
+            ],
         )
 
     def _lost(self, failure, detail: str = "") -> None:

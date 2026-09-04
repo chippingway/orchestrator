@@ -67,6 +67,9 @@ _RECORDLESS_RETRIES = tuple(
     for decomposing in (True, False)
 )
 _REAPED_WORKTREE = support.Path("/nonexistent/orchestrator-reaped-worktree")
+# The step a checkout that is gone stops the reading at, which is what the
+# record names beside `measurement_failed`: the commit is not on this host.
+_CHECKOUT_GONE = MeasurementFailure.CANDIDATE_ABSENT
 _DECOMPOSING = (support.GATE_ISSUE_NUMBER, LABEL_DECOMPOSING)
 _AGENT_TIMEOUT = "agent_timeout"
 _PRE_IMPLEMENT_SHA = "pre_implement_sha"
@@ -914,6 +917,7 @@ class LateGateRecordlessRetryTest(support._ParkedRetryCase, unittest.TestCase):
         failures = self._records(support.EVENT_LATE_FAILURE)
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0]["failure"], "measurement_failed")
+        self.assertEqual(failures[0]["measurement_failure"], _CHECKOUT_GONE)
         self.assertEqual(failures[0]["cycle_id"], 1)
 
     def test_a_reaped_checkout_claims_no_commit(self) -> None:
@@ -1022,6 +1026,9 @@ class LateGateReapedWorktreeTest(support._ParkedRetryCase, unittest.TestCase):
         failures = self._records(support.EVENT_LATE_FAILURE)
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0]["failure"], "measurement_failed")
+        # And which step it stopped at, which is what tells this refusal from
+        # a base a fetch could not bring on the very same pair.
+        self.assertEqual(failures[0]["measurement_failure"], _CHECKOUT_GONE)
 
 
 if __name__ == "__main__":

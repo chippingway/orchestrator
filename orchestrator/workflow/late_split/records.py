@@ -26,6 +26,17 @@ name is deliberately not among them -- the record names its kind and carries
 what tells two cleanups of two different children apart without saying which
 children they were.
 
+`detail` is the one field on that list a vocabulary does not close, and it is
+the size gate's alone. A reading that did not happen reaches both sinks as
+`measurement_failed` however it failed, so the record carries the git layer's
+own `measurement_failure` beside it to say WHICH step stopped -- and the
+member says which step and nothing about why. A base the remote would not name
+is an expired token, a repository this installation cannot see, or a host that
+was down, and the only thing that ever told them apart is the line the
+transport wrote. So that line travels, bounded by the event contract to a
+single capped one and scrubbed of the credential by the transport that
+produced it, and nothing else free-form joins it.
+
 Which side of publication a generation was entered on is on every family's
 record, because every one of them describes a different step depending on the
 answer: a `late_cleanup` reconciling a snapshot of an initial publication and
@@ -108,6 +119,8 @@ LATE_PAYLOAD_FIELDS = (
     "category",
     "child_count",
     "failure",
+    "measurement_failure",
+    "detail",
     "resource",
     "resource_id",
     "outcome",
@@ -197,13 +210,21 @@ def _publication_of(generation: LateGeneration) -> dict[str, Any]:
 
 
 def _details_of(event: _events.LateEvent) -> dict[str, Any]:
-    """What one family adds, with the resource reduced to kind and print."""
+    """What one family adds, with the resource reduced to kind and print.
+
+    The two the failure family may add are read straight off the event, since
+    the contract it was just re-checked against is what bounds them: the step
+    is a member or absent, and the line beside it is one bounded single line
+    or absent.
+    """
     resource = event.resource
     return {
         "verdict": _name_of(event.verdict),
         "category": _name_of(event.category),
         "child_count": event.child_count,
         "failure": _name_of(event.failure),
+        "measurement_failure": _name_of(event.measurement_failure),
+        "detail": event.detail,
         "resource": None if resource is None else str(resource.kind),
         "resource_id": (
             None if resource is None

@@ -223,7 +223,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
   late_split/               the late size gate's own domain: what one generation IS, apart from anything that drives
                             one
     formats.py              what any late value has to look like -- a real integer, a git object id, a bounded
-                            single-line target -- and the one refusal every owner raises over it
+                            single-line value, where one line is asked as the split every reader on the far side
+                            breaks on rather than as a search for one character -- the reducer that shapes a raw
+                            diagnostic into what that last predicate accepts, so the one free-text field a record
+                            carries is bounded by the rule that guards it, and the one refusal every owner raises
+                            over any of them
     models.py               the phase / verdict / failure / resource vocabularies, the boundaries a split
                             transaction owns among them, the frozen generation record with the transforms that
                             return a new one -- including the boundary move that refuses to rewind out of one of
@@ -280,13 +284,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             believed, the settled-ledger precondition retirement refuses without, and the fresh
                             cycle it projects
     events.py               the seven families, the per-family schema an event is refused against, the member each
-                            detail has to actually be, and the closed vocabulary a verdict category is chosen from
+                            detail has to actually be, the member each companion field has to sit BESIDE -- the
+                            verdict a child count belongs to, and the one failure a measurement step and its line
+                            belong to, since a field allowed beside every member describes none of them -- the
+                            closed vocabulary a verdict category is chosen from, and the two the failure family
+                            adds for a refused size reading, with the one constructor every seam that measures
+                            builds them through, which drops the line with the step and reduces what survives,
+                            since a refusal here would cost the only record of a reading that never happened
     validation.py           what a generation has to prove before a record of it may be written: the required
                             identity, the format of every field a sink would carry, the publication a marker has to
                             still be able to name, and what each family's own record has to be readable without
     records.py              the bounded payload both sinks carry -- including the closed pair every family's record
-                            says which side of publication it was entered on under, and the frozen context only the
-                            marked half carries -- and the fields a duplicate record is deduplicated on
+                            says which side of publication it was entered on under, the frozen context only the
+                            marked half carries, and the refused reading's own step and line, the one free text on
+                            a late record -- and the fields a duplicate record is deduplicated on
     telemetry.py            the dual audit / analytics emission, the stage tag resolved against the label
                             vocabulary, the refusal turned into a logged non-emission, and the guard on each half
                             that keeps a sink from reaching workflow
@@ -491,8 +502,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             too large to record, and the question itself, since the reason is a shared value that
                             owner is read against and the sentence is the failing step's own to say -- the
                             announcement a recorded question is reconciled by, and the three emissions each
-                            written straight after the state they describe: a verdict, a typed late failure, and
-                            the cancellation an owner read earns
+                            written straight after the state they describe: a verdict, a typed late failure --
+                            reported with the step and the line behind it where the step was a re-measurement, so
+                            a reading that did not happen reads alike wherever it was taken -- and the
+                            cancellation an owner read earns
       late_parks.py         every reason a late exit hands the issue back under, and the durable write each of
                             them rides out on: the park staged for the owner read to release, released anyway
                             where nothing would ever say it, and re-said at the top of a later tick when the
@@ -1156,7 +1169,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             that line, and the record it clears from is the one an oversized candidate is
                             adjudicated from
       late_parks.py         the one park shape every unreadable reading takes, worded on the side of publication it
-                            was taken on, the typed failure both sinks carry under the stage the reading happened in,
+                            was taken on, the typed failure both sinks carry under the stage the reading happened in
+                            -- carrying the step that stopped and the line it wrote wherever the refusal was a
+                            reading, and the family alone where it was a record nobody may act on --
                             the bounded quiet retry the two TRANSPORT steps get instead -- the miss counted on the
                             record and written before anything is reported or said, since a fresh process remembers no
                             miss, with the park taken only past the bound; the announce-once guard every refusal of a

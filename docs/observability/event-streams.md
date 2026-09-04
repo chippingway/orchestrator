@@ -606,14 +606,16 @@ candidate is measured at all: it writes one `late_measurement` per clean committ
 alike, since a threshold study needs the candidates that *passed* as much as the ones that did not. `stage` is the
 one the reading was taken in rather than this package's own name: `implementing` for the push that opens the pull
 request, and `validating` / `documenting` / `in_review` / `fixing` / `resolving_conflict` for a push onto one the
-remote already carries, so a measurement is never filed under a stage no developer of it ran in. Beside them it
-writes a `late_failure` carrying `measurement_failed` for **every** reading it
-could not take: a base the remote would not name, a base or candidate object this host does not hold, a diff
-nothing could pin, and a recorded candidate a reaped worktree took with it. Every one of them is recorded whether
-or not a human is told about it — the two transport steps are retried quietly a bounded number of times before the
-issue is parked, and the stream is where those misses are visible at all. What that park bounds is the MENTIONS
-rather than the readings: on the five stages that publish onto a pull request the remote already carries, the
-reconciliation ahead of every handler goes on re-reading the parked pair once a poll, and every one of those
+remote already carries, so a measurement is never filed under a stage no developer of it ran in. Beside them it writes
+a `late_failure` carrying `measurement_failed` for **every** reading it could not take: a base the remote would not
+name, a base or candidate object this host does not hold, a diff nothing could pin, and a recorded candidate a reaped
+worktree took with it. Which of those it was is on the record rather than left to the reader — `measurement_failure`
+names the step, and `detail` carries the line that step wrote — so a run of these can be counted by cause without
+reading the issue thread back. Every one of them is recorded whether or not a human is told about it — the two
+transport steps are retried quietly a bounded number of times before the issue is parked, and the stream is where
+those misses are visible at all. What that park bounds is the MENTIONS rather than the readings: on the five stages
+that publish onto a pull request the remote already carries, the reconciliation ahead of every handler goes on
+re-reading the parked pair once a poll, and every one of those
 readings reports again. So a single unreachable base can carry an unbounded run of `late_failure` records under one
 cycle and generation while the thread stays silent, and it is the reading that finally lands — not a human — that
 ends the run. The silence is scoped to the STEP the park's notice named, which the pinned
@@ -652,7 +654,9 @@ and a timeout included
 ([`../workflow/roles.md`](../workflow/roles.md#the-owner-read-a-finished-run-has-to-pass)) — and a
 `late_failure` carrying `plan_pr_hold_failed` when the cycle-marked hold cannot be reconciled or released on a
 still-open pull request (a notice a human removed from one included, which starts no new agent under it),
-`measurement_failed` when a revised candidate could not be measured, `owner_read_failed` on every read that
+`measurement_failed` when a revised candidate could not be measured — with the same `measurement_failure` and
+`detail` the gate's own records carry, since a re-measurement is taken in a checkout an agent has been running in —
+`owner_read_failed` on every read that
 guard could not take, or `pr_reconcile_failed` when the pull request an accepted candidate would be handed on
 against could not be established. Two more arrive with the split transaction
 ([`../workflow/roles.md`](../workflow/roles.md#what-a-cleared-split-actually-does)): one `late_snapshot` per
@@ -715,13 +719,32 @@ it, or a cleanup with no resource cannot reach either sink at all:
 | --- | --- | --- |
 | `late_measurement`, `late_cancellation` | — | — |
 | `late_verdict` | `verdict`; `category` too when `question` | `category` on any verdict, `child_count` with `split` |
-| `late_failure` | `failure` | — |
+| `late_failure` | `failure` | `measurement_failure` with `failure: measurement_failed`, `detail` with a step |
 | `late_snapshot`, `late_cleanup` | `resource` | — |
 | `late_restart` | `restart_step` | — |
 
 A category is allowed on **every** verdict and required only of a `question`: a `single` verdict that explains itself
 as `generated_artifacts` is exactly the artifact-dominated signal this page promises, so the schema has to be able to
 carry it. A child count is a split's and nobody else's, in both directions.
+
+The failure family's two are optional, and each is pinned to exactly one thing rather than merely permitted — a
+field allowed beside every member describes none of them. `measurement_failure` belongs to `measurement_failed` and
+to no other member of `LateFailure`: a snapshot the remote refused, a hold nobody could release, and a restart GitHub
+declined each took no reading, so one of them carrying `base_absent` would report a measurement stopping where none
+was taken, and the contract refuses it. `detail` belongs to `measurement_failure` the same way and is refused without
+it. Both refusals are checked in the constructor and re-checked in the payload builder, like every other pairing on
+this page.
+
+A refusal that *was* a reading therefore carries the step — the git layer's own vocabulary (`base_unreadable`,
+`base_absent`, `candidate_unreadable`, `candidate_absent`, `diff_unpinnable`, `diff_failed`, `diff_unreadable`) — and,
+where that step wrote one, the `detail` line beside it. One that reached no reading carries neither: the size gate
+also parks on a pinned record too damaged to act on and on a debt no push can pay, and what those hold instead is the
+sentence they were about to tell a human, which is prose and has no field here. Every one of them is still
+`event: late_failure` with `failure: measurement_failed`, so a filter written against that pair matches all of them
+and the two fields only ever *narrow* what an analysis can group by. `events.measurement_failure_event` is the single
+constructor the emitters go through: it records the step only when it is a member, drops the line with it, and
+reduces what survives to what the contract accepts rather than letting it be refused there — and a refused record is
+the only account there is of a reading that never happened.
 
 **Types are enforced, not annotated.** A `StrEnum` member and the string that spells it compare equal, so a raw
 `verdict="question"` would satisfy every comparison the schema makes and be written verbatim — and so would a
@@ -747,7 +770,8 @@ rather than a keyword somebody passed:
 - **The commits** — `source_sha` (the frozen candidate) and `base_sha` (the exact remote base it was measured against).
 - **The measurement** — `threshold` and `additions`.
 - **Family fields** — `verdict` (`single` / `split` / `question`), `category`, `child_count`, `failure` (the typed
-  reason), `resource` (`snapshot_ref` / `branch` / `plan_pr` / `child`) with `resource_id` and `outcome` — the
+  reason) with `measurement_failure` and `detail` where a refused size reading named them,
+  `resource` (`snapshot_ref` / `branch` / `plan_pr` / `child`) with `resource_id` and `outcome` — the
   ledger's own state vocabulary, projected verbatim: `pending` / `retained` / `reclaiming` / `reconciled` /
   `failed` — plus `restart_step` (`pending` / `reconciled`), and `restart_target` +
   `predecessor_cycle_id`.
@@ -758,6 +782,19 @@ Extras whose value is `None` are dropped by both envelope builders, so each fami
 none of a pull request's own text.
 The payload has no argument any of those could arrive through — it is built from a frozen record and a family-typed
 event — and every field that could otherwise smuggle text through is closed at the boundary:
+
+- **`detail`** is the one exception and the only free-text field on a late record, so it is bounded rather than
+  closed. It is the git layer's own diagnostic and nothing an agent writes: one line — git names the fault first and
+  spends what follows on advice, hints, and the remote's banner — capped at 200 characters, and already scrubbed of
+  the credential by the transport that produced it, since the same line is what the park notice on the issue shows a
+  human. It travels only under `measurement_failure`, and that is enforced rather than documented: no other family,
+  no other failure member, and no refusal that named no step has a field to reach a sink through. "One line" is asked
+  as `splitlines` rather than as a search for `\n`, because a lone carriage return, a form feed, and the two Unicode
+  separators each start a new line in a terminal, in `jq`, and in a value read back out of Postgres — so a value
+  arriving as a transcript under any of them, untrimmed, or past the cap is refused by the event contract rather than
+  written. What it buys is the question the member cannot answer: a base the remote would not name is an expired
+  token, a repository this installation cannot see, or a host that was down, and by the time anybody reads the record
+  the process that saw that stderr is minutes and a tick gone.
 
 - **A verdict `category`** is a member of `LateVerdictCategory` (`generated_artifacts`, `scope_ambiguous`,
   `unsafe_split`, `lineage_bound`, `unknown`), not a label an agent writes. `events.verdict_category` maps a parsed
@@ -806,14 +843,22 @@ message is repeated, while an exception raised anywhere below is named by its ty
 exception itself — `log.exception` would append its text and traceback, and only a refusal this domain built is
 guaranteed safe to repeat.
 
+**Postgres ingestion.** `analytics_events` has no column for a late field and needs none. `stage` is already a
+promoted column; every field in `LATE_PAYLOAD_FIELDS` — `measurement_failure` and `detail` with the rest — lands in
+`extras JSONB` with **no DDL change and no schema reapply**, the same path the budget and opt-in skill fields take
+(see [`analytics-database.md`](analytics-database.md#schema)). So widening this record is an emitter change: a
+database already carrying rows from an older orchestrator keeps answering, and one carrying rows from a newer one
+loses nothing to a column it does not have.
+
 **Duplicates.** Records are emitted before the step they describe is durable, so a crash can produce the same record
 twice. Consumers deduplicate on `records.CORRELATION_FIELDS`, which is **the whole record apart from `ts`**: the four
 envelope fields (`repo`, `issue`, `event`, `stage`) plus every field in `LATE_PAYLOAD_FIELDS`. A retried step writes
 every field again identically, so the timestamp is the only thing that can differ between one step's two emissions,
 and any other difference is a different step by construction — one candidate split into two children and into seven,
 two questions asked under different categories, two cleanups of two children, two restarts aimed at different states,
-two measurements against different bases, an initial publication and the overflow of a pull request that already
-exists. Naming the distinguishing fields one at a time instead is what let pairs like those collide, because the list
+two measurements against different bases, two refused readings that stopped at different steps or were reported by
+different lines, an initial publication and the overflow of a pull request that already exists. Naming the
+distinguishing fields one at a time instead is what let pairs like those collide, because the list
 has to be remembered every time the payload grows. Nothing about workflow disposition may depend on delivery, which
 is the other half of the same rule.
 

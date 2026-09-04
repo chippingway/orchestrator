@@ -87,9 +87,14 @@ ACKNOWLEDGED = AdditionMeasurement(
     additions=ADDITIONS,
 )
 
+# What a checkout an agent has been running in can leave behind: a diff
+# nothing here can pin, and the line the reading wrote for itself.
+UNMEASURED_DETAIL = "fatal: .gitattributes: unable to read"
+
 UNMEASURED = AdditionMeasurement(
     base_sha=REVISED_BASE_SHA,
     failure=MeasurementFailure.DIFF_UNPINNABLE,
+    detail=UNMEASURED_DETAIL,
 )
 
 DIRTY_TREE = ("orchestrator/left_over.py",)

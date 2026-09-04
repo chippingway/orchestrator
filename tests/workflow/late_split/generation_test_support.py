@@ -46,6 +46,11 @@ ADDITIONS = 9123
 # frozen pair has lost, and the step the last one stopped at.
 MEASUREMENT_MISS_COUNT = 2
 MEASUREMENT_FAILURE = MeasurementFailure.DIFF_UNREADABLE
+# What one refused reading hands the record beside the family: the step the
+# git layer stopped at, and the line that step wrote once the transport had
+# scrubbed its own stderr.
+MEASUREMENT_STEP = MeasurementFailure.BASE_ABSENT
+FAILURE_DETAIL = "fatal: could not read Username for 'https://github.com'"
 SHA_LENGTH = 40
 DIGEST_LENGTH = 64
 CANDIDATE_SHA = "a" * SHA_LENGTH

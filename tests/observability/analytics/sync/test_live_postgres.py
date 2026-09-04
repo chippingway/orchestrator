@@ -33,6 +33,19 @@ _ROLLUP_ISSUE = 7
 
 _VIEW_ISSUE = 42
 
+_LATE_FAILURE_ISSUE = 71
+
+# One size reading the gate could not take, as it reaches this sink: the
+# family every refused reading is written under, the step it stopped at, and
+# the line that step wrote once the transport had scrubbed its own stderr.
+_LATE_FAILURE = "late_failure"
+
+_MEASUREMENT_FAILED = "measurement_failed"
+
+_MEASUREMENT_STEP = "base_absent"
+
+_FAILURE_DETAIL = "fatal: could not read Username for 'https://github.com'"
+
 _VIEW_DURATION_S = 12.5
 
 _VIEW_INPUT_TOKENS = 300
@@ -217,6 +230,39 @@ class LiveSchemaTest(unittest.TestCase):
                 "has_cost": True,
                 "cost_source": "estimated",
             },
+        )
+
+    def test_a_refused_reading_lands_in_extras(self) -> None:
+        # The table has no column for either field and needs none: anything
+        # outside `PROMOTED_COLUMNS` lands in `extras JSONB`, so widening the
+        # late record is an emitter change rather than a migration. The stage
+        # beside them is the control -- it IS promoted, so a row carrying it
+        # in its own column and these two in the blob is the split working.
+        self._apply_schema()
+        refused = sample_record(
+            issue=_LATE_FAILURE_ISSUE,
+            event=_LATE_FAILURE,
+            stage=_STAGE_IMPLEMENTING,
+            failure=_MEASUREMENT_FAILED,
+            measurement_failure=_MEASUREMENT_STEP,
+            detail=_FAILURE_DETAIL,
+        )
+        _sync_live_records(self, self.db_url, [refused])
+        row = _fetch_live_row(
+            self.db_url,
+            "SELECT stage, extras->>'failure', "
+            "extras->>'measurement_failure', extras->>'detail' "
+            "FROM analytics_events WHERE issue = %s",
+            refused[_ISSUE_KEY],
+        )
+        self.assertEqual(
+            row,
+            (
+                _STAGE_IMPLEMENTING,
+                _MEASUREMENT_FAILED,
+                _MEASUREMENT_STEP,
+                _FAILURE_DETAIL,
+            ),
         )
 
     def test_the_daily_rollup_catches_up(self) -> None:
