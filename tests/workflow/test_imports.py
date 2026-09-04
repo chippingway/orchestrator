@@ -56,6 +56,7 @@ _LATE_SPLIT_OWNERS = (
     "payloads",
     "records",
     "restart",
+    "rewrites",
     "spends",
     "state",
     "telemetry",

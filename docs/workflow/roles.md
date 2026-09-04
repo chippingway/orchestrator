@@ -442,7 +442,7 @@ branch has already overtaken.
   whose command is exactly right, so the park is re-taken saying the recorded commit is not on this host and the
   next continue retries it once the worktree is back.
 
-Four candidates skip the measurement and none is a bypass. Three are commits this workflow has already *decided*
+Five candidates skip the measurement and none is a bypass. Three are commits this workflow has already *decided*
 about, and each names one commit and only it, so work committed on top of any of them is measured as the fresh
 candidate it is. `late_exempt_sha` names the commit an adjudication accepted; between the verdict and the publication
 it also holds the branch out of the base refresh — but on two conditions, since the record is never cleared and
@@ -461,6 +461,30 @@ recorded generation for, nor one it owes a push for, because the switch decides 
 about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the
 publication is handed a candidate the gate never looked at while the record beside it names a different commit as the
 one still owed a push.
+
+The fifth is the only one no record names in advance, and the only one that has to *earn* its way past the reading:
+a workflow rewrite of the exact commit an adjudication accepted. A squash on approval replaces that commit with an
+object carrying the identical contribution, and the one-commit rule that makes the exemption safe is exactly what
+stops it answering for the replacement — so the same change would be measured past the same ceiling on the last
+push before the merge button. `late_transfer.py` is what it is earned on: a whole semantic record whose exempt
+commit is the one the rewrite came from, evidence naming a bounded rewrite kind and both pre- and post-rewrite
+pairs, no authorization this build cannot read already standing for that exemption, the publication this call
+itself froze and the one the issue still records, a provably clean checkout standing on the rewritten commit, a
+leased head that peels to a commit this host holds — the one end nothing else here reads as an object, since the
+lease may name a different commit from the accepted one — an issue re-read and found *unchanged* — open, carrying
+no `paused` or `backlog`, and still on the stage the rewrite recorded, since the entry read that stage off the
+issue the tick opened with and a relabel during the rewrite is invisible to every other reading — and canonical
+fingerprints that agree. The accepted one is re-taken over the pair the **record** names rather than the pair the
+caller claims — so the record proves itself, base included, instead of having its digest read back against an end
+nothing checked — and the caller's own claim about what it replaced is held to that same digest, as is the digest
+any permission already standing there recorded: carried forward unchecked, a grant would write its own reading over
+it. Granted, one durable write records the **permission** and the debt the push is still owed, before anything is
+pushed — the exemption itself does not move there, and no step in this build moves it. That rotation belongs to the
+write that receipts the landed push, where the exemption, the identity it carries, and the account of what the
+remote holds would go down together or not at all, so a verdict is never left on a commit no remote carries; a
+force-push the remote refuses puts the branch back onto the commit the exemption never left, and what the rollback
+owes is dropping the permission it will never spend. Refused, nothing moves and the ordinary cumulative gate
+measures it like any other candidate.
 
 The approval holds the switch back for the commit it *names* and no other, which is why the switch is asked twice —
 once at the door, cheaply, and once past the proof. An approval is a claim about one object id, and nothing can say
@@ -715,10 +739,12 @@ under. It is derived from the frozen pair the decomposer inspected and from noth
 head or a base read now, since the worktree is writable for the whole of an adjudication — and it goes down in the
 same write as the exemption, because the retirement a few steps later takes that pair off the record. The exemption
 says which COMMIT a human ruled on; the identity says which CHANGE they ruled on, which is the only question left
-once the commit itself has been rebased, squashed, or made afresh. Nothing reads it yet — what lets a candidate
-publish unmeasured is still the exact-SHA comparison and only that, so recording an identity changes no decision this
-workflow takes today. Where the reading could not be taken, or where any field of the record cannot be vouched for,
-there is simply no transferable identity and the exact-SHA exemption stands untouched. The record belongs to the
+once the commit itself has been rebased, squashed, or made afresh. What lets a candidate publish unmeasured is
+still the exact-SHA comparison and only that; what the identity licenses is the exemption MOVING onto the commit an
+equivalent workflow rewrite produced, which `late_transfer.py` grants and records as its own pinned authorization
+before the push it licenses. Where the reading could not be taken, or where any field of the record cannot be
+vouched for, there is simply no transferable identity, the exact-SHA exemption stands untouched, and the rewrite is
+measured as the fresh candidate it looks like. The record belongs to the
 commit on the exemption field, so moving that field to another commit drops it: a later verdict that records the
 commit alone writes nothing over those fields, and left there they would match the first commit by name the next
 time one put it back.

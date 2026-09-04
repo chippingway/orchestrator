@@ -33,6 +33,7 @@ from orchestrator.workflow.late_split import (
     formats as _formats,
     identity as _identity,
     lineage as _lineage,
+    rewrites as _rewrites,
     validation as _late_validation,
 )
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
@@ -167,6 +168,12 @@ class _Gate:
     # more. Empty for every publication with no round behind it, and for the
     # implementing seam, which has no reviewer to have spent one.
     spends: _Spends = _SPENDS_NOTHING
+    # The rewrite this candidate came out of, where the caller made one. It
+    # is the only evidence a permit may be granted on, and the only account
+    # anything later has of how an exemption came to license a commit no
+    # human ever saw. It is the caller's because everything in it is gone
+    # from the checkout and the remote by the time this owner could ask.
+    rewrite: _rewrites.LateRewrite | None = None
 
 
 @dataclass(frozen=True)
@@ -183,7 +190,9 @@ class _Entered:
     previous tick RECORDED -- and it is what the switch is asked against, so a
     rebase or a recovery push that no developer ran for is still the new work
     `DECOMPOSE=off` publishes untouched. `spends` is the route bookkeeping a
-    hold has to close on the caller's behalf.
+    hold has to close on the caller's behalf. `rewrite` is the before-state a
+    caller that REPLACED a commit destroyed getting here, which is the one
+    thing no reading taken now could recover.
 
     Empty is the ordinary answer and means the caller established none of it:
     the label is current, the remote has not been read, a run has just
@@ -202,6 +211,12 @@ class _Entered:
     reconciling: bool = False
     answering: bool = False
     spends: _Spends = _SPENDS_NOTHING
+    # What the caller REWROTE to arrive at the candidate above, where it
+    # rewrote anything. It is the evidence a change a human already
+    # adjudicated may be recognized in a commit that did not exist when they
+    # ruled on it, and it is handed in rather than read because a rewrite
+    # destroys its own before-state.
+    rewrite: _rewrites.LateRewrite | None = None
 
 
 # What a caller that established nothing hands in.

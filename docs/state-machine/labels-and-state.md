@@ -1430,7 +1430,12 @@ rather than preserving.
   candidate handed back with its generation cleared and nothing else would be measured past the ceiling again and
   adjudicated again. It names exactly the commit that was measured, which is also the whole invalidation rule —
   anything committed on top of it is work nobody adjudicated, does not match, and is measured as the fresh candidate
-  it is. There is no clearing step to remember and no window in which a stale exemption covers a moved head. That
+  it is. There is no clearing step to remember and no window in which a stale exemption covers a moved head. The one
+  thing that MOVES it is an authorized rewrite — a squash whose contribution fingerprints identically to the accepted
+  one, granted by `late_transfer` and recorded by the `late_rewrite_*` group below — and that move is a write of its
+  own rather than a widening of the match: it belongs to the receipt of the push that landed rather than to the grant
+  before it, so a verdict is never left on a commit no remote carries. No step in this build makes that write, so
+  what stands today is the permission and not the move. That
   is also why the pre-tick base refresh reads the CHECKOUT and the LABEL before it decides whether this record
   freezes the branch: a rebase while the head is still the accepted commit, and the gate has still to act on it,
   would have the gate measure the rewrite past the ceiling and re-route a decision a human has already made — while
@@ -1474,9 +1479,9 @@ rather than preserving.
   `late_exempt_fingerprint_format` are the semantic identity of the accepted change, written with the exemption in
   the same pinned write and outside `LATE_STATE_KEYS` on the same terms — the exemption says which COMMIT was
   adjudicated, and these say which CHANGE was, which is the only question left once that commit has been rebased,
-  squashed, or made afresh. **Nothing reads them yet**: what licenses a publication is `is_exempt`, the exact SHA
-  compared whole against the commit in hand, so an identity beside that field widens nothing the gate does and a
-  damaged one narrows nothing either — this group is a record for a later reader, not an input to today's decision.
+  squashed, or made afresh. What licenses a publication is still `is_exempt`, the exact SHA compared whole against
+  the commit in hand; what this group licenses is the exemption MOVING onto the commit an equivalent workflow
+  rewrite replaced the accepted one with, which the authorization group below records and nothing else grants.
   The pair is the generation's own frozen base and the accepted candidate, and the digest is the canonical
   fingerprint of the contribution between them
   ([`../architecture.md`](../architecture.md#fingerprinting-a-prospective-contribution-gitmeasurementfingerprintpy)),
@@ -1500,6 +1505,51 @@ rather than preserving.
   back as what the last adjudication decided, over a base that generation never measured. Re-recording the SAME
   commit keeps it, which is what a settlement resumed between the exemption write and its handoff needs: the identity
   standing there is one its own earlier pass derived from the pair this generation is still frozen on.
+
+  **What authorized it to move.** `late_rewrite_kind`, `late_rewrite_phase`, `late_rewrite_from_sha`,
+  `late_rewrite_from_base_sha`, `late_rewrite_to_sha`, `late_rewrite_to_base_sha`, `late_rewrite_fingerprint`,
+  `late_rewrite_fingerprint_format`, `late_rewrite_pr_number`, `late_rewrite_source_stage`, and
+  `late_rewrite_lease` are the evidence one transfer was granted on, on the
+  [`rewrites`](../../orchestrator/workflow/late_split/rewrites.py) owner and outside `LATE_STATE_KEYS` on the same
+  terms as the two groups above. They go down BEFORE the push they license and they move **nothing**: the exemption
+  and its identity stay on the commit a human ruled on, because the object the rewrite produced is on no remote yet
+  and a verdict rotated onto it there would be stranded by a push that failed or a process that died. What this group
+  records is the *permission* for a later write to move it — and that later write is the one that receipts the landed
+  push, where the exemption, the identity, and the account of what the remote holds would go down together or not at
+  all. No step in this build makes it, so every record written here stands at `authorized` and `published` is a phase
+  the readers account for and nothing writes. `late_approved_sha` and its lease ride the GRANT's own write instead,
+  and they have to: by then the rewrite has already replaced the branch's commits
+  with one, so a comment that explains that commit and does not say a push is outstanding is one the next squash
+  reads as *nothing to squash* — reported as success, never measured, never pushed. The kind is
+  bounded to rewrites this workflow makes itself (today the squash a reviewer's approval earns, since the pre-tick
+  base refresh holds a branch standing on an exempt commit out of every rebase), and the publication group scopes
+  the whole claim to one push onto one pull request. `late_rewrite_phase` is what says whether the move has
+  happened, and every other reading turns on it. It binds the group to the exemption, and which end binds follows
+  from it: `late_rewrite_from_sha` while the record stands at `authorized`, `late_rewrite_to_sha` once the receipt
+  has moved it to `published`. It is also what a rollback reads — a force-push the remote refuses resets the branch
+  back onto the accepted commit, which is the commit the exemption never left, so what the reset owes is dropping
+  the permission it will never spend; an `authorized` record is therefore droppable and a `published` one is not.
+  An *outstanding* permission is read two more ways on the tick after a crash: it says a push is owed for the commit
+  it names, so the approval beside it defers to the permit rather than being spent on the object id, and it says the
+  receipt has not landed, so a remote already standing on `late_rewrite_to_sha` is that permit's own push rather than
+  a move somebody else made. Both are asked of the phase, not of the commit — the permission and the debt go down in
+  one write for one commit, and a hand-edited target would otherwise make the permit invisible.
+  The group is read whole or not at all on the same terms as the identity: a missing member, a value that is not
+  the shape its field takes, a kind or a phase this build cannot account for, a digest scheme it does not compute,
+  a stage no publication is entered from, and a bound end that is not the commit `late_exempt_sha` names each read
+  back as no authorization, which costs a rollback the drop and never lets one happen on evidence nobody can
+  check. `late_rewrite_fingerprint` is held to the same standard from the other side: a permit re-derives both
+  contributions for itself and refuses where the digest already recorded is not the one it took, since a grant that
+  carried on would write its own reading over the record — a repair of evidence nobody checked.
+
+  Being unreadable is not being absent, and the difference is what a WRITER asks. A grant replaces the whole group
+  rather than adding beside it, so a group that CLAIMS the commit currently exempt and cannot be read back is
+  evidence a transfer may not overwrite to repair: the permit refuses, the exemption stays where the adjudication
+  put it, and the rewrite is measured by the ordinary gate until a human settles the comment. A group whose
+  `late_rewrite_to_sha` names some other commit is the one exception, and it is not a claim about anything a
+  transfer is doing — the exemption moved on since, which dropped the identity and left this group describing a
+  commit nothing exempts — so it is replaced without ceremony. Read as a claim it would refuse every transfer the
+  issue could ever earn again.
 - **Sealed consumer ledger.** `split_ledger_sealed` says the register of children a split recorded is FINAL. The
   count written before the first create (`expected_children_count`) is what tells a partial ledger from a whole one,
   and a loop a cancellation stopped can never reach it — so the ref its children were cut from would be held on a

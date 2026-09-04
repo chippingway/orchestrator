@@ -142,6 +142,7 @@ def _holds_published_work(
         answering=entered.answering,
         candidate=entered.candidate,
         spends=entered.spends,
+        rewrite=entered.rewrite,
     )
     if _freeze._outside_the_gate(gate, recorded):
         return _unentered(gate, _gate._holds_candidate(gate), entered)

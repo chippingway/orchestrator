@@ -640,23 +640,24 @@ end of the diff was frozen has no generation of its own to be correlated by, so 
 record — derived from what the pinned comment already says, so a reading that keeps failing reports the same
 attempt rather than a fresh cycle per tick — and deliberately not persisted, since a pinned cycle with no
 candidate under it freezes nothing and would be read as a live cycle by the guard that ends one when the issue
-closes. A candidate the gate skips emits nothing, and four do. Three are commits this workflow has already
-decided about, each named exactly and only by its own record: the one an adjudication accepted
-(`late_exempt_sha`), the one the gate itself approved and has still to push (`late_approved_sha`, brought back by
-a crash between the write that approves a candidate and the push it licenses), and the one this stage already
-pushed (`implementing_published_sha`, brought back by a relabel to `workflow:validating` that did not land). The
-fourth is a NEW candidate while `DECOMPOSE=off`. So a reading that never happened is not always a reading that
-failed: an issue whose branch is published, or whose commit a verdict settled, reaches the seam again and leaves
-no `late_measurement` behind, which is the shape a threshold study sees for a candidate that was counted once
-and acted on twice. The switch is not silence either — a candidate this issue already has a recorded generation
-for is still measured with it off, and so is a reconciliation answering a reading a previous tick recorded, so a
-repository running with the switch off still writes these families for the work already in the gate. What it
-stops is records for work that never enters it. The seam writes one more family, and rarely:
-a `late_cancellation` — under the same entry stage — where a close a poll latched reaches the retirement that runs
-ahead of a publication — asked before that write and again on the window it is held inside, so a close arriving
-as the record stops naming its cycle is reported rather than lost. It is the same family and the same shape the
-adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended. The remaining three
-arrive once an oversized candidate is under adjudication. The second is the late adjudication under
+closes. A candidate the gate skips emits nothing, and five do. Three are commits this workflow has already decided
+about, each named exactly and only by its own record: the one an adjudication accepted (`late_exempt_sha`), the one
+the gate itself approved and has still to push (`late_approved_sha`, brought back by a crash between the write that
+approves a candidate and the push it licenses), and the one this stage already pushed
+(`implementing_published_sha`, brought back by a relabel to `workflow:validating` that did not land). The fourth is
+a NEW candidate while `DECOMPOSE=off`, and the fifth is a squash on approval that EARNED the exemption of the
+commit it replaced (`late_rewrite_*`, granted only over two recomputed fingerprints that agree). So a reading that
+never happened is not always a reading that failed: an issue whose branch is published, or whose commit a verdict
+settled, reaches the seam again and leaves no `late_measurement` behind, which is the shape a threshold study sees
+for a candidate that was counted once and acted on twice. The switch is not silence either — a candidate this issue
+already has a recorded generation for is still measured with it off, and so is a reconciliation answering a reading
+a previous tick recorded, so a repository running with the switch off still writes these families for the work
+already in the gate. What it stops is records for work that never enters it. The seam writes one more family, and
+rarely: a `late_cancellation` — under the same entry stage — where a close a poll latched reaches the retirement
+that runs ahead of a publication — asked before that write and again on the window it is held inside, so a close
+arriving as the record stops naming its cycle is reported rather than lost. It is the same family and the same
+shape the adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended. The remaining
+three arrive once an oversized candidate is under adjudication. The second is the late adjudication under
 `workflow:decomposing`
 ([`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)): it writes
 one `late_verdict` per completed adjudication, one `late_measurement` per candidate a developer revision

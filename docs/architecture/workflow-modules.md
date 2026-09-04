@@ -288,6 +288,23 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the field beside it, so a write that moves that field to another commit takes the
                             identity with it -- and one that re-records the same commit keeps it, which is what a
                             settlement resumed between that write and its handoff is standing on
+    rewrites.py             what authorizes that exemption to MOVE onto the commit a workflow rewrite replaced the
+                            accepted one with: the bounded rewrite kind, both pre- and post-rewrite pairs, the digest
+                            they were granted equal on and the scheme it was taken under, the publication the rewrite
+                            was made against, and the phase the transfer stands at. Written BEFORE the push it
+                            licenses and moving nothing -- the exemption stays on the commit a human ruled on, since
+                            the object the rewrite produced is on no remote yet and a verdict rotated onto it there
+                            would be stranded by a push that failed. What SPENDS a permission is the write that
+                            receipts the landed push, carrying the exemption over and moving the phase to `published`;
+                            no owner in this build makes that write, so every record written here stands at
+                            `authorized` and `published` is a phase this module reads and never writes -- which is
+                            why it is read fail-closed at all. The phase is what binds the group to the
+                            exemption -- the accepted end while `authorized`, the rewritten one once `published` --
+                            and what a rollback reads, since only an `authorized` permission may be dropped when a
+                            refused force-push resets the branch back onto the commit the exemption never left. Read
+                            whole or not at all, so a missing member, a kind or a phase this build cannot account
+                            for, a stage no publication is entered from, and a bound end the exemption does not name
+                            each authorize nothing
     restart.py              the two-phase restart marker: the closed pair of labels it may apply, the cycle it
                             mints, the whole-marker check that decides whether the one a crash left may still be
                             believed, the settled-ledger precondition retirement refuses without, and the fresh
@@ -1079,14 +1096,77 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             checked on both sides of the gate, since the gate proves the checkout for itself and a
                             first generation has no record to prove it against, so something committing over the
                             worktree in that window would be measured and published in its place. Which holds keep
-                            the rewrite is answered here too (`_rewrite_stands`): the receipt naming the squash
-                            says a push landed, a live record naming it says the adjudication owns it or the
-                            reconciliation still owes it a count, and a checkout that is not the squash says
-                            something else made the commit -- anything else is a reading that REFUSED and froze
+                            the rewrite is answered here too (`_rewrite_stands`), over the three records that can
+                            point at a commit: the receipt naming the squash says a push landed, the approval says a
+                            push is still owed for it, and a live record says the adjudication owns it or the
+                            reconciliation still owes it a count -- and a checkout that is not the squash says
+                            something else made the commit. Anything else is a reading that REFUSED and froze
                             nothing, where the squash is a local commit nobody measured and the caller puts the
-                            branch back rather than leave a retry one commit to call success. And the debt a
+                            branch back rather than leave a retry one commit to call success. Asked as a group
+                            because a road that lost a write can leave any subset of them down: a transfer whose
+                            grant landed and whose push the remote took has the APPROVAL naming the squash while the
+                            receipt still names the head that commit was pushed over, and rolling back there would
+                            take the checkout off an object the remote already carries. And the debt a
                             rollback abandons is dropped there, durably, since the reconciliation ahead of every
-                            handler would otherwise stop the tick for a publication that is never coming
+                            handler would otherwise stop the tick for a publication that is never coming -- with the
+                            permission an authorized transfer holds dropped on the same write, since the commit it
+                            was granted for is on no branch any more and the exemption never left the one the reset
+                            restored. The before-state the rewrite destroyed -- the head it replaced and the
+                            merge base both sides are read over, taken from the PLAN rather than from the entry,
+                            since the entry admits a remote tip a durable record says this issue's own push put
+                            there and only the plan says which commit was collapsed -- is handed into the gate
+                            beside the publication it was entered on as the evidence `late_transfer` grants a
+                            transfer on
+      late_transfer.py      whether a rewrite may carry an adjudication's exemption onto the object it produced,
+                            rather than have the same change measured past the same ceiling and adjudicated a second
+                            time on the last push before the merge button. A permit is granted only over a whole
+                            semantic record whose exempt commit IS the one the rewrite came from, evidence naming a
+                            bounded kind and every end of both contributions, no authorization this build cannot read
+                            already standing for that exemption -- a grant REPLACES that group rather than adding to
+                            it, so an unreadable claim about the exempt commit is evidence a transfer may not
+                            overwrite to repair -- the publication this call itself froze (same pull request, same
+                            stage, a remote still standing on the lease) and the one the issue still records, a
+                            provably clean checkout standing on the rewritten commit, a leased head that peels to
+                            a commit this host holds -- the one end nothing else here reads as an object, since the
+                            lease may name a different commit from the accepted one -- an issue re-read past the close
+                            latch and found UNCHANGED -- open, carrying no `paused` or `backlog`, and still on the
+                            stage the rewrite recorded, since the entry read that stage off the issue the tick opened
+                            with and a relabel during the rewrite is invisible to every other reading -- and
+                            canonical fingerprints that agree. The accepted one is taken over the
+                            pair the RECORD names rather than the pair the caller claims, so a hand-edited
+                            `late_exempt_base_sha` is the record failing to prove itself instead of a field nothing
+                            ever reads, and the caller's own claim about what it replaced is held to that same digest
+                            -- by digest rather than by spelling, since the frozen base and the fork point a squash
+                            collapses onto disagree as object ids the moment the base branch advances. A digest a
+                            standing permission already recorded is held to that same reading, since carried forward
+                            unchecked it would be rewritten by whatever this tick happened to take -- a repair of
+                            evidence nobody checked, made under the authority of the transfer being decided.
+                            Granted, ONE durable write records the authorization and the debt the push is still
+                            owed -- both before the push, because a comment that explains a one-commit branch and
+                            does not say a push is outstanding is one the next squash reads as nothing to squash. The exemption
+                            itself does not move here, and no owner in this build moves it: the rotation belongs to
+                            the write that receipts a landed push, so a verdict is never left on a commit no remote
+                            carries. A write GitHub REFUSES is
+                            handled here rather than allowed out: the staged payload is put back exactly as it was
+                            found and the permit is refused, so the tick falls through to the ordinary gate instead
+                            of ending in an exception that would carry past every rollback the squash has. Refused,
+                            nothing moves and the ordinary cumulative size gate measures the rewrite like any other
+                            candidate. The
+                            drop a rolled-back force-push needs lives here too, so the rollback takes back exactly
+                            the permission the squash was granted and leaves the exemption, which never moved,
+                            alone. And the tick AFTER a crash between the grant and its push is answered from the
+                            same record: the recovery has no plan behind it, so both pairs, the publication, and the
+                            lease come off the standing permission and every question is asked again over them --
+                            which is why the gate's approved bypass defers here rather than answering on the object
+                            id, since a hand-edited permission, a repointed pull request, or a relabelled issue would
+                            each otherwise push an oversized rewrite nothing revalidated. That deferral is asked of
+                            the PHASE rather than of the commit the record names -- the permission and the debt go
+                            down in one write for one commit, so an approval beside an outstanding permission is
+                            either the one it licensed or a comment disagreeing with itself, and a hand-edited target
+                            would otherwise make the permit invisible. An outstanding permission is also what makes a
+                            lost receipt recoverable: a remote already standing on the rewritten commit is this
+                            permit's own push having landed, admitted as such rather than read as a moved remote,
+                            which would remeasure a squash the pull request already carries
       late_reconcile.py     the reading the dispatcher takes for a pair frozen and never counted, scoped to the
                             stage the record names and taken with no run behind it: measured at or under the ceiling
                             the candidate is PUBLISHED before the stage runs -- nothing goes back for a push a

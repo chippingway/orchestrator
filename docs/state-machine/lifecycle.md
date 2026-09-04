@@ -50,6 +50,15 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      already pushed and its PR already open,
                                      and only the relabel this tick finishes
                                      was ever owed
+     an authorized rewrite of it  ─► publish unmeasured on a permit earned
+                                     this tick: a squash on approval whose
+                                     contribution fingerprints to the digest
+                                     the adjudication recorded, over a clean
+                                     checkout, an unmoved publication, and an
+                                     issue re-read open. What goes down before
+                                     the push is the PERMISSION; the exemption
+                                     itself stays on the commit a human ruled
+                                     on
      DECOMPOSE=off, no generation ─► publish unmeasured; a candidate already
                                      recorded is measured with the switch
                                      either way

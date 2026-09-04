@@ -1,0 +1,574 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""What authorized an exemption to move from one commit to the one that replaced it.
+
+An exemption names the exact commit a human adjudicated, and nothing else is
+exempt. That is the whole of its safety, and it is also what a workflow
+REWRITE breaks: the squash a reviewer's approval earns collapses the accepted
+commit into a new object carrying the identical contribution, and the gate --
+which recognizes a decided candidate by one commit and only it -- would
+measure that object past the same ceiling and adjudicate the same change a
+second time.
+
+This record is what says the move is earned. It is written before anything
+reaches the remote and it moves NOTHING -- the exemption stays on the commit a
+human ruled on until the write that receipts the landed push carries it over,
+since a verdict rotated onto an object no remote has is one a failed push
+strands. What it carries is the whole of the evidence the move was granted on:
+the
+commit and base the contribution came FROM, the commit and base it went TO,
+which rewrite produced it, the digest both pairs fingerprinted to and the
+scheme that digest was taken under, and the publication it was made against --
+the pull request, the stage the rewrite was entered from, and the head that
+pull request was standing on when the lease was taken.
+
+Every one of those is evidence rather than decoration. The two pairs are what
+a reader re-derives the equality from rather than taking this record's word
+for it. The kind is bounded because what one member licenses is a rewrite this
+workflow makes on purpose; a spelling this build does not know is a record
+from somewhere else, and acting on it would carry a human's verdict onto an
+object nothing here produced. And the publication group is what scopes the
+authorization to one push: an authorization that could not name the pull
+request it was granted against would go on answering for the next one.
+
+The PHASE is what says whether the move has happened, and it is the one
+field every other reading turns on. The record goes down before the push and
+says `authorized`, and it moves NOTHING: the exemption is still the commit a
+human ruled on, because the object the rewrite produced is on no remote yet
+and a verdict rotated onto it there would be stranded by a push that failed or
+a process that died. What spends the permission is the write that receipts a
+landed push: it carries the exemption and its identity over and moves the
+phase to `published`, all beside the account of what the remote now holds, so
+the move and the receipt land together or not at all.
+
+That write is not one this build makes. Nothing here spends a permission, so
+every record written here stands at `authorized` and `published` is a phase
+this owner reads and never writes -- which is exactly why it is read at all
+and read fail-closed: a group announcing itself finished can only have come
+from a hand edit or another build, and it is the one a reader may not act on
+unchecked.
+
+That is also what binds this record to the exemption, and which end binds
+follows from the phase: the accepted end while it stands at `authorized`, the
+rewritten one once it is `published`. And it is what a rollback reads. A
+force-push refused between the two puts the branch back onto the commit the
+rewrite replaced -- which is the commit the exemption never left -- so what
+the reset owes is dropping the permission it will never spend. An `authorized`
+record is therefore droppable and a `published` one is not: the first is a
+transfer whose effect never left this host, the second one the pull request
+already carries.
+
+Read fail-closed, whole or not at all, like every other late record. A field
+that is missing, one that is not the shape it claims, a kind or a phase this
+build cannot account for, a digest taken under a scheme it does not compute, a
+stage no publication is entered from, and a record whose new commit is not the
+one the exemption currently names each read back as no authorization -- which
+costs a rollback the reversal and never lets one happen on evidence nobody can
+check.
+
+A WRITER asks something else, and it is the question the fail-closed reader
+cannot answer for it: whether a group standing here CLAIMS the commit this
+issue exempts. A grant replaces the whole group rather than adding beside one,
+so an unreadable claim about the exempt commit is evidence a transfer may not
+overwrite in the act of deciding it is entitled to. The one group that is not
+such a claim is one naming another commit, which a later exemption moved past
+-- read as a claim it would refuse every transfer the issue could ever earn
+again.
+
+The keys live outside `LATE_STATE_KEYS` for the reason the exemption's do:
+they describe the commit on the exemption field and share its whole lifetime,
+so the write that clears a generation may take none of them.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+from types import MappingProxyType
+
+from orchestrator.git.measurement.models import FINGERPRINT_FORMAT
+from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.late_split import (
+    exemption as _exemption,
+    formats as _formats,
+    payloads as _payloads,
+)
+from orchestrator.workflow.state import (
+    WorkflowLabel,
+    publishes_onto_a_pull_request,
+)
+
+
+class LateRewriteKind(StrEnum):
+    """Which rewrite of its own the workflow may carry an exemption over.
+
+    Bounded, and small on purpose: a member is a rewrite this workflow makes
+    itself, over a checkout it is holding still, out of commits it can name
+    both ends of. The squash a reviewer's approval earns is that rewrite --
+    it is the one push that replaces an accepted commit with an object of the
+    orchestrator's own making, since the per-tick base refresh holds a branch
+    standing on an exempt commit out of every rebase it would otherwise take.
+
+    A wire string this build does not know is not a kind to widen the
+    vocabulary for at read time. It is a record from another build or a hand
+    edit, and what it would license -- a human's verdict carried onto an
+    object nothing here produced -- is the one thing this domain may never
+    grant on evidence it cannot account for.
+    """
+
+    SQUASH = "squash"
+
+
+class LateRewritePhase(StrEnum):
+    """How far the transfer this record authorizes got.
+
+    `AUTHORIZED` is written before the push and moves NOTHING: the exemption
+    is still the commit a human ruled on, and what the record says is that a
+    push for the rewritten one is outstanding. `PUBLISHED` is what the write
+    that receipts that landed push moves it to, and that write is where the
+    exemption is carried over -- a write no owner here makes yet, so this
+    member is one every reader accounts for and none writes.
+
+    So an outstanding permission says three things at once, and every reader
+    here turns on one of them. A push is OWED for the commit it names, which
+    is why the approval standing beside it may not be spent on the object id
+    alone. The exemption has NOT moved, which is why the accepted end binds
+    the record while it stands here and the rewritten one binds it after. And
+    the move is still undoable, which is why a rollback may drop an
+    `AUTHORIZED` permission -- the reset puts the branch back onto the commit
+    the exemption never left -- while a `PUBLISHED` one describes a transfer
+    the pull request already carries and an exemption already moved.
+    """
+
+    AUTHORIZED = "authorized"
+    PUBLISHED = "published"
+
+
+# Which rewrite the transfer was granted for, and how far it got. Spelled here
+# because this is the record's owner, and deliberately outside the keys
+# `clear_late_generation` drops.
+LATE_REWRITE_KIND = "late_rewrite_kind"
+
+LATE_REWRITE_PHASE = "late_rewrite_phase"
+
+# The pair the contribution came FROM -- the exempt commit a human ruled on,
+# and the base it is read over -- and the pair it went TO. Both are recorded
+# because the equality between them is re-derived rather than believed: a
+# reader with the four ends can fingerprint each pair again and compare, and
+# one holding a digest alone could only take this record's word for it.
+LATE_REWRITE_FROM_SHA = "late_rewrite_from_sha"
+
+LATE_REWRITE_FROM_BASE_SHA = "late_rewrite_from_base_sha"
+
+LATE_REWRITE_TO_SHA = "late_rewrite_to_sha"
+
+LATE_REWRITE_TO_BASE_SHA = "late_rewrite_to_base_sha"
+
+# The digest both pairs fingerprinted to, and the scheme it was taken under.
+# The version travels with it for the reason it travels beside the exemption's
+# own: two digests taken under different rules are not comparable, and nothing
+# about the ids themselves would say so.
+LATE_REWRITE_FINGERPRINT = "late_rewrite_fingerprint"
+
+LATE_REWRITE_FINGERPRINT_FORMAT = "late_rewrite_fingerprint_format"
+
+# The publication the rewrite was made against, which is what scopes this
+# authorization to one push: the pull request the work is on, the stage the
+# rewrite was entered from, and the head that pull request was standing on
+# when the force-push behind it was leased.
+LATE_REWRITE_PR_NUMBER = "late_rewrite_pr_number"
+
+LATE_REWRITE_SOURCE_STAGE = "late_rewrite_source_stage"
+
+LATE_REWRITE_LEASE = "late_rewrite_lease"
+
+# What each recorded hex field has to be, at its exact length: every end of
+# either contribution is a whole git object id, the lease is the whole head a
+# push was pinned against, and the fingerprint is a whole digest. An
+# abbreviation is not a commit this domain froze, and a truncated digest is
+# not a hash of anything.
+_HEX_SHAPES = MappingProxyType({
+    LATE_REWRITE_FROM_SHA: _formats.COMMIT_LENGTHS,
+    LATE_REWRITE_FROM_BASE_SHA: _formats.COMMIT_LENGTHS,
+    LATE_REWRITE_TO_SHA: _formats.COMMIT_LENGTHS,
+    LATE_REWRITE_TO_BASE_SHA: _formats.COMMIT_LENGTHS,
+    LATE_REWRITE_LEASE: _formats.COMMIT_LENGTHS,
+    LATE_REWRITE_FINGERPRINT: _formats.DIGEST_LENGTHS,
+})
+
+# Everything one authorized transfer leaves on the pinned comment, taken as
+# one group: it describes the commit the exemption names, so a record short of
+# any member describes a transfer this issue cannot show the evidence for.
+_AUTHORIZATION_KEYS = (
+    *_HEX_SHAPES,
+    LATE_REWRITE_KIND,
+    LATE_REWRITE_PHASE,
+    LATE_REWRITE_FINGERPRINT_FORMAT,
+    LATE_REWRITE_PR_NUMBER,
+    LATE_REWRITE_SOURCE_STAGE,
+)
+
+
+@dataclass(frozen=True)
+class LateRewrite:
+    """One rewrite a caller made of work a pull request already carries.
+
+    The evidence a transfer is granted on, handed in by the owner that made
+    the rewrite because every field is something no reading taken afterwards
+    could recover: the commit and base the contribution came FROM are off the
+    branch the moment it is rewound, and the head the pull request was
+    standing on before the force-push is one the push itself moves.
+
+    All eight travel because a transfer is granted on the whole of them and on
+    nothing else. The two pairs are what the contribution is fingerprinted
+    between, at both ends, so the equality is re-derived rather than asserted.
+    The `kind` says which rewrite this workflow made, and it is bounded because
+    what a member licenses is a commit the orchestrator produced itself. And
+    the publication group -- the pull request, the stage it was entered from,
+    and the pre-rewrite head the force-push is leased against -- is what scopes
+    the whole claim to one push onto one pull request.
+
+    The same record is what goes down on the pinned comment once a permit is
+    granted, so what a later reader is held to is exactly what the grant was
+    taken over rather than a second spelling of it.
+    """
+
+    kind: LateRewriteKind | None = None
+    from_sha: str = ""
+    from_base_sha: str = ""
+    to_sha: str = ""
+    to_base_sha: str = ""
+    pr_number: int = 0
+    source_stage: WorkflowLabel | None = None
+    lease: str = ""
+
+
+@dataclass(frozen=True)
+class LateRewriteAuthorization:
+    """One granted transfer, once every field of it proved out.
+
+    Handed out whole or not at all, so nothing downstream has to decide what
+    half of one means. Which end the exemption names when a reader holds this
+    follows from the `phase` -- the accepted one at `authorized`, the
+    rewritten one at `published` -- and the reader PROVES that rather than
+    assuming it: the end and the exemption are separate pinned fields, and a
+    comment where the bound one disagrees describes a transfer some later
+    write moved the exemption off.
+
+    The `fingerprint` is what the permission was granted OVER, and it is
+    handed out to be compared: a caller re-deriving the contribution holds
+    this digest to its own reading rather than carrying it forward, since a
+    digest nobody checks is one a grant would quietly rewrite. And
+    `fingerprint_format` travels with it because two digests taken under
+    different rules are not comparable.
+    """
+
+    rewrite: LateRewrite
+    phase: LateRewritePhase
+    fingerprint: str
+    fingerprint_format: int
+
+
+def carries_rewrite_authorization(state: PinnedState) -> bool:
+    """Whether this comment carries any part of an authorization at all.
+
+    Presence rather than truth, and presence of ANY member rather than of all
+    of them, because what this answers is whether the comment is CLAIMING a
+    transfer -- which a record a crash left half written, or one a hand edit
+    damaged, claims just as loudly as a whole one. A reader that asked the
+    fail-closed reader instead would read a damaged claim as no claim, which
+    is the one reading that lets a repair overwrite evidence nobody checked.
+
+    The key being THERE is the whole test, rather than the value under it
+    being something. A pinned comment is JSON, so a field can be present and
+    `null` -- a hand edit, or an older binary writing a value this one reads
+    as nothing -- and a group carrying one member spelled that way is exactly
+    the minimal damaged claim this exists to catch. Asked for a value instead,
+    it would answer "no group at all" and let the write past.
+    """
+    return any(key in state.data for key in _AUTHORIZATION_KEYS)
+
+
+def claims_the_exemption(state: PinnedState) -> bool:
+    """Whether a group standing here claims the commit currently exempt.
+
+    What a WRITER has to ask before it replaces one. An authorization is
+    evidence for the exemption beside it, so overwriting a group this build
+    could not read would throw away the only account of how the exemption came
+    to name what it names -- and a transfer that did so would be granting
+    itself the right to repair a record nobody checked.
+
+    A group whose new commit is readable and is NOT the exempt one is the
+    exception, and it is not a claim about anything a transfer is doing: the
+    exemption has moved on since, which drops the identity and leaves this
+    group describing a commit nothing exempts. Left as a claim it would refuse
+    every transfer this issue could ever earn again.
+
+    Anything else counts, the missing and the damaged `to_sha` included. A
+    record that cannot name its own new commit has not been shown to be about
+    some other one, and "not shown to be stale" is the only reading a writer
+    may act on here.
+    """
+    if not carries_rewrite_authorization(state):
+        return False
+    bound = _bound_end(state)
+    if bound is None:
+        return True
+    return bound == _exemption.read_exemption(state)
+
+
+def rewritten_commit(state: PinnedState) -> str | None:
+    """The commit a group standing here says a rewrite produced, or None.
+
+    The raw end rather than the bound one, because what asks is a caller
+    deciding whether a group is ABOUT a commit at all -- before any question
+    of whether the move has happened. Read fail-closed like every other
+    recorded id, so a field that is missing or is not a whole object id
+    answers None, which a caller has to read as "cannot say" rather than as
+    "some other commit".
+    """
+    return _payloads.as_hex(
+        state.get(LATE_REWRITE_TO_SHA), _formats.COMMIT_LENGTHS,
+    )
+
+
+def outstanding_permission(state: PinnedState) -> bool:
+    """Whether a group standing here says a push is still owed.
+
+    The one question a caller may ask of a record it is not going to act on,
+    and the answer is deliberately asymmetric. A permission is recognized as
+    SPENT only from a record this build can vouch for entirely -- every field
+    at its shape, the phase-bound end the commit the exemption names, and that
+    phase `published`. Read off the raw phase instead, a group carrying
+    nothing else this build understands would announce itself as finished, and
+    the approval standing beside it would be spent on an object id with
+    neither the permit nor a reading behind it.
+
+    Everything else that carries a group is a claim: a record missing a
+    member, one bound to a commit this issue does not exempt, and one still at
+    `authorized`. None of those has been shown to be over, and "not shown to
+    be over" is the only reading a caller deciding whether to skip a
+    measurement may act on.
+    """
+    if not carries_rewrite_authorization(state):
+        return False
+    authorization = read_rewrite_authorization(state)
+    if authorization is None:
+        return True
+    return authorization.phase == LateRewritePhase.AUTHORIZED
+
+
+def _bound_end(state: PinnedState) -> str | None:
+    """Which end of the rewrite this record says the exemption is on, or None.
+
+    The one thing the phase decides for a reader, and the reason it is on the
+    record at all. A transfer is granted BEFORE the push and rotates nothing:
+    while it stands at `authorized` the exemption is still the commit a human
+    ruled on, so the accepted end is what binds the record to it. The write
+    that receipts the landed push is what moves the exemption onto the object
+    the rewrite produced, and past that boundary the rewritten end is what
+    binds.
+
+    None where the phase or the end it names is not one this build can read,
+    which is not the same claim as "bound to some other commit": a record that
+    cannot say which end it is on has not been shown to be about anything
+    else, and every caller here treats that as a claim rather than as a gap.
+    """
+    phase = _payloads.as_member(
+        LateRewritePhase, state.get(LATE_REWRITE_PHASE),
+    )
+    if phase is None:
+        return None
+    bound = (
+        LATE_REWRITE_TO_SHA if phase == LateRewritePhase.PUBLISHED
+        else LATE_REWRITE_FROM_SHA
+    )
+    return _payloads.as_hex(state.get(bound), _formats.COMMIT_LENGTHS)
+
+
+def read_rewrite_authorization(
+    state: PinnedState,
+) -> LateRewriteAuthorization | None:
+    """Return the transfer this issue's exemption was granted by, or None.
+
+    None wherever the record cannot vouch for itself, which is every way it
+    can fail to: a field that is missing, a group where only some of them are
+    there, a value that is not the shape its field takes, a kind or a phase
+    this build cannot account for, a digest taken under a scheme it does not
+    compute, a stage no publication is entered from, and an end the phase
+    binds to that is not the commit the exemption currently names -- the
+    accepted one while the transfer stands at `authorized`, the rewritten one
+    once the receipt has moved it.
+
+    Each of those is a record nothing may act on, and what acting on it would
+    do is MOVE a human's verdict: onto the rewritten commit where the push it
+    licensed has landed, and back off it where a rollback abandoned one.
+    Either way, a record whose ends nobody can name would move that verdict
+    onto whatever the damaged field happened to say.
+    """
+    recorded = {
+        key: _payloads.as_hex(state.get(key), lengths)
+        for key, lengths in _HEX_SHAPES.items()
+    }
+    if not all(recorded.values()):
+        return None
+    if _bound_end(state) != _exemption.read_exemption(state):
+        return None
+    bounded = _bounded_terms(state)
+    if bounded is None:
+        return None
+    return LateRewriteAuthorization(
+        rewrite=LateRewrite(
+            kind=bounded["kind"],
+            from_sha=recorded[LATE_REWRITE_FROM_SHA],
+            from_base_sha=recorded[LATE_REWRITE_FROM_BASE_SHA],
+            to_sha=recorded[LATE_REWRITE_TO_SHA],
+            to_base_sha=recorded[LATE_REWRITE_TO_BASE_SHA],
+            pr_number=bounded["pr_number"],
+            source_stage=bounded["source_stage"],
+            lease=recorded[LATE_REWRITE_LEASE],
+        ),
+        phase=bounded["phase"],
+        fingerprint=recorded[LATE_REWRITE_FINGERPRINT],
+        fingerprint_format=bounded["fingerprint_format"],
+    )
+
+
+def _bounded_terms(state: PinnedState) -> dict | None:
+    """The five bounded fields of one record, or None if any is not one.
+
+    Together because they fail together: a kind, a phase, a digest scheme, a
+    pull request, and a stage are each a value this build either accounts for
+    or does not, and a record short of any of them is not one to act on.
+
+    The stage is asked what it IS rather than merely whether it is a label,
+    and by the same predicate the entry the rewrite was made under was frozen
+    against: only the five states that push onto a pull request the remote
+    already carries. A record naming any other describes a publication this
+    workflow never enters one on.
+    """
+    kind = _payloads.as_member(LateRewriteKind, state.get(LATE_REWRITE_KIND))
+    phase = _payloads.as_member(
+        LateRewritePhase, state.get(LATE_REWRITE_PHASE),
+    )
+    written = _payloads.as_identity(state.get(LATE_REWRITE_FINGERPRINT_FORMAT))
+    pr_number = _payloads.as_identity(state.get(LATE_REWRITE_PR_NUMBER))
+    stage = _payloads.as_member(
+        WorkflowLabel, state.get(LATE_REWRITE_SOURCE_STAGE),
+    )
+    if kind is None or phase is None or pr_number is None:
+        return None
+    if written != FINGERPRINT_FORMAT:
+        return None
+    if not publishes_onto_a_pull_request(stage):
+        return None
+    return {
+        "kind": kind,
+        "phase": phase,
+        "fingerprint_format": written,
+        "pr_number": pr_number,
+        "source_stage": stage,
+    }
+
+
+def record_rewrite_authorization(
+    state: PinnedState, rewrite: LateRewrite, fingerprint: str,
+) -> None:
+    """Record what authorizes this issue's exemption to move, before any push.
+
+    Nothing moves here. The exemption stays exactly on the commit a human
+    ruled on, and what goes down beside it is the permission for a later write
+    to move it -- so a transfer whose push never lands leaves the verdict
+    where the adjudication put it rather than on an object no branch carries.
+    The rotation belongs to the write that receipts the push, where it would
+    land with the receipt or not at all -- a write no owner here makes, so
+    what this records outlives the tick that granted it.
+
+    Written beside that exemption and validated against it: the accepted end
+    of the rewrite has to BE the commit this issue exempts, because the whole
+    of what this record licenses is moving that one verdict, and one naming
+    any other commit would describe a move this issue never earned.
+
+    Every field is held to the shape it claims for the reason the exemption
+    itself is -- a value that cannot name a commit, a digest, a bounded kind,
+    a pull request, or a stage a publication is entered from is not one, and
+    writing it would move the failure onto a reader whose only move is to
+    reverse a transfer it could not check.
+
+    The phase and the digest scheme are this build's own rather than the
+    caller's. The first says the push this authorizes has not been receipted
+    yet, which is what tells a reader the exemption has not moved and a
+    rollback may still drop the permission; the second says which scheme the
+    digest beside it was taken under, and only the owner that takes one can
+    answer that.
+    """
+    refusal = _unusable_terms(rewrite, fingerprint)
+    if refusal:
+        raise _formats.InvalidLateValue(refusal)
+    if _exemption.read_exemption(state) != rewrite.from_sha:
+        raise _formats.InvalidLateValue(
+            "a rewrite authorization is not the exempt commit's",
+        )
+    for key, recorded in _written_terms(rewrite, fingerprint).items():
+        state.set(key, recorded)
+
+
+def _written_terms(rewrite: LateRewrite, fingerprint: str) -> dict:
+    """Every key one authorization goes down as, with what it carries.
+
+    Assembled as one mapping rather than written a field at a time, because
+    the record is believed as one: a reader holds it whole or not at all, so
+    the write that produces it is one statement of what the whole is.
+    """
+    return {
+        LATE_REWRITE_KIND: str(rewrite.kind),
+        LATE_REWRITE_PHASE: str(LateRewritePhase.AUTHORIZED),
+        LATE_REWRITE_FROM_SHA: rewrite.from_sha,
+        LATE_REWRITE_FROM_BASE_SHA: rewrite.from_base_sha,
+        LATE_REWRITE_TO_SHA: rewrite.to_sha,
+        LATE_REWRITE_TO_BASE_SHA: rewrite.to_base_sha,
+        LATE_REWRITE_FINGERPRINT: fingerprint,
+        LATE_REWRITE_FINGERPRINT_FORMAT: FINGERPRINT_FORMAT,
+        LATE_REWRITE_PR_NUMBER: rewrite.pr_number,
+        LATE_REWRITE_SOURCE_STAGE: str(rewrite.source_stage),
+        LATE_REWRITE_LEASE: rewrite.lease,
+    }
+
+
+def _unusable_terms(rewrite: LateRewrite, fingerprint: str) -> str:
+    """Why this rewrite is not one an authorization may be written for, or "".
+
+    One answer for every term, because a caller that cannot name any of them
+    has the same problem: it is asking this domain to record evidence a later
+    reader could not check, and the reader's only move is to undo a human's
+    verdict on the strength of it.
+    """
+    if rewrite.kind not in LateRewriteKind:
+        return f"a rewrite kind is not one this build authorizes ({rewrite.kind!r})"
+    if not _formats.whole_number(rewrite.pr_number) or rewrite.pr_number <= 0:
+        return (
+            "a rewritten publication is not an identity "
+            f"({type(rewrite.pr_number).__name__})"
+        )
+    if not publishes_onto_a_pull_request(rewrite.source_stage):
+        return (
+            "a rewrite source stage is not one a publication is entered from "
+            f"({type(rewrite.source_stage).__name__})"
+        )
+    named = (
+        (rewrite.from_sha, _formats.COMMIT_LENGTHS),
+        (rewrite.from_base_sha, _formats.COMMIT_LENGTHS),
+        (rewrite.to_sha, _formats.COMMIT_LENGTHS),
+        (rewrite.to_base_sha, _formats.COMMIT_LENGTHS),
+        (rewrite.lease, _formats.COMMIT_LENGTHS),
+        (fingerprint, _formats.DIGEST_LENGTHS),
+    )
+    for given, lengths in named:
+        if not _formats.is_hex_of(given, lengths):
+            return f"a rewrite authorization is not one ({type(given).__name__})"
+    return ""
+
+
+def clear_rewrite_authorization(state: PinnedState) -> None:
+    """Drop the whole authorization, leaving every other field alone."""
+    for key in _AUTHORIZATION_KEYS:
+        state.data.pop(key, None)
