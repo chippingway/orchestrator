@@ -715,11 +715,13 @@ under. It is derived from the frozen pair the decomposer inspected and from noth
 head or a base read now, since the worktree is writable for the whole of an adjudication — and it goes down in the
 same write as the exemption, because the retirement a few steps later takes that pair off the record. The exemption
 says which COMMIT a human ruled on; the identity says which CHANGE they ruled on, which is the only question left
-once the commit itself has been rebased, squashed, or made afresh. Where the reading could not be taken, or where any
-field of the record cannot be vouched for, there is simply no transferable identity and the exact-SHA exemption
-stands untouched. The record belongs to the commit on the exemption field, so moving that field to another commit
-drops it: a later verdict that records the commit alone writes nothing over those fields, and left there they would
-match the first commit by name the next time one put it back.
+once the commit itself has been rebased, squashed, or made afresh. Nothing reads it yet — what lets a candidate
+publish unmeasured is still the exact-SHA comparison and only that, so recording an identity changes no decision this
+workflow takes today. Where the reading could not be taken, or where any field of the record cannot be vouched for,
+there is simply no transferable identity and the exact-SHA exemption stands untouched. The record belongs to the
+commit on the exemption field, so moving that field to another commit drops it: a later verdict that records the
+commit alone writes nothing over those fields, and left there they would match the first commit by name the next
+time one put it back.
 
 Beside the exemption goes the **exact-commit reconciliation** of the pull request the issue records
 (`late_reconcile.py`, with the hold release beside it and the head a published-side verdict is proved against one
@@ -757,10 +759,9 @@ candidate goes on to.
 
 The order is chosen so every window a crash can land in is one the next tick repairs. The hold is released first,
 while nothing else has moved; the exemption and the identity beside it are written next, with the generation still
-live behind them; only then is
-`workflow:implementing` handed back; and only after that is the generation retired (`late_handback.py` owns that
-half) — behind the one comment naming the accepted commit and the measurement it was judged on, posted immediately
-before the write that drops the generation,
+live behind them; only then is `workflow:implementing` handed back; and only after that is the generation retired
+(`late_handback.py` owns that half) — behind the one comment naming the accepted commit and the measurement it was
+judged on, posted immediately before the write that drops the generation,
 so a crash between them costs at most a repeated comment. What that write keeps is the two external ledgers: an
 obligation the remote is owed does not stop being owed because the adjudication that recorded it ended well. A
 `decomposing` issue with no generation on it is one the INITIAL decomposer would pick up and re-decompose, and an

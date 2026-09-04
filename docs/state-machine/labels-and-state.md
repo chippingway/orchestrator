@@ -1474,21 +1474,24 @@ rather than preserving.
   `late_exempt_fingerprint_format` are the semantic identity of the accepted change, written with the exemption in
   the same pinned write and outside `LATE_STATE_KEYS` on the same terms — the exemption says which COMMIT was
   adjudicated, and these say which CHANGE was, which is the only question left once that commit has been rebased,
-  squashed, or made afresh. The pair is the generation's own frozen base and the accepted candidate, and the digest
-  is the canonical fingerprint of the contribution between them
-  ([`../architecture/platform-modules.md`](../architecture/platform-modules.md)), taken from the frozen pair the
-  decomposer inspected rather than from the checkout's head or a base read at settlement time: the worktree is
-  writable for the whole of an adjudication, so what it stands on is not evidence of what a human ruled on. The
-  format version travels with the digest because two ids taken under different rules are not comparable and nothing
-  about the ids themselves would say so. The group is read whole or not at all: a missing member, a member that is
-  not the shape its field takes (an abbreviated end, a truncated digest, a version spelled as text), a candidate that
-  is not the commit `late_exempt_sha` names, a version this build does not compute, and a pinned comment written
-  before the group existed each read back as no transferable identity — while the exact-SHA exemption beside them
-  goes on exempting the matching commit exactly as it did. A settlement whose fingerprint reading could not be taken
-  records none of them and settles anyway, for the same reason: what an absent identity costs a later tick is the
-  transfer, never the decision a human already made. `record_semantic_identity` refuses on the way in too — a field
-  that is not a whole object id or a whole digest, and an identity naming any commit but the exempt one, are not
-  written at all.
+  squashed, or made afresh. **Nothing reads them yet**: what licenses a publication is `is_exempt`, the exact SHA
+  compared whole against the commit in hand, so an identity beside that field widens nothing the gate does and a
+  damaged one narrows nothing either — this group is a record for a later reader, not an input to today's decision.
+  The pair is the generation's own frozen base and the accepted candidate, and the digest is the canonical
+  fingerprint of the contribution between them
+  ([`../architecture.md`](../architecture.md#fingerprinting-a-prospective-contribution-gitmeasurementfingerprintpy)),
+  taken from the frozen pair the decomposer inspected rather than from the checkout's head or a base read at
+  settlement time: the worktree is writable for the whole of an adjudication, so what it stands on is not evidence
+  of what a human ruled on. The format version travels with the digest because two ids taken under different rules
+  are not comparable and nothing about the ids themselves would say so. The group is read whole or not at all: a
+  missing member, a member that is not the shape its field takes (an abbreviated end, a truncated digest, a version
+  spelled as text), a candidate that is not the commit `late_exempt_sha` names, a version this build does not
+  compute, and a pinned comment written before the group existed each read back as no transferable identity — while
+  the exact-SHA exemption beside them goes on exempting the matching commit exactly as it did. A settlement whose
+  fingerprint reading could not be taken records none of them and settles anyway, for the same reason: what an
+  absent identity costs a later tick is the transfer, never the decision a human already made.
+  `record_semantic_identity` refuses on the way in too — a field that is not a whole object id or a whole digest,
+  and an identity naming any commit but the exempt one, are not written at all.
 
   The group belongs to the commit `late_exempt_sha` named when it was written, so `record_exemption` **drops it
   whenever it moves that field to another commit**. Nothing else would: a verdict whose fingerprint could not be read
