@@ -1278,8 +1278,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        it a repeat rather than a second announcement. No miss is counted for it either; the bound is spent. Every
        notice a refused reading makes, on either road, names the member and explains it in a line written for the
        operator — which of a remote, a token, a throttled request, a checkout, or a planted attribute file they are
-       looking at, and where the invocation itself is logged — with whatever the failing step wrote for itself,
-       scrubbed, carried up beside it.
+       looking at, and, for the remote read, the fetch and the two diff steps, the `orchestrator.git_plumbing`
+       channel their invocation is logged under — with whatever the failing step wrote for itself, scrubbed, carried
+       up beside it.
        The hold is keyed on a human still WAITING — the latch, since a resume consumes it and leaves the reason
        standing — and on the pair the park was taken over. A park failing either test is spent: a fresh candidate,
        which is what answering the park with guidance produces, retires it and starts its own bound, in the same

@@ -61,29 +61,50 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      both proofs around it nothing to compare
      no reading at all            ─► park late_measurement_failed with the
                                      frozen pair kept -- including the id a
-                                     revision that would not peel resolved
-                                     to; a trusted bare `/orchestrator
-                                     continue` re-measures that exact pair
-                                     and spawns nothing. The park freezes the
-                                     branch out of base sync until answered
+                                     revision that would not peel resolved to;
+                                     a trusted bare `/orchestrator continue`
+                                     re-measures that exact pair and spawns
+                                     nothing. The park freezes the branch out
+                                     of base sync until answered. The notice
+                                     names the typed step AND the line an
+                                     operator acts on it by -- which of a
+                                     remote, a token, a checkout, or a planted
+                                     attribute file this is, and, for the
+                                     remote read, the fetch and the two diff
+                                     steps, the orchestrator.git_plumbing
+                                     channel their invocation is logged under
+                                     -- with whatever the step wrote for
+                                     itself, scrubbed, beside it. It is made
+                                     once per STEP: late_measurement_failure
+                                     records which one was named, so polls past
+                                     the park re-read and hold silently while
+                                     the reading stops there, and one stopping
+                                     at a DIFFERENT member is announced once
+                                     and takes its place
      ... the base was unreachable ─► counted instead, for the first three in a
                                      row: base_unreadable and base_absent are
                                      the transport rather than the work, so the
                                      pair and the miss go on the record, the
                                      typed late_failure is emitted, and the
-                                     tick stops with nothing parked and nothing
-                                     said. The next tick re-enters that same
-                                     pair with no agent; the fourth miss takes
-                                     the park above and mentions once -- polls
-                                     past it re-read and hold silently rather
-                                     than saying it again, though each still
-                                     reports its typed late_failure, and a base
-                                     id the remote finally names is recorded
-                                     even then. A base REACHED puts the count
-                                     back to zero; what retires the park is the
-                                     reading it lets through, settled one owner
-                                     on, since a base in hand is not yet a
-                                     measurement
+                                     tick stops with nothing parked, nothing
+                                     said, and no step recorded -- that field
+                                     is what a NOTICE named, not what a reading
+                                     stopped at. The next tick re-enters that
+                                     same pair with no agent; the fourth miss
+                                     takes the park above, records the step it
+                                     names in the same write as the count, and
+                                     mentions once. Polls past it hold silently
+                                     as above, though each still reports its
+                                     typed late_failure, and a base id the
+                                     remote finally names is recorded even
+                                     then. A base REACHED puts the COUNT back
+                                     to zero and leaves the member alone, since
+                                     reaching the base is not the last step a
+                                     reading can stop at; what retires the
+                                     park, dropping the member with the count,
+                                     is the reading it lets through, settled
+                                     one owner on, since a base in hand is not
+                                     yet a measurement
      no commit ever named         ─► the same park, and its bare continue is
                                      refused: no pair was frozen, so a retry
                                      would take a FIRST reading of a head

@@ -1148,28 +1148,28 @@ rather than preserving.
   no step recorded, so the next tick re-enters the same pair by itself on both roads and spawns nothing; the fourth
   takes the `late_measurement_failed` park, records the step it is about to name in the same write as that count, and
   mentions a human once. What that mention says is the member and a line written for the operator holding the issue —
-  which of a remote, a token, a throttled request, a checkout, or a planted attribute file they are looking at, and
-  where the invocation behind it is logged (`orchestrator.git_plumbing`) — with whatever the failing step wrote for
-  itself carried up beside it, already scrubbed of the credential by the transport that ran it. Every other member
-  still parks on its first miss, since re-reading a candidate this host does not hold or a diff nothing can pin
-  buys the same answer, and so does a record nobody may act on at all: the pair is proved usable before its transport
-  is retried — everything a reuse needs except the base itself, which is the one field the failure being retried
-  leaves absent. The retry WRITES the record back, and the mint behind it keeps the record's cycle, scope and spent
-  readings while re-stamping the issue number, the ceiling and the boundary from the process running now — so unproved
-  it would adopt a reading taken against another issue under this one's identity, or re-judge a generation that lost
-  its ceiling against whatever `MAX_ADDED_LINES` has been retuned to since, either of them ready to publish here the
-  moment the base came back. Past a measurement park of ANY cause the pair is still re-read on every poll — the
-  post-publication reconciliation runs ahead of every handler — and each of those readings is announced at most once
-  per thing there is to say: one that stops at the step `late_measurement_failure` already names repeats a sentence
-  the human cannot answer any faster, so the tick is held silently and no further miss is counted. That is the whole
-  reason the field is written by the roads that ANNOUNCE — without it a candidate this host cannot peel, or a diff
-  nothing here can pin, would mention the same people once a poll for as long as it took them to fix it. A reading
-  that stops at a *different* member is not a repeat: it is a different next move, and nothing else would ever say
-  so, so it is announced once and takes that field's place in the write the notice rides out on, which makes the poll
-  after it a repeat rather than a second announcement; no miss is counted for it either. Silent to the THREAD and to
-  nothing else: the typed `late_failure` still reaches both sinks on every one of those readings, since the stream is
-  the only place they exist at all, and a base id the remote finally names is written down even then, because it is
-  the exact object every retry after it asks for. And the
+  which of a remote, a token, a throttled request, a checkout, or a planted attribute file they are looking at, and,
+  for the remote read, the fetch and the two diff steps, the `orchestrator.git_plumbing` channel their invocation is
+  logged under — with whatever the failing step wrote for itself carried up beside it, already scrubbed of the
+  credential by the transport that ran it. Every other member still parks on its first miss, since re-reading a
+  candidate this host does not hold or a diff nothing can pin buys the same answer, and so does a record nobody may
+  act on at all: the pair is proved usable before its transport is retried — everything a reuse needs except the base
+  itself, which is the one field the failure being retried leaves absent. The retry WRITES the record back, and the
+  mint behind it keeps the record's cycle, scope and spent readings while re-stamping the issue number, the ceiling
+  and the boundary from the process running now — so unproved it would adopt a reading taken against another issue
+  under this one's identity, or re-judge a generation that lost its ceiling against whatever `MAX_ADDED_LINES` has
+  been retuned to since, either of them ready to publish here the moment the base came back. Past a measurement park
+  of ANY cause the pair is still re-read on every poll — the post-publication reconciliation runs ahead of every
+  handler — and each of those readings is announced at most once per thing there is to say: one that stops at the step
+  `late_measurement_failure` already names repeats a sentence the human cannot answer any faster, so the tick is held
+  silently and no further miss is counted. That is the whole reason the field is written by the roads that ANNOUNCE —
+  without it a candidate this host cannot peel, or a diff nothing here can pin, would mention the same people once a
+  poll for as long as it took them to fix it. A reading that stops at a *different* member is not a repeat: it is a
+  different next move, and nothing else would ever say so, so it is announced once and takes that field's place in the
+  write the notice rides out on, which makes the poll after it a repeat rather than a second announcement; no miss is
+  counted for it either. Silent to the THREAD and to nothing else: the typed `late_failure` still reaches both sinks
+  on every one of those readings, since the stream is the only place they exist at all, and a base id the remote
+  finally names is written down even then, because it is the exact object every retry after it asks for. And the
   silence is scoped twice over: to a park a human is still WAITING behind — the latch rather than the reason beside
   it, since a resume consumes the one and leaves the other standing — and to the pair that park was taken over. A
   fresh candidate, which is what guidance answered with, retires it and starts its own bound rather than having its
@@ -1184,9 +1184,8 @@ rather than preserving.
   the count together in the write it settles on, before that record becomes the one an oversized candidate is
   adjudicated from — and it goes with the record itself wherever a small candidate retires one. Until then a notice
   naming another step is what replaces it. The park is retired by that same verdict rather than by the gate's own
-  door, since entering the gate is not
-  answering the question the park was taken for and a retirement there would durably unpark an issue whose next
-  reading can miss again, as
+  door, since entering the gate is not answering the question the park was taken for and a retirement there would
+  durably unpark an issue whose next reading can miss again, as
   [`delivery-stages.md`](delivery-stages.md#_handle_implementing-label-workflowimplementing) describes. The count is
   read as a non-negative whole number and the failure as one of that vocabulary's own members, so a hand-edited count,
   a bool, or a `LateFailure` spelling in the failure field reads back as no miss recorded rather than as one a retry
