@@ -64,7 +64,7 @@ last is held by the loader itself rather than by a check.
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
   `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the two `git/measurement/` owners that
   log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the ten `git/worktrees/`
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the eleven `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
   `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
@@ -299,7 +299,8 @@ orchestrator/
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
                         and the branches beside them name, the classification of which of those may be
-                        reclaimed, and the ledger carrying an unfinished teardown of one of them across a restart
+                        reclaimed, the teardown that takes a cleared checkout down, and the ledger carrying an
+                        unfinished teardown of one of them across a restart
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
                         resolution, the exact set of names one issue's branch can be published under, and the
                         `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
@@ -375,6 +376,71 @@ orchestrator/
                         nobody proved is one a teardown may neither delete nor write down. Reported as one
                         verdict per candidate carrying every reason it is kept for, and -- when it keeps none --
                         the commit each artifact was cleared at
+      reclamation.py    the destructive step, and the only owner in the artifact domain that destroys anything:
+                        an eligible verdict is spent, never re-derived, and everything it established is
+                        established again at the boundary it is about to be spent at -- the checkout still this
+                        issue's own, still clean, and still on the commit that was cleared before a `worktree
+                        remove` that does not force, which runs with git's own `index.lock` and `HEAD.lock` for
+                        that checkout held -- no `commit`, `checkout`, `reset`, or `update-ref HEAD` can run in a
+                        tree while they are this pass's, which is what makes the reading before the removal hold
+                        -- and with the lock git takes for the branch that checkout's HEAD is on held too, a HEAD
+                        being a symbolic ref and an `update-ref` on the branch under it moving what the tree
+                        stands on without going near either of the other two. Each carries the process that took
+                        it, so a lock a killed pass left behind is one a later pass tells from one a running
+                        command holds and takes again rather than refusing this issue for good; the
+                        registration's mode comes back writable whatever was found, for the same reason. Then
+                        with that checkout's HEAD pinned to an anchor one process before it and read back one
+                        process after: a commit made before the locks went on comes down with the checkout, and
+                        the anchor is what keeps it nameable and has the surface report the removal as the
+                        failure it was. An anchor is created and never overwritten, so one an earlier pass left
+                        standing refuses the removal rather than being replaced and then discharged -- unless
+                        what it pins is the very commit this verdict clears, which is the note a pass that
+                        stopped between writing it and removing anything leaves behind. That one is spent and
+                        taken again, since reusing a ref an agent could have planted would make it the pinning
+                        the removal is measured against; a note nobody could take away refuses the removal too,
+                        the write after it being refused by the same ref, and one that would not go after the
+                        removal leaves the surface unsettled rather than reported clear. What the tree hides is
+                        read once more between the note and the removal, last of everything: git's own locks stop
+                        a commit in that tree and stop nothing from writing in it, and an ignored file is what
+                        `worktree remove` takes without a word -- so a reading from before the note would delete
+                        a secret that landed after it. The rest of the verdict's reading is retaken there too,
+                        and not only the parts git leaves out: the locks go on after the reading that cleared the
+                        tree, and a checkout put on somebody else's branch in that window is one every step after
+                        would take for ours -- the branch this pass freezes being the one it moved onto -- so
+                        whose repository it is and which branch its HEAD is on are established again where
+                        nothing can move. Where the path leads is read there too, and for the same kind of
+                        reason: the command resolves its own argument, so a checkout renamed away with its
+                        registration repaired and a link left in its place would have it take a directory outside
+                        the tree this orchestrator owns. The two are compared as filesystem objects rather than
+                        as spellings, an operator whose worktrees root sits under a link of their own having
+                        every checkout answer a resolved path that is not the derived one. What the command
+                        actually deletes is not the path it is handed, though -- that path only selects a
+                        registration, and the registration names the tree that comes down -- so that file is
+                        opened without following, refused unless it is a regular one naming this checkout's own
+                        tree, and held by taking the write bits off the OBJECT rather than the name: a link left
+                        there would otherwise have every read and every mode change land on somebody else's file.
+                        Nothing locks it, and what the mode buys is that the `worktree repair` a swap needs to
+                        aim the removal elsewhere cannot open it; what the mode cannot buy is a rename through
+                        the directory above, so the name is read once more against the object held open before
+                        the command runs. And a removal that came back clean over a path still standing is
+                        reported as the failure it is, since what came down was not what this named -- and a
+                        command that refused over a path that is gone is this removal having happened without it,
+                        reported as the absence it is rather than as a deletion this pass made. The note is
+                        measured the same way whatever the removal answered, since `worktree remove` deletes the
+                        tree and then deletes the administrative directory beside it whatever the first half did:
+                        a non-zero result is not a checkout still standing, and letting the note go over one
+                        would take the last name a raced commit has. The path itself is read before any of that,
+                        and anything at it that is not a directory of its own is refused: `worktree remove`
+                        resolves what it is handed and deletes the registered tree at the far end, so a symlink
+                        left where the checkout belongs would have it take a directory outside the tree this
+                        orchestrator owns -- and every reading in front of the removal follows the link and
+                        agrees. What the tree carries is read twice for the same reason: git refuses a removal
+                        over an untracked or modified path and takes an ignored one without a word, so a checkout
+                        holding nothing but what its own rules cover passes every other reading and comes down
+                        with all of it inside. Ownership is re-derived rather than read off the verdict, so only
+                        the one path this issue's creators derive can be touched. Already-absent is success, and
+                        so is nothing to remove: a candidate the scan reported no checkout for names no surface
+                        here at all
       obligations.py    the ledger a teardown writes its notes to itself into, both kinds read back off their own
                         namespace: one ref per branch under
                         `refs/orchestrator/remote-reclaim/<repository>/`, valued at the commit the
@@ -507,6 +573,10 @@ off a facade:
   `obligations` is where that changes, and only just: it calls `commands` and `locks` for the notes it writes into the
   clone's own ref store and `paths` for the repository segment its namespaces are keyed by, and it reaches no remote,
   no GitHub, and neither the scan nor the classification. What is done about a note it hands back is the caller's.
+  `reclamation` is the one that destroys, and it sits on top of all of them: `commands` and `locks` for the removal
+  and the boundary it runs inside, `paths` for the one checkout path it will act on, `evidence` for the readings it
+  retakes, and `obligations` for the anchor it pins what it is about to take under. It takes no verdict of its own —
+  `eligibility` is not among its imports, and a candidate arrives already judged.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,

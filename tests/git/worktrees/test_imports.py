@@ -13,9 +13,10 @@ from importlib.util import find_spec
 from orchestrator.git import worktrees as _worktrees_package
 
 # The artifact scan's own owners and the classification over it, named apart
-# from the lifecycle ones above because that is the split the map draws: these
-# seven are read-only. The ledger beside them is neither -- it writes, but only
-# the notes this host keeps for itself.
+# from the lifecycle ones above because that is the split the map draws: those
+# seven are read-only. The teardown that spends one of that classification's
+# verdicts is the one owner here that destroys anything, and the ledger beside
+# it writes only the notes this host keeps for itself.
 from orchestrator.git.worktrees import (
     attribution,
     claims,
@@ -29,6 +30,7 @@ from orchestrator.git.worktrees import (
     obligations,
     paths,
     probes,
+    reclamation,
     recovery,
     terminal,
 )
@@ -61,6 +63,7 @@ _MODULES = (
     "orchestrator.git.worktrees.obligations",
     "orchestrator.git.worktrees.paths",
     "orchestrator.git.worktrees.probes",
+    "orchestrator.git.worktrees.reclamation",
     "orchestrator.git.worktrees.recovery",
     "orchestrator.git.worktrees.terminal",
 )
@@ -93,6 +96,7 @@ _OWNER_ONLY_NAMES = (
     "_ensure_worktree",
     "_decompose_worktree_path",
     "_local_issue_inventory",
+    "_reclaim_artifacts",
     "_recorded_obligations",
     "_remove_issue_worktree",
     "_resolve_branch_name",
@@ -149,7 +153,28 @@ _OWNER_ONLY_NAMES = (
 # room that has nothing to say with it -- the object kind a tree answers with,
 # the one kind every note carries, and the room the mark is allowed in -- the
 # same reading a write is held to before it reports a note kept, and the one
-# environment setting that keeps each of those local.
+# environment setting that keeps each of those local. Then the teardown that
+# spends one of those verdicts on the checkout it cleared: the entry a
+# candidate is handed to and the line every deletion is said out loud on, what
+# a verdict keeping its candidate is answered with, the removal and the
+# boundary around it, the presence read that tells a path that is gone from
+# one nobody could answer for, the whole verdict's worth of readings retaken
+# one process before the removal -- the derived path, the identity, the tip,
+# and the two tree reads that tell what is carried from what is hidden -- the
+# git directory those readings are held in, the locks that keep a checkout
+# still while it comes down -- its own two and the one git takes for the
+# branch under its HEAD, spelled in full -- the exclusive creation each is
+# taken by, marked with the process that took it so a lock a killed pass left
+# behind is one a later pass tells from one a running command holds, read back
+# and asked whether that process is still here, and given back; the
+# registration the removal is aimed by: opened without following, read for
+# what it says, told whether it says this checkout, held by the mode taken off
+# the object rather than the name, put back the same way, and asked once more
+# whether the name still means it; the comparison telling a path that IS a
+# tree from one that merely leads to it and the object identity under it, the
+# last word on whether the path named is gone and which of the two ways it got
+# that way, and the take, the discard, and the reconciliation of the anchor a
+# removal pins what it is about to take under.
 # Naming the
 # whole surface makes a helper added to an owner an edit here rather than a
 # definition site nothing checks.
@@ -173,6 +198,8 @@ _OWNER_DEFINED = (
     ("SurfaceResult", models),
     ("TERMINAL_LABELS", claims),
     ("_ABSENT_LEASE", obligations),
+    ("_BRANCH_REF_PREFIX", reclamation),
+    ("_CHECKOUT_LOCKS", reclamation),
     ("_CLEANLINESS_REASONS", eligibility),
     ("_COMMIT_OBJECT", obligations),
     ("_DIGEST_MARK", obligations),
@@ -187,32 +214,44 @@ _OWNER_DEFINED = (
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
+    ("_LOCK_MARK", reclamation),
     ("_NO_DEREF", obligations),
     ("_NO_LAZY_FETCH", obligations),
     ("_NO_NOTE", obligations),
     ("_OPEN_PULL_REQUEST", claims),
     ("_ORCHESTRATOR_BRANCH_REFS", probes),
+    ("_OWNER_WRITE", reclamation),
     ("_RECORD_FIELDS", obligations),
     ("_RECORD_FORMAT", obligations),
     ("_RECORD_SEPARATOR", obligations),
     ("_RECLAIM_ROOM", obligations),
+    ("_REF_LOCK", reclamation),
     ("_REF_LOCK_SUFFIX", obligations),
     ("_REF_SEPARATOR", attribution),
+    ("_REGISTRATION", reclamation),
+    ("_REGISTRATION_LIMIT", reclamation),
     ("_REMINDER_MARK", obligations),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
+    ("_UNFOLLOWED", reclamation),
     ("_VERIFY_QUIETLY", evidence),
     ("_VERIFY_REF", creation),
     ("_WORKTREE_ADD", creation),
     ("_WORKTREE_REMOVE_FORCE", creation),
+    ("_WRITABLE", reclamation),
+    ("_aims_here", reclamation),
     ("_anchor_checkout", obligations),
+    ("_anchor_let_go", reclamation),
     ("_anchor_pr_worktree", creation),
     ("_anchor_ref", obligations),
+    ("_anchor_settled", reclamation),
+    ("_anchor_taken", reclamation),
     ("_anchor_target", creation),
     ("_anchored_commit", obligations),
     ("_a_note_stands_at", obligations),
     ("_a_note_to_write", obligations),
+    ("_anchored_removal", reclamation),
     ("_anchors_prefix", obligations),
     ("_artifact_reading", eligibility),
     ("_artifact_verdict", eligibility),
@@ -223,13 +262,18 @@ _OWNER_DEFINED = (
     ("_branch_has_unpushed_commits", recovery),
     ("_branch_name", paths),
     ("_branch_reasons", eligibility),
+    ("_branch_ref", reclamation),
     ("_branch_retentions", eligibility),
     ("_branch_tip", eligibility),
+    ("_came_down", reclamation),
     ("_candidate_issue_branches", recovery),
     ("_carrying_pull_request", claims),
     ("_checkout_entries", probes),
+    ("_checkout_gitdir", reclamation),
     ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
+    ("_checkout_locks", reclamation),
+    ("_checkout_present", reclamation),
     ("_checkout_reason", eligibility),
     ("_checkout_retentions", eligibility),
     ("_checkout_tip", evidence),
@@ -256,37 +300,51 @@ _OWNER_DEFINED = (
     ("_ensure_pr_worktree", creation),
     ("_ensure_worktree", creation),
     ("_every_note_listed", obligations),
+    ("_everything_held", reclamation),
     ("_fetch_for_restore", creation),
     ("_fetched_issue", claims),
     ("_hardened_read", evidence),
     ("_has_new_commits", creation),
     ("_head_is_own_branch", evidence),
     ("_head_ref", evidence),
+    ("_held_still", reclamation),
+    ("_holding_nothing", reclamation),
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
+    ("_left_behind", reclamation),
+    ("_let_go", reclamation),
     ("_local_branch_tip", evidence),
+    ("_lock_created", reclamation),
+    ("_lock_holder", reclamation),
     ("_loose_note_names", obligations),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
     ("_matching_owners", attribution),
     ("_merged", inventory),
+    ("_mode_taken_off", reclamation),
     ("_move_branch_onto", creation),
     ("_note_at", obligations),
     ("_note_value", obligations),
     ("_nothing_ignored", evidence),
+    ("_nothing_left", reclamation),
     ("_object_kind", obligations),
     ("_obligation_ref", obligations),
+    ("_one_directory", reclamation),
     ("_open_pull_request_retentions", claims),
     ("_own_way_down", obligations),
     ("_parsed_record", obligations),
     ("_parsed_records", obligations),
     ("_pr_branch_start_point", creation),
+    ("_process_alive", reclamation),
     ("_proven_tips", eligibility),
     ("_published_tip", evidence),
     ("_read_notes", obligations),
     ("_read_orchestrator_refs", probes),
     ("_read_state", claims),
+    ("_ready_to_go", reclamation),
+    ("_reclaim_artifacts", reclamation),
+    ("_reclaimed_checkout", reclamation),
     ("_record_attribution", attribution),
     ("_record_obligation", obligations),
     ("_recorded_anchors", obligations),
@@ -294,9 +352,17 @@ _OWNER_DEFINED = (
     ("_recorded_obligations", obligations),
     ("_recorded_pull_request", claims),
     ("_records_prefix", obligations),
+    ("_registration_held", reclamation),
+    ("_registration_pinned", reclamation),
+    ("_registration_read", reclamation),
+    ("_registration_unchanged", reclamation),
     ("_remind", obligations),
+    ("_removal_under_lock", reclamation),
+    ("_removal_while_held", reclamation),
     ("_remove_issue_worktree", cleanup),
+    ("_removed_checkout", reclamation),
     ("_repo_worktrees_root", paths),
+    ("_reported", reclamation),
     ("_repository_key", obligations),
     ("_resolve_branch_name", paths),
     ("_resolved_commit", creation),
@@ -306,18 +372,26 @@ _OWNER_DEFINED = (
     ("_run_decompose_worktree_removal", decomposition),
     ("_run_issue_worktree_removal", cleanup),
     ("_run_local_branch_deletion", cleanup),
+    ("_same_object", reclamation),
+    ("_same_place", reclamation),
     ("_sanitize_branch_segment", paths),
     ("_sanitize_slug", paths),
     ("_shared_ref_store", obligations),
     ("_shared_repository", evidence),
+    ("_spent_anchor_cleared", reclamation),
     ("_stands_as", obligations),
     ("_slug_digest", paths),
     ("_slugs_by_worktrees_root", attribution),
     ("_spec_inventory", inventory),
     ("_specs_by_clone", inventory),
+    ("_still_cleared", reclamation),
+    ("_still_ours", reclamation),
     ("_store_held", obligations),
+    ("_taken_once", reclamation),
     ("_terminal_retentions", claims),
+    ("_thawed", reclamation),
     ("_tip_retentions", eligibility),
+    ("_untouched", reclamation),
     ("_workflow_members", claims),
     ("_worktree_issue_numbers", probes),
     ("_walked_entry", obligations),
@@ -331,7 +405,7 @@ _OWNER_DEFINED = (
 # handler selection is keyed on.
 _REPORTING_OWNERS = (
     attribution, claims, cleanup, creation, decomposition, evidence,
-    inventory, obligations, probes, terminal,
+    inventory, obligations, probes, reclamation, terminal,
 )
 
 

@@ -106,8 +106,9 @@ orchestrator/
                         transport, under the worktree lifecycle, the read-only
                         inventory of the checkouts and branches it leaves, the
                         classification that says which of them a finished
-                        issue may have reclaimed and the ledger carrying an
-                        unfinished teardown of one across a restart, the
+                        issue may have reclaimed, the teardown that takes a
+                        cleared checkout down and the ledger carrying an
+                        unfinished one of those across a restart, the
                         per-tick base sync, branch publication, verify runs,
                         the added-line measurement of a committed candidate,
                         and the immutable ref namespace one is preserved under
