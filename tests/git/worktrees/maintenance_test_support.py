@@ -29,7 +29,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git.worktrees import discovery, maintenance, probes
+from orchestrator.git.worktrees import discovery, maintenance, paths, probes
 from orchestrator.git.worktrees.models import (
     MaintenanceCandidate,
     MaintenanceResult,
@@ -123,6 +123,21 @@ class _MaintenanceTestCase(unittest.TestCase):
     def settled_checkout(self, branch: str | None = None) -> Path:
         """The same checkout, left alone long enough for the pass to act."""
         worktree = self.checkout(branch)
+        _settle(worktree)
+        return worktree
+
+    def legacy_checkout(self, branch: str | None = None) -> Path:
+        """Add the checkout where this orchestrator put one before namespacing.
+
+        Directly under `WORKTREES_DIR`, with no per-repository parent, which is
+        the layout every entry shared until the slug went into the path -- and
+        which a host that has been running since then is still holding.
+        """
+        worktree = self.world.checkout_at(
+            self.spec,
+            paths._legacy_worktree_path(ISSUE_NUMBER),
+            branch or self.branch,
+        )
         _settle(worktree)
         return worktree
 

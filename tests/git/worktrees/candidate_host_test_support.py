@@ -153,7 +153,20 @@ class _CandidateWorld(_ArtifactWorld):
         self, spec: config.RepoSpec, issue_number: int, branch: str,
     ) -> Path:
         """Add the issue's worktree on the branch its creator leaves it on."""
-        worktree = paths._worktree_path(spec, issue_number)
+        return self.checkout_at(
+            spec, paths._worktree_path(spec, issue_number), branch,
+        )
+
+    def checkout_at(
+        self, spec: config.RepoSpec, worktree: Path, branch: str,
+    ) -> Path:
+        """Add a worktree of this clone at a named path, on a named branch.
+
+        The path is stated rather than derived, for the one case where it is
+        not what the derivation writes now: a checkout made before slug
+        namespacing sits directly under `WORKTREES_DIR`, and a host that was
+        running then can still be holding it.
+        """
         worktree.parent.mkdir(parents=True, exist_ok=True)
         _run_git(
             "worktree", "add", QUIET, str(worktree), branch,

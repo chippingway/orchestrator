@@ -173,28 +173,47 @@ def _checkout_entries(root: Path) -> tuple[int, ...]:
     return tuple(number for number in numbers if number is not None)
 
 
-def _worktree_issue_numbers(spec: config.RepoSpec) -> frozenset[int] | None:
-    """Every issue this host still holds a per-issue checkout for.
+def _checkout_numbers(root: Path) -> frozenset[int] | None:
+    """Every issue a checkout directly under `root` names, or None.
 
-    The empty set when the spec has no worktrees root at all: a repository
-    nothing was ever checked out for is a repository with no checkouts, and
-    that is an established answer rather than a failed one. Only the listing
-    can report the root missing -- an entry that disappears while the pass
-    walks it is dropped where it is read, not raised over -- so the two
-    answers stay apart even though one boundary covers both reads.
+    The empty set when `root` is not there at all: a directory nothing was
+    ever checked out into is one with no checkouts, and that is an established
+    answer rather than a failed one. Only the listing can report it missing --
+    an entry that disappears while the pass walks it is dropped where it is
+    read, not raised over -- so the two answers stay apart even though one
+    boundary covers both reads.
 
     `None` is kept for everything else: a root that is there and could not be
-    listed, a file sitting where the root belongs, an entry whose `stat` was
-    refused. A caller must not read any of those as a host that has finished
-    its work.
+    listed, a file sitting where it belongs, an entry whose `stat` was refused.
+    A caller must not read any of those as a host that has finished its work.
     """
-    root = paths._repo_worktrees_root(spec)
     try:
         return frozenset(_checkout_entries(root))
     except FileNotFoundError:
         return frozenset()
     except OSError as read_error:
         log.warning(
-            "could not read the worktrees root %s: %s", root, read_error,
+            "could not read the checkouts under %s: %s", root, read_error,
         )
         return None
+
+
+def _worktree_issue_numbers(spec: config.RepoSpec) -> frozenset[int] | None:
+    """Every issue this host still holds a per-repository checkout for."""
+    return _checkout_numbers(paths._repo_worktrees_root(spec))
+
+
+def _legacy_checkout_numbers() -> frozenset[int] | None:
+    """Every issue a flat pre-namespacing checkout still stands for.
+
+    One read for the whole host rather than one per repository, because the
+    layout it reads is the one that had no per-repository parent: every
+    configured entry put its `issue-<n>` checkout directly under
+    `WORKTREES_DIR`, so what this finds is a set of issue numbers with nothing
+    on them saying whose they are. Deciding that is ``attribution``'s.
+
+    The per-repository roots live under the same directory and are passed over
+    on their names alone -- `<owner>__<name>` is not an `issue-<n>` -- so this
+    reads the legacy layout without ever descending into the current one.
+    """
+    return _checkout_numbers(config.WORKTREES_DIR)

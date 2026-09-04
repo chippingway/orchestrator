@@ -328,7 +328,9 @@ orchestrator/
                         and the branches beside them name, the classification of which of those may be
                         reclaimed, and the bounded pass that spends one of those classifications
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
-                        resolution, the exact set of names one issue's branch can be published under, and the
+                        resolution, the exact set of names one issue's branch can be published under and the two
+                        paths it can have been checked out at -- the per-repository one written now and the flat
+                        one that predates the slug in the path -- and the
                         `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
                         signed number is no issue at all
       creation.py       issue and PR worktree creation, stale-worktree reuse and the probe it turns on, and the one
@@ -344,17 +346,23 @@ orchestrator/
                         says: the three answers a fail-closed read has, the ref reading that carries a commit
                         with them, the reasons, subjects, and verdict a retained candidate is reported as, and
                         the commits an eligible one hands over as cleared
-      probes.py         the two local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
-                        per-issue checkout directories -- a real directory under the exact name, never a symlink
-                        into a tree the creators never wrote, read through the `lstat` that reports what the
+      probes.py         the local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
+                        checkout directories under both roots -- the spec's own and, once for the whole host, the
+                        flat `WORKTREES_DIR` every entry shared before namespacing -- a real directory under the
+                        exact name, never a symlink into a tree the creators never wrote, read through the `lstat`
+                        that reports what the
                         `is_dir` predicates suppress -- each answering "could not read", listing and entry alike
                         and a listing that warned about a ref it skipped included, apart from "nothing here"
       attribution.py    which configured repository a discovered artifact belongs to, by re-deriving each spec's
                         own name for it; a name several entries could own -- every legacy flat branch on a shared
-                        clone, every checkout directory two lossily-sanitized slugs are handed -- is attributed to
-                        none of them
-      inventory.py      the read-only scan over both reads: which entries share a clone, one listing per clone,
-                        worktree-only and branch-only candidates deduplicated into one entry per issue, and a
+                        clone, every checkout directory two lossily-sanitized slugs are handed, and every flat
+                        pre-namespacing checkout on a host driving more than one repository at all, since that
+                        layout had no per-repository parent to tell them apart -- is attributed to none of them
+      inventory.py      the read-only scan over those reads: the flat checkouts attributed once for the host,
+                        which entries share a clone, one listing per clone,
+                        worktree-only and branch-only candidates deduplicated into one entry per issue -- both
+                        checkout layouts of one issue among them, since a host running across the migration can
+                        hold the flat tree and the per-repository one at once -- and a
                         repository whose clone would not resolve, whose checkout directory another entry also
                         derives, or whose read failed left out of the answer rather than reported empty -- and
                         still put to the attribution, since a repository this scan will not answer for is one the
@@ -389,7 +397,9 @@ orchestrator/
                         every boundary answers with a retention rather than a default
       eligibility.py    the side-effect-free classifier over both: the GitHub gates that settle a candidate on
                         their own, then one tip proof run over every commit an artifact holds, with the base
-                        established once for the whole candidate. The checkout owes that proof as a branch does
+                        established once for the whole candidate. Every checkout is read on its own -- two trees
+                        with two HEADs and two reflogs, where an issue is holding both layouts. Each owes that
+                        proof as a branch does
                         -- a worktree whose branch was deleted under it holds its commit through its own HEAD and
                         reflog alone -- and is excused only when a reported branch is standing on that same
                         commit, so the three shapes one issue can be reported in reach one verdict. Inside the
@@ -405,11 +415,13 @@ orchestrator/
                         branch on a shared clone stays nobody's on the remote too, and a name spelled for a
                         sibling that turned up there stays nobody's as well. The two halves merge into one
                         candidate per issue in the order a teardown takes them, carrying the layout it was
-                        published under -- `current`, `legacy`, `mixed`, or `remote_only`, the last decided on
-                        where the artifacts are rather than what they are called. A repository whose remote will
+                        published under -- `current`, `legacy`, `mixed`, or `remote_only`, read off the names of
+                        every artifact it holds, branches and checkouts alike, with the last decided on where the
+                        artifacts are rather than what they are called. A repository whose remote will
                         not answer is refused outright, since every question after this one goes to that same
                         remote
-      reclaim.py        the three commit-pinned teardown steps, each refused by git or by the remote rather than
+      reclaim.py        the three commit-pinned teardown steps, each behind a total boundary and each refused
+                        by git or by the remote rather than
                         by the reading in front of it: the removal that does not force, so a tree written in
                         since the proof stands; the remote delete leased to the proved commit, so a branch
                         pushed past it is turned down there; and the local `update-ref -d` naming that commit and
@@ -417,11 +429,13 @@ orchestrator/
                         planted under a branch name is deleted as itself rather than followed onto the base. An
                         artifact already gone is each step's success
       maintenance.py    the pass that spends one classification: the injected active/claimed guard, the
-                        classification itself, and the quiet period a checkout is left alone for, asked in that
-                        order and each failing closed. Then the teardown -- the checkout first, since a branch
-                        checked out somewhere cannot be deleted, and each branch on the remote before the clone,
-                        so a failed remote delete leaves the local ref standing and the candidate discoverable.
-                        Every tip is re-read against the proof immediately before the mutation it gates. One
+                        classification itself, and the quiet period every checkout is left alone for, asked in
+                        that order and each failing closed. Then the teardown -- every checkout first, since a
+                        branch checked out somewhere cannot be deleted, and each branch on the remote before the
+                        clone, so a failed remote delete leaves the local ref standing and the candidate
+                        discoverable. Every tip is re-read against the proof immediately before the mutation it
+                        gates, and an artifact the classification cleared no commit for ends the pass rather than
+                        being passed over: a name that is gone at one reading can be back at the next. One
                         bounded result per candidate: `cleaned`, `retained`, or `failed`, the closed reason that
                         fixes which, the artifact it names, and the classification's own retentions where those
                         are what kept it. Nothing is written down and no label, pinned state, comment, or session

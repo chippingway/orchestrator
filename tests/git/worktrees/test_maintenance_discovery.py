@@ -51,7 +51,7 @@ class CandidateLayoutTest(_MaintenanceTestCase):
 
         self.assertEqual(found.layout, CandidateLayout.CURRENT)
         self.assertEqual(found.artifacts.branches, (self.branch,))
-        self.assertIsNotNone(found.artifacts.worktree)
+        self.assertEqual(len(found.artifacts.worktrees), 1)
 
     def test_the_flat_name_reads_as_the_legacy_layout(self) -> None:
         legacy = _legacy_branch(ISSUE_NUMBER)
@@ -85,7 +85,7 @@ class CandidateLayoutTest(_MaintenanceTestCase):
 
         self.assertEqual(found.layout, CandidateLayout.REMOTE_ONLY)
         self.assertEqual(found.artifacts.branches, (self.branch,))
-        self.assertIsNone(found.artifacts.worktree)
+        self.assertEqual(found.artifacts.worktrees, ())
 
     def test_a_checkout_with_no_branch_is_current(self) -> None:
         # Nothing is remote-only while this host still has something to look
@@ -99,7 +99,7 @@ class CandidateLayoutTest(_MaintenanceTestCase):
 
         self.assertEqual(found.layout, CandidateLayout.CURRENT)
         self.assertEqual(found.artifacts.branches, ())
-        self.assertEqual(found.artifacts.worktree, worktree)
+        self.assertEqual(found.artifacts.worktrees, (worktree,))
 
     def test_a_local_and_a_remote_name_read_mixed(self) -> None:
         # The two halves are merged into one candidate in the order a teardown
@@ -113,6 +113,45 @@ class CandidateLayoutTest(_MaintenanceTestCase):
 
         self.assertEqual(found.layout, CandidateLayout.MIXED)
         self.assertEqual(found.artifacts.branches, (self.branch, legacy))
+
+
+class LegacyCheckoutTest(_MaintenanceTestCase):
+    """The checkout layout that had no per-repository parent is found too.
+
+    A host that has been running since before the slug went into the path is
+    still holding `WORKTREES_DIR/issue-<n>` directories. Nothing writes there
+    now, so the only thing that will ever take one down is a pass that can see
+    it -- and a pass that cleared the branches while leaving the tree would
+    take the last artifact any later discovery could have found it by.
+    """
+
+    def test_a_flat_checkout_is_the_whole_candidate(self) -> None:
+        # The shape a host that was mid-issue at the migration is left in, once
+        # its branch has gone: the flat directory is the only thing here naming
+        # the issue, and it still makes a candidate.
+        legacy = _legacy_branch(ISSUE_NUMBER)
+        self.published(legacy)
+        worktree = self.legacy_checkout(legacy)
+
+        found = self.only_candidate()
+
+        self.assertEqual(found.layout, CandidateLayout.LEGACY)
+        self.assertEqual(found.artifacts.worktrees, (worktree,))
+        self.assertEqual(found.artifacts.branches, (legacy,))
+
+    def test_both_checkout_layouts_read_as_one(self) -> None:
+        # What the migration really left: the flat checkout the issue started
+        # in and the per-repository one the next tick made, current-first and
+        # under one candidate rather than two.
+        legacy = _legacy_branch(ISSUE_NUMBER)
+        _branch_at(self.clone, legacy, self.published())
+        current = self.settled_checkout()
+        flat = self.legacy_checkout(legacy)
+
+        found = self.only_candidate()
+
+        self.assertEqual(found.layout, CandidateLayout.MIXED)
+        self.assertEqual(found.artifacts.worktrees, (current, flat))
 
 
 class CandidateOrderTest(_MaintenanceTestCase):
@@ -175,6 +214,23 @@ class SharedCloneDiscoveryTest(_MaintenanceTestCase):
         self.assertEqual(found.artifacts.spec.slug, WIDGET_SLUG)
         self.assertEqual(found.layout, CandidateLayout.REMOTE_ONLY)
 
+    def test_a_shared_flat_checkout_is_nobody_s(self) -> None:
+        # The path counterpart of the flat branch rule, and it is wider: the
+        # flat checkout sits under a directory every entry shares, so a second
+        # configured repository is enough to make it unattributable.
+        self.published()
+        self.legacy_checkout()
+
+        with self.assertLogs(LIFECYCLE_LOGGER, level=WARNING):
+            found = self.discovered(self.specs)
+
+        self.assertEqual(
+            tuple(
+                candidate.artifacts.worktrees for candidate in found
+            ),
+            ((),),
+        )
+
     def test_a_sibling_s_name_here_is_not_ours(self) -> None:
         # A branch spelled for the other entry that turned up on this remote is
         # evidence about neither: this repository never published it, and the
@@ -235,7 +291,9 @@ class UnreachableRemoteTest(_MaintenanceTestCase):
 
         self.assertEqual(scanned.refused, ())
         self.assertEqual(len(scanned.candidates), 1)
-        self.assertEqual(scanned.candidates[0].artifacts.worktree, worktree)
+        self.assertEqual(
+            scanned.candidates[0].artifacts.worktrees, (worktree,),
+        )
         self.assertEqual(
             scanned.candidates[0].artifacts.branches, (self.branch,),
         )

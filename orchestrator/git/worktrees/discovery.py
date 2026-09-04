@@ -198,25 +198,39 @@ def _candidate_layout(
     for leaves an operator nothing here to look at, whichever name the remote's
     copy carries, and that is the fact the reading is spent on.
 
-    The rest is the names themselves. Every name in the answer is one of the
-    two `paths` derives, so the question is only which of them are there: both
-    is the shape a migration leaves and no single derivation produces, the flat
-    one alone is an issue that was in flight when namespacing landed, and
-    anything else is the current layout -- a checkout with no branch left
-    beside it included, since the path it sits at is the one this orchestrator
-    writes now.
+    The rest is the artifacts' own names. Every one of them is a name `paths`
+    derives, on both sides -- the slug-namespaced branch and the checkout under
+    the per-repository root, or the flat branch and the checkout directly under
+    `WORKTREES_DIR` -- so the question is only which layouts are represented.
+    Both is the shape a migration leaves and no single derivation produces; the
+    flat one alone is an issue that was in flight when namespacing landed.
     """
-    if artifacts.worktree is None and not local:
+    if not artifacts.worktrees and not local:
         return CandidateLayout.REMOTE_ONLY
-    named = frozenset(artifacts.branches)
-    legacy = paths._legacy_branch_name(artifacts.issue_number) in named
-    current = (
-        paths._branch_name(artifacts.spec, artifacts.issue_number) in named
-        or not named
+    held = frozenset(artifacts.branches) | frozenset(
+        str(worktree) for worktree in artifacts.worktrees
     )
+    legacy = bool(held & frozenset(_legacy_names(artifacts)))
+    current = bool(held & frozenset(_current_names(artifacts)))
     if legacy and current:
         return CandidateLayout.MIXED
     return CandidateLayout.LEGACY if legacy else CandidateLayout.CURRENT
+
+
+def _current_names(artifacts: IssueArtifacts) -> tuple[str, ...]:
+    """What this issue's artifacts are called under the layout in use now."""
+    return (
+        paths._branch_name(artifacts.spec, artifacts.issue_number),
+        str(paths._worktree_path(artifacts.spec, artifacts.issue_number)),
+    )
+
+
+def _legacy_names(artifacts: IssueArtifacts) -> tuple[str, ...]:
+    """What they were called before slug namespacing landed."""
+    return (
+        paths._legacy_branch_name(artifacts.issue_number),
+        str(paths._legacy_worktree_path(artifacts.issue_number)),
+    )
 
 
 def _widened(
@@ -245,7 +259,7 @@ def _widened(
     widened = IssueArtifacts(
         spec=artifacts.spec,
         issue_number=artifacts.issue_number,
-        worktree=artifacts.worktree,
+        worktrees=artifacts.worktrees,
         branches=branches,
     )
     return MaintenanceCandidate(
@@ -292,7 +306,7 @@ def _keyed_candidate(
     """
     spec, issue_number = key
     artifacts = local.get(key) or IssueArtifacts(
-        spec=spec, issue_number=issue_number, worktree=None, branches=(),
+        spec=spec, issue_number=issue_number, worktrees=(), branches=(),
     )
     return _widened(artifacts, published.get(spec, {}).get(issue_number, ()))
 

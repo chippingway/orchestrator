@@ -45,23 +45,27 @@ from orchestrator import config
 class IssueArtifacts:
     """The orchestrator-owned artifacts one issue left in one repository.
 
-    An issue is in a scan because its `issue-<n>` checkout still stands under
-    the spec's worktrees root, because a branch in that clone's
-    orchestrator-owned namespace names it, or because both do -- which is why
-    either half may be empty. Never both: an entry with no checkout and no
-    branch is an issue nothing on this host attests to, and the scan does not
-    invent one.
+    An issue is in a scan because an `issue-<n>` checkout of it still stands,
+    because a branch in that clone's orchestrator-owned namespace names it, or
+    because both do -- which is why either half may be empty. Never both: an
+    entry with no checkout and no branch is an issue nothing on this host
+    attests to, and the scan does not invent one.
 
-    `branches` carries the names as they exist, so an issue that predates slug
-    namespacing and one already migrated read the same way: the namespaced
-    name first when it is there, then the legacy flat one. Two entries for one
-    issue therefore cannot happen -- the two layouts are two names for the
-    same issue, not two issues.
+    Both halves are tuples, and for the same reason: this orchestrator has
+    published an issue under two layouts, and a host that was running across
+    the migration can be holding both at once. `branches` carries the
+    slug-namespaced name and the legacy flat one; `worktrees` carries the
+    checkout under the spec's own root and the legacy one directly under
+    `WORKTREES_DIR`. Each is ordered current-first, which is the order a
+    teardown takes them in.
+
+    Two entries for one issue therefore cannot happen -- the layouts are
+    several names for one issue, not several issues.
     """
 
     spec: config.RepoSpec
     issue_number: int
-    worktree: Path | None
+    worktrees: tuple[Path, ...]
     branches: tuple[str, ...]
 
 

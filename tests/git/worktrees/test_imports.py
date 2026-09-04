@@ -108,7 +108,8 @@ _OWNER_ONLY_NAMES = (
 # Every name the owners define, paired with the owner that defines it: the slug
 # pattern and the digest math behind it, the two sanitizers, the branch, root,
 # and worktree-path derivations, the pinned / legacy resolver and the
-# `issue-<n>` read that runs back the other way, the
+# `issue-<n>` read that runs back the other way, the two checkout paths one
+# issue can have been checked out at, the
 # candidate-branch and commit-count reads behind the unpushed-commit probe, the
 # two creators, the new-commit probe, the reported fetch and the start point a
 # restore picks, the handoff anchor with the target choice, the ref move, and the
@@ -118,7 +119,8 @@ _OWNER_ONLY_NAMES = (
 # scan: the two records it answers with, the branch listing and checkout reads
 # under it, the attribution rules for a branch and for a checkout directory,
 # the clone resolution, the grouping over it and the shape that grouping
-# takes, and the per-clone, per-repository, and per-issue assembly. Then the
+# takes, the flat pre-namespacing checkouts and who may claim them, and the
+# per-clone, per-repository, and per-issue assembly. Then the
 # classification over what that scan found: the three-answer probe vocabulary,
 # the two records a verdict is made of and the commit it hands over when it
 # clears one, the eight fail-closed reads -- the ignored-path one that answers
@@ -149,6 +151,7 @@ _OWNER_DEFINED = (
     ("CloneGroups", inventory),
     ("IssueArtifacts", models),
     ("IssueBranches", attribution),
+    ("LegacyCheckouts", inventory),
     ("MaintenanceCandidate", models),
     ("MaintenanceOutcome", models),
     ("MaintenanceReason", models),
@@ -161,11 +164,13 @@ _OWNER_DEFINED = (
     ("RetentionReason", models),
     ("TERMINAL_LABELS", claims),
     ("_CLEANLINESS_REASONS", eligibility),
+    ("_CheckoutReads", eligibility),
     ("_GIT_NEGATIVE", evidence),
     ("_HEAD", evidence),
     ("_HIDDEN_REASONS", eligibility),
     ("_IDENTITY_REASONS", eligibility),
     ("_ISSUE_SEGMENT_RE", paths),
+    ("_LISTED", attribution),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
     ("_LOCAL_REF_PREFIX", reclaim),
@@ -208,6 +213,8 @@ _OWNER_DEFINED = (
     ("_checkout_entries", probes),
     ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
+    ("_checkout_numbers", probes),
+    ("_checkout_reading", eligibility),
     ("_checkout_reason", eligibility),
     ("_checkout_retentions", eligibility),
     ("_checkout_stop", maintenance),
@@ -226,6 +233,7 @@ _OWNER_DEFINED = (
     ("_commit_accounting", claims),
     ("_commit_count_from_stdout", recovery),
     ("_common_git_dir", evidence),
+    ("_current_names", discovery),
     ("_decompose_worktree_path", decomposition),
     ("_delete_local_issue_branch", cleanup),
     ("_delete_local_ref_at", reclaim),
@@ -241,11 +249,17 @@ _OWNER_DEFINED = (
     ("_has_new_commits", creation),
     ("_head_is_own_branch", evidence),
     ("_head_ref", evidence),
+    ("_held_checkouts", inventory),
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
+    ("_issue_worktree_paths", paths),
     ("_kept_subject", maintenance),
     ("_keyed_candidate", discovery),
+    ("_legacy_checkout_attribution", attribution),
+    ("_legacy_checkout_numbers", probes),
+    ("_legacy_names", discovery),
+    ("_legacy_worktree_path", paths),
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
@@ -262,6 +276,7 @@ _OWNER_DEFINED = (
     ("_published_branches", discovery),
     ("_published_tip", evidence),
     ("_quiet_checkout", evidence),
+    ("_read_artifacts", eligibility),
     ("_read_orchestrator_refs", probes),
     ("_read_state", claims),
     ("_reclaimed", maintenance),
@@ -283,6 +298,7 @@ _OWNER_DEFINED = (
     ("_run_local_branch_deletion", cleanup),
     ("_sanitize_branch_segment", paths),
     ("_sanitize_slug", paths),
+    ("_scanned", inventory),
     ("_shared_repository", evidence),
     ("_slug_digest", paths),
     ("_slugs_by_worktrees_root", attribution),
@@ -291,6 +307,7 @@ _OWNER_DEFINED = (
     ("_still_there", reclaim),
     ("_take_branches", maintenance),
     ("_take_checkout", maintenance),
+    ("_take_checkouts", maintenance),
     ("_take_local_branch", maintenance),
     ("_take_remote_branch", maintenance),
     ("_terminal_retentions", claims),

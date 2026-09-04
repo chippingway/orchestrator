@@ -91,6 +91,7 @@ per-file-ignores =
     orchestrator/git/worktrees/discovery.py:WPS202
     orchestrator/git/worktrees/eligibility.py:WPS202
     orchestrator/git/worktrees/evidence.py:WPS202
+    orchestrator/git/worktrees/inventory.py:WPS202
     orchestrator/git/worktrees/maintenance.py:WPS202
     orchestrator/git/worktrees/models.py:WPS202
     orchestrator/git/worktrees/paths.py:WPS202
@@ -100,6 +101,7 @@ per-file-ignores =
     tests/git/worktrees/candidate_host_test_support.py:WPS202,WPS214
     tests/git/worktrees/maintenance_test_support.py:WPS214
     tests/git/worktrees/test_artifact_evidence.py:WPS202
+    tests/git/worktrees/test_maintenance_pass.py:WPS202
     tests/workflow/engine/lifetime_test_support.py:WPS202
     tests/workflow/engine/run_circuit_test_support.py:WPS202
     tests/workflow/engine/run_limit_test_support.py:WPS202

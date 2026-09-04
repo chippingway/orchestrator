@@ -219,24 +219,30 @@ class LocalInventoryRealGitTest(unittest.TestCase):
 
         self.assertEqual(
             tuple(
-                (found.issue_number, found.worktree, found.branches)
+                (found.issue_number, found.worktrees, found.branches)
                 for found in scanned.issues
             ),
             (
                 (
                     BOTH_SIDES_ISSUE_NUMBER,
-                    paths._worktree_path(self.widget, BOTH_SIDES_ISSUE_NUMBER),
+                    (
+                        paths._worktree_path(
+                            self.widget, BOTH_SIDES_ISSUE_NUMBER,
+                        ),
+                    ),
                     (_namespaced_branch(WIDGET_SLUG, BOTH_SIDES_ISSUE_NUMBER),),
                 ),
                 (
                     LEGACY_ISSUE_NUMBER,
-                    None,
+                    (),
                     (_legacy_branch(LEGACY_ISSUE_NUMBER),),
                 ),
                 (
                     CHECKOUT_ONLY_ISSUE_NUMBER,
-                    paths._worktree_path(
-                        self.widget, CHECKOUT_ONLY_ISSUE_NUMBER,
+                    (
+                        paths._worktree_path(
+                            self.widget, CHECKOUT_ONLY_ISSUE_NUMBER,
+                        ),
                     ),
                     (),
                 ),

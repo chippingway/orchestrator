@@ -142,25 +142,25 @@ def _claim_reason(
 
 def _activity_reason(
     artifacts: IssueArtifacts,
-) -> MaintenanceReason | None:
-    """Whether this candidate's checkout has been left alone long enough.
+) -> tuple[MaintenanceReason | None, str]:
+    """Whether this candidate's checkouts have been left alone long enough.
 
-    Asked only of a candidate that has a checkout, since a branch has no tree
-    to be disturbed and the issue's own ending is what says its work is over.
+    Asked of every checkout the issue holds, since an issue that was in flight
+    when slug namespacing landed can be sitting in two of them and either one
+    is a tree somebody may still be standing in. A branch has no tree to be
+    disturbed, so a candidate with no checkout has nothing to ask.
+
     Asked last, because a modification time is only worth reading about a tree
     that has already been established as this issue's own.
     """
-    worktree = artifacts.worktree
-    if worktree is None:
-        return None
-    quiet = evidence._quiet_checkout(
-        worktree, time.time() - _QUIET_PERIOD_SECONDS,
-    )
-    if quiet is ProbeAnswer.CONFIRMED:
-        return None
-    if quiet is ProbeAnswer.REFUTED:
-        return MaintenanceReason.RECENT_ACTIVITY
-    return MaintenanceReason.ACTIVITY_UNREADABLE
+    since = time.time() - _QUIET_PERIOD_SECONDS
+    for worktree in artifacts.worktrees:
+        quiet = evidence._quiet_checkout(worktree, since)
+        if quiet is ProbeAnswer.REFUTED:
+            return MaintenanceReason.RECENT_ACTIVITY, str(worktree)
+        if quiet is ProbeAnswer.UNREADABLE:
+            return MaintenanceReason.ACTIVITY_UNREADABLE, str(worktree)
+    return None, ""
 
 
 def _kept_subject(verdict: ArtifactVerdict) -> str:
@@ -201,20 +201,36 @@ def _checkout_stop(
     return None
 
 
-def _take_checkout(
+def _take_checkouts(
     candidate: MaintenanceCandidate, cleared: dict[str, str],
 ) -> MaintenanceResult | None:
-    """Take this candidate's checkout down, or say why the pass stops here.
+    """Take every checkout of this candidate down, or say where the pass stops.
 
-    None is the step being done -- removed, or never there at all -- and a
-    result is the pass ending on this artifact. It runs before any branch
-    because git refuses to delete a branch a worktree still has checked out,
-    so a pass that took the branches first would leave the tree standing and
-    the branch beside it undeletable.
+    None is the step being done -- every tree removed, or none of them there in
+    the first place -- and a result is the pass ending on one of them. They all
+    run before any branch because git refuses to delete a branch a worktree
+    still has checked out, so a pass that took the branches first would leave
+    the trees standing and the branches beside them undeletable.
+
+    Both layouts are taken, in the order the scan reported them. An issue that
+    was in flight when slug namespacing landed can be sitting in the flat
+    checkout it started in and the per-repository one the next tick made, and a
+    pass that took only one of them would report the issue cleaned with a tree
+    still on disk that nothing would ever discover again.
     """
-    worktree = candidate.artifacts.worktree
-    if worktree is None:
-        return None
+    for worktree in candidate.artifacts.worktrees:
+        stopped = _take_checkout(candidate, worktree, cleared)
+        if stopped is not None:
+            return stopped
+    return None
+
+
+def _take_checkout(
+    candidate: MaintenanceCandidate,
+    worktree: Path,
+    cleared: dict[str, str],
+) -> MaintenanceResult | None:
+    """Take one checkout down, or say why the pass stops on it."""
     stopped = _checkout_stop(worktree, cleared.get(str(worktree)))
     if stopped is not None:
         return _answered(candidate, stopped, str(worktree))
@@ -291,10 +307,13 @@ def _take_branches(
     remote and then every local, so a candidate carrying both layouts leaves
     one whole branch behind rather than two half-taken ones when a pass stops.
 
-    A branch nothing cleared is passed over. That is a branch the discovery
-    named and neither host still has -- gone between the scan and the
-    classification -- and a copy nobody proved is one this pass may neither
-    delete nor count.
+    A branch nothing cleared ENDS the pass rather than being passed over. It
+    is a branch the discovery named and the classification found on neither
+    host, so nothing about it was established -- and a name that is gone at one
+    reading can be back at the next, pushed by a run this pass never saw. The
+    candidate is kept, which costs one more pass of an artifact that has really
+    gone: the next discovery does not name it, and that pass reports the rest
+    cleaned.
 
     The first stop ends the candidate. What is left is exactly what the next
     discovery finds, and going on past a refusal would spend deletions on a
@@ -303,7 +322,9 @@ def _take_branches(
     for branch in candidate.artifacts.branches:
         proven = cleared.get(branch)
         if proven is None:
-            continue
+            return _answered(
+                candidate, MaintenanceReason.TIP_UNREADABLE, branch,
+            )
         stopped = (
             _take_remote_branch(candidate, branch, proven)
             or _take_local_branch(candidate, branch, proven)
@@ -319,7 +340,7 @@ def _reclaimed(
     """Run the whole teardown for one cleared candidate, and say where it got to."""
     cleared = _cleared_tips(proven)
     stopped = (
-        _take_checkout(candidate, cleared)
+        _take_checkouts(candidate, cleared)
         or _take_branches(candidate, cleared)
     )
     return stopped or _answered(candidate, MaintenanceReason.RECLAIMED)
@@ -350,9 +371,9 @@ def _maintained_candidate(
             _kept_subject(verdict),
             verdict.retentions,
         )
-    quiet = _activity_reason(artifacts)
+    quiet, disturbed = _activity_reason(artifacts)
     if quiet is not None:
-        return _answered(candidate, quiet, str(artifacts.worktree))
+        return _answered(candidate, quiet, disturbed)
     return _reclaimed(candidate, verdict.proven)
 
 

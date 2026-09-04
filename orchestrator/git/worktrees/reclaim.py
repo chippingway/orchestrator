@@ -29,6 +29,15 @@ failure costs: that is ``maintenance``'s, which is also the only caller. Each
 step answers a single bool -- whether the artifact is now gone -- and an
 absence is that answer too, so a pass repeating over a teardown that half
 finished takes the rest of it and reports the part already done as done.
+
+A single bool means every step's boundary is total. Underneath them are a
+process spawn, a per-root lock, a token lookup, an askpass script written to
+disk, and a session around all of it: each answers for the failures it
+recognizes and raises for the ones beneath them. An exception out of one step
+would end the pass for every OTHER candidate behind this one -- which is the
+one way a refused deletion can cost more than the artifact it is about -- so
+what leaves this module is always the answer "not gone", with the reason in
+the log.
 """
 from __future__ import annotations
 
@@ -107,10 +116,10 @@ def _remove_recognized_worktree(
             removed = commands._git_hardened(
                 *_WORKTREE_REMOVE, str(worktree), cwd=spec.target_root,
             )
-    except OSError as spawn_error:
+    except Exception:
         log.warning(
-            "could not run the removal of the checkout %s: %s",
-            worktree, spawn_error,
+            "could not run the removal of the checkout %s",
+            worktree, exc_info=True,
         )
         return False
     if removed.returncode != 0:
@@ -137,13 +146,28 @@ def _delete_remote_branch_at(
     The clone is named as the tree the push runs in, so the transport-config
     refusal in front of it inspects the repository this pass is about rather
     than a per-issue checkout that has just been removed.
+
+    The boundary is total for the reason the other two steps carry one: the
+    transport answers False for the failures it recognizes -- a token it could
+    not resolve, a config that could hijack it, a remote that refused -- and
+    raises for the ones underneath, from a git it could not spawn to an askpass
+    script the host would not let this process write. Both are the same answer
+    here, and letting the second out would take every candidate still behind
+    this one down with it.
     """
-    return ref_transport._delete_remote_ref(
-        spec,
-        spec.target_root,
-        ref=f"{_LOCAL_REF_PREFIX}{branch}",
-        expected=tip_sha,
-    )
+    try:
+        return ref_transport._delete_remote_ref(
+            spec,
+            spec.target_root,
+            ref=f"{_LOCAL_REF_PREFIX}{branch}",
+            expected=tip_sha,
+        )
+    except Exception:
+        log.warning(
+            "could not ask the remote to let go of %r at %s",
+            branch, tip_sha, exc_info=True,
+        )
+        return False
 
 
 def _delete_local_ref_at(
@@ -173,10 +197,10 @@ def _delete_local_ref_at(
             deleted = commands._git_hardened(
                 *_REF_DELETE, ref, tip_sha, cwd=spec.target_root,
             )
-    except OSError as spawn_error:
+    except Exception:
         log.warning(
-            "could not run the deletion of %s in %s: %s",
-            ref, spec.target_root, spawn_error,
+            "could not run the deletion of %s in %s",
+            ref, spec.target_root, exc_info=True,
         )
         return False
     if deleted.returncode != 0:

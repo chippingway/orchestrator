@@ -61,6 +61,8 @@ HIDDEN_FILE = "secrets.env"
 HIDDEN_CONTENT = "TOKEN=an operator's own\n"
 IMPLEMENTING_LABEL = "workflow:implementing"
 OBJECT_ID_LENGTH = 40
+# The teardown step several cases install a refusal on.
+REMOTE_DELETE = "_delete_remote_branch_at"
 # A commit no artifact of this issue is standing on: what a proof taken a
 # moment before the mutation is worth once somebody has pushed.
 OTHER_SHA = "b" * OBJECT_ID_LENGTH
@@ -112,6 +114,63 @@ class OrderedCleanupTest(_MaintenanceTestCase):
         self.assertEqual(self.gh.posted_comments, [])
         self.assertEqual(self.gh.label_history, [])
         self.assertEqual(self.gh.write_state_calls, 0)
+
+
+class LegacyLayoutCleanupTest(_MaintenanceTestCase):
+    """A checkout the layout before namespacing left is taken like any other."""
+
+    def test_a_flat_checkout_goes_with_its_branch(self) -> None:
+        legacy = _legacy_branch(ISSUE_NUMBER)
+        self.landed(legacy)
+        worktree = self.legacy_checkout(legacy)
+
+        swept = self.only_result()
+
+        self.assertEqual(swept.outcome, MaintenanceOutcome.CLEANED)
+        self.assertFalse(worktree.exists())
+        self.assertEqual(self.local_branches(), ())
+        self.assertEqual(self.remote_branches(), ())
+
+    def test_both_checkout_layouts_go_in_one_pass(self) -> None:
+        # The bug a single-checkout report hides: the pass answers `cleaned`,
+        # both branches go, and nothing is left that any later discovery could
+        # find the flat tree by.
+        legacy = _legacy_branch(ISSUE_NUMBER)
+        tip = self.landed()
+        _branch_at(self.clone, legacy, tip)
+        self.world.publish(self.clone, legacy, tip)
+        current = self.settled_checkout()
+        flat = self.legacy_checkout(legacy)
+
+        swept = self.only_result()
+
+        self.assertEqual(swept.outcome, MaintenanceOutcome.CLEANED)
+        self.assertFalse(current.exists())
+        self.assertFalse(flat.exists())
+        self.assertEqual(self.local_branches(), ())
+        self.assertEqual(self.remote_branches(), ())
+
+    def test_a_dirty_flat_checkout_keeps_it(self) -> None:
+        # The tree the current-layout report never saw is judged like the one
+        # it did: what is loose in it keeps every artifact of the issue.
+        legacy = _legacy_branch(ISSUE_NUMBER)
+        tip = self.landed()
+        _branch_at(self.clone, legacy, tip)
+        self.world.publish(self.clone, legacy, tip)
+        self.settled_checkout()
+        flat = self.legacy_checkout(legacy)
+        (flat / LOOSE_FILE).write_text(LOOSE_CONTENT)
+
+        swept = self.only_result()
+
+        self.assertEqual(swept.outcome, MaintenanceOutcome.RETAINED)
+        self.assertEqual(swept.reason, MaintenanceReason.UNPROVEN)
+        self.assertEqual(
+            tuple(kept.reason for kept in swept.retentions),
+            (RetentionReason.WORKTREE_DIRTY,),
+        )
+        self.assertTrue(flat.exists())
+        self.assertEqual(self.remote_branches(), (self.branch, legacy))
 
 
 class GuardedCandidateTest(_MaintenanceTestCase):
@@ -306,14 +365,18 @@ class ExactTipTest(_MaintenanceTestCase):
         self.assertEqual(swept.reason, MaintenanceReason.TIP_UNREADABLE)
         self.assertTrue(worktree.exists())
 
-    def test_a_branch_no_proof_names_is_passed_over(self) -> None:
-        # A branch that has gone from both hosts since the scan named it: there
-        # is nothing to delete, and nothing was cleared to delete it with.
+    def test_a_branch_no_proof_names_is_kept(self) -> None:
+        # A branch the classification cleared nothing for: it found the name on
+        # neither host, and a name that is gone at one reading can be back at
+        # the next. Nothing about it was established, so nothing about it may
+        # be deleted -- however plainly it is standing there now.
         self.landed()
 
         swept = self.reclaimed()
 
-        self.assertEqual(swept.outcome, MaintenanceOutcome.CLEANED)
+        self.assertEqual(swept.outcome, MaintenanceOutcome.RETAINED)
+        self.assertEqual(swept.reason, MaintenanceReason.TIP_UNREADABLE)
+        self.assertEqual(swept.subject, self.branch)
         self.assertEqual(self.remote_branches(), self.only_branch)
         self.assertEqual(self.local_branches(), self.only_branch)
 
@@ -328,7 +391,7 @@ class RefusedStepTest(_MaintenanceTestCase):
         worktree = self.settled_checkout()
 
         with patch.object(
-            reclaim, "_delete_remote_branch_at", side_effect=_refused_delete,
+            reclaim, REMOTE_DELETE, side_effect=_refused_delete,
         ):
             swept = self.only_result()
 
@@ -344,7 +407,7 @@ class RefusedStepTest(_MaintenanceTestCase):
         self.settled_checkout()
 
         with patch.object(
-            reclaim, "_delete_remote_branch_at", side_effect=_refused_delete,
+            reclaim, REMOTE_DELETE, side_effect=_refused_delete,
         ):
             self.only_result()
 
@@ -357,7 +420,7 @@ class RefusedStepTest(_MaintenanceTestCase):
         self.settled_checkout()
 
         with patch.object(
-            reclaim, "_delete_remote_branch_at", side_effect=_refused_delete,
+            reclaim, REMOTE_DELETE, side_effect=_refused_delete,
         ):
             self.only_result()
         swept = self.only_result()
@@ -378,6 +441,47 @@ class RefusedStepTest(_MaintenanceTestCase):
         self.assertEqual(swept.reason, MaintenanceReason.LOCAL_DELETE_FAILED)
         self.assertEqual(self.remote_branches(), ())
         self.assertEqual(self.local_branches(), self.only_branch)
+
+    def test_a_remote_only_failure_stays_discoverable(self) -> None:
+        # The one failure with no local evidence left to find it by: nothing
+        # here holds this branch, so what re-discovers it is the next listing
+        # of the remote and nothing else.
+        self.landed()
+        _branch_at(self.clone, self.branch, None)
+
+        with patch.object(
+            reclaim, REMOTE_DELETE, side_effect=_refused_delete,
+        ):
+            swept = self.only_result()
+
+        self.assertEqual(swept.outcome, MaintenanceOutcome.FAILED)
+        self.assertEqual(swept.reason, MaintenanceReason.REMOTE_DELETE_FAILED)
+        self.assertEqual(self.local_branches(), ())
+        self.assertEqual(self.remote_branches(), self.only_branch)
+        self.assertEqual(
+            self.only_candidate().artifacts.branches, self.only_branch,
+        )
+
+    def test_a_transport_that_raises_is_a_failure(self) -> None:
+        # The transport answers for what it recognizes and raises for what is
+        # underneath it. An exception out of one candidate's delete would end
+        # the pass for every candidate behind it, so it is answered here.
+        self.landed()
+
+        with (
+            patch.object(
+                reclaim.ref_transport,
+                "_delete_remote_ref",
+                side_effect=OSError("git could not be spawned"),
+            ),
+            self.assertLogs(reclaim.log.name, level=WARNING),
+        ):
+            swept = self.only_result()
+
+        self.assertEqual(swept.outcome, MaintenanceOutcome.FAILED)
+        self.assertEqual(swept.reason, MaintenanceReason.REMOTE_DELETE_FAILED)
+        self.assertEqual(self.local_branches(), self.only_branch)
+        self.assertEqual(self.remote_branches(), self.only_branch)
 
     def test_a_checkout_that_stays_stops_the_pass(self) -> None:
         # Nothing past the checkout is touched, because a branch a worktree

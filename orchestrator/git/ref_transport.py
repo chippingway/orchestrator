@@ -33,8 +33,11 @@ has to explain a reading it could not take is a long way from the process that
 took it.
 
 What policy the leases serve -- which namespace, and what an existing ref at
-another commit means -- belongs to `git/snapshots/`, which is the only caller
-of the writes.
+another commit means -- belongs to the callers. `git/snapshots/` owns the
+immutable namespace the create and the delete were written for; the terminal
+artifact reclamation under `git/worktrees/` spends the same delete on a branch
+it has proved, and the pattern listing on the namespace it discovers those
+branches in.
 """
 from __future__ import annotations
 

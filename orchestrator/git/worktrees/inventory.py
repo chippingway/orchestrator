@@ -45,6 +45,12 @@ log = logging.getLogger("orchestrator.worktree_lifecycle")
 # what that store holds.
 CloneGroups = dict[Path, tuple[config.RepoSpec, ...]]
 
+# The flat pre-namespacing checkouts, as the one repository that may claim
+# them and the issues they name. `None` for the repository is the answer on a
+# host where more than one entry could equally own them, and the numbers are
+# empty with it.
+LegacyCheckouts = tuple[config.RepoSpec | None, frozenset[int]]
+
 
 def _resolved_root(spec: config.RepoSpec) -> Path | None:
     """The clone this spec configures, as the one path its spellings agree on.
@@ -104,49 +110,86 @@ def _specs_by_clone(
     return grouped, tuple(unresolved)
 
 
-def _issue_artifacts(
+def _held_checkouts(
     spec: config.RepoSpec,
     issue_number: int,
     checkouts: frozenset[int],
+    legacy: frozenset[int],
+) -> tuple[Path, ...]:
+    """Which of this issue's two checkout paths the host is actually holding.
+
+    Filtered out of what this issue's own derivations produce rather than
+    assembled from the directory names the scan read, which does what the
+    branch side's own recording does: a path neither derivation writes cannot
+    enter the answer, and an issue holding both layouts always reads
+    current-first, the order a teardown takes them in.
+    """
+    held = set()
+    if issue_number in checkouts:
+        held.add(paths._worktree_path(spec, issue_number))
+    if issue_number in legacy:
+        held.add(paths._legacy_worktree_path(issue_number))
+    return tuple(
+        path for path in paths._issue_worktree_paths(spec, issue_number)
+        if path in held
+    )
+
+
+def _issue_artifacts(
+    spec: config.RepoSpec,
+    issue_number: int,
+    checkouts: tuple[frozenset[int], frozenset[int]],
     branched: Mapping[int, tuple[str, ...]],
 ) -> IssueArtifacts:
-    """One issue's entry: the checkout it still has, and the branches naming it."""
-    worktree = None
-    if issue_number in checkouts:
-        worktree = paths._worktree_path(spec, issue_number)
+    """One issue's entry: the checkouts it still has, and the branches naming it.
+
+    The two checkout sets arrive as one pair because they are one question read
+    in two places: the per-repository root this spec owns, and the flat
+    directory every entry once shared.
+    """
     return IssueArtifacts(
         spec=spec,
         issue_number=issue_number,
-        worktree=worktree,
+        worktrees=_held_checkouts(spec, issue_number, *checkouts),
         branches=branched.get(issue_number, ()),
     )
 
 
 def _spec_inventory(
-    spec: config.RepoSpec, branched: Mapping[int, tuple[str, ...]],
+    spec: config.RepoSpec,
+    branched: Mapping[int, tuple[str, ...]],
+    legacy: frozenset[int],
 ) -> ArtifactInventory:
     """Every issue one repository has an artifact for, or a refusal for it.
 
-    The union of both sides is what makes a candidate: an issue is reported
-    once whether the checkout, the branches, or both are what named it. The
-    checkouts are read for one repository at a time because the directory they
-    sit in is this spec's alone -- an entry that shares it with another was
-    refused before the scan reached here.
+    The union of all three sides is what makes a candidate: an issue is
+    reported once whether a checkout, the branches, or any of them named it.
+    The per-repository checkouts are read for one repository at a time because
+    the directory they sit in is this spec's alone -- an entry that shares it
+    with another was refused before the scan reached here. The flat ones were
+    read once for the whole host and are handed in already attributed, since
+    the directory they sit in is nobody's alone.
     """
     checkouts = probes._worktree_issue_numbers(spec)
     if checkouts is None:
         return ArtifactInventory(issues=(), refused=(spec.slug,))
     return ArtifactInventory(
         issues=tuple(
-            _issue_artifacts(spec, issue_number, checkouts, branched)
-            for issue_number in sorted(checkouts | branched.keys())
+            _issue_artifacts(
+                spec, issue_number, (checkouts, legacy), branched,
+            )
+            for issue_number in sorted(
+                checkouts | legacy | branched.keys(),
+            )
         ),
         refused=(),
     )
 
 
 def _root_inventory(
-    root_specs: tuple[config.RepoSpec, ...], refused: frozenset[str],
+    root_specs: tuple[config.RepoSpec, ...],
+    refused: frozenset[str],
+    legacy: LegacyCheckouts,
 ) -> ArtifactInventory:
     """Every issue the repositories sharing one clone hold artifacts for.
 
@@ -179,8 +222,14 @@ def _root_inventory(
             issues=(), refused=tuple(spec.slug for spec in reportable),
         )
     owned = attribution._attributed_issues(branches, root_specs)
+    owner, flat = legacy
     return _merged(tuple(
-        _spec_inventory(spec, owned.get(spec, {})) for spec in reportable
+        _spec_inventory(
+            spec,
+            owned.get(spec, {}),
+            flat if spec == owner else frozenset(),
+        )
+        for spec in reportable
     ))
 
 
@@ -204,6 +253,31 @@ def _merged(
     )
 
 
+def _scanned(
+    configured: tuple[config.RepoSpec, ...], legacy: LegacyCheckouts,
+) -> ArtifactInventory:
+    """The scan proper, once the host-wide flat checkouts have been attributed.
+
+    Two refusals are settled here, before a repository is read, because both
+    are answers about the configuration rather than about a host: the entries
+    sharing a derived checkout directory, which is ``attribution``'s second
+    ambiguity rule, and the entries whose clone would not resolve. Neither is
+    read, and neither is reported -- but both stay in the group their clone
+    holds, because a repository this scan will not answer for is still one that
+    could have published what is on the clone it names.
+    """
+    colliding = attribution._colliding_worktree_slugs(configured)
+    grouped, unresolved = _specs_by_clone(configured)
+    refused = frozenset(colliding) | frozenset(unresolved)
+    return _merged((
+        ArtifactInventory(issues=(), refused=(*colliding, *unresolved)),
+        *(
+            _root_inventory(root_specs, refused, legacy)
+            for root_specs in grouped.values()
+        ),
+    ))
+
+
 def _local_issue_inventory(
     specs: Sequence[config.RepoSpec],
 ) -> ArtifactInventory:
@@ -219,22 +293,22 @@ def _local_issue_inventory(
     begin with. Deciding that is the caller's, and the repositories named in
     `refused` are the ones it cannot decide anything about from this answer.
 
-    Two refusals are settled here, before a repository is read, because both
-    are answers about the configuration rather than about a host: the entries
-    sharing a derived checkout directory, which is ``attribution``'s second
-    ambiguity rule, and the entries whose clone would not resolve. Neither is
-    read, and neither is reported -- but both stay in the group their clone
-    holds, because a repository this scan will not answer for is still one
-    that could have published what is on the clone it names.
+    The flat pre-namespacing checkouts are read first and once, because they
+    are the one artifact that belongs to no repository by its name: they sit
+    directly under `WORKTREES_DIR`, which every entry shares. A listing that
+    could not be taken refuses every configured repository, since a flat
+    checkout that was not read is one any of them could still be holding --
+    and a caller acting on the absence of one would be acting on a reading
+    nobody took.
     """
     configured = tuple(specs)
-    colliding = attribution._colliding_worktree_slugs(configured)
-    grouped, unresolved = _specs_by_clone(configured)
-    refused = frozenset(colliding) | frozenset(unresolved)
-    return _merged((
-        ArtifactInventory(issues=(), refused=(*colliding, *unresolved)),
-        *(
-            _root_inventory(root_specs, refused)
-            for root_specs in grouped.values()
-        ),
-    ))
+    flat = probes._legacy_checkout_numbers()
+    if flat is None:
+        return ArtifactInventory(
+            issues=(),
+            refused=tuple(sorted({spec.slug for spec in configured})),
+        )
+    return _scanned(
+        configured,
+        attribution._legacy_checkout_attribution(configured, flat),
+    )

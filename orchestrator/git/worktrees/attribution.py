@@ -45,6 +45,9 @@ log = logging.getLogger("orchestrator.worktree_lifecycle")
 
 _REF_SEPARATOR = "/"
 
+# How a refusal lists the several things it will not choose between.
+_LISTED = ", "
+
 # One repository's branches, keyed by the issue they name: one entry per
 # issue however many layouts it is published under.
 IssueBranches = dict[int, tuple[str, ...]]
@@ -105,7 +108,7 @@ def _branch_attribution(
         log.warning(
             "local branch %r could belong to any of %s; refusing to "
             "attribute it rather than charging one of them for it",
-            branch, ", ".join(spec.slug for spec in owners),
+            branch, _LISTED.join(spec.slug for spec in owners),
         )
         return None
     if not owners:
@@ -167,6 +170,49 @@ def _slugs_by_worktrees_root(
     return by_root
 
 
+def _legacy_checkout_attribution(
+    specs: tuple[config.RepoSpec, ...], found: frozenset[int],
+) -> tuple[config.RepoSpec | None, frozenset[int]]:
+    """Which repository the flat `issue-<n>` checkouts belong to, and which count.
+
+    The path counterpart of the legacy branch rule, and it fails closed the
+    same way for the same reason. The flat layout carries no slug, and unlike a
+    branch it does not even carry a clone: every configured entry derived
+    `WORKTREES_DIR/issue-<n>` identically, so on a host driving more than one
+    repository the directory names an issue in whichever of them created it and
+    nothing on disk says which. More than one claimant is therefore attributed
+    to none of them, and a single configured entry resolves without a special
+    case.
+
+    A number whose flat path is also some entry's per-repository root is
+    dropped even then. That takes a `REPOS` slug which sanitizes to an
+    `issue-<n>` of its own, and what sits at that path is a directory full of
+    checkouts rather than a checkout -- so the two must not be confused
+    whichever of them the scan reached first.
+
+    The refusal is reported only when there is something to refuse: a
+    multi-repo host with no flat checkouts left has nothing an operator would
+    go and look at, and a scan that ran every tick would say so every tick.
+    """
+    counted = frozenset(
+        issue_number for issue_number in found
+        if paths._legacy_worktree_path(issue_number) not in {
+            paths._repo_worktrees_root(spec) for spec in specs
+        }
+    )
+    if not counted:
+        return None, frozenset()
+    if len(specs) > 1:
+        log.warning(
+            "the flat checkouts %s could belong to any of %s; refusing to "
+            "attribute them rather than charging one of them for them",
+            _LISTED.join(f"issue-{number}" for number in sorted(counted)),
+            _LISTED.join(spec.slug for spec in specs),
+        )
+        return None, frozenset()
+    return (specs[0], counted) if specs else (None, frozenset())
+
+
 def _colliding_worktree_slugs(
     specs: Iterable[config.RepoSpec],
 ) -> tuple[str, ...]:
@@ -195,7 +241,7 @@ def _colliding_worktree_slugs(
             log.warning(
                 "the checkout directory %s is derived by %s; refusing to "
                 "attribute anything under it to any of them",
-                root, ", ".join(slugs),
+                root, _LISTED.join(slugs),
             )
             colliding.extend(slugs)
     return tuple(sorted(colliding))
