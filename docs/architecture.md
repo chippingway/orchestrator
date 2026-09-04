@@ -514,6 +514,15 @@ valid one is served under the name its file sits at, and nothing short of `fsck`
 the agent works in. Hashing the bytes git actually produces settles that without a verification step — substituted
 content is not the same contribution and does not fingerprint like one.
 
+The bytes are hashed behind a label naming what they are — `chipping-orchestrator/prospective-diff/<version>` — so a
+digest taken here cannot collide with one something else in this system takes over some other listing, and a later
+representation is a different scheme rather than a silently different answer under the same name. That version is
+published as `FINGERPRINT_FORMAT` on the record owner beside it, and it is what any caller persisting a digest records
+next to it: two ids taken under different rules are not comparable and nothing about the ids themselves would say so,
+so a stored fingerprint naming a scheme this build does not compute is one it declines to read rather than one it
+silently compares. The late-split exemption is the first such caller
+([`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#late-generation-state)).
+
 The two endpoints decide what is fingerprinted and are deliberately not in the digest, so the same work over the same
 base fingerprints alike no matter which commits carry it. Both commits are proven present before the listing runs, so
 an end this host does not hold is reported as `fingerprint_base_absent` / `fingerprint_candidate_absent` rather than

@@ -30,6 +30,12 @@ The two vocabularies stay apart for a reason of the same kind. A count and a
 fingerprint fail over overlapping ground and are reported through the same
 sinks, so members spelled alike would leave a park reason saying which step
 stopped without saying which reading it stopped.
+
+The version the digest scheme is at sits here for the reason the records do:
+it is spent where a digest is, and a digest is only ever spent somewhere else.
+A caller that persists one persists this beside it, because two ids taken
+under different rules are not comparable and nothing about the ids themselves
+would say so.
 """
 from __future__ import annotations
 
@@ -130,6 +136,17 @@ class AdditionMeasurement:
     def is_measured(self) -> bool:
         """Whether a count was actually taken, and may therefore be read."""
         return self.failure is None and self.additions is not None
+
+
+# Which scheme a contribution digest was taken under. It is recorded rather
+# than assumed because a digest is only ever useful compared, and comparing
+# two taken under different rules is the one thing an id like this may never
+# license: what a reader holds is an answer from another tick, another host,
+# or an older binary, and the version beside it is the whole of what says that
+# answer was reached the way this build reaches one. The `fingerprint` owner
+# spells the label it hashes behind from this number, so a representation that
+# changes is a version that changes with it.
+FINGERPRINT_FORMAT = 1
 
 
 class FingerprintFailure(StrEnum):

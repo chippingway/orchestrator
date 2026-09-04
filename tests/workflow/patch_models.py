@@ -13,6 +13,7 @@ from orchestrator.git.verification.probes import _WorktreeStatus
 from tests.support.fakes import DEFAULT_PR_HEAD_SHA
 from tests.workflow.repo_values import (
     BASE_TIP_SHA,
+    CONTRIBUTION_DIGEST,
     HEAD_AFTER_RUN,
     HEAD_BEFORE_RUN,
 )
@@ -101,6 +102,10 @@ class _WorkflowRunContext:
     # than ask the remote for whatever the branch has moved to.
     base_object_present: bool = True
     added_lines: Any = 0
+    # What the contribution between the frozen pair fingerprints to -- the
+    # digest, or a `FingerprintFailure` for a reading that never happened and
+    # therefore has no id at all.
+    contribution_digest: Any = CONTRIBUTION_DIGEST
 
 
 def _agent(**agent_fields) -> AgentResult:

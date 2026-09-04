@@ -22,6 +22,7 @@ from orchestrator.git.base_sync import (
 from orchestrator.git.measurement import (
     additions as _measurement,
     commits as _measurement_commits,
+    fingerprint as _measurement_fingerprint,
 )
 from orchestrator.git.publication import (
     probes as _publication_probes,
@@ -62,6 +63,7 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_ensure_decompose_worktree": _worktree_decomposition,
     "_ensure_pr_worktree": _worktree_creation,
     "_ensure_worktree": _worktree_creation,
+    "_fingerprint_contribution": _measurement_fingerprint,
     "_first_commit_subject": _publication_probes,
     "_freeze_base_commit": _measurement_commits,
     "_git": _commands,

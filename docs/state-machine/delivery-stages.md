@@ -717,7 +717,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
     The poisoned-session retry inside the shared resume is guarded with them, since that is a *second* agent and an
     issue somebody closed is owed neither;
   - **the `single` publication** (`late_settlement`, and `late_handback` behind it), asked between *each* of its own
-    steps — the reconciliations, the exemption write, the handoff label, and the accepted notice — because these are
+    steps — the reconciliations, the exemption write (which carries the identity of the accepted contribution beside
+    it, since the retirement below takes the frozen pair it was read over off the record), the handoff label, and the
+    accepted notice — because these are
     the barriers protecting the *record* rather than an effect: the last write drops the generation entirely, and
     both the sweep and a receipt adopted from the thread read that generation to decide there is anything to end.
     Past that write a refusal is too late, so the answer there is a **reinstatement**: the generation is still in

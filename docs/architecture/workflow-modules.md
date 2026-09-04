@@ -277,8 +277,17 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             pinned comment, the receipt the transaction stamps into a child's body and the one a
                             reclamation leaves on its thread, and the reader that turns the first back into a
                             lineage when the pinned write that would have recorded one never landed
-    exemption.py            the one commit an accepted candidate publishes under -- written, read, and compared
-                            fail-closed, and deliberately outside the group a cleared generation drops
+    exemption.py            the one commit an accepted candidate publishes under, and the semantic identity of what
+                            that commit contributes beside it -- the frozen pair it was adjudicated between, the
+                            canonical digest of the contribution between them, and the version that digest was taken
+                            under. Both written, read, and compared fail-closed and deliberately outside the group a
+                            cleared generation drops; the identity is read whole or not at all, so a missing or
+                            damaged member, a candidate that is not the exempt commit, a version this build does not
+                            compute, and a comment older than the group each transfer nothing while the exact-SHA
+                            exemption goes on answering for the commit it names. The group belongs to the commit on
+                            the field beside it, so a write that moves that field to another commit takes the
+                            identity with it -- and one that re-records the same commit keeps it, which is what a
+                            settlement resumed between that write and its handoff is standing on
     restart.py              the two-phase restart marker: the closed pair of labels it may apply, the cycle it
                             mints, the whole-marker check that decides whether the one a crash left may still be
                             believed, the settled-ledger precondition retirement refuses without, and the fresh
@@ -742,9 +751,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the split
                             passed on to the transaction that creates its children, and the ORDER a `single` is
                             settled in -- the hold and the pull request reconciled first, then the exemption naming
-                            the measured commit written with the commit a push is still owed for beside it, then
-                            the handoff -- with the latch asked between every one of those steps, and never a
-                            snapshot, since an accepted candidate is superseded by nothing and publishes as itself
+                            the measured commit written with the identity of what that commit contributes and the
+                            commit a push is still owed for beside it, then the handoff -- with the latch asked
+                            between every one of those steps, and never a snapshot, since an accepted candidate is
+                            superseded by nothing and publishes as itself. The identity is fingerprinted over the
+                            frozen pair the adjudication was run against rather than over a checkout that stayed
+                            writable throughout, and a reading nobody could take leaves the exact exemption alone
       late_reconcile.py     the two reconciliations that order opens with, shared with the handoff of a candidate a
                             remeasurement put back under the ceiling: the hold RESTORED rather than rewritten, and
                             the pull request settled against the measured commit in any state -- searched for by
