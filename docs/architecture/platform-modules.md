@@ -449,7 +449,13 @@ orchestrator/
                         where it now stands. A removal that did not take it puts it back, the scan reading this
                         host's candidates off the derived path; a pass killed between the two leaves it under a
                         name carrying its issue, and the pass after finds it, puts it back, and repairs the
-                        registration behind it before it reads anything. What
+                        registration behind it before it reads anything — dropping on sight the empty rooms a
+                        rename that never happened reserved, since a checkout carries its own `.git` at the very
+                        least, stopping rather than choosing when more than one tree is there, and stopping
+                        outright on a room it could not read at all: that room is SCANNED rather than matched by
+                        pattern, since a pattern answers a room it could not list the same way it answers an
+                        empty one, and "nothing there" and "could not look" are two answers a teardown must
+                        never spend for each other. What
                         the command actually deletes is not the path it is handed, though -- that path only selects a
                         registration, and the registration names the tree that comes down -- so that file is
                         opened without following, refused unless it is a regular one naming this checkout's own

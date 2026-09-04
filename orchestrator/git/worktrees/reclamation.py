@@ -84,9 +84,14 @@ reads anything at all. That name is MADE before anything is moved onto it, so
 a rename that never happened leaves an empty room rather than a tree: those
 are taken away on sight, since a checkout carries its own `.git` at the very
 least and one left standing would have every later pass refuse over a
-checkout that never went anywhere. A room that would not be read at all is
-neither answer and stops the pass, because spending "nothing there" on "could
-not look" is how a tree an earlier pass set aside is passed over.
+checkout that never went anywhere. More than one tree there stops the pass
+instead of being chosen between: only one of them can go back where the scan
+reads this issue's checkout from, and the other would stay hidden while the
+teardown reported the issue finished. A room that would not be read at all
+stops it too, and is read by a scan rather than matched by a pattern for
+exactly that reason -- a pattern answers a room it could not list the same way
+it answers one with nothing in it, and spending the second on the first is how
+a tree an earlier pass set aside is passed over.
 
 What the removal is aimed by is not the path it is handed either. That path
 only selects a registration, and what comes down is the tree the registration
@@ -151,7 +156,7 @@ import os
 import subprocess
 import tempfile
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from stat import S_IMODE, S_ISDIR, S_ISREG
 from types import MappingProxyType
@@ -566,19 +571,19 @@ def _everything_held(
 
     Git's own locks for the tree and the branch under its HEAD, and then the
     registration the removal will be aimed by. Each is given back through the
-    stack the caller opened, so a hold taken is a hold released however this
-    ends -- and what is handed back is each of them as the object it was taken
-    on, since the readings before the removal have to be able to ask whether
-    the names still mean them.
+    stack the caller opened -- registered the moment it is taken rather than
+    once they all are, so a run that stops partway through, by refusal or by
+    raising, still gives back every one it had -- and what is handed back is
+    each of them as the object it was taken on, since the readings before the
+    removal have to be able to ask whether the names still mean them.
     """
     checkout = _checkout_handle(artifacts, worktree)
     if checkout is None:
         return None
     holding.callback(os.close, checkout)
-    held = _held_still(artifacts, worktree, gitdir)
+    held = _held_still(artifacts, worktree, gitdir, holding)
     if not held:
         return None
-    holding.callback(_let_go, held)
     registration = _registration_held(artifacts, gitdir, worktree)
     if registration is None:
         return None
@@ -1044,7 +1049,10 @@ def _checkout_gitdir(
 
 
 def _held_still(
-    artifacts: IssueArtifacts, worktree: Path, gitdir: Path,
+    artifacts: IssueArtifacts,
+    worktree: Path,
+    gitdir: Path,
+    holding: contextlib.ExitStack,
 ) -> tuple[_HeldLock, ...]:
     """Take git's own locks for one checkout, or come back with none.
 
@@ -1058,30 +1066,34 @@ def _held_still(
     Only what was actually taken is reported, so what is given back afterwards
     is only ever this process's own.
     """
-    taken = _all_taken(artifacts, _own_locks(gitdir))
+    taken = _all_taken(artifacts, _own_locks(gitdir), holding)
     if taken is None:
         return ()
     under = _branch_lock(artifacts, worktree)
     if under is None:
-        _let_go(taken)
         return ()
-    beneath = _all_taken(artifacts, under)
-    if beneath is None:
-        _let_go(taken)
-        return ()
-    return taken + beneath
+    beneath = _all_taken(artifacts, under, holding)
+    return () if beneath is None else taken + beneath
 
 
 def _all_taken(
-    artifacts: IssueArtifacts, wanted: tuple[Path, ...],
+    artifacts: IssueArtifacts,
+    wanted: tuple[Path, ...],
+    holding: contextlib.ExitStack,
 ) -> tuple[_HeldLock, ...] | None:
-    """Take every one of these locks, or give back the ones that were taken."""
+    """Take every one of these locks, giving each back through the stack.
+
+    Registered as it is taken rather than once they all are, because what
+    stops a run partway through is not only a lock somebody else is holding: a
+    reading can raise, and a lock left marked with a process that is alive is
+    one every later pass reads as held and refuses this issue over for good.
+    """
     taken: list[_HeldLock] = []
     for lock in wanted:
         held = _taken_once(artifacts, lock)
         if held is None:
-            _let_go(tuple(taken))
             return None
+        holding.callback(_let_go, (held,))
         taken.append(held)
     return tuple(taken)
 
@@ -1340,12 +1352,19 @@ def _lock_still(lock: Path, taken: str) -> bool:
 
 
 def _process_alive(named: int) -> bool:
-    """Whether one process id still names something running on this host."""
+    """Whether one process id still names something running on this host.
+
+    A number this host cannot even be asked about answers the same way one it
+    may not signal does: not gone, and so not a leftover to take. What is
+    written inside a lock is a thing an agent can write, so it is bounded and
+    numeric and still nothing a process id has to be -- and a value out of
+    range raises where a value out of reach merely refuses.
+    """
     try:
         os.kill(named, 0)
     except ProcessLookupError:
         return False
-    except OSError:
+    except (OSError, OverflowError, ValueError):
         return True
     return True
 
@@ -1525,21 +1544,37 @@ def _out_of_reach(
     is reported at error and left for the pass after, which settles it before
     it reads anything.
     """
-    aside = _moved_aside(artifacts, worktree, held)
-    if aside is None:
+    moved = _moved_aside(artifacts, worktree, held)
+    if moved is None:
         return SurfaceOutcome.FAILED
-    taken = _removal_aside(artifacts, aside, held)
+    aside, aimed = moved
+    taken = _removal_aside(artifacts, aside, held, aimed)
     if _checkout_gone(held.checkout):
         return taken
-    _put_back(artifacts, aside, worktree, held)
+    _put_back(artifacts, aside, worktree, aimed)
     return taken
 
 
 def _removal_aside(
-    artifacts: IssueArtifacts, aside: Path, held: _Holds,
+    artifacts: IssueArtifacts,
+    aside: Path,
+    held: _Holds,
+    aimed: _Registration,
 ) -> SurfaceOutcome:
-    """Read what the tree hides where it stands now, and take it down."""
+    """Read what the tree hides where it stands now, and take it down.
+
+    The holds are asked again after that reading and before the command, with
+    nothing in between. What they were asked before the move was asked before
+    the move, the aiming, and both tree reads -- and a lock taken from under
+    this pass in any of that is a checkout something else is free to commit
+    in: a detached commit landing there is clean, comes down without complaint,
+    and is reachable from nothing once the anchor pinning the commit BEFORE it
+    is let go. Every one of them has to still be this pass's at the moment the
+    command runs, or the command does not run.
+    """
     if not _holding_nothing(artifacts, aside):
+        return SurfaceOutcome.FAILED
+    if not _still_held(artifacts, held, aimed):
         return SurfaceOutcome.FAILED
     removed = commands._git_hardened(
         "worktree", "remove", str(aside), cwd=artifacts.spec.target_root,
@@ -1547,9 +1582,18 @@ def _removal_aside(
     return _came_down(artifacts, aside, removed, held.checkout)
 
 
+def _still_held(
+    artifacts: IssueArtifacts, held: _Holds, aimed: _Registration,
+) -> bool:
+    """Whether every hold this removal runs under is still this pass's own."""
+    if not _locks_unchanged(artifacts, held.locks):
+        return False
+    return _registration_unchanged(artifacts, aimed)
+
+
 def _moved_aside(
     artifacts: IssueArtifacts, worktree: Path, held: _Holds,
-) -> Path | None:
+) -> tuple[Path, _Registration] | None:
     """Move the checkout to a name of this pass's own, and aim at it there.
 
     The room is the one the checkout already sits in, since a rename is only
@@ -1562,6 +1606,11 @@ def _moved_aside(
     What was moved is checked against the descriptor this pass has held since
     it cleared the tree, so a rename that took something else is one this puts
     back rather than deletes.
+
+    What comes back is the name and the registration as it now reads, because
+    the aiming changes what that file says: a hold whose remembered text was
+    the path before the move is one the reading before the command could only
+    ever refuse.
     """
     aside = _somewhere_aside(artifacts, worktree)
     if aside is None:
@@ -1572,8 +1621,9 @@ def _moved_aside(
     if not _checkout_held(artifacts, aside, held.checkout):
         _renamed(artifacts, aside, worktree)
         return None
-    if _registration_aimed(artifacts, held.registration, aside):
-        return aside
+    aimed = _registration_aimed(artifacts, held.registration, aside)
+    if aimed is not None:
+        return aside, aimed
     _renamed(artifacts, aside, worktree)
     return None
 
@@ -1618,7 +1668,7 @@ def _renamed(artifacts: IssueArtifacts, moved: Path, onto: Path) -> bool:
 
 def _registration_aimed(
     artifacts: IssueArtifacts, registration: _Registration, at: Path,
-) -> bool:
+) -> _Registration | None:
     """Point the registration this pass holds at where the checkout now is.
 
     Written through the descriptor rather than the name, which is the only way
@@ -1626,24 +1676,32 @@ def _registration_aimed(
     the write bits off, so a `worktree repair` cannot open it and nothing else
     can aim the removal. This is the one caller entitled to move it, and it
     moves it only between two paths it established are the same tree.
+
+    What comes back is the hold as it now reads, since what the reading before
+    the command compares against is what this file was last established to
+    say: remembering the path it said beforehand would make that reading a
+    refusal every time.
     """
-    aimed = f"{at}/{_CHECKOUT_GIT_FILE}\n".encode()
+    says = f"{at}/{_CHECKOUT_GIT_FILE}\n"
     try:
-        _written_over(registration.pinned, aimed)
+        _written_over(registration.pinned, says.encode())
     except OSError as refused:
         log.warning(
             "issue=#%d keeping the checkout: its registration could not be "
             "aimed at %s (%s)", artifacts.issue_number, at, refused,
         )
-        return False
-    return True
+        return None
+    return replace(registration, says=says)
 
 
 def _put_back(
-    artifacts: IssueArtifacts, aside: Path, worktree: Path, held: _Holds,
+    artifacts: IssueArtifacts,
+    aside: Path,
+    worktree: Path,
+    aimed: _Registration,
 ) -> None:
     """Put a checkout that did not come down back where the scan reads it."""
-    if not _registration_aimed(artifacts, held.registration, worktree):
+    if _registration_aimed(artifacts, aimed, worktree) is None:
         log.error(
             "issue=#%d the registration of %s is left aimed at %s",
             artifacts.issue_number, worktree, aside,
@@ -1674,7 +1732,10 @@ def _aside_settled(artifacts: IssueArtifacts, worktree: Path) -> bool:
     Nothing to put back is the ordinary answer. Something to put back over a
     path that is occupied is not settled at all: what is there was not put
     there by a pass that got this far, and moving one onto the other would
-    take whichever of the two lost.
+    take whichever of the two lost. More than one is not settled either --
+    only one of them can go back where the scan reads this issue's checkout
+    from, and picking is how the other stays hidden while a teardown reports
+    the issue finished over it.
     """
     aside = _left_aside(artifacts, worktree)
     if aside is None:
@@ -1682,13 +1743,7 @@ def _aside_settled(artifacts: IssueArtifacts, worktree: Path) -> bool:
     left = _aside_dropped(artifacts, aside)
     if not left:
         return True
-    if worktree.exists() or not _aside_moved(artifacts, left[0]):
-        log.error(
-            "issue=#%d %s was left aside by a pass that did not come back, "
-            "and cannot be put back at %s from here",
-            artifacts.issue_number, ", ".join(str(one) for one in left),
-            worktree,
-        )
+    if not _one_to_put_back(artifacts, left, worktree):
         return False
     log.warning(
         "issue=#%d %s was left aside by a pass that did not come back, and is "
@@ -1697,6 +1752,29 @@ def _aside_settled(artifacts: IssueArtifacts, worktree: Path) -> bool:
     if not _renamed(artifacts, left[0], worktree):
         return False
     return _aside_repaired(artifacts, worktree)
+
+
+def _one_to_put_back(
+    artifacts: IssueArtifacts, left: tuple[Path, ...], worktree: Path,
+) -> bool:
+    """Whether exactly one tree was left aside, and its own path is free.
+
+    An issue publishes under two names and a host can hold a checkout that
+    stopped being moved under either, so more than one name here is a real
+    state and not an impossible one -- and it is one nothing in this pass may
+    choose between: whichever it left would be a checkout the scan never finds
+    while the teardown reported the issue settled.
+    """
+    if len(left) == 1 and not worktree.exists() and _aside_moved(
+        artifacts, left[0],
+    ):
+        return True
+    log.error(
+        "issue=#%d %s was left aside by a pass that did not come back, and "
+        "cannot be put back at %s from here",
+        artifacts.issue_number, ", ".join(str(one) for one in left), worktree,
+    )
+    return False
 
 
 def _aside_dropped(
@@ -1805,10 +1883,19 @@ def _left_aside(
     go on to remove a checkout while an earlier one's was still standing
     somewhere it never looked -- or report this issue's checkout absent over a
     tree it simply could not see.
+
+    Scanned rather than matched by pattern, because the pattern match answers
+    an unreadable room and an empty one alike: it walks the same directory and
+    keeps nothing it could not walk, so a room that may be entered and not
+    listed comes back as one with nothing in it.
     """
     aside = _ASIDE_PREFIX.format(artifacts.issue_number)
     try:
-        return tuple(sorted(worktree.parent.glob(f"{aside}*")))
+        with os.scandir(worktree.parent) as room:
+            return tuple(sorted(
+                worktree.parent / entry.name
+                for entry in room if entry.name.startswith(aside)
+            ))
     except OSError as read_error:
         log.warning(
             "issue=#%d %s could not be read for what an earlier pass left "

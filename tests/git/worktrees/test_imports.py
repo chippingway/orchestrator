@@ -177,7 +177,8 @@ _OWNER_ONLY_NAMES = (
 # it took rather than reading before it takes -- the scratch name it is taken
 # to, the move itself, and the link a lock that turned out to be somebody's is
 # put back under -- the give-back spent through the same take, and the check
-# before the removal that each of them is bound to;
+# before the removal that each of them is bound to, asked of every hold at
+# once with the command the next thing after it;
 # the checkout itself, opened as a directory of its own and held that way, the
 # reading that says the path still leads to it, and the one afterwards that
 # says nothing links to it any more -- with the count that means -- and the
@@ -186,10 +187,10 @@ _OWNER_ONLY_NAMES = (
 # is given after it, the removal spent where the tree now stands, and the
 # put-back a removal that did not take it earns; then the reconciliation the
 # pass after a stopped one opens with -- what it finds left aside and whether
-# that is a tree at all, the empty names a move that never happened reserved
-# and the taking away of each, the repair that points git back at what it put
-# back, and the write bits given to a registration a stopped pass left held;
-# the
+# that is a tree at all and whether exactly one of them is, the empty names a
+# move that never happened reserved and the taking away of each, the repair
+# that points git back at what it put back, and the write bits given to a
+# registration a stopped pass left held; the
 # registration the removal is aimed by: opened without following or waiting
 # and held open across the whole take-over, told whether the descriptor is a
 # regular file at all, read for what it says from its first byte and refused
@@ -398,6 +399,7 @@ _OWNER_DEFINED = (
     ("_object_kind", obligations),
     ("_obligation_ref", obligations),
     ("_one_directory", reclamation),
+    ("_one_to_put_back", reclamation),
     ("_open_pull_request_retentions", claims),
     ("_out_of_reach", reclamation),
     ("_own_locks", reclamation),
@@ -474,6 +476,7 @@ _OWNER_DEFINED = (
     ("_spec_inventory", inventory),
     ("_specs_by_clone", inventory),
     ("_still_cleared", reclamation),
+    ("_still_held", reclamation),
     ("_still_ours", reclamation),
     ("_store_held", obligations),
     ("_taken_away", reclamation),

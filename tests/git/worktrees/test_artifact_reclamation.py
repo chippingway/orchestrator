@@ -103,9 +103,18 @@ OVERSIZED_TAIL = "x"
 # about a namespace redirected wholesale.
 MOVED_ROOM = "-elsewhere"
 
+# A number that reads as a process id and is not one any host can be asked
+# about, for the case about a lock naming it.
+UNASKABLE_PID = 18446744073709551616
+
+# The mode a room keeps when it may be walked into and not listed.
+TRAVERSED_ONLY = 0o111
+
 # The name a move that never happened leaves in the room a checkout is set
 # aside inside, spelled as a pass that stopped would have left it.
 _ASIDE_RESERVED = ".reclaiming-{0}-stopped"
+
+_ASIDE_ANOTHER = ".reclaiming-{0}-another"
 
 # The buffer the short-write cases offer, and the descriptor they never reach:
 # every call is answered by a stand-in, so nothing is written anywhere.
@@ -141,10 +150,11 @@ _STILL_SEAM = "_registration_still"
 
 # The name a lock is taken to before it is read, which is the step the case
 # about two passes reaching one leftover at once stands in front of, and the
-# listing of what a stopped pass left aside.
+# last of the two tree reads -- the step the case about a hold taken away
+# between the move and the command stands in.
 _SCRATCH_SEAM = "_lock_scratch"
 
-_ASIDE_SEAM = "_left_aside"
+_IGNORED_SEAM = "_nothing_ignored"
 
 # The write that stages a lock before it is filed at its own name, which the
 # case about a lock that never landed stands in front of.
@@ -1123,6 +1133,29 @@ class ConcurrentPassTest(_ReclaimTestCase):
         )
         self.assertTrue(worktree.is_dir())
 
+    def test_a_take_that_stopped_gives_its_locks_back(self) -> None:
+        # A lock naming a number this host cannot be asked about stops the
+        # taking where it stands, and one already taken by then is one this
+        # pass must give back: left marked with a process that IS alive, it is
+        # a lock every later pass reads as held and refuses this issue over
+        # for good.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        held = _removal_locks(self.clone, worktree, self.branch)
+        held[1].write_text(LEFT_BEHIND.format(UNASKABLE_PID))
+
+        stopped = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(stopped), _checkout_surface(FAILED))
+        self.assertFalse(held[0].exists())
+        held[1].unlink()
+
+        finished = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(finished), _checkout_surface(CLEANED))
+        self.assertFalse(worktree.exists())
+
     def test_a_stale_lock_another_pass_took_is_kept(self) -> None:
         # Deleting by name is what would make two passes over one leftover
         # both go on: each would remove what the other had just created, and
@@ -1404,6 +1437,62 @@ class CommandSeamTest(_ReclaimTestCase):
         self.assertEqual(
             (self.worktree / HIDDEN_FILE).read_text(), HIDDEN_CONTENT,
         )
+
+
+class LateHoldTest(_ReclaimTestCase):
+    """A hold taken away after the readings and before the command.
+
+    The holds are asked about once when they are taken, and the move, the
+    aiming, and both tree reads all happen after that. A lock gone in any of
+    that is a checkout something else may commit in -- and a detached commit
+    landing there is clean, comes down without a word, and is reachable from
+    nothing once the anchor pinning the commit before it is let go.
+    """
+
+    def losing(self, aside: Path) -> ProbeAnswer:
+        """Let the locks go, commit where a racer would, and answer clean.
+
+        Installed in place of the last of the two tree reads, and acting only
+        where that read is taken on the tree once it has been moved: that one
+        is the step between the move and the command, and everything this pass
+        holds was established before the move.
+        """
+        if aside != self.worktree:
+            for lock in self.held:
+                lock.unlink(missing_ok=True)
+            self.raced = _ran_git(aside, CHECKOUT, "--detach") or _ran_git(
+                aside, "commit", "--allow-empty", "-m", RACED_MESSAGE,
+            )
+        return self.reading(aside)
+
+    def test_a_hold_lost_before_the_command_keeps_it(self) -> None:
+        self.published()
+        self.worktree = self.checkout()
+        worktree = self.worktree
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.held = _removal_locks(self.clone, worktree, self.branch)
+        self.reading = evidence._nothing_ignored
+        watched = _Removals()
+
+        with patch.object(
+            evidence, _IGNORED_SEAM, self.losing,
+        ), patch.object(commands, _HARDENED_SEAM, watched):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.raced, 0)
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(watched.taken, [])
+        self.assertTrue(worktree.is_dir())
+
+
+class ProcessReadingTest(unittest.TestCase):
+    """What a lock names, when what it names is not a process id at all."""
+
+    def test_a_number_out_of_range_is_not_gone(self) -> None:
+        # What is written inside a lock is a thing an agent can write, and a
+        # number too large to ask a host about raises where one it may not
+        # signal merely refuses. Neither is a leftover to take.
+        self.assertTrue(reclamation._process_alive(UNASKABLE_PID))
 
 
 class StagedLockTest(_ReclaimTestCase):
@@ -1768,20 +1857,51 @@ class AsideRoomTest(_ReclaimTestCase):
         self.assertFalse(aside.exists())
         self.assertFalse(worktree.exists())
 
-    def test_a_room_that_would_not_be_read_keeps_it(self) -> None:
+    def set_aside(self, worktree: Path, under: str) -> Path:
+        """Put this issue's checkout aside, as a stopped pass would have."""
+        aside = worktree.parent / under.format(ISSUE_NUMBER)
+        worktree.rename(aside)
+        return aside
+
+    def test_a_room_that_would_not_be_listed_keeps_it(self) -> None:
         # A room this pass could not read is not a room with nothing in it,
         # and spending the second answer on the first is how a checkout an
-        # earlier pass left aside is passed over while this one takes another
-        # down -- or reported absent over a tree nothing could see.
+        # earlier pass left aside is passed over -- or, as here, reported
+        # absent over a tree nothing could see. A room that may be walked into
+        # and not listed answers a pattern match with silence, so the reading
+        # is a scan that says what stopped it.
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
+        aside = self.set_aside(worktree, _ASIDE_RESERVED)
+        self.addCleanup(worktree.parent.chmod, WRITABLE_DIR)
+        worktree.parent.chmod(TRAVERSED_ONLY)
 
-        with patch.object(reclamation, _ASIDE_SEAM, return_value=None):
-            reclaimed = self.spend(cleared)
+        reclaimed = self.spend(cleared)
 
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
-        self.assertTrue(worktree.is_dir())
+        self.assertFalse(reclaimed.settled)
+        self.assertTrue((aside / GIT_FILE).exists())
+
+    def test_two_trees_left_aside_are_not_chosen(self) -> None:
+        # An issue publishes under two names and a host can hold a checkout
+        # that stopped being moved under either, so more than one name here is
+        # a real state -- and one nothing in this pass may pick from: whichever
+        # it left would be a checkout no scan finds while the teardown reported
+        # the issue settled.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        aside = self.set_aside(worktree, _ASIDE_RESERVED)
+        another = worktree.parent / _ASIDE_ANOTHER.format(ISSUE_NUMBER)
+        another.mkdir()
+        (another / GIT_FILE).write_text(_aiming_at(another))
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertTrue((aside / GIT_FILE).exists())
+        self.assertTrue((another / GIT_FILE).exists())
 
 
 class RepeatedPassTest(_ReclaimTestCase):
