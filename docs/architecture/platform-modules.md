@@ -171,10 +171,12 @@ orchestrator/
                         a local ref -- in the plain form a caller acts on and the form that also carries why a read
                         established nothing -- and the lease-pinned branch push, each spending one credential
                         session
-    commands.py         plain / hardened git execution, the argv hardening and no-prompt environment, the per-call
-                        environment pin a caller adds over it, the absolute `--work-tree` argument a working-tree
-                        operation names its tree with, the unsafe local-transport probe, and the one line of a
-                        failed call's output a caller carries away from it
+    commands.py         plain / hardened git execution in a decoded and an undecoded form over one shared
+                        environment, the argv hardening and no-prompt environment, the per-call environment pin
+                        every hardened form takes over that envelope, the chunk-at-a-time streaming form that
+                        takes its request on stdin and assembles no answer, the absolute `--work-tree` argument a
+                        working-tree operation names its tree with, the unsafe local-transport probe, and the one
+                        line of a failed call's output a caller carries away from it
     credentials.py      the per-repo token lookup, the owner-only askpass script that outlives no operation, the
                         session record a token-bearing call is spawned from -- the detached environment, the URL
                         naming only the `x-access-token` username, and the token itself -- and the redaction every
@@ -253,11 +255,14 @@ orchestrator/
       squash.py         the plan-then-enter-then-rewrite entry point a stage handler calls, over the gate subject
                         that handler builds
       titles.py         subject-prefix inference and PR-title selection
-    measurement/        how large a committed candidate is, and why a size is sometimes unknown
-      models.py         the typed failure vocabulary, and the three records a reading hands around: one frozen
-                        end of a diff, the measurement over both ends -- each of those two carrying the failing
-                        step's own scrubbed line beside the typed reason it stands next to -- and the readback
-                        saying whether an end this host was supposed to hold is really here
+    measurement/        how large a committed candidate is, which contribution it is, and why either is
+                        sometimes unknown
+      models.py         the two typed failure vocabularies -- one per reading, spelled apart so a park reason
+                        says which one stopped -- and the four records a reading hands around: one frozen end of
+                        a diff, the measurement over both ends, the fingerprint over the same pair -- each of
+                        those three carrying the failing step's own scrubbed line beside the typed reason it
+                        stands next to -- and the readback saying whether an end this host was supposed to hold
+                        is really here
       commits.py        the remote-authoritative base freeze (fetched once when the object is missing) and the
                         candidate proof that an id resolves, is held here, and peels to the commit it names --
                         each handing back whatever id it did establish beside the failure, so a retry has one
@@ -267,6 +272,26 @@ orchestrator/
                         attributes and a named algorithm, pinned where git consults the environment last, and
                         refusing outright on the attribute file and diff-driver config no pin reaches — and the
                         measurement composing the three steps
+      fingerprint.py    the SHA-256 digest of the whole prospective contribution over the same three-dot range,
+                        taken over git's `--raw -z` listing (modes, unabbreviated object ids, status, and path
+                        bytes) and then over the content of every object that listing names, so nothing that
+                        decides how content would be RENDERED decides the id and no id has to be taken on trust
+                        — git serves a substituted loose object under the name its file sits at, and only
+                        `fsck` ever says otherwise. Renames are left undetected for a representation that does
+                        not move with a similarity threshold, the record order is pinned against
+                        `diff.orderFile`, the shallow file and lazy fetching are pinned in the environment so a
+                        planted history boundary cannot move the range and no step of a reading over a partial
+                        clone reaches its promisor remote — the ends included, since a commit made after such a
+                        clone is exactly what a lazy fetch would supply and what an absent end means — both
+                        commits are proven present before the listing is asked for, the
+                        listing is refused unless every field it has is terminated, and the objects are read in
+                        one `--batch` whose protocol is checked as it arrives — every id asked for, in order, a
+                        blob of the length its header claims — since a store that lost one answers `missing` on
+                        the very stdout the digest is taken over and exits 0, so a check standing in front of
+                        the read would only widen the window it left. A typed failure and no digest for any of
+                        those, since a failed listing writes the empty stdout an unchanged candidate writes; a
+                        gitlink is exempt from the object read, its commit being the submodule repository's to
+                        hold
     snapshots/          the immutable remote copy a superseded candidate is preserved as
       namespace.py      the one `refs/orchestrator/late-split/...` namespace a snapshot may occupy, built from a
                         generation's own identity and refused for anything else, plus the
@@ -294,7 +319,10 @@ orchestrator/
                         and rewrite its index -- the ignored-path read beside it, which is what git leaves out of
                         every one of those and out of its own refusal to remove a dirty worktree, so a caller
                         about to DELETE a tree can be told about the `.env` a caller about to publish rightly
-                        passes over, and the two a named commit is judged by
+                        passes over, and the two a named commit is judged by — the presence read taking a
+                        caller's own environment pins, since in a partial clone "here" means one thing to a
+                        caller about to fetch the object and another to one saying whether the store already
+                        held it
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they

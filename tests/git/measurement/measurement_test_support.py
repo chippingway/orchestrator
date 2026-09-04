@@ -2,15 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """A real remote, a candidate worktree, and the transports pointed at them.
 
-Every counting test runs against git rather than against a mocked reading of
-it, because the things being pinned down are git's own: what `--numstat`
+Every reading tested here runs against git rather than against a mocked answer
+from it, because the things being pinned down are git's own: what `--numstat`
 reports for a path it calls binary, what a moved file looks like with rename
-detection off, and which commits a three-dot range between two frozen ids
-resolves. A fake would answer whatever the test expected, which is the one
-answer that proves nothing here.
+detection off, which bytes of a path arrive unquoted, and which commits a
+three-dot range between two frozen ids resolves. A fake would answer whatever
+the test expected, which is the one answer that proves nothing here.
 
 The candidate lives in a linked worktree of the clone, the way an issue's
-checkout really does, so the object store a measurement reads is the store the
+checkout really does, so the object store a reading takes is the store the
 agent could write into -- which is what makes the remote-authoritative base
 read worth testing at all.
 """
@@ -47,6 +47,12 @@ BASE_FILE = "legacy.py"
 BASE_FILE_TEXT = "one\ntwo\nthree\n"
 BASE_FILE_LINES = 3
 
+# The other file the BASE branch carries. A reading that has to change one
+# base-carried path and leave another alone -- a mode set here, a rename
+# there -- needs two of them.
+SEED_FILE = "README.md"
+SEED_TEXT = "hello\n"
+
 AUTHOR_ENV = MappingProxyType({
     "GIT_AUTHOR_NAME": AUTHOR_NAME,
     "GIT_AUTHOR_EMAIL": AUTHOR_EMAIL,
@@ -58,9 +64,6 @@ AUTHOR_ENV = MappingProxyType({
 # purpose: git resolves one to itself without ever consulting the store, which
 # is exactly the reading a candidate recorded on another host produces.
 ABSENT_SHA = "0123456789012345678901234567890123456789"
-
-_SEED_FILE = "README.md"
-_SEED_TEXT = "hello\n"
 
 
 def run_git(
@@ -179,7 +182,7 @@ class _WorldBuilder:
 
     def _seed_initial_commit(self) -> None:
         repo = self._repo
-        (repo.clone / _SEED_FILE).write_text(_SEED_TEXT)
+        (repo.clone / SEED_FILE).write_text(SEED_TEXT)
         (repo.clone / BASE_FILE).write_text(BASE_FILE_TEXT)
         commit_all(repo.clone, "initial")
         run_git(PUSH_COMMAND, ORIGIN_REMOTE, BASE_BRANCH, cwd=repo.clone)

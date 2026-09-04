@@ -66,6 +66,7 @@ cannot.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from itertools import islice
 from pathlib import Path
@@ -493,7 +494,11 @@ def _revision_contains_path(
     return fields[1] == _BLOB_TYPE and fields[0] in _REGULAR_FILE_MODES
 
 
-def _commit_present(worktree: Path, revision: str) -> bool:
+def _commit_present(
+    worktree: Path,
+    revision: str,
+    env_extra: Mapping[str, str] | None = None,
+) -> bool:
     """True when `revision` names a commit this repository can actually read.
 
     The question a caller has to ask before it RECORDS an object id, and the
@@ -517,9 +522,20 @@ def _commit_present(worktree: Path, revision: str) -> bool:
     Hardened for the reason every probe here is, and false on any failure --
     including the failure to run git at all, since a caller that cannot prove
     the object is here must proceed as though it is not.
+
+    `env_extra` is here for the caller whose "here" is narrower than this
+    repository's own. A clone made with a filter keeps a promisor remote, and
+    git answers an id it is missing by fetching it rather than by failing --
+    so an object that is not in this store still comes back present, having
+    just been brought in over the network. A caller bringing the object in
+    ITSELF wants that read left alone; one that has to say whether the store
+    already held it states so here, and the pins it passes are the ones the
+    rest of its reading is taken under.
     """
     object_result = _commands._git_hardened(
-        "cat-file", "-e", f"{revision}^{{commit}}", cwd=worktree,
+        "cat-file", "-e", f"{revision}^{{commit}}",
+        cwd=worktree,
+        env_extra=env_extra,
     )
     return object_result.returncode == 0
 

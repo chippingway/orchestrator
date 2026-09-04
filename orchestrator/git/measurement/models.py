@@ -1,19 +1,21 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""What a size measurement is, and the typed reasons there is not one.
+"""What a reading of a prospective diff is, and the typed reasons there is not one.
 
 The records a reading hands around all live here -- the two ends of the diff,
-the count over them, and the readback saying whether an end this host was
-supposed to hold is really here -- because every one of them is spent by a
-caller in another module and none is owned by the step that happens to build
-it.
+the count over them, the fingerprint of what lies between them, and the
+readback saying whether an end this host was supposed to hold is really here
+-- because every one of them is spent by a caller in another module and none
+is owned by the step that happens to build it.
 
-The failure vocabulary lives beside the records because every member of it
-says the same thing about them: this measurement did not happen. That
-distinction is the whole point of the domain. A candidate whose size is
-unknown is not a small one -- "small" is what publishes an implementation
-without adjudicating it -- so a failed reading carries no count at all rather
-than the zero a failed `git` invocation would otherwise be read as.
+Each failure vocabulary lives beside the record it stands in for, because
+every member of one says the same thing about that record: this reading did
+not happen. That distinction is the whole point of the domain. A candidate
+whose size is unknown is not a small one -- "small" is what publishes an
+implementation without adjudicating it -- so a failed reading carries no count
+at all rather than the zero a failed `git` invocation would otherwise be read
+as, and no digest rather than the hash of the nothing such an invocation
+writes.
 
 The members are separate because the operator's next move differs by which
 step could not be completed, and because a retry has to know how far the
@@ -23,6 +25,11 @@ a candidate that will not resolve is a checkout to look at, a candidate whose
 object is missing is work made on a host this one is not, and a diff nothing
 here can pin is a checkout carrying something that decides what counts as text
 -- which an operator has to clear before any reading of it is worth taking.
+
+The two vocabularies stay apart for a reason of the same kind. A count and a
+fingerprint fail over overlapping ground and are reported through the same
+sinks, so members spelled alike would leave a park reason saying which step
+stopped without saying which reading it stopped.
 """
 from __future__ import annotations
 
@@ -123,6 +130,73 @@ class AdditionMeasurement:
     def is_measured(self) -> bool:
         """Whether a count was actually taken, and may therefore be read."""
         return self.failure is None and self.additions is not None
+
+
+class FingerprintFailure(StrEnum):
+    """The step a fingerprint stopped at, named rather than swallowed.
+
+    A separate vocabulary from `MeasurementFailure` rather than a reuse of the
+    overlapping half of it, and the wire strings say which reading they came
+    from for the same reason: the two are recorded, reported, and turned into
+    park reasons by the same machinery, and a bare `base_absent` on either
+    sink would not say whether the count or the identity of a contribution is
+    the thing nobody has.
+
+    The members differ by what an operator does next. An end whose object this
+    host does not hold is a fetch, and which end it is decides where from. A
+    listing that failed is the checkout itself. Content the listing names and
+    this store cannot hand back is an object lost rather than a commit missing
+    -- the commits are provably here, so a fetch of the branch may well bring
+    nothing back and the store is what has to be repaired. And a listing this
+    build cannot parse is neither: it is a reading that arrived in a shape
+    nothing here can account for, and nothing inside it was ever read.
+    """
+
+    BASE_ABSENT = "fingerprint_base_absent"
+    CANDIDATE_ABSENT = "fingerprint_candidate_absent"
+    DIFF_FAILED = "fingerprint_diff_failed"
+    DIFF_UNREADABLE = "fingerprint_diff_unreadable"
+    CONTENT_ABSENT = "fingerprint_content_absent"
+
+
+@dataclass(frozen=True)
+class ContributionFingerprint:
+    """What a candidate contributes over its base, as one comparable id.
+
+    `digest` is empty on every failure rather than carrying a hash of
+    whatever came back, and `is_fingerprinted` is the only thing that licenses
+    reading it: a `git diff` that failed writes nothing to stdout, which is
+    also what a candidate that changes nothing writes, so a digest taken
+    without asking would be a real-looking id shared by every failed reading
+    on every host -- and two of them comparing equal is exactly the claim a
+    fingerprint exists to make. A reading that SUCCEEDED over content this
+    host cannot hand back is the same danger wearing a better disguise, since
+    nothing about that id would say the bytes behind it never arrived.
+
+    The two ends are carried because a digest that does not say what it was
+    taken over cannot be re-taken. They are NOT in the digest itself: what is
+    fingerprinted is the contribution, so the same work over the same base
+    fingerprints identically no matter which commits carry it, which is the
+    whole of what the id is good for.
+
+    `detail` is the failing listing's own first line, kept for the reason it
+    is kept on a measurement: the reading is taken deep in the git layer and
+    reported far from it, and by the time anybody is told there is no
+    fingerprint, the stderr that would have said why is gone. Free text for a
+    human, never anything to branch on, and never a credential -- nothing here
+    runs a transport.
+    """
+
+    base_sha: str = ""
+    candidate_sha: str = ""
+    digest: str = ""
+    failure: FingerprintFailure | None = None
+    detail: str = ""
+
+    @property
+    def is_fingerprinted(self) -> bool:
+        """Whether a digest was really taken, and may therefore be read."""
+        return self.failure is None and bool(self.digest)
 
 
 @dataclass(frozen=True)

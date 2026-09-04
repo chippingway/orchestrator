@@ -15,6 +15,7 @@ _MODULES = (
     "orchestrator.git.measurement",
     "orchestrator.git.measurement.additions",
     "orchestrator.git.measurement.commits",
+    "orchestrator.git.measurement.fingerprint",
     "orchestrator.git.measurement.models",
 )
 
@@ -26,10 +27,10 @@ _FLAT_MODULES = (
     "orchestrator.measurement",
 )
 
-# Measurement counts what a checkout carries, so it may reach the git command
+# This domain reads what a checkout carries, so it may reach the git command
 # and transport owners and the settings they read. Anything above that -- the
 # workflow engine, its stage handlers, or an application entrypoint -- would
-# invert the dependency: the gate that spends a measurement lives up there, and
+# invert the dependency: the gate that spends a reading lives up there, and
 # an import back down would put the decision inside the reading.
 _ALLOWED_ROOTS = ("orchestrator.config", "orchestrator.git")
 
@@ -45,9 +46,12 @@ print(*sorted(name for name in sys.modules if name.startswith('orchestrator')))
 # owner that defines it -- which is where a test intercepting one has to patch.
 _OWNER_ONLY_NAMES = (
     "AdditionMeasurement",
+    "ContributionFingerprint",
+    "FingerprintFailure",
     "FrozenCommit",
     "MeasurementFailure",
     "_count_added_lines",
+    "_fingerprint_contribution",
     "_freeze_base_commit",
     "_measure_candidate",
     "_prove_candidate_commit",

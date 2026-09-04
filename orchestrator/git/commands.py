@@ -15,12 +15,23 @@ refuse to publish a branch carrying anything unexpected, and a raise there
 takes the tick out rather than parking the artifact that caused it. Decoded
 with surrogates, such a path comes back as a path -- unequal to whatever the
 caller permitted, which is the answer it was asking for.
+
+The hardened runner also has an undecoded form, because decoding at all is
+more than one kind of caller can afford: text capture folds a CR LF pair and a
+lone CR into a single LF, which is lossy about a path and therefore about
+anything hashed over one. A caller taking a digest spends
+`_git_hardened_bytes` and hashes exactly what git wrote; every other caller
+reads the text. Where what git writes is an agent-sized amount of content
+rather than a listing of it, `_git_hardened_streamed` takes the request on
+stdin and hands the answer over a chunk at a time, assembling none of it.
 """
 from __future__ import annotations
 
 import os
 import subprocess
-from collections.abc import Mapping
+import tempfile
+from collections.abc import Callable, Mapping
+from functools import partial
 from pathlib import Path
 from types import MappingProxyType
 
@@ -68,6 +79,11 @@ _NO_OBJECT_REPLACEMENT_ENV: Mapping[str, str] = MappingProxyType({
     "GIT_NO_REPLACE_OBJECTS": "1",
     "GIT_GRAFT_FILE": os.devnull,
 })
+
+# How much of a streamed answer is held at once. Large enough that reading a
+# whole contribution's content is not a syscall per line, small enough that the
+# size of what is being read decides nothing about this process's memory.
+_CHUNK = 65536
 
 _UNSAFE_TRANSPORT_CONFIG_RE = (
     r"^(url\..*\.(insteadof|pushinsteadof)|http\..*)$"
@@ -172,7 +188,128 @@ def _git_hardened(
     whether the system-wide ones are consulted at all) states it here, so what
     this process happened to inherit cannot answer for it instead.
     """
-    env = {
+    return subprocess.run(
+        [*_HARDENED_GIT_PREFIX, *args],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        errors=_UNDECODABLE_BYTES,
+        env=_hardened_env(env_extra),
+        check=False,
+    )
+
+
+def _git_hardened_bytes(
+    *args: str,
+    cwd: Path,
+    env_extra: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess:
+    """`_git_hardened` with git's output left as the bytes git wrote.
+
+    The same argv prefix and the same environment; only the capture differs,
+    and it differs for the one kind of caller that cannot use the decoded
+    form: one that hashes what git produced. Text capture decodes under
+    whatever encoding this process's locale names, and then puts the result
+    through universal newlines -- so a CR LF pair and a lone CR both come out
+    as a single LF. A path is bytes and a carriage return is one of the bytes
+    it may contain, which makes that translation a collision: two committed
+    paths that differ only there decode to one string, and a digest taken over
+    it is evidence about neither of them.
+
+    Both streams come back as bytes, since `text` is what decodes either one.
+    A caller wanting stderr as a line for a human decodes it itself, where
+    lossy is harmless.
+
+    `env_extra` is what it is on `_git_hardened`: the pins for what git reads
+    from the environment rather than from config, where an override on the
+    command line does not win.
+
+    Output a caller cannot afford to hold in one piece, and a request too long
+    to pass on the command line, both belong to `_git_hardened_streamed`
+    instead.
+    """
+    return subprocess.run(
+        [*_HARDENED_GIT_PREFIX, *args],
+        cwd=str(cwd),
+        capture_output=True,
+        env=_hardened_env(env_extra),
+        check=False,
+    )
+
+
+def _git_hardened_streamed(
+    *args: str,
+    cwd: Path,
+    stdin_bytes: bytes,
+    consume: Callable[[bytes], object],
+    env_extra: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess:
+    """`_git_hardened_bytes` for output too big to hold, handed over in pieces.
+
+    The same argv prefix and the same environment again; what differs is that
+    stdout is passed to `consume` a chunk at a time and never assembled. The
+    caller this exists for is folding git's output into a digest, and the
+    output is the content of every object in a contribution -- which an agent
+    decides the size of. Captured whole, one committed file would be as much
+    of this process's memory as somebody cared to make it; captured in
+    chunks, the peak is one chunk however large the contribution is.
+
+    Both of the child's other streams are files rather than pipes, which is
+    what makes reading stdout to exhaustion safe: git can write as much stderr
+    as it likes without filling a pipe nobody is draining, and it reads its
+    whole request without this process having to interleave writing that with
+    reading the answer. What it wrote to stderr comes back on the result, so a
+    caller that streams and refuses can still say what git said.
+
+    `env_extra` is what it is on the other two, and a caller that pins a
+    reading passes the same pins here: the answer streamed back has to be the
+    one the rest of that reading was taken under.
+
+    The record handed back is the same `CompletedProcess` the other runners
+    answer with, minus a `stdout` there deliberately is not one of.
+    """
+    argv = [*_HARDENED_GIT_PREFIX, *args]
+    with tempfile.TemporaryFile() as asked, tempfile.TemporaryFile() as said:
+        asked.write(stdin_bytes)
+        asked.seek(0)
+        with subprocess.Popen(
+            argv,
+            cwd=str(cwd),
+            stdin=asked,
+            stdout=subprocess.PIPE,
+            stderr=said,
+            env=_hardened_env(env_extra),
+        ) as streaming:
+            _drain(streaming.stdout, consume)
+            status = streaming.wait()
+        said.seek(0)
+        return subprocess.CompletedProcess(
+            args=argv, returncode=status, stderr=said.read(),
+        )
+
+
+def _drain(stream, consume: Callable[[bytes], object]) -> None:
+    """Hand a child's output to `consume` a chunk at a time, to exhaustion.
+
+    Read to EOF rather than to a size, since what is being read is as long as
+    an agent's committed content makes it; the chunk bounds what is held, not
+    what is read.
+    """
+    for chunk in iter(partial(stream.read, _CHUNK), b""):
+        consume(chunk)
+
+
+def _hardened_env(
+    env_extra: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """The environment a hardened git call is spawned under.
+
+    Assembled once for both hardened runners rather than beside either. What
+    each entry is for is on `_git_hardened`; what matters here is that there
+    is a single copy of it, since a second one is free to lose a protection
+    the first still has and nothing about the call site would show it.
+    """
+    return {
         **os.environ,
         **_GIT_NO_PROMPT_ENV,
         **_NO_OBJECT_REPLACEMENT_ENV,
@@ -185,15 +322,6 @@ def _git_hardened(
         "GIT_CONFIG_NOSYSTEM": "1",
         **(env_extra or {}),
     }
-    return subprocess.run(
-        [*_HARDENED_GIT_PREFIX, *args],
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        errors=_UNDECODABLE_BYTES,
-        env=env,
-        check=False,
-    )
 
 
 def _unsafe_local_transport_config(cwd: Path) -> str:
