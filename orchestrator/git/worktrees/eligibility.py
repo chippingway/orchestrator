@@ -49,6 +49,7 @@ from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
 from types import MappingProxyType
+from typing import NamedTuple
 
 from orchestrator.git.worktrees import claims, evidence
 from orchestrator.git.worktrees.models import (
@@ -90,8 +91,26 @@ _HIDDEN_REASONS = MappingProxyType({
 })
 
 
-def _checkout_retentions(artifacts: IssueArtifacts) -> tuple[Retention, ...]:
-    """Why this issue's checkout may not be removed, if it may not.
+class _CheckoutReads(NamedTuple):
+    """The three readings one checkout's commit proof is measured against.
+
+    Carried together because they are established together and spent together:
+    the base once for the whole candidate, the branch tips once for all of its
+    checkouts, and the HEAD of the one checkout being judged. Passed as three
+    arguments instead, a caller could hand over a head belonging to another
+    tree -- which on an issue holding both checkout layouts is a reading that
+    clears the wrong directory.
+    """
+
+    base: BranchTip
+    tips: tuple[BranchTip, ...]
+    head: BranchTip
+
+
+def _checkout_retentions(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> tuple[Retention, ...]:
+    """Why one of this issue's checkouts may not be removed, if it may not.
 
     Identity first, and the cleanliness read is skipped when it fails.
     Whether a tree is carrying loose files is a question about the tree, and
@@ -105,9 +124,6 @@ def _checkout_retentions(artifacts: IssueArtifacts) -> tuple[Retention, ...]:
     branch-only shape as such, and the reads below would have no path to run
     in.
     """
-    worktree = artifacts.worktree
-    if worktree is None:
-        return ()
     kept_for = _checkout_reason(artifacts, worktree)
     if kept_for is None:
         return ()
@@ -146,11 +162,10 @@ def _checkout_reason(
 def _checkout_tip_retentions(
     gh: GitHubClient,
     artifacts: IssueArtifacts,
-    base: BranchTip,
-    tips: tuple[BranchTip, ...],
-    head: BranchTip,
+    worktree: Path,
+    reads: _CheckoutReads,
 ) -> tuple[Retention, ...]:
-    """Why the commit this checkout stands on may not be removed with it.
+    """Why the commit one checkout stands on may not be removed with it.
 
     A checkout is an artifact that HOLDS something rather than a directory
     that merely sits somewhere. A linked worktree keeps a HEAD and a reflog of
@@ -179,18 +194,17 @@ def _checkout_tip_retentions(
     request -- and the same verdict -- as one reported as a branch. Anything
     narrower would have the three shapes of one issue disagree.
     """
-    worktree = artifacts.worktree
-    if worktree is None:
-        return ()
     on_branch, branch = evidence._head_ref(worktree)
-    reads = (head.answer, on_branch)
-    if any(read is not ProbeAnswer.CONFIRMED for read in reads):
+    answers = (reads.head.answer, on_branch)
+    if any(answer is not ProbeAnswer.CONFIRMED for answer in answers):
         return (Retention(
             RetentionReason.CHECKOUT_UNREADABLE, str(worktree),
         ),)
-    if any(tip.sha == head.sha for tip in tips):
+    if any(tip.sha == reads.head.sha for tip in reads.tips):
         return ()
-    return _tip_retentions(gh, artifacts, base, branch, head.sha)
+    return _tip_retentions(
+        gh, artifacts, reads.base, branch, reads.head.sha,
+    )
 
 
 def _tip_retentions(
@@ -292,45 +306,76 @@ def _branch_tip(artifacts: IssueArtifacts, branch: str) -> BranchTip:
 
 
 def _checkout_head(
-    artifacts: IssueArtifacts, kept: tuple[Retention, ...],
+    worktree: Path, kept: tuple[Retention, ...],
 ) -> BranchTip:
-    """The commit this issue's checkout stands on, when it is worth resolving.
+    """The commit one checkout stands on, when it is worth resolving.
 
-    Answered as the read that established nothing in the two cases where it is
-    not taken at all: an issue with no checkout on this host, and a checkout
-    something about the tree itself already refuses. The second is the reason
-    the read is skipped rather than merely ignored -- a directory that is not
-    this issue's checkout is one whose HEAD says nothing about what removing
-    it would cost.
+    Answered as the read that established nothing where it is not taken at
+    all: a checkout something about the tree itself already refuses. That is
+    the reason the read is skipped rather than merely ignored -- a directory
+    that is not this issue's checkout is one whose HEAD says nothing about
+    what removing it would cost.
     """
-    if artifacts.worktree is None or kept:
+    if kept:
         return BranchTip(answer=ProbeAnswer.UNREADABLE)
-    return evidence._checkout_tip(artifacts.worktree)
+    return evidence._checkout_tip(worktree)
+
+
+def _checkout_reading(
+    gh: GitHubClient,
+    artifacts: IssueArtifacts,
+    worktree: Path,
+    base: BranchTip,
+    tips: tuple[BranchTip, ...],
+) -> tuple[tuple[Retention, ...], BranchTip]:
+    """One checkout's whole answer: why it is kept, and what it is holding.
+
+    Per checkout rather than per issue, because an issue that was in flight
+    when slug namespacing landed can be holding two of them -- the flat one it
+    started in and the per-repository one the next tick made -- and they are
+    two directories with two trees, two HEADs, and two reflogs. A reading that
+    covered one of them would clear the issue while the other stayed on disk
+    with whatever it holds.
+
+    The tree's own state gates the commit read for the reason it always has: a
+    directory that is not this issue's checkout is one whose HEAD says nothing
+    about what removing it would cost.
+    """
+    kept = _checkout_retentions(artifacts, worktree)
+    head = _checkout_head(worktree, kept)
+    if kept:
+        return kept, head
+    return _checkout_tip_retentions(
+        gh, artifacts, worktree, _CheckoutReads(base, tips, head),
+    ), head
 
 
 def _proven_tips(
-    artifacts: IssueArtifacts, head: BranchTip, tips: tuple[BranchTip, ...],
+    artifacts: IssueArtifacts,
+    heads: tuple[BranchTip, ...],
+    tips: tuple[BranchTip, ...],
 ) -> tuple[ProvenTip, ...]:
     """Every commit this reading found an artifact of this issue standing on.
 
     The proof an eligible verdict is spent on, in the artifacts' own order:
-    the checkout first, since that is the order the teardown takes them down
+    the checkouts first, since that is the order the teardown takes them down
     in, and then one entry per branch the clone still carries.
 
-    A branch that has gone since the scan named it contributes nothing, which
-    is the same answer the classification gives it: there is no commit to
-    clear because there is no longer a branch holding one. A teardown that
+    An artifact that has gone since the scan named it contributes nothing,
+    which is the same answer the classification gives it: there is no commit
+    to clear because there is no longer anything holding one. A teardown that
     found the name back in place would then be holding no proof for it, and
     proof is what it deletes on.
     """
-    proven = tuple(
+    return tuple(
+        ProvenTip(str(worktree), head.sha)
+        for worktree, head in zip(artifacts.worktrees, heads)
+        if head.answer is ProbeAnswer.CONFIRMED
+    ) + tuple(
         ProvenTip(branch, tip.sha)
         for branch, tip in zip(artifacts.branches, tips)
         if tip.answer is ProbeAnswer.CONFIRMED
     )
-    if artifacts.worktree is None or head.answer is not ProbeAnswer.CONFIRMED:
-        return proven
-    return (ProvenTip(str(artifacts.worktree), head.sha), *proven)
 
 
 def _artifact_reading(
@@ -338,19 +383,19 @@ def _artifact_reading(
 ) -> tuple[tuple[Retention, ...], tuple[ProvenTip, ...]]:
     """What the artifacts say: why they are kept, and what they are holding.
 
-    Both sides are read even when the first one already refuses, because what
-    an operator is being handed is a list of what to go and look at. A dirty
+    Every side is read even when one of them already refuses, because what an
+    operator is being handed is a list of what to go and look at. A dirty
     checkout beside a branch nothing accounts for is two pieces of work in
     two places, and reporting only the first sends them back for the second
     on the tick after they clear it.
 
-    Both sides also owe the same proof, which is why the checkout is not done
+    Every side also owes the same proof, which is why a checkout is not done
     once it is clean: a commit is held by whatever points at it, and for a
     checkout whose branch is gone that is the checkout. Its tip is put to the
-    proof only when nothing about the checkout itself already refuses -- a
-    tree that could not be read establishes nothing about what it holds either
-    -- and the branch tips are resolved first, so a commit one of them is
-    already standing on is one the removal cannot strand.
+    proof only when nothing about that tree itself already refuses -- a tree
+    that could not be read establishes nothing about what it holds either --
+    and the branch tips are resolved first, so a commit one of them is already
+    standing on is one the removal cannot strand.
 
     What the base is on is asked of the remote once and handed to every
     proof, since every artifact under this issue is measured against the same
@@ -361,21 +406,38 @@ def _artifact_reading(
     commits nobody adjudicated: between the two readings an agent can commit,
     and the branch that comes back is the one the proof is not about.
     """
-    checkout = _checkout_retentions(artifacts)
-    if artifacts.worktree is None and not artifacts.branches:
-        return checkout, ()
+    if not artifacts.worktrees and not artifacts.branches:
+        return (), ()
     base = evidence._published_tip(
         artifacts.spec, artifacts.spec.base_branch,
     )
     tips = tuple(
         _branch_tip(artifacts, branch) for branch in artifacts.branches
     )
-    head = _checkout_head(artifacts, checkout)
-    if not checkout:
-        checkout = _checkout_tip_retentions(gh, artifacts, base, tips, head)
+    return _read_artifacts(gh, artifacts, base, tips)
+
+
+def _read_artifacts(
+    gh: GitHubClient,
+    artifacts: IssueArtifacts,
+    base: BranchTip,
+    tips: tuple[BranchTip, ...],
+) -> tuple[tuple[Retention, ...], tuple[ProvenTip, ...]]:
+    """The reading itself, once the base and the branch tips are established.
+
+    Every checkout is read against the same two, so an issue holding both
+    layouts measures them identically -- and the branch reasons are asked
+    afterwards rather than first, so the answer reads in the artifacts' own
+    order.
+    """
+    readings = tuple(
+        _checkout_reading(gh, artifacts, worktree, base, tips)
+        for worktree in artifacts.worktrees
+    )
     return (
-        checkout + _branch_reasons(gh, artifacts, base, tips),
-        _proven_tips(artifacts, head, tips),
+        tuple(chain.from_iterable(kept for kept, _head in readings))
+        + _branch_reasons(gh, artifacts, base, tips),
+        _proven_tips(artifacts, tuple(head for _kept, head in readings), tips),
     )
 
 

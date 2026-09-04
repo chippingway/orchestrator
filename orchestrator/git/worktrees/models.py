@@ -2,18 +2,25 @@
 # SPDX-License-Identifier: Apache-2.0
 """What a scan of this host's per-issue artifacts found, and what it decided.
 
-Data only, for both halves of the artifact domain. `IssueArtifacts` is one
-issue as one repository's clone and worktrees root show it, and
+Data only, for every half of the artifact domain. `IssueArtifacts` is one
+issue as one repository's clone and worktrees roots show it, and
 `ArtifactInventory` is the whole answer a single scan gives; the scan that
-fills them lives in ``inventory``, the two local reads under it in ``probes``,
-and the rules deciding which configured repository a discovered branch belongs
-to in ``attribution``.
+fills them lives in ``inventory``, the local reads under it in ``probes``,
+and the rules deciding which configured repository a discovered artifact
+belongs to in ``attribution``.
 
 `ProbeAnswer` and `BranchTip` are what one fail-closed read of those artifacts
 comes back with, and `RetentionReason`, `Retention`, `ProvenTip`, and
 `ArtifactVerdict` are what a classification over them concludes. The reads
 live in ``evidence``, the GitHub side of the same question in ``claims``, and
 the classifier composing the two in ``eligibility``.
+
+`CandidateLayout`, `MaintenanceCandidate`, and `MaintenanceScan` are what the
+widest of those readings hands back -- the local scan folded together with
+what the remote still carries, in ``discovery``. The layout rides on the
+candidate rather than being worked out again downstream because it is the one
+thing about it that cannot be re-read later: the branch that said a candidate
+was remote-only is the artifact a teardown goes on to delete.
 
 The refusals are carried in the answer rather than logged and dropped because
 of what a reader does with an absence: "this repository has no artifacts" and
@@ -36,23 +43,27 @@ from orchestrator import config
 class IssueArtifacts:
     """The orchestrator-owned artifacts one issue left in one repository.
 
-    An issue is in a scan because its `issue-<n>` checkout still stands under
-    the spec's worktrees root, because a branch in that clone's
-    orchestrator-owned namespace names it, or because both do -- which is why
-    either half may be empty. Never both: an entry with no checkout and no
-    branch is an issue nothing on this host attests to, and the scan does not
-    invent one.
+    An issue is in a scan because an `issue-<n>` checkout of it still stands,
+    because a branch in that clone's orchestrator-owned namespace names it, or
+    because both do -- which is why either half may be empty. Never both: an
+    entry with no checkout and no branch is an issue nothing on this host
+    attests to, and the scan does not invent one.
 
-    `branches` carries the names as they exist, so an issue that predates slug
-    namespacing and one already migrated read the same way: the namespaced
-    name first when it is there, then the legacy flat one. Two entries for one
-    issue therefore cannot happen -- the two layouts are two names for the
-    same issue, not two issues.
+    Both halves are tuples, and for the same reason: this orchestrator has
+    published an issue under two layouts, and a host that was running across
+    the migration can be holding both at once. `branches` carries the
+    slug-namespaced name and the legacy flat one; `worktrees` carries the
+    checkout under the spec's own root and the legacy one directly under
+    `WORKTREES_DIR`. Each is ordered current-first, which is the order a
+    teardown takes them in.
+
+    Two entries for one issue therefore cannot happen -- the layouts are
+    several names for one issue, not several issues.
     """
 
     spec: config.RepoSpec
     issue_number: int
-    worktree: Path | None
+    worktrees: tuple[Path, ...]
     branches: tuple[str, ...]
 
 
@@ -68,12 +79,23 @@ class ArtifactInventory:
     nothing to adopt or clean up -- has to skip those repositories, and this
     field is how it knows which.
 
-    `issues` is ordered by slug and then issue number, so two scans of an
-    unchanged host produce equal answers.
+    `withheld` is the same refusal one granularity down: a repository and an
+    issue number this scan will not answer for, while still answering for the
+    rest of that repository. It exists for the artifact whose name says nothing
+    -- the flat pre-namespacing checkout, which several entries on one clone
+    derive identically -- because a tree nobody may take is standing on one of
+    that issue's branches, and reporting the branch alone would hand a teardown
+    a ref to delete out from under a live checkout. A caller reading only
+    `issues` would see that issue absent and go looking for it somewhere else,
+    which is exactly what a wider scan does.
+
+    `issues` is ordered by slug and then issue number, and so are both
+    refusals, so two scans of an unchanged host produce equal answers.
     """
 
     issues: tuple[IssueArtifacts, ...]
     refused: tuple[str, ...]
+    withheld: tuple[tuple[str, int], ...] = ()
 
 
 class ProbeAnswer(StrEnum):
@@ -220,3 +242,58 @@ class ArtifactVerdict:
     def eligible(self) -> bool:
         """Whether every artifact reported for this issue may be reclaimed."""
         return not self.retentions
+
+
+class CandidateLayout(StrEnum):
+    """Which of the layouts this orchestrator has published a candidate under.
+
+    Named on the candidate rather than worked out again by every reader,
+    because it is the one thing about a candidate that says how it came to
+    exist. `CURRENT` is the slug-namespaced branch this orchestrator publishes
+    now and the per-repository checkout beside it; `LEGACY` is the flat
+    `orchestrator/issue-<n>` an issue in flight when namespacing landed is
+    still on; `MIXED` is an issue carrying both names at once, which a
+    migration leaves behind and which no single derivation would ever produce.
+
+    `REMOTE_ONLY` is where the artifact is rather than what it is called, and
+    it wins over the other three when nothing local is left: a candidate this
+    host holds no checkout and no branch for is one an operator has nothing to
+    look at here for, whichever name the remote's copy carries.
+    """
+
+    CURRENT = "current"
+    LEGACY = "legacy"
+    REMOTE_ONLY = "remote_only"
+    MIXED = "mixed"
+
+
+@dataclass(frozen=True)
+class MaintenanceCandidate:
+    """One issue's artifacts, and the layout they were published under.
+
+    The pair rather than the artifacts alone, because the layout is a reading
+    taken where both halves of the discovery were still in hand -- what the
+    clone holds and what the remote does -- and nothing downstream can
+    reconstruct it: by the time a teardown has finished, the branch that said
+    the candidate was remote-only is gone.
+    """
+
+    artifacts: IssueArtifacts
+    layout: CandidateLayout
+
+
+@dataclass(frozen=True)
+class MaintenanceScan:
+    """Every candidate the discovery found, and what it will not answer for.
+
+    `refused` carries the same fact the scan's own does, one step wider: a
+    repository whose checkout root, ref store, or remote listing could not be
+    read is left out entirely rather than reported in part, because a partial
+    list of what a repository still holds reads exactly like a complete one.
+
+    `candidates` is ordered by slug and then issue number, so two discoveries
+    of an unchanged host and remote produce equal answers.
+    """
+
+    candidates: tuple[MaintenanceCandidate, ...]
+    refused: tuple[str, ...]

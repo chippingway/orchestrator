@@ -64,7 +64,7 @@ last is held by the loader itself rather than by a check.
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
   `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three `git/measurement/` owners
   that log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the nine `git/worktrees/`
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the ten `git/worktrees/`
   owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
   packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
   `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
@@ -182,9 +182,10 @@ orchestrator/
                         naming only the `x-access-token` username, and the token itself -- and the redaction every
                         transport puts that token's own output through before logging or handing it back
     locks.py            the per-target-root re-entrant lock registry and its accessor
-    ref_transport.py    the remote read named by a whole refname -- the reading and, where nothing was
-                        established, the scrubbed line saying why -- and the lease-pinned write and delete an
-                        immutable ref namespace is owned through; the read the branch transport spends for its own
+    ref_transport.py    the two remote reads -- one refname, with the scrubbed line saying why nothing was
+                        established, and every refname under one pattern, which is the only way a branch this
+                        host holds no copy of is found -- and the lease-pinned write and delete an immutable ref
+                        namespace is owned through; the single-ref read the branch transport spends for its own
                         lease too
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
@@ -327,10 +328,12 @@ orchestrator/
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
-                        and the branches beside them name, and the classification of which of those may be
-                        reclaimed
+                        and the branches beside them name, the classification of which of those may be
+                        reclaimed, and the discovery that widens both with what the remote still carries
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
-                        resolution, the exact set of names one issue's branch can be published under, and the
+                        resolution, the exact set of names one issue's branch can be published under and the two
+                        paths it can have been checked out at -- the per-repository one written now and the flat
+                        one that predates the slug in the path -- and the
                         `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
                         signed number is no issue at all
       creation.py       issue and PR worktree creation, stale-worktree reuse and the probe it turns on, and the one
@@ -342,27 +345,48 @@ orchestrator/
       decomposition.py  the decomposer scratch path, its detached creation, and its best-effort removal
       terminal.py       question-stage teardown and terminal local and remote branch cleanup
       models.py         one issue's local artifacts and the whole answer a scan gives -- the issues it attributed
-                        beside the repositories it will not answer for -- plus what a classification over them
+                        beside the repositories it will not answer for and the single issues it withholds from
+                        one that it otherwise does -- plus what a classification over them
                         says: the three answers a fail-closed read has, the ref reading that carries a commit
                         with them, the reasons, subjects, and verdict a retained candidate is reported as, and
-                        the commits an eligible one hands over as cleared
-      probes.py         the two local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
-                        per-issue checkout directories -- a real directory under the exact name, never a symlink
-                        into a tree the creators never wrote, read through the `lstat` that reports what the
+                        the commits an eligible one hands over as cleared, and what the discovery over both
+                        hosts answers with: one candidate per issue and the layout it was published under
+      probes.py         the local reads a scan is built from: the `refs/heads/orchestrator/` listing, the
+                        checkout directories under both roots -- the spec's own and, once for the whole host, the
+                        flat `WORKTREES_DIR` every entry shared before namespacing -- a real directory under the
+                        exact name, never a symlink into a tree the creators never wrote, read through the `lstat`
+                        that reports what the
                         `is_dir` predicates suppress -- each answering "could not read", listing and entry alike
-                        and a listing that warned about a ref it skipped included, apart from "nothing here"
+                        and a listing that warned about a ref it skipped included, apart from "nothing here"; and
+                        the one read that is not a listing, which git directory a checkout and a clone share, since
+                        a flat checkout's name says nothing about whose it is and a named one's claim has to be
+                        tested. Both halves of the domain ask that one, so it is defined once and here
       attribution.py    which configured repository a discovered artifact belongs to, by re-deriving each spec's
                         own name for it; a name several entries could own -- every legacy flat branch on a shared
                         clone, every checkout directory two lossily-sanitized slugs are handed -- is attributed to
-                        none of them
-      inventory.py      the read-only scan over both reads: which entries share a clone, one listing per clone,
-                        worktree-only and branch-only candidates deduplicated into one entry per issue, and a
+                        none of them. The flat pre-namespacing checkout is the one artifact no name can settle,
+                        since every entry derived it identically, so it is attributed by the clone the directory
+                        turns out to be a worktree of -- which answers every host whose entries keep their own
+                        clones and leaves the shared-clone case ambiguous. An entry whose OWN clone would not
+                        answer claims it too, since nothing ruled that entry out and dropping it is how a shared
+                        checkout reads as uniquely owned. Every unsettled shape names its claimants rather than
+                        nobody, because a tree none of them may take is standing on one of that issue's branches:
+                        the scan has to withhold the issue, not just the directory
+      inventory.py      the read-only scan over those reads: the flat checkouts read once for the host and put
+                        to the clone each is a worktree of, paid for only where that listing found something --
+                        one claimant holds the checkout, several withhold the whole issue from every one of them,
+                        branches included, since reporting a branch whose tree nobody may remove is handing out a
+                        ref to delete under a live checkout; which entries share a clone, one listing per clone,
+                        worktree-only and branch-only candidates deduplicated into one entry per issue -- both
+                        checkout layouts of one issue among them, since a host running across the migration can
+                        hold the flat tree and the per-repository one at once -- and a
                         repository whose clone would not resolve, whose checkout directory another entry also
                         derives, or whose read failed left out of the answer rather than reported empty -- and
                         still put to the attribution, since a repository this scan will not answer for is one the
                         flat branch on its clone could equally belong to
       evidence.py       the seven hardened reads a candidate is judged by -- a checkout that is a worktree of
-                        this clone and on one of this issue's own branch names, a tree that PROVED it carries
+                        this clone (asked of `probes`, which owns that identity read) and on one of this issue's
+                        own branch names, a tree that PROVED it carries
                         nothing loose and one that PROVED it hides nothing besides, a local branch tip, the
                         commit the checkout's own HEAD stands on and which branch
                         that HEAD is, what the REMOTE
@@ -390,7 +414,9 @@ orchestrator/
                         every boundary answers with a retention rather than a default
       eligibility.py    the side-effect-free classifier over both: the GitHub gates that settle a candidate on
                         their own, then one tip proof run over every commit an artifact holds, with the base
-                        established once for the whole candidate. The checkout owes that proof as a branch does
+                        established once for the whole candidate. Every checkout is read on its own -- two trees
+                        with two HEADs and two reflogs, where an issue is holding both layouts. Each owes that
+                        proof as a branch does
                         -- a worktree whose branch was deleted under it holds its commit through its own HEAD and
                         reflog alone -- and is excused only when a reported branch is standing on that same
                         commit, so the three shapes one issue can be reported in reach one verdict. Inside the
@@ -401,6 +427,17 @@ orchestrator/
                         nobody proved is one a teardown may neither delete nor write down. Reported as one
                         verdict per candidate carrying every reason it is kept for, and -- when it keeps none --
                         the commit each artifact was cleared at
+      discovery.py      the local scan widened by what the remote still carries: one `ls-remote` of the owned
+                        namespace per repository, put to the same claimants a local name is, so the flat legacy
+                        branch on a shared clone stays nobody's on the remote too, and a name spelled for a
+                        sibling that turned up there stays nobody's as well. The two halves merge into one
+                        candidate per issue in the order a teardown takes them, carrying the layout it was
+                        published under -- `current`, `legacy`, `mixed`, or `remote_only`, read off the names of
+                        every artifact it holds, branches and checkouts alike, with the last decided on where the
+                        artifacts are rather than what they are called. A repository whose remote will
+                        not answer is refused outright, since every question after this one goes to that same
+                        remote; an issue the scan withheld is dropped from both halves, since the remote's copy of
+                        its branch would otherwise revive exactly the candidate the host refused
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends
@@ -435,11 +472,14 @@ off a facade:
   it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against, and only `probes`
   reaches `commands` and `locks`. `models` carries only data. Nothing in the scan writes, fetches, or names GitHub,
   which is what lets a caller take it at any point in a tick. The classification over it keeps that split visible:
-  `evidence` calls `commands`, `locks`, `paths`, both `git/verification/` tree reads (the status one, and the
+  `evidence` calls `commands`, `locks`, `paths`, `probes` for the clone-identity read the scan owns, both
+  `git/verification/` tree reads (the status one, and the
   ignored-path one git leaves out of it and out of its own refusal to remove a dirty worktree), and
   `branch_transport` for the one question a local ref may not answer — what the remote says a branch is at;
   `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
   disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
+  `discovery` sits over the scan the same way — `inventory`, `attribution`, and `paths`, plus `ref_transport` for
+  the namespace listing no local read can answer — and writes nothing either.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,

@@ -1,20 +1,25 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Remote reads, writes, and deletes named by a whole refname, each under a lease.
+"""Remote reads, writes, and deletes over the authenticated transport.
 
-The read and the two writes sit on one owner because they are one contract: a
-caller establishes what the remote carries at a refname and then states that
-reading back as the lease its write is pinned to. There is no form here that
-overwrites whatever it finds, which is what an immutable ref namespace is
-owned through -- an empty lease says the ref must not exist, and any other
-value says it must still be exactly what was read.
+The reads and the two writes sit on one owner because they are one contract: a
+caller establishes what the remote carries and then states that reading back as
+the lease its write is pinned to. There is no form here that overwrites
+whatever it finds, which is what an immutable ref namespace is owned through --
+an empty lease says the ref must not exist, and any other value says it must
+still be exactly what was read.
 
-The read is asked of the remote rather than of a local ref because the object
+The reads are asked of the remote rather than of a local ref because the object
 store a worktree shares is writable by the agent running in it: a local ref
 that looks like the answer proves nothing, while the remote's own answer is the
-one nothing on this host can rewrite. It is the lower half of every remote
+one nothing on this host can rewrite. They are the lower half of every remote
 question the git layer asks -- the branch transport beside this module spends
-it on `refs/heads/<branch>`.
+one of them on `refs/heads/<branch>`.
+
+Two shapes of read, because two questions are put to a remote. What one named
+ref is at is what a lease is pinned to; what a remote carries under a PATTERN
+is what says an artifact is there at all, which is the only way a branch this
+host no longer holds a copy of can be found.
 
 Every call runs under the whole token-bearing envelope: a token resolved per
 repository through `credentials`, an askpass session that keeps it out of the
@@ -28,8 +33,10 @@ has to explain a reading it could not take is a long way from the process that
 took it.
 
 What policy the leases serve -- which namespace, and what an existing ref at
-another commit means -- belongs to `git/snapshots/`, which is the only caller
-of the writes.
+another commit means -- belongs to the callers. `git/snapshots/` owns the
+immutable namespace the create and the delete were written for; the
+terminal-artifact discovery under `git/worktrees/` spends the pattern listing
+on the orchestrator-owned branch namespace it finds its candidates in.
 """
 from __future__ import annotations
 
@@ -167,6 +174,83 @@ def _remote_ref_sha(
         return None
     with credentials._git_auth_session(spec, token) as auth_session:
         return _remote_ref_read(auth_session, worktree, ref, ref).sha
+
+
+def _remote_ref_listing(
+    auth_session: credentials._GitAuthSession,
+    worktree: Path,
+    pattern: str,
+) -> tuple[str, ...] | None:
+    """Every refname the remote carries under `pattern`, through an open session.
+
+    The empty tuple where the remote carries none, and None where the listing
+    established nothing, so a caller cannot read a failed call as a remote
+    holding nothing under that namespace.
+
+    `--refs` is asked for so a tag's peeled entry cannot arrive as a refname
+    of its own; the pattern is passed as git's own, which matches across `/`
+    and so covers a namespace however many components deep its members are.
+
+    A line that does not carry both fields is dropped rather than refused,
+    which is the safe direction for the one thing this listing is spent on: a
+    name that never arrives is an artifact nobody goes on to act on, while a
+    listing refused wholesale over one odd line would take every healthy name
+    beside it down too.
+    """
+    listed = subprocess.run(
+        [
+            *commands._AUTHED_GIT_PREFIX,
+            "ls-remote", "--refs", auth_session.auth_url, pattern,
+        ],
+        cwd=str(worktree),
+        capture_output=True,
+        text=True,
+        env=auth_session.env,
+        check=False,
+    )
+    if listed.returncode != 0:
+        log.error(
+            "git ls-remote failed for %s: %s",
+            pattern, credentials._scrubbed(listed.stderr, auth_session.token),
+        )
+        return None
+    named = (
+        output_line.strip().split() for output_line in
+        (listed.stdout or "").splitlines()
+    )
+    return tuple(parts[1] for parts in named if len(parts) >= 2)
+
+
+def _remote_ref_names(
+    spec: config.RepoSpec, worktree: Path, *, pattern: str,
+) -> tuple[str, ...] | None:
+    """Ask the REMOTE which refs it carries under one pattern.
+
+    The read that finds an artifact this host holds no copy of. Every other
+    remote question here starts from a name somebody already has -- a branch
+    the clone still carries, a snapshot ref a record names -- so a branch whose
+    local ref was deleted, or whose whole clone was rebuilt, is invisible to
+    all of them while the remote still carries it.
+
+    Two answers a caller must keep apart, as with every read on this owner: the
+    empty tuple is the remote answering that it holds nothing under the
+    pattern, and None is a read that established nothing -- a missing token, a
+    worktree whose config could hijack the transport, an unreachable remote.
+    A caller that took the second for the first would conclude a repository has
+    no artifacts left because nobody could ask it.
+    """
+    token = credentials._resolved_git_token(spec, "list the remote refs")
+    if not token:
+        return None
+    unsafe = commands._unsafe_local_transport_config(worktree)
+    if unsafe:
+        log.error(
+            "refusing to list %s from the remote: worktree .git/config has "
+            "transport-hijacking config: %s", pattern, unsafe,
+        )
+        return None
+    with credentials._git_auth_session(spec, token) as auth_session:
+        return _remote_ref_listing(auth_session, worktree, pattern)
 
 
 def _push_ref(

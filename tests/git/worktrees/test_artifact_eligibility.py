@@ -220,6 +220,60 @@ class ArtifactShapeTest(_CandidateTestCase):
         self.assertEqual(verdict.retentions[0].subject, legacy)
 
 
+class MigratedCheckoutTest(_CandidateTestCase):
+    """Both checkout layouts of one issue are read, and each on its own.
+
+    A host that was running when the slug went into the path holds two trees
+    for the issue it was mid-way through: the flat one it started in and the
+    per-repository one the next tick made. They are two directories with two
+    HEADs and two reflogs, and a reading that covered one of them would clear
+    the issue while the other stayed on disk with whatever it holds.
+    """
+
+    def both_layouts(self):
+        """This issue's two checkouts, current-first, with base on their commit.
+
+        The flat branch is pointed at the tip the namespaced one already stands
+        on, since a tree may not be added on a branch another worktree holds --
+        and one commit under two names is what a migration actually left.
+        """
+        legacy = _legacy_branch(ISSUE_NUMBER)
+        tip = self.landed()
+        _branch_at(self.clone, legacy, self.branch)
+        flat = self.world.checkout_at(
+            self.spec, paths._legacy_worktree_path(ISSUE_NUMBER), legacy,
+        )
+        return tip, (self.checkout(), flat)
+
+    def test_both_checkout_layouts_are_proven(self) -> None:
+        # Each tree is an artifact in its own right: the verdict clears both
+        # or it clears neither, and it hands over the commit each was found
+        # standing on, in the order a teardown takes them down in.
+        tip, worktrees = self.both_layouts()
+
+        verdict = self.classify(worktrees=worktrees)
+
+        self.assertTrue(verdict.eligible)
+        self.assertEqual(
+            verdict.proven,
+            tuple(ProvenTip(str(worktree), tip) for worktree in worktrees),
+        )
+
+    def test_the_flat_checkout_is_read_on_its_own(self) -> None:
+        # What a reading that covered one tree would clear the issue past: the
+        # flat one is carrying an agent's unfinished work while the current one
+        # is spotless, and the retention names the directory to go and look in.
+        _tip, worktrees = self.both_layouts()
+        (worktrees[1] / LOOSE_FILE).write_text(LOOSE_CONTENT)
+
+        verdict = self.classify(worktrees=worktrees)
+
+        self.assertEqual(
+            _reasons(verdict.retentions), (RetentionReason.WORKTREE_DIRTY,),
+        )
+        self.assertEqual(verdict.retentions[0].subject, str(worktrees[1]))
+
+
 class RemoteGateTest(_CandidateTestCase):
     """What GitHub settles before an artifact on the host is read at all."""
 

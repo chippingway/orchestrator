@@ -58,6 +58,11 @@ def _listing(branches):
         yield listed
 
 
+def _scan(*specs):
+    """The whole scan over one set of configured repositories."""
+    return inventory._local_issue_inventory(specs)
+
+
 def _found(scanned):
     """Each candidate as the repository and issue it names."""
     return tuple(
@@ -94,7 +99,7 @@ class CloneGroupingTest(unittest.TestCase):
         gadget = _spec(GADGET_SLUG, self.clone)
 
         with _listing(()) as listed:
-            inventory._local_issue_inventory((self.widget, gadget))
+            _scan(self.widget, gadget)
             listed.assert_called_once_with(self.clone)
 
     def test_one_clone_under_two_paths_is_one(self) -> None:
@@ -106,7 +111,7 @@ class CloneGroupingTest(unittest.TestCase):
         gadget = _spec(GADGET_SLUG, link)
 
         with _listing((_legacy_branch(LEGACY_ISSUE_NUMBER),)):
-            scanned = inventory._local_issue_inventory((self.widget, gadget))
+            scanned = _scan(self.widget, gadget)
 
         self.assertEqual(scanned.issues, ())
         self.assertEqual(scanned.refused, ())
@@ -129,7 +134,7 @@ class LocalInventoryRefusalTest(unittest.TestCase):
         self.world.checkout(self.widget, BOTH_SIDES_ISSUE_NUMBER)
 
         with _listing(None):
-            scanned = inventory._local_issue_inventory((self.widget, gadget))
+            scanned = _scan(self.widget, gadget)
 
         self.assertEqual(scanned.issues, ())
         self.assertEqual(scanned.refused, (GADGET_SLUG, WIDGET_SLUG))
@@ -143,7 +148,7 @@ class LocalInventoryRefusalTest(unittest.TestCase):
         widget = _spec(WIDGET_SLUG, _LoopingPath(self.clone))
 
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING), _listing(()):
-            scanned = inventory._local_issue_inventory((widget, gadget))
+            scanned = _scan(widget, gadget)
 
         self.assertEqual(scanned.refused, (WIDGET_SLUG,))
         self.assertEqual(_found(scanned), ((GADGET_SLUG, GADGET_ISSUE_NUMBER),))
@@ -160,7 +165,7 @@ class LocalInventoryRefusalTest(unittest.TestCase):
         self.world.checkout(colliding[0], BOTH_SIDES_ISSUE_NUMBER)
 
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING), _listing(()):
-            scanned = inventory._local_issue_inventory((*colliding, gadget))
+            scanned = _scan(*colliding, gadget)
 
         self.assertEqual(scanned.refused, tuple(sorted(COLLIDING_SLUGS)))
         self.assertEqual(_found(scanned), ((GADGET_SLUG, GADGET_ISSUE_NUMBER),))
@@ -179,12 +184,26 @@ class LocalInventoryRefusalTest(unittest.TestCase):
         )
 
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING), _listing(branches):
-            scanned = inventory._local_issue_inventory(
-                (*colliding, healthy),
-            )
+            scanned = _scan(*colliding, healthy)
 
         self.assertEqual(scanned.refused, tuple(sorted(COLLIDING_SLUGS)))
         self.assertEqual(_found(scanned), ((GADGET_SLUG, GADGET_ISSUE_NUMBER),))
+
+    def test_an_unread_flat_root_refuses_them_all(self) -> None:
+        # The one listing that is not per repository: every entry once put its
+        # checkout directly under `WORKTREES_DIR`, so a flat checkout nobody
+        # read is one any of them could still be holding -- and a caller
+        # acting on its absence would be acting on a reading nobody took.
+        gadget = _spec(GADGET_SLUG, self.world.clone(SECOND_CLONE_NAME))
+        self.world.checkout(gadget, GADGET_ISSUE_NUMBER)
+
+        with patch.object(
+            probes, "_legacy_checkout_numbers", return_value=None,
+        ):
+            scanned = _scan(self.widget, gadget)
+
+        self.assertEqual(scanned.issues, ())
+        self.assertEqual(scanned.refused, (GADGET_SLUG, WIDGET_SLUG))
 
     def test_an_unread_root_refuses_one_repository(self) -> None:
         # The refusal is per repository: a host that cannot list one
@@ -194,10 +213,60 @@ class LocalInventoryRefusalTest(unittest.TestCase):
         _block_worktrees_root(self.widget)
 
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING), _listing(()):
-            scanned = inventory._local_issue_inventory((self.widget, gadget))
+            scanned = _scan(self.widget, gadget)
 
         self.assertEqual(scanned.refused, (WIDGET_SLUG,))
         self.assertEqual(_found(scanned), ((GADGET_SLUG, GADGET_ISSUE_NUMBER),))
+
+
+class FlatCheckoutInventoryTest(unittest.TestCase):
+    """The checkout layout that had no per-repository parent, on a real host.
+
+    `WORKTREES_DIR/issue-<n>` is the one artifact whose name settles nothing --
+    every configured entry derived it identically -- so what has to answer
+    instead is the clone the directory turns out to be a worktree of. Driven
+    against real worktrees, since that identity is a thing only git knows.
+    """
+
+    def setUp(self) -> None:
+        self.world = _ArtifactWorld()
+        self.world.prepare(self)
+        self.clone = self.world.clone(CLONE_NAME)
+        self.widget = _spec(WIDGET_SLUG, self.clone)
+
+    def test_a_flat_checkout_goes_to_its_own_clone(self) -> None:
+        # A host whose entries keep their own clones: exactly one of them is
+        # holding this tree, and that settles what nothing in the name could.
+        sibling = _spec(GADGET_SLUG, self.world.clone(SECOND_CLONE_NAME))
+        flat = self.world.legacy_checkout(self.widget, LEGACY_ISSUE_NUMBER)
+
+        scanned = _scan(self.widget, sibling)
+
+        self.assertEqual(_found(scanned), ((WIDGET_SLUG, LEGACY_ISSUE_NUMBER),))
+        self.assertEqual(scanned.issues[0].worktrees, (flat,))
+        self.assertEqual(scanned.withheld, ())
+
+    def test_a_shared_flat_checkout_withholds_it(self) -> None:
+        # A second entry on that clone claims the directory just as squarely,
+        # and what goes out of the answer is the whole issue rather than the
+        # directory alone: the tree is standing on the branch beside it, and
+        # reporting that branch would hand out a ref to delete under a live
+        # checkout.
+        sibling = _spec(GADGET_SLUG, self.clone)
+        self.world.branch(
+            self.clone,
+            _namespaced_branch(WIDGET_SLUG, LEGACY_ISSUE_NUMBER),
+        )
+        self.world.legacy_checkout(self.widget, LEGACY_ISSUE_NUMBER)
+
+        with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
+            scanned = _scan(self.widget, sibling)
+
+        self.assertEqual(scanned.issues, ())
+        self.assertEqual(scanned.withheld, (
+            (GADGET_SLUG, LEGACY_ISSUE_NUMBER),
+            (WIDGET_SLUG, LEGACY_ISSUE_NUMBER),
+        ))
 
 
 class LocalInventoryRealGitTest(unittest.TestCase):
@@ -215,28 +284,34 @@ class LocalInventoryRealGitTest(unittest.TestCase):
         # a checkout whose branch is.
         self._plant_widget_artifacts()
 
-        scanned = inventory._local_issue_inventory((self.widget,))
+        scanned = _scan(self.widget)
 
         self.assertEqual(
             tuple(
-                (found.issue_number, found.worktree, found.branches)
+                (found.issue_number, found.worktrees, found.branches)
                 for found in scanned.issues
             ),
             (
                 (
                     BOTH_SIDES_ISSUE_NUMBER,
-                    paths._worktree_path(self.widget, BOTH_SIDES_ISSUE_NUMBER),
+                    (
+                        paths._worktree_path(
+                            self.widget, BOTH_SIDES_ISSUE_NUMBER,
+                        ),
+                    ),
                     (_namespaced_branch(WIDGET_SLUG, BOTH_SIDES_ISSUE_NUMBER),),
                 ),
                 (
                     LEGACY_ISSUE_NUMBER,
-                    None,
+                    (),
                     (_legacy_branch(LEGACY_ISSUE_NUMBER),),
                 ),
                 (
                     CHECKOUT_ONLY_ISSUE_NUMBER,
-                    paths._worktree_path(
-                        self.widget, CHECKOUT_ONLY_ISSUE_NUMBER,
+                    (
+                        paths._worktree_path(
+                            self.widget, CHECKOUT_ONLY_ISSUE_NUMBER,
+                        ),
                     ),
                     (),
                 ),
@@ -255,7 +330,7 @@ class LocalInventoryRealGitTest(unittest.TestCase):
         )
 
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
-            scanned = inventory._local_issue_inventory((self.widget, gadget))
+            scanned = _scan(self.widget, gadget)
 
         self.assertEqual(_found(scanned), (
             (GADGET_SLUG, GADGET_ISSUE_NUMBER),
@@ -271,7 +346,7 @@ class LocalInventoryRealGitTest(unittest.TestCase):
             _namespaced_branch(GADGET_SLUG, GADGET_ISSUE_NUMBER),
         )
 
-        scanned = inventory._local_issue_inventory((self.widget, gadget))
+        scanned = _scan(self.widget, gadget)
 
         self.assertEqual(_found(scanned), (
             (GADGET_SLUG, GADGET_ISSUE_NUMBER),
@@ -292,7 +367,7 @@ class LocalInventoryRealGitTest(unittest.TestCase):
         )
 
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
-            scanned = inventory._local_issue_inventory((self.widget,))
+            scanned = _scan(self.widget)
 
         self.assertEqual(scanned.issues, ())
         self.assertEqual(scanned.refused, (WIDGET_SLUG,))

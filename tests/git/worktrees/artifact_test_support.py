@@ -127,7 +127,25 @@ class _ArtifactWorld:
 
     def checkout(self, spec: config.RepoSpec, issue_number: int) -> Path:
         """Add the issue's worktree where the creators would put it."""
-        worktree = paths._worktree_path(spec, issue_number)
+        return self._checkout_at(
+            spec, paths._worktree_path(spec, issue_number),
+        )
+
+    def legacy_checkout(
+        self, spec: config.RepoSpec, issue_number: int,
+    ) -> Path:
+        """Add the issue's worktree where they put one before namespacing.
+
+        Directly under `WORKTREES_DIR`, with no per-repository parent, so the
+        directory carries nothing saying which entry made it -- which is what
+        the attribution has to settle from the clone instead.
+        """
+        return self._checkout_at(
+            spec, paths._legacy_worktree_path(issue_number),
+        )
+
+    def _checkout_at(self, spec: config.RepoSpec, worktree: Path) -> Path:
+        """One detached worktree of this spec's clone, at a named path."""
         worktree.parent.mkdir(parents=True, exist_ok=True)
         _run_git(
             "worktree", "add", "-q", "--detach", str(worktree),
