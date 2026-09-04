@@ -19,12 +19,20 @@ from __future__ import annotations
 _SILENT_PARKS_BEFORE_FRESH_SESSION = 2
 
 # How many consecutive readings one frozen pair may lose before the size gate
-# stops re-reading it and hands the issue to a human. The retry is worth
-# taking because some of the steps a measurement stops at clear themselves --
-# a fetch that brought nothing back, a checkout caught mid-write -- and it has
-# to be bounded because the rest never do: a candidate whose size is unknown
-# is not a small one, so every tick past this bound is a poll spent on a
-# reading that is not going to succeed while committed work waits behind it.
+# stops retrying quietly and hands the issue to a human. Only the two steps
+# that name the TRANSPORT between this host and the base are counted against
+# it -- a remote that would not answer for the branch, and a fetch that did
+# not bring the object back -- because those are the ones that clear
+# themselves while nobody is watching; every other step names something a
+# second reading cannot change and parks on its first miss.
+#
+# It is bounded because a transport that has missed this many readings in a
+# row is not one this process is going to reach, and a candidate whose size is
+# unknown is not a small one, so committed work would wait behind it
+# indefinitely. Past the bound what stops is the counting and the silence
+# rather than the reading itself: the published road re-reads the pair on
+# every poll, reporting each failure on both sinks, so the transport coming
+# back settles it with no human at all -- but it is said out loud once.
 _MEASUREMENT_MISSES_BEFORE_PARK = 3
 
 _CLAUDE_STALE_SESSION_STDERR_MARKERS: tuple[str, ...] = (

@@ -70,7 +70,15 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     Strictly past the ceiling, which is the record's own comparison: a
     candidate exactly at the configured value publishes, so the trigger cannot
     move by one line when the threshold is retuned.
+
+    A count in hand is what a measurement park was waiting for, so this is
+    where one is retired -- here and at the unmeasured verdict beside it, and
+    nowhere earlier. Retired on the way INTO the gate instead, a tick that
+    went on to lose the reading again would leave an issue durably unparked
+    with nothing measured and nothing said: the reading a human was told
+    about is still the reading nobody has taken.
     """
+    _parks._retire_spent_park(gate.state)
     if generation.is_oversized:
         return _routed(gate, generation)
     return _accepted(gate, generation)
@@ -372,7 +380,14 @@ def _unmeasured_verdict(
     reason the measured road records one: a candidate that skipped the reading
     froze no generation either, so between here and the push there is
     committed work on the branch and nothing on the issue naming it.
+
+    A measurement park still standing is retired here for the reason the
+    measured road retires one: this commit is going out, so whatever an
+    earlier reading could not answer about it is answered now. Carried past
+    this, it reaches the stage the publication hands the issue to as a flag
+    describing a question nobody is waiting on.
     """
+    _parks._retire_spent_park(gate.state)
     _supersedes_approval(gate, candidate_sha)
     if _superseded(gate, recorded):
         return _records._HELD

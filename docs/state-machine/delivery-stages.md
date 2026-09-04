@@ -1149,8 +1149,10 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      a rebuilt one the checkout comes back at base, the recorded commit is nowhere in it, and the ordinary flow
      would pay for a SECOND developer over work the first one already finished. So the record is reconciled
      first: the worktree has to be there, both ends of the pair readable in it, and the checkout actually ON the
-     recorded candidate — a host without any of the three parks (`late_measurement_failed`) asking for the checkout
-     rather than for another run. The head is proved because no developer ran here: unlike a fresh disposition, where
+     recorded candidate — a host without the checkout or without the candidate parks (`late_measurement_failed`)
+     asking for the worktree rather than for another run, while a recorded BASE a fetch did not bring back spends one
+     of the readings this pair is allowed to lose and stops the tick saying nothing until that bound runs out.
+     The head is proved because no developer ran here: unlike a fresh disposition, where
      a head past the record IS a resumed developer's new commit, a moved checkout on this path is one somebody moved,
      and measuring it would answer the size question about a commit nobody froze while discarding the record naming
      the real one. Past all three the tick finishes what the crashed one started, over that exact pair.
@@ -1257,6 +1259,26 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        refusal, under a minted identity where no generation exists yet or where the recorded one is not one a sink
        may carry (a damaged identity would otherwise emit nothing, and one naming another issue would file this
        issue's failure over there) — parks `late_measurement_failed`, and keeps the pair it froze for the retry.
+       The two steps that name the TRANSPORT rather than the work are the exception, and only for as long as the
+       bound allows: a base the remote would not answer for (`base_unreadable`) and one a fetch did not bring back
+       (`base_absent`) clear themselves, so the first three consecutive misses on one pair write the pair and the
+       incremented `late_measurement_miss_count`, emit the same typed `late_failure`, log at WARNING and stop —
+       leaving no `awaiting_human`, no `park_reason` and no comment, so the next tick re-enters that exact pair with
+       nothing spawned — and only the fourth parks and mentions a human. That mention is made ONCE: the
+       post-publication reconciliation re-enters the same pair on every poll after it, and a tick that finds the
+       park already standing over that same pair is held silently — no further miss counted, no second notice, but
+       the typed `late_failure` still reaches both sinks, since those polls exist nowhere else, and a base id the
+       remote finally names is recorded even there because it is what the next retry asks for.
+       The hold is keyed on a human still WAITING — the latch, since a resume consumes it and leaves the reason
+       standing — and on the pair the park was taken over. A park failing either test is spent: a fresh candidate,
+       which is what answering the park with guidance produces, retires it and starts its own bound, in the same
+       durable write that records that candidate: nothing says which commit a park was taken over, so a park left
+       behind by one would be read as the fresh pair's own by every tick after it. A base that IS reached
+       ends the run in the write that records the pair, and the park is retired by the verdict that reading settles
+       rather than on the way into the gate, since entering it is not answering the question the park was taken for
+       and a retirement there would leave an issue durably unparked whose next reading can miss again. Every other
+       member parks on its first miss, because a second reading of a candidate this host does not hold, or of a diff
+       nothing here can pin, comes back with the same answer.
        Which is a pair whenever one can be established at all: a revision that resolved and would not peel comes
        back carrying the id it resolved to, and that id is recorded with the park, so the retry asks for that exact
        object and the reconciliation ahead of the next spawn proves it. A revision that would not resolve names
@@ -1324,9 +1346,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   committed candidate held under `workflow:decomposing` for size adjudication, with no branch pushed and no pull
   request opened; or a HITL park — the ordinary question / dirty-tree / unreadable-tree / timeout ones, plus the
   size gate's own
-  `late_measurement_failed` (a reading nobody could take, a record too damaged to act on — a missing base, ceiling, or
-  boundary, an identity the late domain's record gate refuses, or a `late_current_issue` naming another issue — or a
-  recorded commit this host cannot show) and `late_candidate_moved` (the checkout is not the one the gate
+  `late_measurement_failed` (a reading nobody could take, a record too damaged to act on — a missing base where one
+  was recorded, a missing ceiling or boundary either way, an identity the late domain's record gate refuses, or a
+  `late_current_issue` naming another issue — or a recorded commit this host cannot show; a base the transport could
+  not reach reaches it only once the pair has lost the readings the bounded quiet retry allows it) and
+  `late_candidate_moved` (the checkout is not the one the gate
   approved — a head somewhere else, a commit not on this host at all, or a tree carrying work no push would
   publish — so nothing was published and nothing was spawned rather than hand review a checkout the gate never saw
   or buy a second developer run for an implementation that is already written; the approved commit is on the record

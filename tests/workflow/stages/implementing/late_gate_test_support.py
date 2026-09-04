@@ -67,6 +67,11 @@ SET_LABEL = "set_workflow_label"
 # the tick made durable BEFORE it published rather than after.
 FIND_OPEN_PR = "find_open_pr"
 
+# The two things a refusal says out loud, wrapped where a case has to know
+# what the pinned comment already carried when one of them went out.
+POST_COMMENT = "comment"
+EMIT_EVENT = "emit_event"
+
 AWAITING_HUMAN = "awaiting_human"
 PARK_REASON = "park_reason"
 PARK_MEASUREMENT_FAILED = "late_measurement_failed"
@@ -79,6 +84,10 @@ KEY_CANDIDATE_SHA = "late_candidate_sha"
 KEY_BASE_SHA = "late_base_sha"
 KEY_THRESHOLD = "late_threshold"
 KEY_ADDITIONS = "late_additions"
+# What a reading the transport lost leaves on the pair it was owed for: the
+# readings lost in a row, and the step the last of them stopped at.
+KEY_MISS_COUNT = "late_measurement_miss_count"
+KEY_MEASUREMENT_FAILURE = "late_measurement_failure"
 KEY_PHASE = "late_phase"
 KEY_CYCLE_ID = "late_cycle_id"
 KEY_GENERATION = "late_generation"
@@ -221,6 +230,20 @@ class _MeasurementAssertions:
         pinned = self._pinned()
         self.assertTrue(pinned[AWAITING_HUMAN])
         self.assertEqual(pinned[PARK_REASON], PARK_MEASUREMENT_FAILED)
+
+    def _assert_missed(self, failure, count: int = 1) -> None:
+        """One reading the transport lost, counted and otherwise unsaid.
+
+        The count and the step are the whole of what a miss inside the bound
+        leaves: nothing is waiting on a human, so nothing on the issue says it
+        is, and the next tick re-reads the same pair by itself.
+        """
+        pinned = self._pinned()
+        self.assertEqual(pinned[KEY_MISS_COUNT], count)
+        self.assertEqual(pinned[KEY_MEASUREMENT_FAILURE], failure)
+        self.assertFalse(pinned.get(AWAITING_HUMAN))
+        self.assertIsNone(pinned.get(PARK_REASON))
+        self.assertEqual(self.github.posted_comments, [])
 
     def _assert_frozen(self, additions=None) -> None:
         """The pair this gate froze, as the pinned comment holds it back."""

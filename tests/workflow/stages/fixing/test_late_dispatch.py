@@ -43,7 +43,9 @@ PAST_THE_CEILING = support.PAST_THE_CEILING
 COUNT_ADDED_LINES = support.COUNT_ADDED_LINES
 KEY_APPROVED_SHA = support.KEY_APPROVED_SHA
 KEY_CANDIDATE_SHA = support.KEY_CANDIDATE_SHA
+KEY_MISS_COUNT = support.KEY_MISS_COUNT
 KEY_SOURCE_STAGE = support.KEY_SOURCE_STAGE
+RUN_AGENT = "run_agent"
 PARK_MEASUREMENT_FAILED = support.PARK_MEASUREMENT_FAILED
 PARK_REASON = fixing.PARK_REASON
 PUSH_BRANCH = fixing.PUSH_BRANCH
@@ -97,6 +99,7 @@ class _FrozenPairMixin(_PatchedWorkflowMixin):
         label: str = fixing.FIXING,
         stage: str = fixing.FIXING,
         parked: bool = False,
+        **recorded,
     ):
         """An issue whose record names a pair and carries no count."""
         github = FakeGitHubClient()
@@ -107,7 +110,7 @@ class _FrozenPairMixin(_PatchedWorkflowMixin):
             branch=_issue_branch(ISSUE),
             pr_number=PR_NUMBER,
             **(dict(_MEASUREMENT_PARK) if parked else {}),
-            **support.recorded_generation(stage=stage),
+            **support.recorded_generation(stage=stage, **recorded),
         )
         # Standing exactly where the record says it froze it: a head that
         # moved is its own refusal, tested beside this one.
@@ -217,6 +220,50 @@ class FrozenPairReconciliationTest(unittest.TestCase, _FrozenPairMixin):
         self.assertIsNone(pinned.get(PARK_REASON))
         self.assertEqual(pinned[KEY_RECEIPT_SHA], MEASURED_CANDIDATE_SHA)
 
+    def test_a_lost_reading_holds_the_tick(self) -> None:
+        # The base object is not here and a fetch did not bring it back: the
+        # transport rather than the record. The stage may not run behind that
+        # -- the candidate is unmeasured and the pull request has not received
+        # it -- and no human is owed anything yet, which is exactly what lets
+        # the next tick re-enter this same pair, with no agent behind it and
+        # no reading of the remote for a base that has moved since.
+        github, issue = self._frozen()
+
+        dispatched, mocks = self._route(
+            github, issue, base_object_present=False,
+        )
+
+        dispatched.assert_not_called()
+        mocks[COUNT_ADDED_LINES].assert_not_called()
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertEqual(github.posted_comments, [])
+        pinned = github.pinned_data(issue.number)
+        self.assertEqual(pinned[KEY_MISS_COUNT], 1)
+        self.assertEqual(pinned[KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertFalse(pinned.get(AWAITING_HUMAN))
+
+    def test_a_base_the_remote_finally_names_is_kept(self) -> None:
+        # A park standing over the pair suppresses the second MENTION, never
+        # what the reading learned. A remote that would not answer records no
+        # base at all, so the pass that finally gets an id for one is what
+        # gives every retry after it an exact object to ask for -- dropped
+        # here, the next pass asks the remote again and freezes whatever the
+        # branch has moved to since, which is a different pair under the same
+        # generation.
+        github, issue = self._frozen(parked=True, base_sha="")
+
+        self._route(github, issue, frozen_base=FrozenCommit(
+            sha=support.MEASURED_BASE_SHA,
+            failure=support.MeasurementFailure.BASE_ABSENT,
+        ))
+
+        pinned = github.pinned_data(issue.number)
+        self.assertEqual(
+            pinned[support.KEY_BASE_SHA], support.MEASURED_BASE_SHA,
+        )
+        self.assertEqual(github.posted_comments, [])
+        self.assertTrue(pinned[AWAITING_HUMAN])
+
     def test_an_oversized_pair_stops_the_stage(self) -> None:
         # The reading the crash interrupted is the one that says this pull
         # request may not grow, so it is answered before the handler that
@@ -250,6 +297,33 @@ class FrozenPairReconciliationTest(unittest.TestCase, _FrozenPairMixin):
         pinned = github.pinned_data(ISSUE)
         self.assertEqual(pinned[KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA)
         self.assertEqual(pinned[PARK_REASON], PARK_MEASUREMENT_FAILED)
+
+
+class ParkedPairPollTest(unittest.TestCase, _FrozenPairMixin):
+    """What a poll past the park still owes, and what it may not repeat."""
+
+    def test_every_lost_reading_reaches_the_sinks(self) -> None:
+        # This road re-reads the pair on every poll by design -- that is how a
+        # transport coming back settles it with no human -- so the stream is
+        # the only place those readings exist at all. Reported by none of
+        # them, a pair nobody can measure looks exactly like one nobody is
+        # looking at. What the standing park spares is the THREAD: one
+        # mention, made on the poll that spent the bound.
+        parked = self._frozen(parked=True)
+
+        for poll in (1, 2, 3):
+            with self.subTest(poll=poll):
+                self._route(*parked, base_object_present=False)
+
+                self.assertEqual(len(self._failures(parked[0])), poll)
+                self.assertEqual(parked[0].posted_comments, [])
+
+    def _failures(self, github) -> list:
+        """The typed measurement failures both sinks were handed."""
+        return [
+            record for record in github.recorded_events
+            if record.get("event") == support.EVENT_LATE_FAILURE
+        ]
 
 
 class StrandedRecordTest(unittest.TestCase, _FrozenPairMixin):

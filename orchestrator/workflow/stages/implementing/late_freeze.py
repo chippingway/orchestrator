@@ -29,11 +29,22 @@ log = logging.getLogger("orchestrator.workflow")
 
 _HEAD = "HEAD"
 
+# The evidence a recorded pair has to carry to be acted on, named as the park
+# reports a missing one. The base is first because it is the only one a road
+# can legitimately be without.
 _MEASUREMENT_FIELDS = (
     ("late_base_sha", lambda recorded: not recorded.base_sha),
     ("late_threshold", lambda recorded: recorded.threshold is None),
     ("late_phase", lambda recorded: recorded.phase is None),
 )
+
+# What a pair still waiting for its base is held to: the same evidence less
+# the base itself. A base the remote would not name records none at all, and
+# the freeze that follows is what supplies one -- but nothing else about that
+# record is any less load-bearing for being written mid-freeze, and the mint
+# the retry goes through re-stamps every one of these from the current
+# process rather than from what the generation was frozen under.
+_REFROZEN_FIELDS = _MEASUREMENT_FIELDS[1:]
 
 _MISSING_FIELD = "`{field}` is missing from it"
 
@@ -238,24 +249,34 @@ def _frozen_pair(
     which is a measurement that did not happen. The identity is recorded all
     the same -- beside the failure, where the freeze puts it -- so the failure
     is reportable on both sinks and the retry has one exact object to ask for.
+    Both of those are the transport rather than the record, so what the miss
+    costs is a count on the pinned pair and, only once that count runs out, a
+    human.
+
+    A base that WAS frozen ends the count in the same write that records the
+    pair, since the write happens either way: what a retry is owed is the
+    readings it has lost in a row, and one it did not lose is the end of that
+    row.
     """
-    if recorded.candidate_sha == candidate_sha and recorded.base_sha:
-        if _damaged_record(gate, recorded):
+    if recorded.candidate_sha == candidate_sha:
+        if recorded.base_sha:
+            return _refrozen_base(gate, recorded)
+        if _damaged_unfrozen_record(gate, recorded):
             return None
-        return _refrozen_base(gate, recorded)
     base = _measurement_commits._freeze_base_commit(gate.spec, gate.worktree)
     minted = _records._minted(gate, recorded, candidate_sha, base.sha)
-    _parks._persisted(gate, minted)
-    if base.is_frozen:
-        return minted
-    _parks._unmeasured(gate, minted, base.failure)
-    return None
+    if not base.is_frozen:
+        _parks._lost_reading(gate, minted, base.failure)
+        return None
+    reached = _parks._reached(minted)
+    _parks._persisted(gate, reached)
+    return reached
 
 
 def _refrozen_base(
     gate: _records._Gate, recorded: LateGeneration,
 ) -> LateGeneration | None:
-    """Prove the recorded base is readable here, or park without re-reading it.
+    """Prove the recorded pair may be reused here, or say why it may not.
 
     The one question a reused pair still has to ask, because the pair is
     durable and the object store is not: a record written on one host and
@@ -263,26 +284,62 @@ def _refrozen_base(
     this checkout may not hold. Asking the REMOTE again instead would answer
     with wherever the base branch is now, so the retry a human's continue
     drives would silently measure a different pair under the same generation.
+
+    Whether the record may be ACTED on at all is asked first, and it is this
+    owner's own precondition rather than each caller's, because the retry
+    below is durable: it writes the miss it counted back onto the pinned
+    comment. A record reaching that damaged -- or recorded against another
+    issue -- would be rewritten under THIS issue's whole identity and become
+    publishable the moment the base came back, which is a reading taken over
+    there shipping work over here. A record nobody may act on is not a pair
+    whose transport is worth retrying; it is one a human has to repair, and
+    the roads in are too many for the proof to live on any of them.
+
+    Past that proof the record is one the pinned comment may carry as it
+    stands, so the retry persists it rather than an identity minted for the
+    report: there is nothing left here to mint one for.
+
+    An object a fetch did not bring back is the transport rather than the
+    record, and the same fetch on the next tick is very often all it takes --
+    so what a miss costs is one of the readings this pair is allowed to lose,
+    and only the last of them is worth a human.
     """
+    if _damaged_record(gate, recorded):
+        return None
     base = _measurement_commits._base_object_present(
         gate.spec, gate.worktree, recorded.base_sha,
     )
     if base.present:
-        return recorded
-    log.error(
+        return _reached_base(gate, recorded)
+    log.warning(
         "issue=#%d records base %s, which this host does not hold even after "
         "a fetch (%s); refusing to re-read the remote for a different one",
         gate.issue.number, recorded.base_sha, base.detail,
     )
-    _parks._unmeasured(
-        gate, _records._reportable(gate, recorded),
-        MeasurementFailure.BASE_ABSENT,
-    )
+    _parks._lost_reading(gate, recorded, MeasurementFailure.BASE_ABSENT)
     return None
 
 
-def _unusable_record(
+def _reached_base(
     gate: _records._Gate, recorded: LateGeneration,
+) -> LateGeneration:
+    """The record a base this host holds leaves, with any miss it owed dropped.
+
+    Written where there is something to drop and only there. The reset has to
+    be durable -- every tick is a fresh process, and the reading right after
+    this one is the one a stale count would hand to a human early -- while a
+    pair that never lost a reading would otherwise pay a pinned write on every
+    tick for a field it does not carry.
+    """
+    reached = _parks._reached(recorded)
+    if reached == recorded:
+        return recorded
+    _parks._persisted(gate, reached)
+    return reached
+
+
+def _unusable_record(
+    gate: _records._Gate, recorded: LateGeneration, fields: tuple,
 ) -> str | None:
     """Why a recorded measurement may not be acted on, or None if it may.
 
@@ -290,6 +347,11 @@ def _unusable_record(
     part to repair -- and because the parts are not interchangeable: a missing
     threshold and a missing base are two different reasons the number beside
     them means nothing.
+
+    Which fields are asked for is the caller's, because it is the caller that
+    knows what its road has established: a pair still waiting for its base is
+    proved against everything but that one, and a pair that recorded one is
+    proved against all of them.
 
     The identity carries the same weight as the count's own fields and is the
     half that is easy to forget, because nothing downstream reads it: a record
@@ -301,7 +363,7 @@ def _unusable_record(
     issue's answer at all, so publishing on it would ship work here on a
     reading taken over there.
     """
-    for field, missing in _MEASUREMENT_FIELDS:
+    for field, missing in fields:
         if missing(recorded):
             return _MISSING_FIELD.format(field=field)
     return _records._unusable_identity(gate, recorded)
@@ -318,10 +380,51 @@ def _damaged_record(gate: _records._Gate, recorded: LateGeneration) -> bool:
     a threshold-less record into `_verdict_owner._settled`, where the record's own comparison
     answers "not oversized" on a missing ceiling and publishes it.
 
-    The failure reaches both sinks like every other refusal, so a record that
+    The whole record is asked here because a base is one of the fields: this
+    is the road where one was recorded, so a pair short of it is damaged
+    rather than mid-freeze.
+    """
+    return _parks_the_damage(
+        gate, recorded, _unusable_record(gate, recorded, _MEASUREMENT_FIELDS),
+    )
+
+
+def _damaged_unfrozen_record(
+    gate: _records._Gate, recorded: LateGeneration,
+) -> bool:
+    """Park a record with no base this issue may not mint over, or pass it.
+
+    The other half of the reuse proof, for the pair that has no base to
+    re-prove. A base the remote would not name records no base at all, so the
+    retry over that same candidate freezes afresh -- and the mint it freezes
+    under INHERITS the record beside it: the cycle it is correlated by, the
+    scope it was declared with, and the readings it has already spent, while
+    re-stamping this issue's number, the configured ceiling, and the boundary
+    from the process running NOW. Unproved, a reading taken against another
+    issue becomes this one's to measure and then to publish, and a generation
+    that lost the ceiling it was frozen under is re-judged against whatever
+    the setting has been retuned to since.
+
+    Everything but the base is asked for, because the base is the only field
+    this road is legitimately without: it is what the failure being retried
+    leaves behind, and the freeze below is what supplies one. Asking for it
+    here would park every transport retry on the very pair it exists to keep
+    re-reading.
+    """
+    return _parks_the_damage(
+        gate, recorded, _unusable_record(gate, recorded, _REFROZEN_FIELDS),
+    )
+
+
+def _parks_the_damage(
+    gate: _records._Gate, recorded: LateGeneration, damaged: str | None,
+) -> bool:
+    """Hand back a record that may not be acted on, under the reason it fails.
+
+    None is a record that may, which is what every caller passes on. The
+    failure reaches both sinks like every other refusal, so a record that
     fails open in the log is not what an operator has to notice.
     """
-    damaged = _unusable_record(gate, recorded)
     if damaged is None:
         return False
     log.error(

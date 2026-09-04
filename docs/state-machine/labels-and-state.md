@@ -1136,15 +1136,44 @@ rather than preserving.
   re-read a permanently broken pair forever or spend a human on the first reading a fetch happened to interrupt — and
   the ceiling a bounded retry is held to is `_MEASUREMENT_MISSES_BEFORE_PARK` (3), spelled on
   [`orchestrator/workflow/stages/implementing/state.py`](../../orchestrator/workflow/stages/implementing/state.py)
-  beside the silent-park bound. They are that record and that ceiling and nothing more: no reading is counted
-  against them, so a reading nobody could take parks `late_measurement_failed` and keeps the pair it froze for the
-  bare `/orchestrator continue` that re-measures it, as
+  beside the silent-park bound. Only the two steps that name the TRANSPORT are counted against it —
+  `base_unreadable` and `base_absent`, a remote that would not answer for the base branch and a fetch that did not
+  bring the object back — because those are the ones that clear themselves. Misses 1 through 3 write the pair and the
+  incremented count, emit the typed `late_failure`, log at WARNING and stop, with no `awaiting_human`, no
+  `park_reason` and no comment, so the next tick re-enters the same pair by itself on both roads and spawns nothing;
+  the fourth takes the `late_measurement_failed` park and mentions a human once. Every other member still parks on
+  its first miss, since re-reading a candidate this host does not hold or a diff nothing can pin buys the same
+  answer, and so does a record nobody may act on at all: the pair is proved usable before its transport is retried —
+  everything a reuse needs except the base itself, which is the one field the failure being retried leaves absent.
+  The retry WRITES the record back, and the mint behind it keeps the record's cycle, scope and spent readings while
+  re-stamping the issue number, the ceiling and the boundary from the process running now — so unproved it would
+  adopt a reading taken against another issue under this one's identity, or re-judge a generation that lost its
+  ceiling against whatever `MAX_ADDED_LINES` has been retuned to since, either of them ready to publish here the
+  moment the base came back. Past that park the pair is still re-read on every poll — the post-publication
+  reconciliation runs ahead of every handler — but the tick is held silently there: no further miss is counted and no
+  second mention is made, because the human the first one asked cannot answer any faster. Silent to the THREAD and to
+  nothing else: the typed `late_failure` still reaches both sinks on every one of those readings, since the stream is
+  the only place they exist at all, and a base id the remote finally names is written down even then, because it is
+  the exact object every retry after it asks for.
+  And the silence is scoped twice over: to a park a human is still WAITING behind — the latch rather than the reason
+  beside it, since a resume consumes the one and leaves the other standing — and to the pair that park was taken
+  over. A fresh candidate, which is what guidance answered with, retires it and starts its own bound rather than
+  having its first miss swallowed by one; so does a reason whose latch a resume already spent. That
+  retirement rides the durable write that records the fresh candidate, because the two are read back as one: nothing
+  on the comment says which commit a park was taken over, so a crash between that write and the verdict would leave
+  a park over one commit beside a record naming another, and every later reading of that pair would be held silently
+  against a bound it never reaches. A base that IS
+  reached puts the count back to zero in the write that records the pair, and the park is retired by the verdict that
+  reading settles rather than by the gate's own door, since entering the gate is not answering the question the park
+  was taken for and a retirement there would durably unpark an issue whose next reading can miss again, as
   [`delivery-stages.md`](delivery-stages.md#_handle_implementing-label-workflowimplementing) describes.
   The count is read as a non-negative whole number and the failure as one of that vocabulary's own members, so a
   hand-edited count, a bool, or a `LateFailure` spelling in the failure field reads back as no miss recorded rather
   than as one a retry would count. Both are scoped to the pair frozen beside them and go with
-  `clear_late_generation`: a fresh generation freezes a fresh pair, so its misses start at zero rather than
-  inheriting a count taken over commits nobody measures any more. Absence is the same answer — no misses and no
+  `clear_late_generation`: a candidate that moved is fresh work whose reading nobody has lost yet, so its misses
+  start at zero rather than inheriting a count taken over commits nobody measures any more — while a base the remote
+  would not name records no base at all, so the same commit frozen afresh under the next generation keeps the count
+  it has already spent and the bound stays reachable. Absence is the same answer — no misses and no
   failure is what every pinned comment written before the pair says, so the write leaves both off rather than
   spelling that state a second way.
 - **Local fingerprints.** `late_title_body_hash`, and `late_comment_hash` beside the `late_comment_watermark_id` it

@@ -66,6 +66,24 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      continue` re-measures that exact pair
                                      and spawns nothing. The park freezes the
                                      branch out of base sync until answered
+     ... the base was unreachable ─► counted instead, for the first three in a
+                                     row: base_unreadable and base_absent are
+                                     the transport rather than the work, so the
+                                     pair and the miss go on the record, the
+                                     typed late_failure is emitted, and the
+                                     tick stops with nothing parked and nothing
+                                     said. The next tick re-enters that same
+                                     pair with no agent; the fourth miss takes
+                                     the park above and mentions once -- polls
+                                     past it re-read and hold silently rather
+                                     than saying it again, though each still
+                                     reports its typed late_failure, and a base
+                                     id the remote finally names is recorded
+                                     even then. A base REACHED puts the count
+                                     back to zero; what retires the park is the
+                                     reading it lets through, settled one owner
+                                     on, since a base in hand is not yet a
+                                     measurement
      no commit ever named         ─► the same park, and its bare continue is
                                      refused: no pair was frozen, so a retry
                                      would take a FIRST reading of a head

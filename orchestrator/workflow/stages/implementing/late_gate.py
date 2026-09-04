@@ -22,9 +22,14 @@ branch is at, and both are persisted with the `measuring` boundary BEFORE a
 single line is counted: a tick that dies over the count comes back to the pair
 this one froze rather than to a candidate re-derived from a branch that has
 moved since. A reading that could not be taken is never a small candidate --
-it is a typed failure on both sinks and an explicit park, and the retry a
-trusted bare `/orchestrator continue` drives re-measures that recorded pair
-without re-running the developer who already finished. The failure is reported
+it is a typed failure on both sinks, and the retry a trusted bare
+`/orchestrator continue` drives re-measures that recorded pair without
+re-running the developer who already finished. Most of those failures park at
+once. The two that name the TRANSPORT rather than the work -- a base the
+remote would not answer for, and one a fetch did not bring back -- clear
+themselves often enough to be worth a bounded number of quiet tries first: the
+miss goes on the record and nothing else happens, no human is told, and only
+the pair that has lost the last of them is parked. The failure is reported
 even where no pair was ever frozen: the identity is minted for the record
 rather than the refusal going unsaid, and deliberately not persisted, since a
 pinned cycle with no candidate under it reconciles nothing and would read as a
@@ -180,8 +185,14 @@ def _holds_candidate(gate: _records._Gate) -> _records._GateVerdict:
     either seam re-deriving the contract. Every difference between the two is
     in the subject it is handed: the publication the call was entered on, the
     checkout, and whether a developer ran.
+
+    A park a previous reading left is deliberately NOT cleared on the way in.
+    Entering the gate is not answering the question it was taken for, and the
+    two owners past here that do answer it retire it themselves -- so a tick
+    that re-read the pair and missed again leaves the park exactly as it
+    found it, rather than durably unparking an issue whose reading still has
+    not happened.
     """
-    _parks._retire_spent_park(gate.state)
     recorded = _records._entered(
         gate, _late_state.read_late_generation(gate.state),
     )

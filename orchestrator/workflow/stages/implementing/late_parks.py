@@ -8,14 +8,26 @@ that failed named, the typed failure goes to the audit and analytics streams,
 and a trusted bare `/orchestrator continue` re-reads rather than re-running
 anything. The writes those steps ride out on are here too, since a park and a
 persisted record are the two durable things this domain does.
+
+Two of the steps a reading stops at get a bounded number of tries before that
+happens, and they are the two that name the transport rather than the work: a
+remote that would not answer for the base branch, and a fetch that did not
+bring the base object back. Those clear themselves -- a network, a token, a
+host that was down -- so the first few are counted on the record and nothing
+else is done at all, and only a pair that has lost the last of them is worth a
+human's attention. Every other member still parks on its first miss, because
+re-reading a candidate this host does not hold or a diff nothing can pin buys
+exactly the same answer.
 """
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 
 from github.Issue import Issue
 
 from orchestrator import config
+from orchestrator.git.measurement.models import MeasurementFailure
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
@@ -39,6 +51,19 @@ from orchestrator.workflow.stages.implementing import (
 log = logging.getLogger("orchestrator.workflow")
 
 PARK_MEASUREMENT_FAILED = "late_measurement_failed"
+
+# The steps a lost reading is retried quietly for, and the only two. Both name
+# the transport between this host and the base -- a remote that would not
+# answer for the branch, and a fetch that did not bring the object back -- and
+# a transport fault is the one thing in this vocabulary that clears itself
+# while nobody is watching. Every other member names something a second
+# reading cannot change: a candidate this host does not hold, a diff nothing
+# here can pin. Re-reading those buys the same answer, so they park on the
+# first miss and ask a human for the one thing that would change it.
+_TRANSPORT_STEPS = frozenset((
+    MeasurementFailure.BASE_UNREADABLE,
+    MeasurementFailure.BASE_ABSENT,
+))
 
 _UNMEASURED_PARK = (
     "{mentions} this issue's committed implementation could not be measured "
@@ -115,15 +140,203 @@ def _unmeasured(
     )
 
 
+def _lost_reading(
+    gate: _records._Gate, generation: LateGeneration, failure,
+) -> bool:
+    """Count one reading the transport lost, and end the tick either way.
+
+    The bounded road into the park above, taken by the two steps that reach a
+    base rather than read one. It is bounded rather than absent because those
+    steps clear themselves: a remote that would not answer and a fetch that
+    brought nothing back are a network, a token, or a host that was down, and
+    the next tick is very often the whole of the fix. Spending a human on the
+    first of them spends them on something nobody had to do.
+
+    So a miss inside the bound does exactly one thing -- it goes on the record
+    -- and deliberately does nothing else: no `awaiting_human`, no reason, and
+    no comment, which leaves the pinned pair exactly as a retry finds it and
+    lets the next tick re-enter that same pair on both roads with no agent
+    behind it. Past the bound the ordinary park takes it, because a base still
+    unreachable that many readings later is not one this process is going to
+    reach, and committed work is waiting behind a reading that will not
+    happen.
+
+    The count goes down BEFORE anything is reported or said, and that order is
+    the bound itself: every tick is a fresh process, so a miss lost to a crash
+    in that window is a miss nothing remembers -- and a retry that cannot
+    remember is not bounded at all. What is written always names a candidate,
+    since both callers reach here holding the pair they froze.
+
+    A park this owner already took OVER THIS PAIR ends the counting outright:
+    the bound is spent, the human it asked has been asked, and the reading is
+    retried each tick only so the transport coming back settles it without
+    one. There the tick is held nearly silently -- no second mention on a
+    thread whose first one nobody can answer any faster, and no reading
+    counted against a bound that is already gone. What clears it is a reading
+    that succeeds, or the human's own bare continue, which drops the reason
+    before the gate is entered and so buys exactly one more counted attempt.
+
+    A park standing over some OTHER pair is a spent one, and it is retired
+    here rather than obeyed. The commonest way to reach one is the opposite
+    reply to that continue: a human answers the park with guidance, the
+    developer is resumed, and what it commits is a fresh candidate this park
+    was never about. Read as this pair's, the miss over that new commit would
+    be dropped on the floor -- nothing persisted, nothing reported, and the
+    pinned record still naming work the branch has moved past for the next
+    tick to reconcile against.
+    """
+    if _stands_over(gate, generation):
+        return _still_lost(gate, generation, failure)
+    # Nobody is waiting on this pair, so no park may outlive the miss about to
+    # be counted: a reason standing with its latch already spent -- what a
+    # resume leaves -- still freezes the branch out of base sync and still
+    # tells every announce-once guard a human has been notified.
+    _retire_spent_park(gate.state)
+    missed = _one_more_miss(generation, failure)
+    _persisted(gate, missed)
+    if not _retries_quietly(missed, failure):
+        return _unmeasured(gate, missed, failure)
+    log.warning(
+        "issue=#%d could not reach the base its committed candidate %s is "
+        "measured against (%s); re-reading the same pair on the next tick "
+        "(%d of %d readings lost)",
+        gate.issue.number, missed.candidate_sha, failure,
+        missed.measurement_miss_count,
+        _state._MEASUREMENT_MISSES_BEFORE_PARK,
+    )
+    _emit(
+        gate, missed,
+        _events.LateEvent(
+            family=_events.LateEventFamily.FAILURE,
+            failure=LateFailure.MEASUREMENT_FAILED,
+        ),
+    )
+    return True
+
+
+def _stands_over(gate: _records._Gate, generation: LateGeneration) -> bool:
+    """Whether a human is still waiting on a notice about THIS pair.
+
+    Two things have to be true, and each rules out a different way of
+    suppressing a mention nobody has made. The park has to be one somebody is
+    still waiting on -- the LATCH, not the reason beside it, since a resume
+    consumes the latch and leaves the reason standing, and a human who
+    answered with guidance has spent the notice they were sent rather than
+    still being owed it. And the pair has to be the one the park was taken
+    over, read off the pinned record, since a candidate the branch has moved
+    past is work that park was never about. Either way the fresh start owes
+    its own bounded retry rather than inheriting one already spent.
+    """
+    if not gate.state.get(_state._AWAITING_HUMAN):
+        return False
+    if gate.state.get(_state._PARK_REASON) != PARK_MEASUREMENT_FAILED:
+        return False
+    recorded = _late_state.read_late_generation(gate.state)
+    return recorded.candidate_sha == generation.candidate_sha
+
+
+def _still_lost(
+    gate: _records._Gate, generation: LateGeneration, failure,
+) -> bool:
+    """Hold a tick that lost the same pair's reading again, telling no human.
+
+    Silent to the THREAD and to nothing else. The typed failure goes to both
+    sinks here as it does on every other reading that did not happen: the
+    published road deliberately re-reads this pair on every poll, so the
+    stream is the only place those readings exist at all, and a hold that
+    reported none of them would make a pair nobody can measure look
+    indistinguishable from one nobody is looking at. What is spared is the
+    human -- one mention, on the poll that spent the bound.
+
+    What the reading LEARNED is still written down, and one thing can be
+    learned past the park: the base's identity. A remote that would not answer
+    records no base at all, so the first pass that finally gets an id for one
+    is what gives every retry after it an exact object to ask for -- dropped
+    here, the next pass asks the remote again and freezes whatever the branch
+    has moved to since, which is a different pair under the same generation.
+
+    Nothing else is written and nothing is counted. The bound is spent, so a
+    count past it measures nothing, and a record that says what it already
+    said is a pinned write bought for no reader.
+    """
+    log.warning(
+        "issue=#%d still cannot reach the base its committed candidate %s is "
+        "measured against (%s); holding the tick without a second notice",
+        gate.issue.number, generation.candidate_sha, failure,
+    )
+    missed = replace(generation, measurement_failure=failure)
+    if _late_state.read_late_generation(gate.state).base_sha != (
+        generation.base_sha
+    ):
+        _persisted(gate, missed)
+    _emit(
+        gate, missed,
+        _events.LateEvent(
+            family=_events.LateEventFamily.FAILURE,
+            failure=LateFailure.MEASUREMENT_FAILED,
+        ),
+    )
+    return True
+
+
+def _one_more_miss(generation: LateGeneration, failure) -> LateGeneration:
+    """The record one lost reading leaves, where the bound counts it.
+
+    A step outside the bound is handed on untouched. The count is what says
+    how close this pair is to being handed to a human, so a failure nothing
+    retries may not spend one of the readings a transport fault is owed.
+    """
+    if failure not in _TRANSPORT_STEPS:
+        return generation
+    return replace(
+        generation,
+        measurement_miss_count=generation.measurement_miss_count + 1,
+        measurement_failure=failure,
+    )
+
+
+def _retries_quietly(missed: LateGeneration, failure) -> bool:
+    """Whether this miss is one the next tick takes again without a human."""
+    return (
+        failure in _TRANSPORT_STEPS
+        and missed.measurement_miss_count
+        <= _state._MEASUREMENT_MISSES_BEFORE_PARK
+    )
+
+
+def _reached(generation: LateGeneration) -> LateGeneration:
+    """The record a base this host really holds leaves: no miss outstanding.
+
+    A freeze that succeeded is what the count exists to be ended by, and the
+    end has to be recorded rather than assumed. Carried past it, readings lost
+    to a transport that has since recovered would be spent on the next fault
+    instead -- a pair that lost three of them and then measured would hand the
+    issue to a human on the first hiccup after that -- and the step recorded
+    beside the count would go on naming a failure this record no longer
+    describes.
+    """
+    return replace(
+        generation, measurement_miss_count=0, measurement_failure=None,
+    )
+
+
 def _retire_spent_park(state: PinnedState) -> None:
     """Drop a measurement park this attempt is the answer to, latch and all.
 
     The reason is durable and so is the flag beside it, so without this a park
     a fresh reading has superseded travels on -- into the stage the
     publication hands the issue to, where it is state describing a step
-    nothing is waiting on. Every exit below either publishes, hands the issue
-    on, or takes a park of its own with the reason it fails for NOW, so there
-    is nothing left for the old one to say.
+    nothing is waiting on.
+
+    Called by the two owners that ANSWER the question it was taken for -- the
+    verdict a count settles, and the verdict a commit this workflow already
+    decided about needs no count for -- rather than by the gate they sit
+    behind. Entering the gate is not an answer: the reading can miss again,
+    and a retirement taken on the way in is one a durable write in that window
+    makes permanent, leaving an unparked issue whose reading still has not
+    happened and whose next miss starts the bound over. Every other exit
+    either takes a park of its own with the reason it fails for NOW or leaves
+    this one standing because it is still true.
 
     The LATCH goes with the reason, and it is the half that decides whether
     the reading was worth taking. A reconciliation the dispatcher drives has
@@ -338,11 +551,41 @@ def _persisted(gate: _records._Gate, generation: LateGeneration) -> None:
     pays for. A record carrying a number has been answered -- the routed hold
     that carries it spent this on the way past -- and rewriting it there would
     leave a spent claim on the comment for a later reader to apply twice.
+
+    A measurement park the new record moves PAST goes out in this same write,
+    because the two are read as one afterwards: a later tick asks whether the
+    park standing is the one this pair was parked for, and answers by
+    comparing it against the recorded candidate. Left to the verdict alone,
+    the window between this write and that one is a crash away from a park
+    taken over one commit sitting beside a record naming another -- which the
+    next tick reads as that pair's own, holding every later reading of it
+    silently, counting none of them, and never reaching the notice a human is
+    owed. Bound here, the comment can never say two things at once.
     """
+    _unbound_park(gate.state, generation)
     _late_state.write_late_generation(gate.state, generation)
     if generation.additions is None:
         _late_state.write_late_spends(gate.state, gate.spends.fields)
     gate.gh.write_pinned_state(gate.issue, gate.state)
+
+
+def _unbound_park(state: PinnedState, generation: LateGeneration) -> None:
+    """Retire a measurement park the record being written moves past.
+
+    Only a park over some OTHER candidate: one taken over the pair still being
+    written is exactly the park that has to survive, since the reading it was
+    taken for still has not happened. A record that names no candidate at all
+    is no claim about which pair is parked, so it leaves the park alone.
+    """
+    if not generation.candidate_sha:
+        return
+    if state.get(_state._PARK_REASON) != PARK_MEASUREMENT_FAILED:
+        return
+    if _late_state.read_late_generation(state).candidate_sha == (
+        generation.candidate_sha
+    ):
+        return
+    _retire_spent_park(state)
 
 
 def _emit(

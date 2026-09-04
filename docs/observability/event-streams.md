@@ -609,7 +609,9 @@ request, and `validating` / `documenting` / `in_review` / `fixing` / `resolving_
 remote already carries, so a measurement is never filed under a stage no developer of it ran in. Beside them it
 writes a `late_failure` carrying `measurement_failed` for **every** reading it
 could not take: a base the remote would not name, a base or candidate object this host does not hold, a diff
-nothing could pin, and a recorded candidate a reaped worktree took with it. A candidate refused before either
+nothing could pin, and a recorded candidate a reaped worktree took with it. Every one of them is recorded whether
+or not a human is told about it — the two transport steps are retried quietly a bounded number of times before the
+issue is parked, and the stream is where those misses are visible at all. A candidate refused before either
 end of the diff was frozen has no generation of its own to be correlated by, so the identity is *minted* for the
 record — derived from what the pinned comment already says, so a reading that keeps failing reports the same
 attempt rather than a fresh cycle per tick — and deliberately not persisted, since a pinned cycle with no
