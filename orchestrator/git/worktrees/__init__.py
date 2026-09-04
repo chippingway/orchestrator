@@ -17,11 +17,12 @@ of those candidates may be reclaimed lives in ``eligibility``, over the
 fail-closed local reads in ``evidence`` and the issue, pinned-state, and
 pull-request reads in ``claims``; the teardown that spends one of its
 verdicts -- revalidating this issue's checkout at the boundary it is about to
-be removed at, and reporting what it left on that surface -- lives in
-``reclamation``. The ledger it writes its own notes to itself into -- the
-record carrying a remote deletion nothing local is left to lead a later pass
-back to, and the anchor holding what a checkout was standing on while it came
-down -- lives in ``obligations``. Every worktree name is defined on one of
+be removed at, under holds bound to the exact locks and registration it took,
+and reporting what it left on that surface -- lives in ``reclamation``. The
+ledger it writes its own notes to itself into -- the record carrying a remote
+deletion nothing local is left to lead a later pass back to, and the anchor
+holding what a checkout was standing on while it came down -- lives in
+``obligations``. Every worktree name is defined on one of
 these owners, and callers import the owner they need directly, so this
 initializer binds nothing and importing one owner never drags the others in.
 

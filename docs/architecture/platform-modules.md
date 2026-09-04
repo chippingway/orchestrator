@@ -385,10 +385,18 @@ orchestrator/
                         tree while they are this pass's, which is what makes the reading before the removal hold
                         -- and with the lock git takes for the branch that checkout's HEAD is on held too, a HEAD
                         being a symbolic ref and an `update-ref` on the branch under it moving what the tree
-                        stands on without going near either of the other two. Each carries the process that took
+                        stands on without going near either of the other two. WHICH branch that is gets read
+                        only once the first two locks are held: an issue publishes under a namespaced name and a
+                        legacy flat one, both of which read as its own, so a HEAD read in front of `HEAD.lock`
+                        could have moved between the two by the time the ref is frozen -- leaving this pass
+                        holding the ref the checkout moved off. Each lock carries the process that took
                         it, so a lock a killed pass left behind is one a later pass tells from one a running
                         command holds and takes again rather than refusing this issue for good; the
-                        registration's mode comes back writable whatever was found, for the same reason. Then
+                        registration's mode comes back writable whatever was found, for the same reason. Both
+                        the take-again and the give-back are bound to the exact file the line inside it names,
+                        never to the name alone -- two passes meeting one leftover would otherwise each delete
+                        what the other had just created and both go on -- and every lock is asked once more,
+                        immediately before the removal, whether it is still the one this pass took. Then
                         with that checkout's HEAD pinned to an anchor one process before it and read back one
                         process after: a commit made before the locks went on comes down with the checkout, and
                         the anchor is what keeps it nameable and has the surface report the removal as the
@@ -417,12 +425,19 @@ orchestrator/
                         actually deletes is not the path it is handed, though -- that path only selects a
                         registration, and the registration names the tree that comes down -- so that file is
                         opened without following, refused unless it is a regular one naming this checkout's own
-                        tree, and held by taking the write bits off the OBJECT rather than the name: a link left
-                        there would otherwise have every read and every mode change land on somebody else's file.
-                        Nothing locks it, and what the mode buys is that the `worktree repair` a swap needs to
-                        aim the removal elsewhere cannot open it; what the mode cannot buy is a rename through
-                        the directory above, so the name is read once more against the object held open before
-                        the command runs. And a removal that came back clean over a path still standing is
+                        tree, and then TAKEN OVER: a copy of this pass's own, carrying exactly what the original
+                        said, is written beside it and renamed into place, which leaves every descriptor
+                        somebody opened earlier pointing at an inode no name resolves to. That is the half a
+                        mode cannot buy, since write bits coming off say nothing to a handle that already
+                        exists; the no-follow open is what keeps a link left there from having every read and
+                        every mode change land on somebody else's file; and what the mode does buy is that the
+                        `worktree repair` a swap needs to aim the removal elsewhere cannot open the name afresh.
+                        Nothing locks any of it, so before the command runs the name is read once more against
+                        the object held open -- a rename through the directory above is not something a mode
+                        reaches -- and the object is read back against what it said when this pass established
+                        it named this checkout, since a rewrite in place changes where the destruction lands
+                        without changing what is filed at the name.
+                        And a removal that came back clean over a path still standing is
                         reported as the failure it is, since what came down was not what this named -- and a
                         command that refused over a path that is gone is this removal having happened without it,
                         reported as the absence it is rather than as a deletion this pass made. The note is
@@ -437,7 +452,12 @@ orchestrator/
                         agrees. What the tree carries is read twice for the same reason: git refuses a removal
                         over an untracked or modified path and takes an ignored one without a word, so a checkout
                         holding nothing but what its own rules cover passes every other reading and comes down
-                        with all of it inside. Ownership is re-derived rather than read off the verdict, so only
+                        with all of it inside. Every name here that an agent chooses what to put at -- the
+                        registration and each of the three locks -- is read the same way besides: without
+                        following, without waiting, and asked what the descriptor IS before it is asked what it
+                        says, to a bound. A fifo at one of them would otherwise block a pass that is holding the
+                        target-root lock and git's own, and a pass that blocks there never comes back to give
+                        any of them up. Ownership is re-derived rather than read off the verdict, so only
                         the one path this issue's creators derive can be touched. Already-absent is success, and
                         so is nothing to remove: a candidate the scan reported no checkout for names no surface
                         here at all

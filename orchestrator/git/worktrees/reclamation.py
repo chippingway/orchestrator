@@ -27,12 +27,39 @@ stopped pass left behind, so the pass after one reads it: pinning the commit
 that pass's own verdict cleared, it is spent and taken again, and pinning
 anything else it goes on refusing every removal for that issue.
 
+Which branch to freeze is decided under those locks rather than in front of
+them. An issue publishes under two names -- the slug-namespaced one and the
+legacy flat one -- and both read as its own, so a checkout switched from one
+to the other in the window before the locks would leave this pass holding the
+ref it moved OFF while the ref it moved ONTO went on moving. HEAD is read once
+`HEAD.lock` is this pass's, where it cannot change, and the third lock is
+taken on what that read named.
+
+Every hold here is bound to the object it was taken on rather than to the name
+it was taken at, because the names all sit in directories an agent can write.
+A lock is given back only while the name still resolves to the file this pass
+created; a lock a stopped pass left is taken away only while the name still
+resolves to that exact leftover, so two passes meeting one leftover cannot
+delete each other's live lock and both go on; and every lock is asked once
+more, immediately before the removal, whether it is still the one this pass
+took.
+
 What the removal is aimed by is not the path it is handed either. That path
 only selects a registration, and what comes down is the tree the registration
-names -- so that file is held for the length of a removal as well: opened
-without following, refused unless it is a regular file naming this checkout's
-own tree, and pinned by taking the write bits off the object rather than off
-the name.
+names -- so the registration is taken over rather than merely read: a file of
+this pass's own, carrying exactly what the original said, is renamed over the
+name and held open. A descriptor somebody opened before that lands on an inode
+nothing is filed at any more, which is the one thing a mode cannot do; the
+mode taken off what replaces it is what stops the `worktree repair` that would
+open the name afresh; and the contents are read back through the held
+descriptor before the removal, so a rewrite that got past both is refused
+rather than aimed by.
+
+Every name that is read here is read the same way, because two of them are
+names an agent chooses what to put at: opened without following, refused
+unless the descriptor is a regular file, and read to a bound. A fifo left at
+one of them would otherwise block a pass that is holding git's own locks, and
+a pass that blocks holding those never comes back to give them up.
 
 **Absent is success.** A checkout already gone is the ordinary shape of a
 second pass, and reporting it as a failure would keep an issue in a report
@@ -50,8 +77,9 @@ import logging
 import os
 import subprocess
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from stat import S_ISDIR, S_ISREG
+from stat import S_IMODE, S_ISDIR, S_ISREG
 from types import MappingProxyType
 
 from orchestrator import config
@@ -102,11 +130,33 @@ _REF_LOCK = ".lock"
 # holding right now from one a killed pass left behind.
 _LOCK_MARK = "orchestrator-reclaim"
 
+# How one is created: for this process alone, so the create IS the taking, and
+# with the mode git gives its own so an operator reading the directory finds
+# nothing unusual.
+_LOCK_CREATED = os.O_CREAT | os.O_EXCL | os.O_RDWR
+
+_LOCK_MODE = 0o666
+
+# How much of one is read back. A lock this host wrote is a mark and a process
+# id, so anything past this is not one -- and the read is bounded because the
+# file sits where an agent can write.
+_LOCK_LIMIT = 4096
+
 # The file in a checkout's administrative directory that says where that
-# checkout is, and the bits taken off it while one comes down. It is what
-# `worktree remove` reads to decide what to delete and what `worktree repair`
-# rewrites, and nothing locks it -- so the mode is the hold.
+# checkout is. It is what `worktree remove` reads to decide what to delete and
+# what `worktree repair` rewrites.
 _REGISTRATION = "gitdir"
+
+# What the copy this pass puts at that name is called while it is being
+# written, before the rename that files it there. Named for the process that
+# made it, so one left behind by a pass that stopped between the write and the
+# rename is nobody else's to trip over and no note any reader here looks for.
+_REPLACED_SUFFIX = ".orchestrator-reclaim."
+
+# How that copy is created: for this pass alone, and readable as well as
+# writable, since the contents are read back through this same descriptor
+# immediately before the removal.
+_REPLACING = os.O_CREAT | os.O_EXCL | os.O_RDWR
 
 _WRITABLE = 0o222
 
@@ -115,15 +165,61 @@ _WRITABLE = 0o222
 # that did not come back to release it.
 _OWNER_WRITE = 0o200
 
-# How that file is opened: read-only and refusing to follow, so a link left
-# at the name fails the open outright rather than handing this pass somebody
-# else's file to read, to hold, and to change the mode of.
-_UNFOLLOWED = os.O_RDONLY | os.O_NOFOLLOW
+# How every name an agent can choose what to put at is opened: read-only,
+# refusing to follow, and refusing to wait. A link at the name fails the open
+# outright rather than handing this pass somebody else's file, and a fifo
+# answers immediately rather than blocking a pass that is holding git's locks.
+_UNFOLLOWED = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
 
-# How much of it is read. A registration is one path and a newline, so
-# anything past this is not one -- and the read is bounded because the file is
-# one an agent can write.
+# How much of a registration is read. One is a path and a newline, so anything
+# past this is not one -- and the read is bounded because the file is one an
+# agent can write.
 _REGISTRATION_LIMIT = 4096
+
+
+@dataclass(frozen=True)
+class _HeldLock:
+    """One lock file this pass created, and the line the create wrote in it.
+
+    The line rather than the name alone, because everything done to a lock
+    afterwards -- giving it back, and asking whether it is still ours -- has
+    to be about the file this pass took and not about whatever is at that name
+    by then.
+
+    The line rather than the object, too. A lock lives for the length of a
+    removal and this pass does not hold it open, so a name unlinked and
+    created again may come back carrying the very inode the first one had --
+    and a comparison of device and inode would call that the same file. What
+    this host writes into every lock it takes names the process that took it,
+    which no other pass can be carrying at the same moment.
+    """
+
+    named: Path
+    taken: str
+
+
+@dataclass(frozen=True)
+class _Registration:
+    """The file one removal is aimed by, as this pass took it over.
+
+    `says` is what it names, which is the whole of what decides where the
+    destruction lands, so it is carried rather than re-derived: what the
+    reading before the removal compares against is the exact text this pass
+    established was this checkout's own.
+    """
+
+    named: Path
+    pinned: int
+    was: int
+    says: str
+
+
+@dataclass(frozen=True)
+class _Holds:
+    """Everything one removal runs under, in the shape it is checked in."""
+
+    locks: tuple[_HeldLock, ...]
+    registration: _Registration
 
 
 def _branch_ref(branch: str) -> str:
@@ -303,12 +399,10 @@ def _anchored_removal(
     if gitdir is None:
         return SurfaceOutcome.FAILED
     with contextlib.ExitStack() as holding:
-        pinned = _everything_held(artifacts, worktree, gitdir, holding)
-        if pinned is None:
+        held = _everything_held(artifacts, worktree, gitdir, holding)
+        if held is None:
             return SurfaceOutcome.FAILED
-        return _removal_while_held(
-            artifacts, worktree, proven_sha, gitdir, pinned,
-        )
+        return _removal_while_held(artifacts, worktree, proven_sha, held)
 
 
 def _everything_held(
@@ -316,15 +410,15 @@ def _everything_held(
     worktree: Path,
     gitdir: Path,
     holding: contextlib.ExitStack,
-) -> int | None:
+) -> _Holds | None:
     """Take every hold one removal runs under, or come back with none.
 
     Git's own locks for the tree and the branch under its HEAD, and then the
     registration the removal will be aimed by. Each is given back through the
     stack the caller opened, so a hold taken is a hold released however this
-    ends -- and the one thing handed back is the descriptor the last of them
-    is pinned by, since the readings before the removal have to be able to ask
-    whether the name still means it.
+    ends -- and what is handed back is each of them as the object it was taken
+    on, since the readings before the removal have to be able to ask whether
+    the names still mean them.
     """
     held = _held_still(artifacts, worktree, gitdir)
     if not held:
@@ -333,14 +427,13 @@ def _everything_held(
     registration = _registration_held(artifacts, gitdir, worktree)
     if registration is None:
         return None
-    pinned, was = registration
-    holding.callback(_thawed, pinned, was)
-    return pinned
+    holding.callback(_thawed, registration)
+    return _Holds(held, registration)
 
 
 def _registration_held(
     artifacts: IssueArtifacts, gitdir: Path, worktree: Path,
-) -> tuple[int, int] | None:
+) -> _Registration | None:
     """Take hold of the file this removal will be aimed by, or refuse.
 
     What `worktree remove` deletes is not the path it is handed. That path
@@ -349,72 +442,165 @@ def _registration_held(
     lands is a file in the administrative directory, and `worktree repair` is
     a single command that rewrites it.
 
-    Opened without following, which is the first of the two things this is
-    for. A link left at that name would have every reading here answer about
-    somebody else's file and every write land on it, so a link is not read
-    around -- it is refused, and the removal with it.
-
-    Held by a descriptor rather than by a name, which is the second. What the
-    write bits come off is the object opened here and never whatever the name
-    means by then, and what they go back onto is that same object however the
-    name has been rearranged since.
+    Read first, and then taken over. Reading alone would leave the pass
+    holding a descriptor onto a file anybody who already opened it can rewrite
+    at any moment -- the mode says nothing to a descriptor that exists -- so
+    what ends up filed at the name is a file of this pass's own carrying
+    exactly what the original said, and every writer who came before is left
+    holding an inode nothing is filed at.
 
     `None` for anything that is not this checkout's own registration, and for
     every reading that could not be taken: a removal aimed by a file this pass
     cannot account for is aimed at nothing in particular.
     """
-    registration = gitdir / _REGISTRATION
+    named = gitdir / _REGISTRATION
+    read = _registration_named(artifacts, named, worktree)
+    if read is None:
+        return None
+    was, says = read
+    return _registration_replaced(artifacts, named, was, says)
+
+
+def _registration_named(
+    artifacts: IssueArtifacts, named: Path, worktree: Path,
+) -> tuple[int, str] | None:
+    """What is filed at that name, and whether it aims at this checkout.
+
+    Opened without following, which is the first of the two things this is
+    for. A link left at that name would have every reading here answer about
+    somebody else's file and every write land on it, so a link is not read
+    around -- it is refused, and the removal with it.
+
+    Refusing to wait is the second. A fifo at the name is something an agent
+    can leave there, and a read of one blocks until somebody writes -- with
+    this pass holding git's own locks for the checkout and the target root
+    while it waits. So the open does not block, the descriptor is asked what
+    it is before it is asked what it says, and anything that is not a regular
+    file is refused rather than read.
+
+    A registration names this checkout's own `.git`, which is what says the
+    removal about to run is aimed here rather than at a tree somebody repaired
+    it onto. Compared as filesystem objects for the reason every path
+    comparison here is: the spellings differ honestly under a worktrees root
+    that sits below a link of its own.
+    """
     try:
-        opened = os.open(registration, _UNFOLLOWED)
+        opened = os.open(named, _UNFOLLOWED)
     except OSError as refused:
         log.warning(
             "issue=#%d keeping the checkout: %s would not open as a file of "
-            "its own (%s)", artifacts.issue_number, registration, refused,
+            "its own (%s)", artifacts.issue_number, named, refused,
         )
         return None
-    was = _registration_pinned(artifacts, opened, worktree)
-    if was is None:
-        os.close(opened)
-        return None
-    return opened, was
-
-
-def _registration_pinned(
-    artifacts: IssueArtifacts, pinned: int, worktree: Path,
-) -> int | None:
-    """Whether what was opened aims at this checkout, and its mode if it does.
-
-    A regular file -- a fifo or a directory at that name is not a registration
-    and not something to take the write bits off -- naming this checkout's own
-    `.git`, which is what says the removal about to run is aimed here rather
-    than at a tree somebody repaired it onto. Compared as filesystem objects
-    for the reason every path comparison here is: the spellings differ
-    honestly under a worktrees root that sits below a link of its own.
-
-    Then the write bits come off, which is what a `repair` fails on: it
-    rewrites this file in place, and a file it cannot open for writing leaves
-    the registration naming what it named.
-    """
     try:
-        held, named = _registration_read(pinned)
+        told = _registration_told(opened)
     except (OSError, ValueError) as unread:
         log.warning(
             "issue=#%d keeping the checkout %s: its registration could not be "
             "read (%s)", artifacts.issue_number, worktree, unread,
         )
         return None
-    if not S_ISREG(held.st_mode) or not _aims_here(worktree, named):
+    finally:
+        os.close(opened)
+    if told is not None and _aims_here(worktree, told[1]):
+        return told
+    log.warning(
+        "issue=#%d keeping the checkout %s: what is registered for it is not "
+        "a file naming this tree", artifacts.issue_number, worktree,
+    )
+    return None
+
+
+def _registration_told(opened: int) -> tuple[int, str] | None:
+    """The mode and the contents of a descriptor, if it is a regular file.
+
+    The type is asked of the descriptor before anything is read from it,
+    because what the name is opened without waiting for is the read: a fifo
+    answers the open at once and then blocks whoever reads it.
+    """
+    held = os.fstat(opened)
+    if not S_ISREG(held.st_mode):
+        return None
+    return S_IMODE(held.st_mode), _registration_read(opened)
+
+
+def _registration_read(pinned: int) -> str:
+    """What the registration this pass holds says, from its first byte.
+
+    Read at an offset rather than at wherever the descriptor happens to be,
+    so the reading before the removal is the same reading as the one that
+    established what the file said in the first place.
+    """
+    return os.pread(pinned, _REGISTRATION_LIMIT, 0).decode()
+
+
+def _registration_replaced(
+    artifacts: IssueArtifacts, named: Path, was: int, says: str,
+) -> _Registration | None:
+    """Put a file of this pass's own at that name, and hold that one.
+
+    The rename is what makes the hold real. Taking the write bits off what was
+    already there stops a command that opens the name afresh -- `worktree
+    repair` is one, and it is the one that would aim the removal elsewhere --
+    and says nothing at all to a descriptor somebody opened earlier and kept.
+    A file created here, written with exactly what the original said, and
+    renamed over the name leaves every one of those descriptors pointing at an
+    inode no name resolves to any more.
+
+    Held by a descriptor rather than by a name from then on. What the write
+    bits come off is the object created here and never whatever the name means
+    by then, and what they go back onto is that same object however the name
+    has been rearranged since.
+
+    A pass that stops between the write and the rename leaves its copy under a
+    name of its own beside the registration. Nothing reads that name, and the
+    next pass writes another rather than trusting one it finds.
+    """
+    fresh = named.with_name(f"{named.name}{_REPLACED_SUFFIX}{os.getpid()}")
+    try:
+        pinned = os.open(fresh, _REPLACING, was)
+    except OSError as refused:
         log.warning(
-            "issue=#%d keeping the checkout %s: what is registered for it "
-            "names %r", artifacts.issue_number, worktree, named.strip(),
+            "issue=#%d keeping the checkout: its registration could not be "
+            "taken over (%s)", artifacts.issue_number, refused,
         )
         return None
-    return _mode_taken_off(artifacts, pinned, held.st_mode)
+    if not _registration_filed(artifacts, fresh, named, pinned, says):
+        os.close(pinned)
+        return None
+    if _mode_taken_off(artifacts, pinned, was) is None:
+        os.close(pinned)
+        return None
+    return _Registration(named, pinned, was, says)
 
 
-def _registration_read(pinned: int) -> tuple[os.stat_result, str]:
-    """What was opened, and what it says, in one reading of the descriptor."""
-    return os.fstat(pinned), os.read(pinned, _REGISTRATION_LIMIT).decode()
+def _registration_filed(
+    artifacts: IssueArtifacts,
+    fresh: Path,
+    named: Path,
+    pinned: int,
+    says: str,
+) -> bool:
+    """Write this pass's copy and rename it over the registration."""
+    try:
+        _registration_written(fresh, named, pinned, says)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: its registration could not be "
+            "written back (%s)", artifacts.issue_number, refused,
+        )
+        with contextlib.suppress(OSError):
+            fresh.unlink()
+        return False
+    return True
+
+
+def _registration_written(
+    fresh: Path, named: Path, pinned: int, says: str,
+) -> None:
+    """Write this pass's copy out and file it at the registration's name."""
+    os.write(pinned, says.encode())
+    os.replace(fresh, named)
 
 
 def _aims_here(worktree: Path, named: str) -> bool:
@@ -438,7 +624,7 @@ def _mode_taken_off(
     return was
 
 
-def _thawed(pinned: int, was: int) -> None:
+def _thawed(registration: _Registration) -> None:
     """Give the registration the mode it had back, and let the handle go.
 
     On the object rather than on the name, so a removal that took the whole
@@ -454,11 +640,11 @@ def _thawed(pinned: int, was: int) -> None:
     without that bit is this host's own leftover rather than anybody's choice.
     """
     try:
-        os.fchmod(pinned, was | _OWNER_WRITE)
+        os.fchmod(registration.pinned, registration.was | _OWNER_WRITE)
     except OSError as refused:
         log.warning("a registration's mode could not go back: %s", refused)
     finally:
-        os.close(pinned)
+        os.close(registration.pinned)
 
 
 def _checkout_gitdir(
@@ -487,30 +673,93 @@ def _checkout_gitdir(
 
 def _held_still(
     artifacts: IssueArtifacts, worktree: Path, gitdir: Path,
-) -> tuple[Path, ...]:
+) -> tuple[_HeldLock, ...]:
     """Take git's own locks for one checkout, or come back with none.
 
-    Created exclusively, so a lock somebody else is already holding is one
-    this refuses rather than steals: a git command running in that tree at
-    this moment is exactly the thing the locks are meant to exclude, and
-    taking it from under them would corrupt what it is doing.
+    The checkout's own two first, and the branch its HEAD is on decided only
+    once they are this pass's. A HEAD is read to know which ref to freeze, and
+    a HEAD read before `HEAD.lock` exists is one that can change afterwards --
+    an issue publishes under two names and both read as its own, so a checkout
+    switched between them in that window would leave this pass freezing the
+    ref it moved off while the ref it moved onto stayed free to move.
 
     Only what was actually taken is reported, so what is given back afterwards
     is only ever this process's own.
     """
-    locked = _checkout_locks(artifacts, worktree, gitdir)
-    if locked is None:
+    taken = _all_taken(artifacts, _own_locks(gitdir))
+    if taken is None:
         return ()
-    taken: list[Path] = []
-    for lock in locked:
-        if not _taken_once(artifacts, lock):
+    under = _branch_lock(artifacts, worktree)
+    if under is None:
+        _let_go(taken)
+        return ()
+    beneath = _all_taken(artifacts, under)
+    if beneath is None:
+        _let_go(taken)
+        return ()
+    return taken + beneath
+
+
+def _all_taken(
+    artifacts: IssueArtifacts, wanted: tuple[Path, ...],
+) -> tuple[_HeldLock, ...] | None:
+    """Take every one of these locks, or give back the ones that were taken."""
+    taken: list[_HeldLock] = []
+    for lock in wanted:
+        held = _taken_once(artifacts, lock)
+        if held is None:
             _let_go(tuple(taken))
-            return ()
-        taken.append(lock)
+            return None
+        taken.append(held)
     return tuple(taken)
 
 
-def _taken_once(artifacts: IssueArtifacts, lock: Path) -> bool:
+def _own_locks(gitdir: Path) -> tuple[Path, ...]:
+    """The two lock files a checkout keeps in its own git directory."""
+    return tuple(gitdir / lock_name for lock_name in _CHECKOUT_LOCKS)
+
+
+def _branch_lock(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> tuple[Path, ...] | None:
+    """The lock git takes for the branch this checkout's HEAD is on.
+
+    What the checkout's own two do not cover: they are files in the tree's own
+    git directory and they stop the commands that move a HEAD, while the
+    branch under that HEAD lives in the store the whole clone shares and an
+    `update-ref` on it is answerable to neither.
+
+    The branch is named from the tree rather than from the candidate, because
+    what has to be frozen is what this HEAD resolves through -- and the store
+    is the clone's common directory, since a linked worktree keeps only
+    `HEAD`, `refs/bisect/`, and `refs/worktree/` of its own.
+
+    A HEAD on no branch needs no third lock and gets none. What it holds is
+    the commit itself rather than a name resolving to one, and the two already
+    held are exactly what a `checkout`, a `reset`, or an `update-ref HEAD` has
+    to take to move it -- so there is nothing under it left to freeze.
+
+    `None` when a HEAD that IS on something could not be read, or when the
+    store it lives in could not be named. Either way the removal stops: a pass
+    that cannot say what the tree is standing on cannot hold it still, and a
+    removal held still in part is one whose anchor promises more than it can
+    keep.
+    """
+    on_branch, branch = evidence._head_ref(worktree)
+    if on_branch is ProbeAnswer.REFUTED:
+        return ()
+    common = evidence._common_git_dir(artifacts.spec.target_root)
+    if on_branch is ProbeAnswer.UNREADABLE or common is None:
+        log.warning(
+            "issue=#%d keeping the checkout %s: the ref it is standing on "
+            "could not be named, so it cannot be held still",
+            artifacts.issue_number, worktree,
+        )
+        return None
+    return (common / f"{_branch_ref(branch)}{_REF_LOCK}",)
+
+
+def _taken_once(artifacts: IssueArtifacts, lock: Path) -> _HeldLock | None:
     """Take one lock for this process, or say why it stays somebody else's.
 
     A lock already there is refused rather than stolen: a git command running
@@ -523,24 +772,32 @@ def _taken_once(artifacts: IssueArtifacts, lock: Path) -> bool:
     command still running and refuse the cleanup for good. What this host
     wrote is written inside the lock, so its own leftover is a thing it can
     recognise; anything it cannot is left alone.
+
+    Taking one away is bound to the exact leftover that was read, never to the
+    name it was read at: two passes meeting one leftover at the same moment
+    would otherwise each delete what the other had just created and both go
+    on, which is the one outcome a lock exists to prevent.
     """
-    if _lock_created(lock):
-        return True
-    if not _left_behind(lock):
+    created = _lock_created(lock)
+    if created is not None:
+        return created
+    was = _left_behind(lock)
+    if was is None:
         log.warning(
             "issue=#%d keeping the checkout: %s is already held",
             artifacts.issue_number, lock,
         )
-        return False
+        return None
     log.warning(
         "issue=#%d %s was left behind by a pass that did not come back, and "
         "is taken again", artifacts.issue_number, lock,
     )
-    _let_go((lock,))
+    if not _stale_let_go(lock, was):
+        return None
     return _lock_created(lock)
 
 
-def _lock_created(lock: Path) -> bool:
+def _lock_created(lock: Path) -> _HeldLock | None:
     """Create one lock file for this process alone, marked as this host's.
 
     The mark is what a later pass reads to tell this host's own leftover from
@@ -554,43 +811,91 @@ def _lock_created(lock: Path) -> bool:
     the same lock, and an empty one it finds instead is one it prunes. A room
     that could not be made is not answered here -- the creation that follows
     fails on its own and says so.
+
+    What comes back is the object the create made, so a lock this pass took is
+    one it can recognise again whatever has since been done to the name.
     """
     with contextlib.suppress(OSError):
         lock.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with lock.open("x", encoding="utf-8") as taking:
-            taking.write(f"{_LOCK_MARK} {os.getpid()}\n")
+        taking = os.open(lock, _LOCK_CREATED, _LOCK_MODE)
     except OSError:
-        return False
-    return True
+        return None
+    marked = f"{_LOCK_MARK} {os.getpid()}\n"
+    try:
+        os.write(taking, marked.encode())
+    except OSError as refused:
+        log.warning("the lock %s could not be marked: %s", lock, refused)
+        return None
+    finally:
+        os.close(taking)
+    return _HeldLock(lock, marked)
 
 
-def _left_behind(lock: Path) -> bool:
-    """Whether a lock already there is this host's, from a pass that stopped.
+def _left_behind(lock: Path) -> str | None:
+    """What a lock a stopped pass of this host's left there says, if it is one.
 
     Two things have to hold, and neither is enough on its own. The mark says
     the file is one this orchestrator wrote rather than one git is holding,
     and the process it names has to be gone -- a sibling pass on the same
     clone being exactly what a lock is for.
 
-    Everything else is left alone: a file this cannot read, a mark it does not
-    know, a process still running, and one this host may not signal, which is
-    somebody else's however it came by that number.
+    Everything else is left alone: a file this cannot read, one that is not a
+    regular file at all, a mark it does not know, a process still running, and
+    one this host may not signal, which is somebody else's however it came by
+    that number.
+
+    The line is what comes back rather than a yes, because the deletion this
+    answer allows has to be about that exact leftover and not about the name.
     """
-    named = _lock_holder(lock)
-    return named is not None and not _process_alive(named)
+    written = _lock_says(lock)
+    if written is None:
+        return None
+    named = _lock_names(written)
+    if named is None or _process_alive(named):
+        return None
+    return written
 
 
-def _lock_holder(lock: Path) -> int | None:
-    """The process one of this host's own locks names, if it is one of them."""
+def _lock_says(lock: Path) -> str | None:
+    """What one lock file says, or nothing when it will not answer as one.
+
+    Opened the way every agent-writable name here is opened: without
+    following, without waiting, and asked what it is before it is asked what
+    it says. A fifo at a lock's name would otherwise block a pass that is
+    already holding git's locks for this checkout, and a pass that blocks
+    there never comes back to give them up.
+    """
     try:
-        written = lock.read_text(encoding="utf-8")
+        opened = os.open(lock, _UNFOLLOWED)
+    except OSError:
+        return None
+    try:
+        return _lock_told(opened)
     except (OSError, ValueError):
         return None
+    finally:
+        os.close(opened)
+
+
+def _lock_told(opened: int) -> str | None:
+    """What a descriptor says, if what it is open on is a regular file."""
+    if not S_ISREG(os.fstat(opened).st_mode):
+        return None
+    return os.read(opened, _LOCK_LIMIT).decode()
+
+
+def _lock_names(written: str) -> int | None:
+    """The process one of this host's own locks names, if it is one of them."""
     marked, _sep, named = written.partition(" ")
     if marked != _LOCK_MARK or not named.strip().isdigit():
         return None
     return int(named) or None
+
+
+def _lock_still(lock: Path, taken: str) -> bool:
+    """Whether the file at this name is still the one that said this."""
+    return _lock_says(lock) == taken
 
 
 def _process_alive(named: int) -> bool:
@@ -604,71 +909,76 @@ def _process_alive(named: int) -> bool:
     return True
 
 
-def _checkout_locks(
-    artifacts: IssueArtifacts, worktree: Path, gitdir: Path,
-) -> tuple[Path, ...] | None:
-    """Every lock file that has to be this process's for one removal.
+def _stale_let_go(lock: Path, was: str) -> bool:
+    """Take away the exact leftover that was read, and nothing else.
 
-    The checkout's own two, and the one git takes for the branch its HEAD is
-    on. That third one is what the first two do not cover: they are files in
-    the tree's own git directory and they stop the commands that move a HEAD,
-    while the branch under that HEAD lives in the store the whole clone
-    shares and an `update-ref` on it is answerable to neither.
-
-    The branch is named from the tree rather than from the candidate, because
-    what has to be frozen is what this HEAD resolves through -- and the store
-    is the clone's common directory, since a linked worktree keeps only
-    `HEAD`, `refs/bisect/`, and `refs/worktree/` of its own.
-
-    A HEAD on no branch needs no third lock and gets none. What it holds is
-    the commit itself rather than a name resolving to one, and the two above
-    are exactly what a `checkout`, a `reset`, or an `update-ref HEAD` has to
-    take to move it -- so there is nothing under it left to freeze.
-
-    `None` when a HEAD that IS on something could not be read, or when the
-    store it lives in could not be named. Either way the removal stops: a pass
-    that cannot say what the tree is standing on cannot hold it still, and a
-    removal held still in part is one whose anchor promises more than it can
-    keep.
+    The name is read once more and compared against the line the staleness was
+    established on, because between the two another pass may have taken the
+    same leftover away and created a live lock of its own at that name.
+    Deleting by name alone is how both of them end up holding a lock neither
+    of them has.
     """
-    checkout_locks = tuple(
-        gitdir / lock_name for lock_name in _CHECKOUT_LOCKS
-    )
-    on_branch, branch = evidence._head_ref(worktree)
-    if on_branch is ProbeAnswer.REFUTED:
-        return checkout_locks
-    common = evidence._common_git_dir(artifacts.spec.target_root)
-    if on_branch is ProbeAnswer.UNREADABLE or common is None:
+    if not _lock_still(lock, was):
         log.warning(
-            "issue=#%d keeping the checkout %s: the ref it is standing on "
-            "could not be named, so it cannot be held still",
-            artifacts.issue_number, worktree,
+            "%s is no longer the lock that was left behind, so it stays", lock,
         )
-        return None
-    return (*checkout_locks, common / f"{_branch_ref(branch)}{_REF_LOCK}")
+        return False
+    try:
+        lock.unlink()
+    except OSError as refused:
+        log.warning("the lock %s could not be taken again: %s", lock, refused)
+        return False
+    return True
 
 
-def _let_go(held: tuple[Path, ...]) -> None:
-    """Give back the locks this took, whichever of them are still there.
+def _let_go(held: tuple[_HeldLock, ...]) -> None:
+    """Give back the locks this took, whichever of them are still ours.
+
+    Compared before it is deleted, for the same reason it was taken on an
+    object rather than on a name: a lock removed from under this pass and
+    recreated by another is one this must not take away on its way out.
 
     A removal that succeeded took the git directory and both locks with it,
     which is the ordinary way they go.
     """
     for lock in held:
+        if not _lock_still(lock.named, lock.taken):
+            continue
         try:
-            lock.unlink(missing_ok=True)
+            lock.named.unlink(missing_ok=True)
         except OSError as refused:
             log.warning(
-                "the lock %s could not be given back: %s", lock, refused,
+                "the lock %s could not be given back: %s",
+                lock.named, refused,
             )
+
+
+def _locks_unchanged(
+    artifacts: IssueArtifacts, held: tuple[_HeldLock, ...],
+) -> bool:
+    """Whether every lock this pass took is still the one it took.
+
+    Asked immediately before the removal, because a lock file is a name in a
+    directory an agent can write and nothing about creating one stops somebody
+    removing it afterwards. A name that no longer resolves to the object this
+    pass created is a checkout something else is free to be committing in, and
+    the whole of what the removal is measured against rests on it.
+    """
+    for lock in held:
+        if not _lock_still(lock.named, lock.taken):
+            log.warning(
+                "issue=#%d keeping the checkout: %s is no longer the lock "
+                "this pass took", artifacts.issue_number, lock.named,
+            )
+            return False
+    return True
 
 
 def _removal_while_held(
     artifacts: IssueArtifacts,
     worktree: Path,
     proven_sha: str | None,
-    gitdir: Path,
-    pinned: int,
+    held: _Holds,
 ) -> SurfaceOutcome:
     """Pin what the checkout holds, take it down, and say what came with it.
 
@@ -687,7 +997,7 @@ def _removal_while_held(
     spec = artifacts.spec
     if not _anchor_taken(artifacts, worktree, proven_sha):
         return SurfaceOutcome.FAILED
-    if not _ready_to_go(artifacts, worktree, proven_sha, gitdir, pinned):
+    if not _ready_to_go(artifacts, worktree, proven_sha, held):
         return _anchor_settled(
             artifacts, proven_sha, taken=SurfaceOutcome.FAILED,
         )
@@ -704,8 +1014,7 @@ def _ready_to_go(
     artifacts: IssueArtifacts,
     worktree: Path,
     proven_sha: str | None,
-    gitdir: Path,
-    pinned: int,
+    held: _Holds,
 ) -> bool:
     """Everything this removal turns on, asked again with the locks held.
 
@@ -720,41 +1029,68 @@ def _ready_to_go(
     What is asked is what the verdict was taken on: the path is this issue's
     own, the tree is a worktree of the configured clone standing on one of
     this issue's branches, its HEAD is on the commit that was cleared, and it
-    is carrying and hiding nothing. Then the path is asked where it leads, and
-    the registration is asked whether it is still the one this pass is holding
-    -- neither of which is about the tree, and both of which decide what a
-    command that resolves its own argument would take.
+    is carrying and hiding nothing. Then the holds themselves are asked
+    whether they are still holding -- the locks, and the registration this
+    removal is aimed by -- neither of which is about the tree, and both of
+    which decide what a command that resolves its own argument would take.
     """
     if not _still_ours(artifacts, worktree):
         return False
     if not _still_cleared(artifacts, worktree, proven_sha):
         return False
-    return _registration_unchanged(artifacts, gitdir, pinned)
+    if not _locks_unchanged(artifacts, held.locks):
+        return False
+    return _registration_unchanged(artifacts, held.registration)
 
 
 def _registration_unchanged(
-    artifacts: IssueArtifacts, gitdir: Path, pinned: int,
+    artifacts: IssueArtifacts, registration: _Registration,
 ) -> bool:
-    """Whether the name the removal is aimed by still means what this holds.
+    """Whether the file the removal is aimed by still says what it said.
 
-    Taking the write bits off stops the command that rewrites that file in
-    place. It stops nothing from replacing the NAME with a rename, which the
-    directory above it permits and which leaves this pass holding an object
-    the removal will never read.
+    Two questions, because two different things can happen to it. The name can
+    be pointed at another file, which a rename through the writable directory
+    above does and which leaves this pass holding an object the removal will
+    never read; and the file itself can be rewritten, which anybody who put
+    the write bits back can do and which changes where the destruction lands
+    without changing what is filed at the name.
 
-    So the name is read once more and compared against what is held open: a
-    file swapped underneath answers a different object, and the removal that
-    would have been aimed by it does not run.
+    So the name is read once more and compared against what is held open, and
+    then the held object is read back and compared against what it said when
+    this pass established it was this checkout's own. Either one differing and
+    the removal does not run.
     """
-    registration = gitdir / _REGISTRATION
     try:
-        return _same_object(registration.lstat(), os.fstat(pinned))
-    except OSError as read_error:
+        filed, says = _registration_now(registration)
+    except (OSError, ValueError) as read_error:
         log.warning(
             "issue=#%d keeping the checkout: %s could not be read back (%s)",
-            artifacts.issue_number, registration, read_error,
+            artifacts.issue_number, registration.named, read_error,
         )
         return False
+    if not filed:
+        log.warning(
+            "issue=#%d keeping the checkout: %s is no longer the file this "
+            "pass is holding", artifacts.issue_number, registration.named,
+        )
+        return False
+    if says == registration.says:
+        return True
+    log.warning(
+        "issue=#%d keeping the checkout: its registration now names %r",
+        artifacts.issue_number, says.strip(),
+    )
+    return False
+
+
+def _registration_now(registration: _Registration) -> tuple[bool, str]:
+    """Whether the name still holds what is pinned, and what it says now."""
+    return (
+        _same_object(
+            registration.named.lstat(), os.fstat(registration.pinned),
+        ),
+        _registration_read(registration.pinned),
+    )
 
 
 def _still_ours(artifacts: IssueArtifacts, worktree: Path) -> bool:

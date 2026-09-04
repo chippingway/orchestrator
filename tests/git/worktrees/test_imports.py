@@ -160,21 +160,29 @@ _OWNER_ONLY_NAMES = (
 # boundary around it, the presence read that tells a path that is gone from
 # one nobody could answer for, the whole verdict's worth of readings retaken
 # one process before the removal -- the derived path, the identity, the tip,
-# and the two tree reads that tell what is carried from what is hidden -- the
-# git directory those readings are held in, the locks that keep a checkout
-# still while it comes down -- its own two and the one git takes for the
-# branch under its HEAD, spelled in full -- the exclusive creation each is
-# taken by, marked with the process that took it so a lock a killed pass left
-# behind is one a later pass tells from one a running command holds, read back
-# and asked whether that process is still here, and given back; the
-# registration the removal is aimed by: opened without following, read for
-# what it says, told whether it says this checkout, held by the mode taken off
-# the object rather than the name, put back the same way, and asked once more
-# whether the name still means it; the comparison telling a path that IS a
-# tree from one that merely leads to it and the object identity under it, the
-# last word on whether the path named is gone and which of the two ways it got
-# that way, and the take, the discard, and the reconciliation of the anchor a
-# removal pins what it is about to take under.
+# and the two tree reads that tell what is carried from what is hidden -- and
+# the shape everything the removal runs under is carried in. Then the git
+# directory those holds are taken in, the checkout's own two locks and the one
+# git takes for the branch under its HEAD -- named in full, and chosen only
+# once the first two are held, since a HEAD read before its lock is one that
+# can move -- the exclusive creation each is taken by, marked with the process
+# that took it so a lock a killed pass left behind is one a later pass tells
+# from one a running command holds, the bounded no-follow read that says what
+# one carries and the parse of the process it names, the reading that asks
+# whether a name still carries what this pass wrote, and the take-again, the
+# give-back, and the check before the removal that each of them is bound to;
+# the registration the removal is aimed by: opened without following or
+# waiting, told whether the descriptor is a regular file at all, read for what
+# it says from its first byte, told whether it says this checkout, taken over
+# by a copy of this pass's own written under a name of its own and renamed
+# into place, held by the mode taken off the object rather than the name, put
+# back the same way, and asked once more -- both what the name resolves to and
+# what the object says -- whether it still means what it meant; the comparison
+# telling a path that IS a tree from one that merely leads to it and the
+# object identity under it, the last word on whether the path named is gone
+# and which of the two ways it got that way, and the take, the discard, and
+# the reconciliation of the anchor a removal pins what it is about to take
+# under.
 # Naming the
 # whole surface makes a helper added to an owner an edit here rather than a
 # definition site nothing checks.
@@ -209,12 +217,17 @@ _OWNER_DEFINED = (
     ("_HEAD", evidence),
     ("_HEAD", obligations),
     ("_HIDDEN_REASONS", eligibility),
+    ("_HeldLock", reclamation),
+    ("_Holds", reclamation),
     ("_IDENTITY_REASONS", eligibility),
     ("_ISSUE_SEGMENT", obligations),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
+    ("_LOCK_CREATED", reclamation),
+    ("_LOCK_LIMIT", reclamation),
     ("_LOCK_MARK", reclamation),
+    ("_LOCK_MODE", reclamation),
     ("_NO_DEREF", obligations),
     ("_NO_LAZY_FETCH", obligations),
     ("_NO_NOTE", obligations),
@@ -231,6 +244,9 @@ _OWNER_DEFINED = (
     ("_REGISTRATION", reclamation),
     ("_REGISTRATION_LIMIT", reclamation),
     ("_REMINDER_MARK", obligations),
+    ("_REPLACED_SUFFIX", reclamation),
+    ("_REPLACING", reclamation),
+    ("_Registration", reclamation),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
@@ -241,6 +257,7 @@ _OWNER_DEFINED = (
     ("_WORKTREE_REMOVE_FORCE", creation),
     ("_WRITABLE", reclamation),
     ("_aims_here", reclamation),
+    ("_all_taken", reclamation),
     ("_anchor_checkout", obligations),
     ("_anchor_let_go", reclamation),
     ("_anchor_pr_worktree", creation),
@@ -260,6 +277,7 @@ _OWNER_DEFINED = (
     ("_branch_attribution", attribution),
     ("_branch_commit_count", recovery),
     ("_branch_has_unpushed_commits", recovery),
+    ("_branch_lock", reclamation),
     ("_branch_name", paths),
     ("_branch_reasons", eligibility),
     ("_branch_ref", reclamation),
@@ -272,7 +290,6 @@ _OWNER_DEFINED = (
     ("_checkout_gitdir", reclamation),
     ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
-    ("_checkout_locks", reclamation),
     ("_checkout_present", reclamation),
     ("_checkout_reason", eligibility),
     ("_checkout_retentions", eligibility),
@@ -316,7 +333,11 @@ _OWNER_DEFINED = (
     ("_let_go", reclamation),
     ("_local_branch_tip", evidence),
     ("_lock_created", reclamation),
-    ("_lock_holder", reclamation),
+    ("_lock_names", reclamation),
+    ("_lock_says", reclamation),
+    ("_lock_still", reclamation),
+    ("_lock_told", reclamation),
+    ("_locks_unchanged", reclamation),
     ("_loose_note_names", obligations),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
@@ -332,6 +353,7 @@ _OWNER_DEFINED = (
     ("_obligation_ref", obligations),
     ("_one_directory", reclamation),
     ("_open_pull_request_retentions", claims),
+    ("_own_locks", reclamation),
     ("_own_way_down", obligations),
     ("_parsed_record", obligations),
     ("_parsed_records", obligations),
@@ -352,10 +374,15 @@ _OWNER_DEFINED = (
     ("_recorded_obligations", obligations),
     ("_recorded_pull_request", claims),
     ("_records_prefix", obligations),
+    ("_registration_filed", reclamation),
     ("_registration_held", reclamation),
-    ("_registration_pinned", reclamation),
+    ("_registration_named", reclamation),
+    ("_registration_now", reclamation),
     ("_registration_read", reclamation),
+    ("_registration_replaced", reclamation),
+    ("_registration_told", reclamation),
     ("_registration_unchanged", reclamation),
+    ("_registration_written", reclamation),
     ("_remind", obligations),
     ("_removal_under_lock", reclamation),
     ("_removal_while_held", reclamation),
@@ -379,6 +406,7 @@ _OWNER_DEFINED = (
     ("_shared_ref_store", obligations),
     ("_shared_repository", evidence),
     ("_spent_anchor_cleared", reclamation),
+    ("_stale_let_go", reclamation),
     ("_stands_as", obligations),
     ("_slug_digest", paths),
     ("_slugs_by_worktrees_root", attribution),

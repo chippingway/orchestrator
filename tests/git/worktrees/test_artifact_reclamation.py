@@ -16,6 +16,7 @@ stub was consulted.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -30,8 +31,13 @@ from orchestrator.git.worktrees.models import (
     ProvenTip,
     SurfaceOutcome,
 )
-from tests.git.worktrees.artifact_test_support import WIDGET_SLUG, _namespaced_branch
+from tests.git.worktrees.artifact_test_support import (
+    WIDGET_SLUG,
+    _legacy_branch,
+    _namespaced_branch,
+)
 from tests.git.worktrees.candidate_host_test_support import (
+    _branch_at,
     _index_path,
     _track_file,
 )
@@ -42,11 +48,13 @@ from tests.git.worktrees.eligibility_test_support import (
     _terminal_issue,
 )
 from tests.git.worktrees.reclamation_test_support import (
+    GIT_FILE,
     OTHER_ISSUE_NUMBER,
     _checkout_surface,
     _dirty,
     _ran_git,
     _ReclaimTestCase,
+    _removal_locks,
     _tip,
 )
 from tests.workflow.stages.question.question_real_git_test_support import (
@@ -74,12 +82,21 @@ _CLEAN_SEAM = "_clean_worktree"
 _UPDATE_REF = "update-ref"
 
 # The anchor read a removal is settled by, which the case about a note moved
-# between the reading and the deletion stands in front of.
+# between the reading and the deletion stands in front of, and the anchor
+# write itself -- the one step left between the readings and the removal, and
+# so the window every case about that window stands in.
 _ANCHOR_READ_SEAM = "_anchored_commit"
+
+_ANCHOR_SEAM = "_anchor_checkout"
 
 # The read that opens a removal, which the case about ownership changing
 # before the locks stands in front of.
 _GITDIR_SEAM = "_checkout_gitdir"
+
+# The naming of the checkout's own two locks, which is the last point at which
+# this pass is holding nothing -- the window the case about a switched HEAD
+# reaches into.
+_OWN_LOCKS_SEAM = "_own_locks"
 
 # Where a checkout is moved to for the cases about a link left in its place,
 # and what is left inside it so its survival is something a case can read.
@@ -100,21 +117,22 @@ FOREIGN_MODE = 0o640
 
 DECOY_FILE = "decoy-gitdir"
 
-GIT_FILE = ".git"
-
-# The lock names a removal takes, the mode a killed pass leaves behind on the
-# registration, and the bit one is always given back.
-INDEX_LOCK = "index.lock"
-
-HEAD_LOCK = "HEAD.lock"
-
-REF_LOCK = ".lock"
-
+# The mode a killed pass leaves behind on the registration, and the bit one is
+# always given back.
 HELD_MODE = 0o400
 
 OWNER_WRITE = 0o200
 
+# The mode a writer who put the write bits back leaves the registration in.
+WRITABLE_FILE = 0o644
+
 GIT_COMMAND = "git"
+
+# The two argv words the fixtures reach for most: the command that moves a
+# HEAD, and the flag every call here runs under.
+CHECKOUT = "checkout"
+
+QUIET = "-q"
 
 # The command family the fixtures reach for directly: repairing a moved
 # registration, and locking a checkout git then refuses to remove.
@@ -129,6 +147,11 @@ OTHER_BRANCH = "somebody-else-s-branch"
 LEFT_BEHIND = f"{reclamation._LOCK_MARK} {{0}}\n"
 
 HELD_BY_GIT = "ref: refs/heads/somewhere\n"
+
+# The process a lock another live pass took names, for the case about two
+# passes meeting one leftover: alive, so nothing reads it as stale again, and
+# not this one, so what it wrote is not what this pass wrote.
+TAKEN_BY_ANOTHER = os.getppid()
 
 # The rule file, the path it hides, and what is in it, for the cases about a
 # tree carrying something no status reports.
@@ -177,6 +200,11 @@ def _mode(named: Path) -> int:
     return S_IMODE(named.lstat().st_mode)
 
 
+def _aiming_at(tree: Path) -> str:
+    """What a registration says when it names one tree's own `.git`."""
+    return f"{tree}/{GIT_FILE}\n"
+
+
 def _read(moved: Path) -> str:
     """What one file in a tree this pass must not have taken still says."""
     return (moved / MOVED_FILE).read_text()
@@ -196,9 +224,10 @@ class _RacedCommit:
 
     def __call__(self, worktree: Path) -> ProbeAnswer:
         """Commit on no branch where a racer would, and answer clean."""
-        _run_git("checkout", "-q", "--detach", cwd=worktree)
+        _run_git(CHECKOUT, QUIET, "--detach", cwd=worktree)
         _run_git(
-            "commit", "-q", "--allow-empty", "-m", RACED_MESSAGE, cwd=worktree,
+            "commit", QUIET, "--allow-empty", "-m", RACED_MESSAGE,
+            cwd=worktree,
         )
         self.made = _tip(worktree, "HEAD")
         return ProbeAnswer.CONFIRMED
@@ -243,6 +272,41 @@ class _MovedCheckout:
         )
         self.worktree.symlink_to(self.elsewhere)
         return ProbeAnswer.CONFIRMED
+
+
+class _StaleHandle:
+    """A writer that opened the registration before this pass reached it.
+
+    What a mode cannot answer. The handle is taken while the file is still
+    git's own and writable, and everything done through it afterwards lands on
+    whatever object that handle refers to -- which is the whole question the
+    take-over is about.
+    """
+
+    def __init__(self, worktree: Path, elsewhere: Path) -> None:
+        self.worktree = worktree
+        self.elsewhere = elsewhere
+        self.aimed_at = ""
+        self.named = _registration_of(worktree)
+        self.opened = os.open(self.named, os.O_WRONLY)
+
+    def close(self) -> None:
+        """Let the handle go, whatever the pass under test did."""
+        os.close(self.opened)
+
+    def swap(self) -> None:
+        """Move the tree, aim the handle at it, and link the old path back.
+
+        What is recorded is what the NAME says once the write has happened,
+        which is the whole of what the removal after it will be aimed by.
+        """
+        self.worktree.rename(self.elsewhere)
+        (self.elsewhere / MOVED_FILE).write_text(MOVED_CONTENT)
+        aimed = _aiming_at(self.elsewhere).encode()
+        os.pwrite(self.opened, aimed, 0)
+        os.ftruncate(self.opened, len(aimed))
+        self.worktree.symlink_to(self.elsewhere)
+        self.aimed_at = self.named.read_text()
 
 
 class _Removals:
@@ -381,7 +445,7 @@ class ArtifactOwnershipTest(_ReclaimTestCase):
         last step before the locks go on: everything the verdict was taken on
         has been read by then, and nothing is holding the tree yet.
         """
-        _run_git("checkout", "-q", OTHER_BRANCH, cwd=worktree)
+        _run_git(CHECKOUT, QUIET, OTHER_BRANCH, cwd=worktree)
         return self.located(artifacts, worktree)
 
     def test_a_checkout_switched_away_is_kept(self) -> None:
@@ -478,7 +542,7 @@ class DivergentWorkTest(_ReclaimTestCase):
             self.clone, _UPDATE_REF, f"{_BRANCH_REFS}{self.branch}",
             self.world.commit_on(self.clone, f"{self.branch}{RACED_BRANCH}"),
         )
-        self.raced = _ran_git(worktree, "checkout", "--detach") or _ran_git(
+        self.raced = _ran_git(worktree, CHECKOUT, "--detach") or _ran_git(
             worktree, "commit", "--allow-empty", "-m", RACED_MESSAGE,
         )
         return anchored
@@ -499,7 +563,7 @@ class DivergentWorkTest(_ReclaimTestCase):
         cleared = self.verdict(worktree=worktree, branches=self.branches)
         self.anchoring = obligations._anchor_checkout
 
-        with patch.object(obligations, "_anchor_checkout", self.racing):
+        with patch.object(obligations, _ANCHOR_SEAM, self.racing):
             reclaimed = self.spend(cleared)
 
         self.assertNotEqual(self.raced, 0)
@@ -530,6 +594,70 @@ class DivergentWorkTest(_ReclaimTestCase):
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
         self.assertTrue(worktree.is_dir())
         self.assertEqual(self.anchored(), racer.made)
+
+
+class HeldBranchTest(_ReclaimTestCase):
+    """The ref a removal freezes is the one the tree is standing on.
+
+    An issue publishes under two names -- the slug-namespaced one and the
+    legacy flat one -- and both read as its own, so which of them a checkout
+    is on is a thing that can change while a pass is deciding what to hold.
+    """
+
+    def switching(self, gitdir: Path) -> tuple[Path, ...]:
+        """Put the checkout on this issue's other published name.
+
+        Installed in place of the naming of the checkout's own two locks,
+        which is the last point at which nothing is held yet: an issue
+        publishes under two names and both read as its own, so everything
+        after this reads the tree as ours whichever it is standing on, and
+        only what HEAD is read as says which ref gets frozen.
+        """
+        named = self.naming(gitdir)
+        _run_git(CHECKOUT, QUIET, self.legacy, cwd=self.worktree)
+        return named
+
+    def moving(self, *args: str, **options):
+        """Advance the branch the checkout really stands on, at the removal.
+
+        The one window a lock on the wrong ref would leave open: every reading
+        has been taken by then, and what is left between them and the command
+        is exactly what the branch's own lock is held for.
+        """
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            self.moved = _ran_git(
+                self.clone, _UPDATE_REF, f"{_BRANCH_REFS}{self.legacy}",
+                self.world.commit_on(
+                    self.clone, f"{self.branch}{RACED_BRANCH}",
+                ),
+            )
+        return self.hardened(*args, **options)
+
+    def test_a_switched_head_freezes_its_own_branch(self) -> None:
+        # Which ref to freeze is read off HEAD, and a HEAD read before
+        # `HEAD.lock` is this pass's is one that can move afterwards: a
+        # checkout switched between this issue's two published names in that
+        # window would have this pass holding the ref it moved off while the
+        # ref it moved onto stayed free to move. Read once the lock is on, the
+        # ref that gets frozen is the one the tree is actually standing on.
+        tip = self.published()
+        self.legacy = _legacy_branch(ISSUE_NUMBER)
+        _branch_at(self.clone, self.legacy, self.branch)
+        self.worktree = self.checkout()
+        cleared = self.verdict(
+            worktree=self.worktree, branches=self.branches,
+        )
+        self.naming = reclamation._own_locks
+        self.hardened = commands._git_hardened
+
+        with patch.object(
+            reclamation, _OWN_LOCKS_SEAM, self.switching,
+        ), patch.object(commands, _HARDENED_SEAM, self.moving):
+            reclaimed = self.spend(cleared)
+
+        self.assertNotEqual(self.moved, 0)
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(CLEANED))
+        self.assertEqual(_tip(self.clone, self.legacy), tip)
 
 
 class LateChangeTest(_ReclaimTestCase):
@@ -584,7 +712,7 @@ class LateChangeTest(_ReclaimTestCase):
         cleared = self.verdict(worktree=worktree, branches=self.branches)
         self.anchoring = obligations._anchor_checkout
 
-        with patch.object(obligations, "_anchor_checkout", self.hiding):
+        with patch.object(obligations, _ANCHOR_SEAM, self.hiding):
             reclaimed = self.spend(cleared)
 
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
@@ -596,31 +724,14 @@ class LateChangeTest(_ReclaimTestCase):
         )
 
 
-class MovedCheckoutTest(_ReclaimTestCase):
-    """A path that stops being the tree it named, at two different moments.
+class RegistrationHoldTest(_ReclaimTestCase):
+    """The file that decides where the destruction lands, and what holds it.
 
-    `worktree remove` takes a path and resolves it, so what the removal
-    destroys is wherever the path leads rather than the path itself. Both
-    cases below move the tree away and leave a link behind; what separates
-    them is which side of the last reading the swap lands on.
+    `worktree remove` is handed a path, but the path only selects a
+    registration and the registration names the tree that comes down -- so
+    every way that file can stop meaning what this pass established it meant
+    is a way the removal can be aimed somewhere nobody adjudicated.
     """
-
-    def swapping(self, worktree: Path) -> _MovedCheckout:
-        """The swap, ready to stand in for whichever reading a case names."""
-        return _MovedCheckout(
-            worktree, self.world.path(MOVED_CHECKOUT), self.clone,
-        )
-
-    def removing(self, *args: str, **options):
-        """Swap the tree away in the one window no reading can close.
-
-        Installed in place of the local git runner and acting on the removal
-        itself: what is left between the last reading and the command is the
-        command's own argument, which the command resolves for itself.
-        """
-        if " ".join(args[:2]) == _WORKTREE_REMOVE:
-            self.moved()
-        return self.hardened(*args, **options)
 
     def replacing(self, worktree: Path) -> ProbeAnswer:
         """Rename a file of somebody's over the registration, and answer clean.
@@ -638,6 +749,27 @@ class MovedCheckoutTest(_ReclaimTestCase):
         decoy.rename(registration)
         return ProbeAnswer.CONFIRMED
 
+    def rewriting(self, spec, worktree: Path, issue_number: int) -> bool:
+        """Pin the checkout, then rewrite the registration in place.
+
+        Installed in place of the anchor write, which is one step ahead of the
+        last reading: what is put back at the same name is a file naming a
+        tree somewhere else, so nothing about the NAME gives it away and only
+        what it says has changed.
+        """
+        anchored = self.anchoring(spec, worktree, issue_number)
+        elsewhere = self.world.path(MOVED_CHECKOUT)
+        named = _registration_of(worktree)
+        named.chmod(WRITABLE_FILE)
+        named.write_text(_aiming_at(elsewhere))
+        return anchored
+
+    def swapped(self, *args: str, **options):
+        """Rewrite the registration through the old handle, at the removal."""
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            self.writer.swap()
+        return self.hardened(*args, **options)
+
     def test_a_linked_registration_is_refused(self) -> None:
         # The file that aims the removal is one an agent can replace with a
         # link, and every read and write through that name would then be about
@@ -651,7 +783,7 @@ class MovedCheckoutTest(_ReclaimTestCase):
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
         foreign = self.world.path(FOREIGN_FILE)
-        foreign.write_text(f"{worktree}/{GIT_FILE}\n")
+        foreign.write_text(_aiming_at(worktree))
         foreign.chmod(FOREIGN_MODE)
         registration = _registration_of(worktree)
         registration.unlink()
@@ -682,6 +814,77 @@ class MovedCheckoutTest(_ReclaimTestCase):
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
         self.assertEqual(watched.taken, [])
         self.assertTrue(worktree.is_dir())
+
+    def test_a_registration_rewritten_is_refused(self) -> None:
+        # A rename is not the only way that file stops meaning what it meant.
+        # Anybody who puts the write bits back can rewrite it where it stands,
+        # which leaves the name resolving to the very object this pass holds
+        # while what it says -- the whole of what decides where the
+        # destruction lands -- is somewhere else. So the contents are read
+        # back through the held descriptor, not just the identity of the name.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.anchoring = obligations._anchor_checkout
+        watched = _Removals()
+
+        with patch.object(
+            obligations, _ANCHOR_SEAM, self.rewriting,
+        ), patch.object(commands, _HARDENED_SEAM, watched):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(watched.taken, [])
+        self.assertTrue(worktree.is_dir())
+
+    def test_an_older_handle_cannot_aim_the_removal(self) -> None:
+        # Taking the write bits off a file says nothing to somebody who opened
+        # it before they came off, and the window that handle can write in
+        # ends only when the command reads the file -- after every reading
+        # this pass can take. So the file is not merely read and held: a copy
+        # of this pass's own, saying exactly what the original said, is
+        # renamed over the name, which leaves every handle opened earlier
+        # pointing at an inode nothing is filed at.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.writer = _StaleHandle(worktree, self.world.path(MOVED_CHECKOUT))
+        self.addCleanup(self.writer.close)
+        self.hardened = commands._git_hardened
+
+        with patch.object(commands, _HARDENED_SEAM, self.swapped):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.writer.aimed_at, _aiming_at(worktree))
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(_read(self.writer.elsewhere), MOVED_CONTENT)
+
+
+class MovedCheckoutTest(_ReclaimTestCase):
+    """A path that stops being the tree it named, at two different moments.
+
+    `worktree remove` takes a path and resolves it, so what the removal
+    destroys is wherever the path leads rather than the path itself. Both
+    cases below move the tree away and leave a link behind; what separates
+    them is which side of the last reading the swap lands on.
+    """
+
+    def swapping(self, worktree: Path) -> _MovedCheckout:
+        """The swap, ready to stand in for whichever reading a case names."""
+        return _MovedCheckout(
+            worktree, self.world.path(MOVED_CHECKOUT), self.clone,
+        )
+
+    def removing(self, *args: str, **options):
+        """Swap the tree away in the one window no reading can close.
+
+        Installed in place of the local git runner and acting on the removal
+        itself: what is left between the last reading and the command is the
+        command's own argument, which the command resolves for itself.
+        """
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            self.moved()
+        return self.hardened(*args, **options)
 
     def test_a_tree_moved_before_the_read_is_kept(self) -> None:
         # The window the early type check leaves open: everything from that
@@ -727,6 +930,85 @@ class MovedCheckoutTest(_ReclaimTestCase):
         self.assertTrue(worktree.is_symlink())
 
 
+class ConcurrentPassTest(_ReclaimTestCase):
+    """Two passes over one clone, reaching for the same lock at once.
+
+    Neither is holding anything the other has to queue for: the target-root
+    lock is process-local and a lock file is a name in a directory both can
+    write. So every hold is bound to the exact file this pass created or read,
+    and what the other pass left at that name is left where it is.
+    """
+
+    def replacing(self, spec, worktree: Path, issue_number: int) -> bool:
+        """Pin the checkout, then put another pass's lock where this one's is.
+
+        Installed in place of the anchor write, one step ahead of the last
+        reading: nothing about creating a lock file stops somebody removing it
+        afterwards, and what stands at the name from then on is a live lock
+        this pass never took.
+        """
+        anchored = self.anchoring(spec, worktree, issue_number)
+        self.snatched = _removal_locks(self.clone, worktree, self.branch)[0]
+        self.snatched.unlink()
+        self.snatched.write_text(HELD_BY_GIT)
+        return anchored
+
+    def snatching(self, lock: Path):
+        """Answer that the lock is a leftover, then let another pass take it.
+
+        Installed in place of the staleness reading, which is the window two
+        passes meeting one leftover share: both see the same file, and by the
+        time the second gets to the deletion that reading allows, the first
+        has taken the leftover away and created a live lock of its own.
+        """
+        was = self.reading(lock)
+        if was is not None:
+            self.snatched = lock
+            lock.unlink()
+            lock.write_text(LEFT_BEHIND.format(TAKEN_BY_ANOTHER))
+        return was
+
+    def test_a_lock_swapped_since_it_was_taken_stops(self) -> None:
+        # A lock is a name in a directory an agent can write, and a name that
+        # no longer resolves to the file this pass created is a checkout
+        # something else is free to be committing in. So each one is asked
+        # again immediately before the removal -- and the one at that name
+        # afterwards is somebody's to give back, not this pass's.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.anchoring = obligations._anchor_checkout
+
+        with patch.object(obligations, _ANCHOR_SEAM, self.replacing):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(self.snatched.read_text(), HELD_BY_GIT)
+        self.assertTrue(worktree.is_dir())
+
+    def test_a_stale_lock_another_pass_took_is_kept(self) -> None:
+        # Deleting by name is what would make two passes over one leftover
+        # both go on: each would remove what the other had just created, and
+        # each would then take a lock neither of them holds. Bound to the
+        # object the staleness was read on, the second pass finds a different
+        # file at that name and refuses instead.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        left = _removal_locks(self.clone, worktree, self.branch)[0]
+        left.write_text(LEFT_BEHIND.format(_reaped()))
+        self.reading = reclamation._left_behind
+
+        with patch.object(reclamation, "_left_behind", self.snatching):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.snatched.read_text(), LEFT_BEHIND.format(TAKEN_BY_ANOTHER),
+        )
+        self.assertTrue(worktree.is_dir())
+
+
 class AnotherPassTest(_ReclaimTestCase):
     """What a pass that is not this one left behind, or already did.
 
@@ -736,15 +1018,6 @@ class AnotherPassTest(_ReclaimTestCase):
     holding the same names right now -- and it meets a checkout another pass
     has already taken, which is the success absent is everywhere else here.
     """
-
-    def locks(self, worktree: Path) -> tuple[Path, ...]:
-        """Every lock file a removal of this checkout takes."""
-        gitdir = _index_path(worktree).parent
-        return (
-            gitdir / INDEX_LOCK,
-            gitdir / HEAD_LOCK,
-            self.clone / GIT_FILE / f"{_BRANCH_REFS}{self.branch}{REF_LOCK}",
-        )
 
     def removing(self, *args: str, **options):
         """Let another pass take the checkout first, then run this one's."""
@@ -761,7 +1034,7 @@ class AnotherPassTest(_ReclaimTestCase):
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
-        for lock in self.locks(worktree):
+        for lock in _removal_locks(self.clone, worktree, self.branch):
             lock.parent.mkdir(parents=True, exist_ok=True)
             lock.write_text(LEFT_BEHIND.format(_reaped()))
 
@@ -779,7 +1052,7 @@ class AnotherPassTest(_ReclaimTestCase):
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
-        held = self.locks(worktree)[0]
+        held = _removal_locks(self.clone, worktree, self.branch)[0]
         held.write_text(HELD_BY_GIT)
 
         reclaimed = self.spend(cleared)
@@ -823,6 +1096,47 @@ class AnotherPassTest(_ReclaimTestCase):
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(ABSENT))
         self.assertTrue(reclaimed.settled)
         self.assertFalse(worktree.exists())
+
+
+class SpecialFileTest(_ReclaimTestCase):
+    """A name an agent left something unreadable at answers rather than waits.
+
+    Two of the names this pass reads are names anything may be put at, and
+    both are read while it is holding the target root and git's own locks for
+    this checkout. A read that blocks there never comes back to give any of
+    them up, so every one of these opens refuses to follow, refuses to wait,
+    and asks the descriptor what it is before it asks what it says.
+    """
+
+    def test_a_fifo_at_the_registration_is_refused(self) -> None:
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        registration = _registration_of(worktree)
+        registration.unlink()
+        os.mkfifo(registration)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertTrue(worktree.is_dir())
+
+    def test_a_fifo_at_a_lock_is_refused(self) -> None:
+        # A lock this pass cannot read is one it leaves alone, and a fifo is
+        # the shape that answers the open and then blocks whoever reads it --
+        # so what it is is established off the descriptor rather than off what
+        # comes out of it.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        held = _removal_locks(self.clone, worktree, self.branch)[0]
+        os.mkfifo(held)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertTrue(held.is_fifo())
+        self.assertTrue(worktree.is_dir())
 
 
 class StepFailureTest(_ReclaimTestCase):

@@ -36,6 +36,7 @@ from tests.git.worktrees.artifact_test_support import (
 from tests.git.worktrees.candidate_host_test_support import (
     CLONE_NAME,
     _CandidateWorld,
+    _index_path,
     _revision,
 )
 from tests.git.worktrees.eligibility_test_support import (
@@ -46,6 +47,20 @@ from tests.git.worktrees.eligibility_test_support import (
 from tests.workflow.stages.question.question_real_git_test_support import (
     _run_git,
 )
+
+# What a linked checkout keeps at its root, and how a branch is spelled where
+# git files the lock it takes before it writes one.
+GIT_FILE = ".git"
+
+BRANCH_REFS = "refs/heads/"
+
+# The lock names a removal takes: the checkout's own two, and the suffix git
+# appends to a ref's own path for the third.
+INDEX_LOCK = "index.lock"
+
+HEAD_LOCK = "HEAD.lock"
+
+REF_LOCK = ".lock"
 
 LOOSE_FILE = "left-behind.txt"
 LOOSE_CONTENT = "an agent's unfinished work\n"
@@ -77,6 +92,20 @@ def _ran_git(root: Path, *args: str) -> int:
         return _run_git(*args, cwd=root).returncode
     except subprocess.CalledProcessError as refused:
         return refused.returncode
+
+
+def _removal_locks(clone: Path, worktree: Path, branch: str) -> tuple[Path, ...]:
+    """Every lock file a removal of one checkout takes, in the order it does.
+
+    The checkout's own two, in the git directory it keeps, and the one git
+    takes for the branch its HEAD is on, in the store the whole clone shares.
+    """
+    gitdir = _index_path(worktree).parent
+    return (
+        gitdir / INDEX_LOCK,
+        gitdir / HEAD_LOCK,
+        clone / GIT_FILE / f"{BRANCH_REFS}{branch}{REF_LOCK}",
+    )
 
 
 def _checkout_surface(
