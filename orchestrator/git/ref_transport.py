@@ -34,9 +34,10 @@ took it.
 
 What policy the leases serve -- which namespace, and what an existing ref at
 another commit means -- belongs to the callers. `git/snapshots/` owns the
-immutable namespace the create and the delete were written for; the
-terminal-artifact discovery under `git/worktrees/` spends the pattern listing
-on the orchestrator-owned branch namespace it finds its candidates in.
+immutable namespace the create and the delete were written for; the terminal
+artifact reclamation under `git/worktrees/` spends the same delete on a branch
+it has proved, and the pattern listing on the namespace it discovers those
+branches in.
 """
 from __future__ import annotations
 

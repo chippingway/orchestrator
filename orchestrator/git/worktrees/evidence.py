@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """The reads an artifact has to survive before it can be reclaimed.
 
-Seven questions: whether a checkout is carrying anything loose, whether it is
+Nine questions: whether a checkout is carrying anything loose, whether it is
 hiding anything besides, whether it is the checkout this issue's own creator
-made, what its branch is on, what its HEAD is on, what the remote says a branch
-is at, and whether the base the remote named already contains a given tip.
-What the answers are spent on is ``eligibility``'s subject; what they ARE is
-this module's.
+made, whether anything has touched it lately, what its branch is on, what its
+HEAD is on, which branches some tree of the clone is standing on, what the
+remote says a branch is at, and whether the base the remote named already
+contains a given tip. What the answers are spent on is ``eligibility``'s and
+``maintenance``'s subject; what they ARE is this module's.
 
 Loose and hidden are two questions because git treats them as two. Untracked
 and modified paths are what it calls dirty and what `worktree remove` refuses
@@ -53,6 +54,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+from collections.abc import Iterable
 from pathlib import Path
 
 from orchestrator import config
@@ -83,6 +85,25 @@ _LOCAL_REF_PREFIX = "refs/heads/"
 _VERIFY_QUIETLY = ("--verify", "--quiet")
 
 _HEAD = "HEAD"
+
+# The two files a checkout's own git directory carries that git writes when
+# somebody works in that tree: the index every `add`, `commit`, and refreshed
+# `status` rewrites, and the reflog every move of its HEAD appends to.
+_INDEX = "index"
+
+_HEAD_REFLOG = "logs/HEAD"
+
+# How `worktree list --porcelain` spells the branch a worktree is on. A
+# detached one carries no such line at all.
+_WORKTREE_BRANCH = "branch "
+
+# The line that opens each worktree's record in the same listing, and the
+# directory inside a clone's git directory holding one entry per linked
+# worktree. The two are counted against each other, because the listing drops
+# an entry whose backlink is missing and says nothing about having done so.
+_WORKTREE_RECORD = "worktree "
+
+_WORKTREE_ADMIN = "worktrees"
 
 
 def _hardened_read(
@@ -365,6 +386,204 @@ def _nothing_ignored(worktree: Path) -> ProbeAnswer:
             "the checkout %s is hiding %s under its own ignore rules",
             worktree, ", ".join(hidden),
         )
+        return ProbeAnswer.REFUTED
+    return ProbeAnswer.CONFIRMED
+
+
+def _checkout_git_dir(worktree: Path) -> Path | None:
+    """The git directory this checkout keeps for itself, or None.
+
+    Its OWN, not the store it shares: a linked worktree has a directory under
+    the parent's `worktrees/` holding the HEAD, the index, and the reflog that
+    belong to that tree alone. Those are the files git writes when somebody
+    works in it, which is what makes them the evidence the read below is after
+    -- the shared store would answer the same for every checkout of the clone.
+
+    Answered absolutely, so a caller does not have to know which directory it
+    is relative to; `None` when git would not say, which the caller spends as
+    a reading that established nothing rather than as a tree nobody has been
+    near.
+    """
+    located = _hardened_read(worktree, "rev-parse", "--absolute-git-dir")
+    if located is None or located.returncode != 0:
+        return None
+    git_dir = (located.stdout or "").strip()
+    return Path(git_dir) if git_dir else None
+
+
+def _last_touched(paths_touched: Iterable[Path]) -> float | None:
+    """The newest modification time among some paths, or None if one refused.
+
+    A path that is not there contributes nothing rather than failing the read:
+    the reflog is absent wherever `core.logAllRefUpdates` is off, and its
+    absence says nothing at all about when the tree was last worked in. Any
+    OTHER refusal answers `None`, since a reading that could not be taken must
+    not come back as the oldest timestamp it managed to collect.
+    """
+    newest = None
+    for path in paths_touched:
+        try:
+            touched = path.lstat().st_mtime
+        except FileNotFoundError:
+            continue
+        except OSError as read_error:
+            log.debug("could not read when %s was touched: %s", path, read_error)
+            return None
+        newest = touched if newest is None else max(newest, touched)
+    return newest
+
+
+def _registered_worktrees(spec: config.RepoSpec) -> int | None:
+    """How many linked worktrees this clone keeps administrative entries for.
+
+    The count the listing beside this is checked against. Every linked worktree
+    git knows about has a directory of its own under the clone's
+    `worktrees/`, and that directory is what survives when the backlink inside
+    it does not -- which is exactly the state `worktree list` passes over in
+    silence.
+
+    Zero where the clone has never had one, which is an established answer: a
+    repository with no `worktrees/` directory has no linked worktrees. `None`
+    for every other refusal, since a count nobody could take must not arrive as
+    agreement with whatever the listing said.
+    """
+    common_dir = probes._checkout_clone(spec.target_root)
+    if common_dir is None:
+        return None
+    try:
+        return len(list((common_dir / _WORKTREE_ADMIN).iterdir()))
+    except FileNotFoundError:
+        return 0
+    except OSError as read_error:
+        log.debug(
+            "could not read the worktree entries of %s: %s",
+            spec.target_root, read_error,
+        )
+        return None
+
+
+def _checked_out_branches(spec: config.RepoSpec) -> frozenset[str] | None:
+    """Every branch a worktree of this clone still has checked out, or None.
+
+    The one thing `update-ref -d` gives up in exchange for its commit pin.
+    `branch -D` refuses to delete a branch a worktree is on, and the plumbing
+    form does it without a word -- leaving that tree holding a HEAD that names
+    a ref nothing resolves. So a caller deleting through the plumbing has to
+    ask this question itself, and it has to ask the clone rather than reason
+    from the candidate: a worktree an operator added by hand to look at a
+    finished branch is on it just as squarely as one this orchestrator made,
+    and no scan of the per-issue paths would ever name it.
+
+    A listing that exits zero is not on its own the whole answer, which is why
+    it is counted against the clone's own administrative entries. `worktree
+    list` drops a linked worktree whose backlink file is missing -- silently,
+    with nothing on stderr and a zero exit -- while that worktree goes on
+    working and goes on holding its branch. A caller spending the short answer
+    would delete the ref under it, which is the very thing this read exists to
+    prevent, so anything the two readings cannot account for between them is
+    answered as no reading at all.
+
+    Both are taken under one hold of the lock every mutation of this clone
+    serializes on, so the listing and the count describe one moment rather than
+    two either side of a `worktree add`.
+
+    The names come back stripped of `refs/heads/`, which is how every
+    derivation in ``paths`` spells a branch, so a caller compares against them
+    without either side adjusting. A detached worktree names no branch and
+    contributes nothing.
+    """
+    with locks._target_root_lock(spec.target_root):
+        listed = _hardened_read(
+            spec.target_root, "worktree", "list", "--porcelain",
+        )
+        registered = _registered_worktrees(spec)
+    if listed is None or listed.returncode != 0:
+        log.debug(
+            "could not list the worktrees of %s: %s",
+            spec.target_root,
+            None if listed is None else (listed.stderr or "").strip(),
+        )
+        return None
+    reported = (listed.stdout or "").splitlines()
+    if not _all_worktrees_accounted(spec, reported, registered):
+        return None
+    on_branch = f"{_WORKTREE_BRANCH}{_LOCAL_REF_PREFIX}"
+    return frozenset(
+        line[len(on_branch):]
+        for line in reported
+        if line.startswith(on_branch)
+    )
+
+
+def _all_worktrees_accounted(
+    spec: config.RepoSpec, reported: list[str], registered: int | None,
+) -> bool:
+    """Whether the listing named every worktree this clone has an entry for.
+
+    One line per worktree opens each record, and the clone's own is the first
+    of them -- so a healthy listing names exactly one more worktree than there
+    are linked entries. Anything else is a worktree git declined to report
+    while its directory is still there, and this read may not answer for a
+    clone it could only see part of.
+    """
+    if registered is None:
+        log.warning(
+            "could not count the worktrees registered in %s; taking the "
+            "listing as unread rather than as the part of it that answered",
+            spec.target_root,
+        )
+        return False
+    named = sum(
+        1 for line in reported if line.startswith(_WORKTREE_RECORD)
+    )
+    if named == registered + 1:
+        return True
+    log.warning(
+        "%s registers %d linked worktrees and listed %d; taking the listing "
+        "as unread rather than deleting a branch one of them may be on",
+        spec.target_root, registered, named - 1,
+    )
+    return False
+
+
+def _quiet_checkout(worktree: Path, since: float) -> ProbeAnswer:
+    """Whether this checkout PROVED nothing has touched it since `since`.
+
+    The restraint a caller about to delete a tree owes an operator who may
+    still be standing in it. Every other read here asks what the checkout
+    HOLDS; this one asks when it was last disturbed, which is the only
+    question that separates an issue that finished months ago from one whose
+    agent stopped a minute before the pass ran.
+
+    Three timestamps, because no one of them sees the whole of it. The
+    directory's own answers for an entry created, renamed, or removed at the
+    top of the tree -- a clone, a build root, a file dropped in by hand -- and
+    for nothing else: editing a tracked file deeper in leaves it exactly where
+    it was, and so does committing that edit. What git writes on a commit is
+    the checkout's OWN index and its own reflog, both under the per-worktree
+    git directory, so those two are what say a tree was being worked in a
+    moment ago even though everything in it is now clean and committed.
+
+    `since` is a wall-clock instant the caller decided, so what counts as
+    lately is the pass's policy rather than this module's. `REFUTED` is a tree
+    touched after it -- an established fact about the checkout -- and
+    `UNREADABLE` is a host that would not say: a path gone since the scan named
+    it answers that way too, because a caller may not read "the tree I was
+    about to delete cannot be found" as proof that deleting it costs nothing.
+    A checkout whose git directory could not be located is the same answer, for
+    the same reason: without it, the only timestamp left is the one a commit
+    does not move.
+    """
+    git_dir = _checkout_git_dir(worktree)
+    if git_dir is None:
+        log.debug("could not locate the git directory of %s", worktree)
+        return ProbeAnswer.UNREADABLE
+    touched = _last_touched((
+        worktree, git_dir / _INDEX, git_dir / _HEAD_REFLOG,
+    ))
+    if touched is None:
+        return ProbeAnswer.UNREADABLE
+    if touched > since:
         return ProbeAnswer.REFUTED
     return ProbeAnswer.CONFIRMED
 

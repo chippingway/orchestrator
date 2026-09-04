@@ -20,6 +20,7 @@ to check anything out to make one.
 from __future__ import annotations
 
 import contextlib
+import os
 from pathlib import Path
 
 from orchestrator import config
@@ -40,6 +41,13 @@ REMOTE_DIR = "remote.git"
 UNREACHABLE_DIR = "unreachable.git"
 COMMIT_MESSAGE = "candidate work"
 QUIET = "-q"
+# The two files under a checkout's own git directory that git writes when
+# somebody works in the tree.
+INDEX_FILE = "index"
+HEAD_REFLOG = "logs/HEAD"
+# The file inside that directory pointing back at the tree, which is what
+# `worktree list` follows to report the worktree at all.
+WORKTREE_BACKLINK = "gitdir"
 
 
 class _CandidateWorld(_ArtifactWorld):
@@ -210,6 +218,18 @@ def _branch_at(root: Path, branch: str, revision: str | None = None) -> str:
     return tip
 
 
+def _symbolic_ref(root: Path, name: str, target: str) -> None:
+    """Leave a branch name pointing at another ref rather than at a commit.
+
+    What a deletion that dereferences would follow: the name a teardown was
+    handed resolves to somebody else's branch, and deleting what it resolves to
+    takes that branch instead.
+    """
+    _run_git(
+        "symbolic-ref", f"refs/heads/{name}", f"refs/heads/{target}", cwd=root,
+    )
+
+
 def _tracking_ref(root: Path, branch: str, revision: str) -> str:
     """Point this clone's copy of a remote branch at `revision`.
 
@@ -238,15 +258,47 @@ def _track_file(root: Path, name: str, written: str) -> str:
     return _revision(root, "HEAD")
 
 
-def _index_path(worktree: Path) -> Path:
-    """The index file this checkout compares its tree against.
+def _checkout_git_dir(worktree: Path) -> Path:
+    """The git directory this checkout keeps for itself.
 
     Asked of git rather than assembled, because a linked worktree keeps its
-    own index under the parent's git directory and the `.git` at its root is a
-    file pointing there.
+    own under the parent's `worktrees/` and the `.git` at its root is a file
+    pointing there.
     """
     located = _run_git("rev-parse", "--absolute-git-dir", cwd=worktree)
-    return Path((located.stdout or "").strip()) / "index"
+    return Path((located.stdout or "").strip())
+
+
+def _index_path(worktree: Path) -> Path:
+    """The index file this checkout compares its tree against."""
+    return _checkout_git_dir(worktree) / INDEX_FILE
+
+
+def _unlink_backlink(worktree: Path) -> Path:
+    """Remove the administrative backlink a linked worktree is listed through.
+
+    What a half-finished move or a stray cleanup leaves: the entry under the
+    clone's `worktrees/` is still there and the tree still works, but
+    `worktree list` passes over it in silence -- exit zero, nothing on stderr,
+    and one fewer worktree in the answer.
+    """
+    backlink = _checkout_git_dir(worktree) / WORKTREE_BACKLINK
+    backlink.unlink()
+    return backlink
+
+
+def _settle_checkout(worktree: Path, when: float) -> None:
+    """Back-date every trace of somebody having worked in this checkout.
+
+    The tree's own directory and the two files under its git directory that
+    git writes when it is worked in -- a fixture that moved only the first
+    would leave a checkout the probe still reads as touched a moment ago, and
+    a case expecting a pass to act would fail for a reason it is not about.
+    """
+    git_dir = _checkout_git_dir(worktree)
+    for touched in (worktree, git_dir / INDEX_FILE, git_dir / HEAD_REFLOG):
+        if touched.exists():
+            os.utime(touched, (when, when))
 
 
 def _foreign_checkout(spec: config.RepoSpec, issue_number: int) -> Path:
