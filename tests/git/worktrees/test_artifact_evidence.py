@@ -16,6 +16,8 @@ disagreeing.
 
 from __future__ import annotations
 
+import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -52,6 +54,8 @@ LOOPING_BACK = "looping-back"
 IGNORE_FILE = ".gitignore"
 HIDDEN_FILE = "secrets.env"
 HIDDEN_CONTENT = "TOKEN=an operator's own\n"
+MINUTE = 60
+HOUR = 60 * MINUTE
 
 
 def _named(sha: str) -> BranchTip:
@@ -213,6 +217,57 @@ class WorktreeCleanlinessTest(_HostTestCase):
 
         self.assertIs(
             evidence._clean_worktree(looping), ProbeAnswer.UNREADABLE,
+        )
+
+
+class QuietCheckoutTest(_HostTestCase):
+    """When a checkout was last disturbed, and the two ways that does not answer.
+
+    The one read here that is not about what a tree holds. What it costs to get
+    wrong is a directory somebody is standing in, so a host that will not say
+    answers as one -- never as a tree nobody has been near.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        _branch_at(self.clone, self.branch, BASE_BRANCH)
+        self.worktree = self.world.attached_checkout(
+            self.spec, ISSUE_NUMBER, self.branch,
+        )
+
+    def test_a_checkout_made_just_now_refutes(self) -> None:
+        self.assertIs(
+            evidence._quiet_checkout(self.worktree, time.time() - HOUR),
+            ProbeAnswer.REFUTED,
+        )
+
+    def test_a_checkout_left_alone_is_confirmed(self) -> None:
+        settled = time.time() - HOUR
+        os.utime(self.worktree, (settled, settled))
+
+        self.assertIs(
+            evidence._quiet_checkout(self.worktree, time.time() - MINUTE),
+            ProbeAnswer.CONFIRMED,
+        )
+
+    def test_an_entry_dropped_in_refutes_again(self) -> None:
+        # What the read is for: a top-level entry created, renamed, or removed
+        # is somebody working in the tree, whatever the status says afterwards.
+        settled = time.time() - HOUR
+        os.utime(self.worktree, (settled, settled))
+        (self.worktree / LOOSE_FILE).write_text(LOOSE_CONTENT)
+
+        self.assertIs(
+            evidence._quiet_checkout(self.worktree, time.time() - MINUTE),
+            ProbeAnswer.REFUTED,
+        )
+
+    def test_a_path_that_is_not_there_is_unread(self) -> None:
+        self.assertIs(
+            evidence._quiet_checkout(
+                self.world.path(NOTHING_AT_ALL), time.time(),
+            ),
+            ProbeAnswer.UNREADABLE,
         )
 
 

@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """The reads an artifact has to survive before it can be reclaimed.
 
-Seven questions: whether a checkout is carrying anything loose, whether it is
+Eight questions: whether a checkout is carrying anything loose, whether it is
 hiding anything besides, whether it is the checkout this issue's own creator
-made, what its branch is on, what its HEAD is on, what the remote says a branch
-is at, and whether the base the remote named already contains a given tip.
-What the answers are spent on is ``eligibility``'s subject; what they ARE is
-this module's.
+made, whether anything has touched it lately, what its branch is on, what its
+HEAD is on, what the remote says a branch is at, and whether the base the
+remote named already contains a given tip. What the answers are spent on is
+``eligibility``'s and ``maintenance``'s subject; what they ARE is this
+module's.
 
 Loose and hidden are two questions because git treats them as two. Untracked
 and modified paths are what it calls dirty and what `worktree remove` refuses
@@ -365,6 +366,43 @@ def _nothing_ignored(worktree: Path) -> ProbeAnswer:
             "the checkout %s is hiding %s under its own ignore rules",
             worktree, ", ".join(hidden),
         )
+        return ProbeAnswer.REFUTED
+    return ProbeAnswer.CONFIRMED
+
+
+def _quiet_checkout(worktree: Path, since: float) -> ProbeAnswer:
+    """Whether this checkout PROVED nothing has touched it since `since`.
+
+    The restraint a caller about to delete a tree owes an operator who may
+    still be standing in it. Every other read here asks what the checkout
+    HOLDS; this one asks when it was last disturbed, which is the only
+    question that separates an issue that finished months ago from one whose
+    agent stopped a minute before the pass ran.
+
+    What it reads is the directory's own modification time, which changes when
+    an entry at the top of the tree is created, renamed, or removed -- a clone,
+    a build root, a file dropped in by hand. It does not change when a tracked
+    file deeper in is edited, and that is deliberate rather than a gap: those
+    edits are what the status and ignored-path reads above already refuse over,
+    and duplicating them here would answer the same question twice while still
+    missing the one this read is for.
+
+    `since` is a wall-clock instant the caller decided, so what counts as
+    lately is the pass's policy rather than this module's. `REFUTED` is a tree
+    touched after it -- an established fact about the checkout -- and
+    `UNREADABLE` is a host that would not say: a path gone since the scan named
+    it answers that way too, because a caller may not read "the tree I was
+    about to delete cannot be found" as proof that deleting it costs nothing.
+    """
+    try:
+        touched = worktree.lstat().st_mtime
+    except OSError as read_error:
+        log.debug(
+            "could not read when the checkout %s was last touched: %s",
+            worktree, read_error,
+        )
+        return ProbeAnswer.UNREADABLE
+    if touched > since:
         return ProbeAnswer.REFUTED
     return ProbeAnswer.CONFIRMED
 

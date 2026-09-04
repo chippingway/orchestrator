@@ -64,12 +64,12 @@ last is held by the loader itself rather than by a check.
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
   `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three `git/measurement/` owners
   that log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the nine `git/worktrees/`
-  owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module moved between
-  packages does not take its channel with it, and each of the four names is asserted where its owner is tested —
-  `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
-  `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`, and
-  `tests/git/publication/test_imports.py`.
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the twelve
+  `git/worktrees/` owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A module
+  moved between packages does not take its channel with it, and each of the four names is asserted where its owner
+  is tested — `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`,
+  `tests/git/test_ref_transport.py`, `tests/git/base_sync/test_state.py`,
+  `tests/git/worktrees/test_imports.py`, and `tests/git/publication/test_imports.py`.
 - **Import cost.** `import orchestrator` costs the root module and no owner behind it, and importing a `runtime/`
   owner plants neither the CLI nor an app — `tests/runtime/test_imports.py` and `tests/apps/test_imports.py`.
 - **Direction inside `skills/`.** Neither owner may reach the workflow engine, a stage, or an application entry
@@ -182,9 +182,10 @@ orchestrator/
                         naming only the `x-access-token` username, and the token itself -- and the redaction every
                         transport puts that token's own output through before logging or handing it back
     locks.py            the per-target-root re-entrant lock registry and its accessor
-    ref_transport.py    the remote read named by a whole refname -- the reading and, where nothing was
-                        established, the scrubbed line saying why -- and the lease-pinned write and delete an
-                        immutable ref namespace is owned through; the read the branch transport spends for its own
+    ref_transport.py    the two remote reads -- one refname, with the scrubbed line saying why nothing was
+                        established, and every refname under one pattern, which is the only way a branch this
+                        host holds no copy of is found -- and the lease-pinned write and delete an immutable ref
+                        namespace is owned through; the single-ref read the branch transport spends for its own
                         lease too
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
@@ -324,8 +325,8 @@ orchestrator/
       process.py        one command's group spawn / kill / drain and its verdict
       runner.py         the stripped child environment and the fail-fast command sequencing
     worktrees/          the per-issue checkouts an agent runs in, the read-only inventory of which issues they
-                        and the branches beside them name, and the classification of which of those may be
-                        reclaimed
+                        and the branches beside them name, the classification of which of those may be
+                        reclaimed, and the bounded pass that spends one of those classifications
       paths.py          slug sanitization, git-ref-safe branch segments, path, branch, and pinned/legacy
                         resolution, the exact set of names one issue's branch can be published under, and the
                         `issue-<n>` read that runs back the other way -- canonical spellings only, so a padded or
@@ -358,9 +359,10 @@ orchestrator/
                         derives, or whose read failed left out of the answer rather than reported empty -- and
                         still put to the attribution, since a repository this scan will not answer for is one the
                         flat branch on its clone could equally belong to
-      evidence.py       the seven hardened reads a candidate is judged by -- a checkout that is a worktree of
+      evidence.py       the eight hardened reads a candidate is judged by -- a checkout that is a worktree of
                         this clone and on one of this issue's own branch names, a tree that PROVED it carries
-                        nothing loose and one that PROVED it hides nothing besides, a local branch tip, the
+                        nothing loose and one that PROVED it hides nothing besides, a tree that PROVED nothing
+                        has touched it since a caller-named instant, a local branch tip, the
                         commit the checkout's own HEAD stands on and which branch
                         that HEAD is, what the REMOTE
                         says a branch is at, and whether the base the remote named already contains a given tip
@@ -398,6 +400,32 @@ orchestrator/
                         nobody proved is one a teardown may neither delete nor write down. Reported as one
                         verdict per candidate carrying every reason it is kept for, and -- when it keeps none --
                         the commit each artifact was cleared at
+      discovery.py      the local scan widened by what the remote still carries: one `ls-remote` of the owned
+                        namespace per repository, put to the same claimants a local name is, so the flat legacy
+                        branch on a shared clone stays nobody's on the remote too, and a name spelled for a
+                        sibling that turned up there stays nobody's as well. The two halves merge into one
+                        candidate per issue in the order a teardown takes them, carrying the layout it was
+                        published under -- `current`, `legacy`, `mixed`, or `remote_only`, the last decided on
+                        where the artifacts are rather than what they are called. A repository whose remote will
+                        not answer is refused outright, since every question after this one goes to that same
+                        remote
+      reclaim.py        the three commit-pinned teardown steps, each refused by git or by the remote rather than
+                        by the reading in front of it: the removal that does not force, so a tree written in
+                        since the proof stands; the remote delete leased to the proved commit, so a branch
+                        pushed past it is turned down there; and the local `update-ref -d` naming that commit and
+                        refusing to dereference, so a branch an agent committed onto survives and a symbolic ref
+                        planted under a branch name is deleted as itself rather than followed onto the base. An
+                        artifact already gone is each step's success
+      maintenance.py    the pass that spends one classification: the injected active/claimed guard, the
+                        classification itself, and the quiet period a checkout is left alone for, asked in that
+                        order and each failing closed. Then the teardown -- the checkout first, since a branch
+                        checked out somewhere cannot be deleted, and each branch on the remote before the clone,
+                        so a failed remote delete leaves the local ref standing and the candidate discoverable.
+                        Every tip is re-read against the proof immediately before the mutation it gates. One
+                        bounded result per candidate: `cleaned`, `retained`, or `failed`, the closed reason that
+                        fixes which, the artifact it names, and the classification's own retentions where those
+                        are what kept it. Nothing is written down and no label, pinned state, comment, or session
+                        is touched, which is what makes a repeated or interrupted pass cost nothing
   skills/
     catalog.py          the per-tick `git ls-tree` of a repo's `SKILL.md` definitions, the `project` level it
                         classifies every one of them at, and the one `repo_skill_catalog` record it appends
@@ -437,6 +465,11 @@ off a facade:
   `branch_transport` for the one question a local ref may not answer — what the remote says a branch is at;
   `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
   disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
+  The pass over them is where that stops, and only its own step owner writes: `discovery` calls `inventory`,
+  `attribution`, and `paths`, plus `ref_transport` for the namespace listing no local read can answer; `reclaim`
+  calls `commands`, `locks`, and `ref_transport` for the leased delete; `maintenance` calls `eligibility`,
+  `evidence`, and `reclaim`, takes the active/claimed answer from a guard its caller injects rather than reaching up
+  for it, and names nothing in the workflow layer.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,
