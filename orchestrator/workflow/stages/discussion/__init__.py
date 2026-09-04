@@ -45,10 +45,14 @@ between resuming a live session and rebuilding the whole conversation for a
 round that has none to resume. `run` is the round itself, opened in the issue's
 own `issue-N` worktree, and it owns the probes that bracket the spawn as well
 as the records it stages around it, because both are about telling this round's
-work apart from what the checkout was already carrying. `outcomes` is where the
-write contract is enforced: commits and a dirty tree are checked before
-interruption and before the analysis, so an agent that started implementing is
-judged on what it wrote rather than read as a design.
+work apart from what the checkout was already carrying. `settlement` reads
+those probes as the single answer a tick acts on, and decides what a commit
+found on the branch is: this stage's to publish where the open-round record
+says one of its rounds was in flight, and somebody else's to report otherwise
+-- the same test a moved tip and a reply into a park are both settled by.
+`outcomes` is where the write contract is enforced: commits and a dirty tree
+are checked before interruption and before the analysis, so an agent that
+started implementing is judged on what it wrote rather than read as a design.
 
 Publishing what that judgement passes divides by the question each owner
 answers. `artifact` takes the one reading of the branch every other owner

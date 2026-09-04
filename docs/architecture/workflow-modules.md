@@ -863,6 +863,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             through, and the prompt paired with the replies it read
       run.py                one round in the issue's own worktree, the restorer that checkout is rebuilt by, and the
                             branch and SHA it records opening on
+      settlement.py         one reading of the tree and the round anchor, and the ownership test the commit it
+                            finds is settled by: this stage's to publish where a round was in flight, and
+                            somebody else's to report otherwise, under a park this stage wrote and off one alike
       outcomes.py           the pause, timeout, write, and response decisions one finished round is classified by, and
                             their routing
       publication.py        the re-runnable order a publishable commit earns: the durable marker that makes the
