@@ -19,6 +19,7 @@ from __future__ import annotations
 import subprocess
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from orchestrator.git.worktrees import eligibility, obligations, reclamation
 from orchestrator.git.worktrees.models import (
@@ -61,6 +62,13 @@ INDEX_LOCK = "index.lock"
 HEAD_LOCK = "HEAD.lock"
 
 REF_LOCK = ".lock"
+
+# Where a checkout is moved to for the cases about one that stopped being at
+# its own name, and the file in a checkout's administrative directory that
+# says where that checkout is.
+MOVED_CHECKOUT = "moved-checkout"
+
+REGISTRATION = "gitdir"
 
 LOOSE_FILE = "left-behind.txt"
 LOOSE_CONTENT = "an agent's unfinished work\n"
@@ -106,6 +114,11 @@ def _removal_locks(clone: Path, worktree: Path, branch: str) -> tuple[Path, ...]
         gitdir / HEAD_LOCK,
         clone / GIT_FILE / f"{BRANCH_REFS}{branch}{REF_LOCK}",
     )
+
+
+def _registration_of(worktree: Path) -> Path:
+    """The file in this checkout's git directory that says where it is."""
+    return _index_path(worktree).parent / REGISTRATION
 
 
 def _left_aside(worktree: Path) -> tuple[Path, ...]:
@@ -184,6 +197,23 @@ class _ReclaimTestCase(unittest.TestCase):
     def spend(self, verdict: ArtifactVerdict) -> ArtifactReclamation:
         """Run the teardown one already-taken verdict entitles."""
         return reclamation._reclaim_artifacts(verdict)
+
+    def prepared(self) -> Path:
+        """This issue's checkout, with what a take-over case reads set up."""
+        self.published()
+        self.worktree = self.checkout()
+        self.registration = _registration_of(self.worktree)
+        self.elsewhere = self.world.path(MOVED_CHECKOUT)
+        return self.worktree
+
+    def spending(self, seam: str, standing):
+        """Run one teardown with `standing` in place of one of the readings."""
+        cleared = self.verdict(
+            worktree=self.worktree, branches=self.branches,
+        )
+        self.asking = getattr(reclamation, seam)
+        with patch.object(reclamation, seam, standing):
+            return self.spend(cleared)
 
     def outcomes(
         self, reclaimed: ArtifactReclamation,

@@ -49,8 +49,15 @@ and it is read before it is destroyed. Reading and then unlinking would be two
 steps with a live lock somebody made in between, which is how two passes each
 end up holding a lock neither of them has. One that turns out to be somebody's
 goes back under a link, which refuses a name that has been taken again rather
-than taking it. And every lock is asked once more, immediately before the
-removal, whether it is still the one this pass took.
+than taking it. And every hold is asked once more IMMEDIATELY before the
+removal, with nothing between the asking and the command: what was established
+when they were taken was established before the move, the aiming, and both
+tree reads, and a lock gone in any of that is a checkout something else may
+commit in. The ref under the tree's HEAD is derived again there too, not
+merely its lock file read back -- a lock being the one this pass made says
+nothing about what the ref beside it now means, and a link left at that name
+after the lock was taken sends an `update-ref` to a ref this pass holds
+nothing for.
 
 Each is written whole under a name nothing can have planted -- created
 for this pass alone rather than derived from the lock's own -- and then linked
@@ -371,24 +378,22 @@ def _standing_anchor(artifacts: IssueArtifacts) -> tuple[SurfaceResult, ...]:
 
     Nothing at that name is the ordinary answer and reports no surface at all,
     which is what lets a candidate whose artifacts are all gone come back
-    settled. A read that established nothing answers the same way, because the
-    ledger tells the caller of a missing note and an unreadable one apart
-    nowhere -- and every step that acts on an anchor is gated on its own
-    reading rather than on this one.
+    settled. A read that established nothing is not that answer and is not
+    spent as it: a name this host cannot read is one it cannot say is clear,
+    and a teardown reporting itself finished over one would settle an issue
+    whose ledger nobody can account for.
     """
-    anchored = obligations._anchored_commit(
-        artifacts.spec, artifacts.issue_number,
-    )
-    if not anchored:
+    ref = obligations._anchor_ref(artifacts.spec, artifacts.issue_number)
+    anchored = obligations._note_at(artifacts.spec, ref)
+    if anchored == obligations._NO_NOTE:
         return ()
     log.warning(
-        "issue=#%d %s is still pinning %r, which nothing else on this host "
-        "names", artifacts.issue_number,
-        obligations._anchor_ref(artifacts.spec, artifacts.issue_number),
-        anchored,
+        "issue=#%d %s is still pinning %s, which nothing else on this host "
+        "names", artifacts.issue_number, ref,
+        anchored or "a commit nobody could read back",
     )
     return (SurfaceResult(
-        ArtifactSurface.ANCHOR, anchored, SurfaceOutcome.FAILED,
+        ArtifactSurface.ANCHOR, anchored or ref, SurfaceOutcome.FAILED,
     ),)
 
 
@@ -496,8 +501,18 @@ def _removal_under_lock(
     branch is clean, is removed without complaint, and is reachable from
     nothing afterwards. So the removal goes through the anchor, which is not a
     reading at all.
+
+    The path is established before any of it, ahead of the reconciliation as
+    much as the removal. A verdict is a value a caller hands over, and every
+    step under this one -- the room it scans, the names it takes away, the
+    tree it moves, the mode it changes, the registration it repairs -- is a
+    write somewhere the path decides. A candidate naming a directory that is
+    not where this issue's checkout belongs may not have any of them spent on
+    it.
     """
-    if not _aside_settled(artifacts, worktree):
+    if not _where_it_belongs(artifacts, worktree) or not _aside_settled(
+        artifacts, worktree,
+    ):
         return SurfaceOutcome.FAILED
     present = _checkout_present(worktree)
     if present is ProbeAnswer.REFUTED:
@@ -506,7 +521,46 @@ def _removal_under_lock(
         return SurfaceOutcome.FAILED
     if not _cleared_and_empty(artifacts, worktree, proven_sha):
         return SurfaceOutcome.FAILED
+    _registration_put_right(artifacts, worktree)
     return _anchored_removal(artifacts, worktree, proven_sha)
+
+
+def _registration_put_right(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> None:
+    """Aim a registration back at a checkout a stopped pass already put back.
+
+    The other end of the same recovery. A pass that moved the tree back and
+    stopped before it aimed the registration leaves no name aside to find, so
+    nothing keyed on that marker reaches this: what is left is a checkout
+    where the scan reads it from and a registration naming a path nothing is
+    at, which every later pass refuses as a checkout no registration names.
+
+    Only that state is put right, and only once the readings above have
+    established whose tree this is. A registration naming a path something IS
+    at is one this pass has no business rewriting -- it is either correct
+    already or it is another worktree's -- so what is asked is whether the
+    name it holds has anything at it at all.
+
+    Answered with nothing, because a repair that could not be made is not a
+    refusal: the hold taken further down reads the same file and refuses on
+    its own terms.
+    """
+    gitdir = _checkout_gitdir(artifacts, worktree)
+    if gitdir is None:
+        return
+    named = gitdir / _REGISTRATION
+    says = _registration_says(artifacts, named)
+    if says is None or _names_tree(says, worktree):
+        return
+    if Path(says.strip()).exists():
+        return
+    log.warning(
+        "issue=#%d %s names %r, which nothing is at, and is aimed back at the "
+        "checkout it is for", artifacts.issue_number, named, says.strip(),
+    )
+    if _registration_thawed(artifacts, named):
+        _registration_rewritten(artifacts, named, worktree)
 
 
 def _cleared_and_empty(
@@ -825,6 +879,7 @@ def _registration_replaced(
         os.close(pinned)
         _registration_dropped(staged)
         return None
+
     if not _registration_settled(artifacts, opened, pinned, says):
         _mode_put_back(artifacts, pinned)
         os.close(pinned)
@@ -928,49 +983,141 @@ def _registration_filed(
     opened: int,
     says: str,
 ) -> bool:
-    """File this pass's copy at the name, while the name still means the same.
+    """File this pass's copy at the name by taking what is there first.
 
-    The last thing asked before a rename that cannot be undone: the name still
-    resolves to the object this pass validated, and that object still says
-    what it said. A `worktree move` rewrites this file in place, so the second
-    question is the one that catches it -- and what the rename would otherwise
-    file is a path git has just stopped recording, leaving a checkout that
-    survived registered where it no longer is.
+    Reading a name and then replacing it is two steps, and a file somebody
+    renamed over that name in between is one the replace deletes without ever
+    having looked at it. So the taking comes FIRST: a rename moves whatever is
+    at the name to somewhere only this pass was told about, in one step that
+    every other would-be taker loses. What that leaves in hand is one object,
+    and it is read before anything is put in its place.
 
-    The asking and the rename are as close together as two calls can be. What
-    a name-based protocol cannot offer is doing them as one, and the writer
-    that would have to land between them is one already racing git's own
-    non-atomic rewrite of the same file.
+    What has to be true of it is what was true when it was validated -- the
+    same file, saying the same thing -- because the copy about to be filed
+    carries what it SAID: a `git worktree move` that rewrote it in the
+    meantime recorded where a checkout went, and filing the old text over that
+    would deregister a checkout this pass then refuses to touch. Anything that
+    fails either question goes back where it was, under a link, which refuses
+    a name taken again rather than taking it.
+
+    The copy goes in under a link too, for the same reason: a name something
+    else has reached in the gap is one this pass leaves alone, putting back
+    what it took.
     """
-    try:
-        still = _registration_still(named, opened, says)
-    except (OSError, ValueError) as unread:
-        log.warning(
-            "issue=#%d keeping the checkout: %s could not be read back before "
-            "the take-over (%s)", artifacts.issue_number, named, unread,
-        )
+    witness = _registration_witness(artifacts, named)
+    if witness is None:
         return False
-    if not still:
-        log.warning(
-            "issue=#%d keeping the checkout: %s stopped being the "
-            "registration this pass read", artifacts.issue_number, named,
-        )
+    if not _registration_moved(artifacts, named, witness):
+        _registration_dropped(witness)
         return False
+    if not _registration_ours(artifacts, witness, opened, says):
+        _registration_given(artifacts, witness, named)
+        return False
+    if _registration_linked(artifacts, staged, named):
+        _registration_dropped(witness)
+        return True
+    _registration_given(artifacts, witness, named)
+    return False
+
+
+def _registration_witness(
+    artifacts: IssueArtifacts, named: Path,
+) -> Path | None:
+    """One name beside a registration that this pass alone has been handed."""
     try:
-        os.replace(staged, named)
+        taking, held = tempfile.mkstemp(
+            prefix=f"{named.name}{_REPLACED_SUFFIX}", dir=named.parent,
+        )
     except OSError as refused:
         log.warning(
-            "issue=#%d keeping the checkout: its registration could not be "
-            "taken over (%s)", artifacts.issue_number, refused,
+            "issue=#%d keeping the checkout: %s could not be given a name to "
+            "be taken to (%s)", artifacts.issue_number, named, refused,
+        )
+        return None
+    os.close(taking)
+    return Path(held)
+
+
+def _registration_moved(
+    artifacts: IssueArtifacts, named: Path, witness: Path,
+) -> bool:
+    """Take whatever is at a registration's name, in the one step that can."""
+    try:
+        os.rename(named, witness)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: %s could not be taken over (%s)",
+            artifacts.issue_number, named, refused,
         )
         return False
     return True
 
 
-def _registration_still(named: Path, opened: int, says: str) -> bool:
-    """Whether that name still holds the file that was read, saying the same."""
+def _registration_ours(
+    artifacts: IssueArtifacts, witness: Path, opened: int, says: str,
+) -> bool:
+    """Whether what was taken is the file that was read, saying the same."""
+    try:
+        still = _registration_still(witness, opened, says)
+    except (OSError, ValueError) as unread:
+        log.warning(
+            "issue=#%d keeping the checkout: what was taken over could not be "
+            "read (%s)", artifacts.issue_number, unread,
+        )
+        return False
+    if still:
+        return True
+    log.warning(
+        "issue=#%d keeping the checkout: what was filed at its registration "
+        "stopped being what this pass read", artifacts.issue_number,
+    )
+    return False
+
+
+def _registration_linked(
+    artifacts: IssueArtifacts, staged: Path, named: Path,
+) -> bool:
+    """Put this pass's copy at the name, or leave a name something took."""
+    try:
+        os.link(staged, named)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: %s would not take this pass's "
+            "copy (%s)", artifacts.issue_number, named, refused,
+        )
+        return False
+    _registration_dropped(staged)
+    return True
+
+
+def _registration_given(
+    artifacts: IssueArtifacts, witness: Path, named: Path,
+) -> None:
+    """Put back a registration that turned out not to be this pass's to take.
+
+    Kept rather than dropped where the name has been taken again, since what
+    is held is git's own record of where a checkout is and nothing else has a
+    copy of it. The name is reported so an operator can put it back by hand --
+    and the pass after this one aims a registration naming a path nothing is
+    at back at the checkout it is for, which is the same state read from the
+    other end.
+    """
+    try:
+        os.link(witness, named)
+    except OSError as refused:
+        log.error(
+            "issue=#%d %s was taken over and could not be put back, and is "
+            "left at %s: %s",
+            artifacts.issue_number, named, witness, refused,
+        )
+        return
+    _registration_dropped(witness)
+
+
+def _registration_still(witness: Path, opened: int, says: str) -> bool:
+    """Whether what was taken is the object that was read, saying the same."""
     return _same_object(
-        named.lstat(), os.fstat(opened),
+        witness.lstat(), os.fstat(opened),
     ) and _registration_read(opened) == says
 
 
@@ -1574,7 +1721,7 @@ def _removal_aside(
     """
     if not _holding_nothing(artifacts, aside):
         return SurfaceOutcome.FAILED
-    if not _still_held(artifacts, held, aimed):
+    if not _still_held(artifacts, aside, held, aimed):
         return SurfaceOutcome.FAILED
     removed = commands._git_hardened(
         "worktree", "remove", str(aside), cwd=artifacts.spec.target_root,
@@ -1583,12 +1730,44 @@ def _removal_aside(
 
 
 def _still_held(
-    artifacts: IssueArtifacts, held: _Holds, aimed: _Registration,
+    artifacts: IssueArtifacts,
+    aside: Path,
+    held: _Holds,
+    aimed: _Registration,
 ) -> bool:
     """Whether every hold this removal runs under is still this pass's own."""
     if not _locks_unchanged(artifacts, held.locks):
         return False
+    if not _branch_still_frozen(artifacts, aside, held.locks):
+        return False
     return _registration_unchanged(artifacts, aimed)
+
+
+def _branch_still_frozen(
+    artifacts: IssueArtifacts, aside: Path, locks: tuple[_HeldLock, ...],
+) -> bool:
+    """Whether the ref this checkout stands on is still the one held still.
+
+    A lock file being the one this pass made says nothing about what the ref
+    beside it now means. Git reaches a loose ref by walking its path, so a
+    link left at that name -- or at a room above it -- after the lock was
+    taken sends an `update-ref` to a ref this pass holds nothing for, and what
+    the checkout is standing on moves under a lock that never covered it.
+
+    So the ref is derived again from the tree and put to the same reading it
+    was chosen by, and what that names has to be a lock this pass is already
+    holding. A HEAD on no branch names none and is covered by the two locks
+    the tree keeps, which is why an empty answer passes.
+    """
+    under = _branch_lock(artifacts, aside)
+    held = {lock.named for lock in locks}
+    if under is not None and held.issuperset(under):
+        return True
+    log.warning(
+        "issue=#%d keeping the checkout: the ref it stands on is no longer "
+        "one this pass is holding still", artifacts.issue_number,
+    )
+    return False
 
 
 def _moved_aside(
@@ -1700,17 +1879,28 @@ def _put_back(
     worktree: Path,
     aimed: _Registration,
 ) -> None:
-    """Put a checkout that did not come down back where the scan reads it."""
-    if _registration_aimed(artifacts, aimed, worktree) is None:
-        log.error(
-            "issue=#%d the registration of %s is left aimed at %s",
-            artifacts.issue_number, worktree, aside,
-        )
+    """Put a checkout that did not come down back where the scan reads it.
+
+    The tree moves first and the registration follows it, which is the order
+    that leaves the two agreeing whichever of them stops. A canonical path
+    something else has arrived at is one the rename cannot go to, and a
+    registration re-aimed in front of that rename would then be naming a
+    replacement while this issue's checkout stood aside under a name pointing
+    nowhere -- so what a put-back that cannot finish leaves is exactly what it
+    found: the tree aside, and the registration still naming it.
+    """
     if not _renamed(artifacts, aside, worktree):
         log.error(
             "issue=#%d the checkout of this issue is left at %s rather than "
             "at %s, where the scan reads it from",
             artifacts.issue_number, aside, worktree,
+        )
+        return
+    if _registration_aimed(artifacts, aimed, worktree) is None:
+        log.error(
+            "issue=#%d %s was put back and its registration was left aimed at "
+            "%s; the pass after this one repairs it",
+            artifacts.issue_number, worktree, aside,
         )
 
 
@@ -1721,6 +1911,14 @@ def _aside_settled(artifacts: IssueArtifacts, worktree: Path) -> bool:
     name only it knew, which is a checkout no scan finds by looking. The name
     carries the issue it was made for, so the pass after can find it -- and
     the room it was made in is one only this orchestrator writes.
+
+    The registration is aimed back before the tree moves, not after. The name
+    it is aimed at is the marker this whole reconciliation is keyed on, so a
+    pass stopping between the two leaves the tree still aside with a
+    registration already naming where it belongs -- which the pass after that
+    finds and finishes. The other order leaves the marker gone and the
+    registration naming a path nothing is at, which is a checkout no later
+    pass can account for at all.
 
     A name is made before anything is moved onto it, so what a rename that
     failed leaves is an empty room rather than a checkout. Those are taken
@@ -1749,9 +1947,9 @@ def _aside_settled(artifacts: IssueArtifacts, worktree: Path) -> bool:
         "issue=#%d %s was left aside by a pass that did not come back, and is "
         "put back", artifacts.issue_number, left[0],
     )
-    if not _renamed(artifacts, left[0], worktree):
+    if not _aside_repaired(artifacts, left[0], worktree):
         return False
-    return _aside_repaired(artifacts, worktree)
+    return _renamed(artifacts, left[0], worktree)
 
 
 def _one_to_put_back(
@@ -1819,35 +2017,115 @@ def _aside_moved(artifacts: IssueArtifacts, left: Path) -> bool:
         return False
 
 
-def _aside_repaired(artifacts: IssueArtifacts, worktree: Path) -> bool:
-    """Point git's registration back at where the checkout is again.
+def _aside_repaired(
+    artifacts: IssueArtifacts, aside: Path, worktree: Path,
+) -> bool:
+    """Point git's registration at where the checkout is about to go back to.
 
     The other half of what a stopped pass leaves. It moved the checkout and
     aimed the registration after it, so putting the tree back alone would
     leave git holding a name nothing is at -- and the pass that read it would
     refuse the checkout as one no registration names.
 
-    Through `worktree repair`, which is the command for exactly this, with the
-    write bits put back on that file first: what a stopped pass left is one of
-    this pass's own copies with them taken off, which is why nothing else has
-    fixed it and why nothing else could. Whether what is at that name is a
-    file git can use at all is what the repair itself answers.
+    Written here rather than left to `worktree repair`, because that command
+    reads the tree at the path it is given and the tree is not there yet: what
+    this is for is exactly the moment before it goes back. The write bits go
+    on first, since what a stopped pass left is one of this pass's own copies
+    with them taken off, which is why nothing else has fixed it.
+
+    Only a registration naming where the checkout was left is rewritten. One
+    already naming the canonical path is a pass that got further than the
+    rename, and anything else is a state this does not understand and will not
+    write over.
     """
-    gitdir = _checkout_gitdir(artifacts, worktree)
+    gitdir = _checkout_gitdir(artifacts, aside)
     if gitdir is None:
         return False
-    if not _registration_thawed(artifacts, gitdir / _REGISTRATION):
+    named = gitdir / _REGISTRATION
+    says = _registration_says(artifacts, named)
+    if says is None:
         return False
-    repaired = commands._git_hardened(
-        "worktree", "repair", str(worktree), cwd=artifacts.spec.target_root,
-    )
-    if repaired.returncode == 0:
+    if _names_tree(says, worktree):
         return True
-    log.error(
-        "issue=#%d %s was put back and its registration was not: %s",
-        artifacts.issue_number, worktree, (repaired.stderr or "").strip(),
-    )
-    return False
+    if not _names_tree(says, aside):
+        log.error(
+            "issue=#%d %s names %r, which is neither where the checkout was "
+            "left nor where it belongs",
+            artifacts.issue_number, named, says.strip(),
+        )
+        return False
+    return _registration_thawed(
+        artifacts, named,
+    ) and _registration_rewritten(artifacts, named, worktree)
+
+
+def _names_tree(says: str, tree: Path) -> bool:
+    """Whether one registration's contents spell this tree's own `.git`.
+
+    Compared as text rather than as filesystem objects, which is the whole
+    reason it is a reading of its own: what this asks about is a path nothing
+    is at yet, and the comparison every other caller makes needs both ends to
+    exist.
+    """
+    return says.strip() == f"{tree}/{_CHECKOUT_GIT_FILE}"
+
+
+def _registration_says(artifacts: IssueArtifacts, named: Path) -> str | None:
+    """What is filed at one registration's name, read the way they all are."""
+    opened = _registration_opened(artifacts, named)
+    if opened is None:
+        return None
+    with contextlib.ExitStack() as reading:
+        reading.callback(os.close, opened)
+        return _registration_spelled(artifacts, named, opened)
+
+
+def _registration_spelled(
+    artifacts: IssueArtifacts, named: Path, opened: int,
+) -> str | None:
+    """What one descriptor says, if what it is open on is a registration."""
+    try:
+        told = _registration_told(opened)
+    except (OSError, ValueError) as unread:
+        log.warning(
+            "issue=#%d %s could not be read: %s",
+            artifacts.issue_number, named, unread,
+        )
+        return None
+    return None if told is None else told[1]
+
+
+def _registration_rewritten(
+    artifacts: IssueArtifacts, named: Path, worktree: Path,
+) -> bool:
+    """Write one registration back at the tree it is about to hold again."""
+    says = f"{worktree}/{_CHECKOUT_GIT_FILE}\n"
+    try:
+        writing = os.open(named, os.O_WRONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError as refused:
+        log.error(
+            "issue=#%d %s would not open to be aimed back: %s",
+            artifacts.issue_number, named, refused,
+        )
+        return False
+    with contextlib.ExitStack() as aiming:
+        aiming.callback(os.close, writing)
+        return _registration_put(artifacts, named, writing, says)
+
+
+def _registration_put(
+    artifacts: IssueArtifacts, named: Path, writing: int, says: str,
+) -> bool:
+    """Replace the whole of one registration with what it is to say."""
+    try:
+        _written_over(writing, says.encode())
+    except OSError as refused:
+        log.error(
+            "issue=#%d %s could not be aimed back: %s",
+            artifacts.issue_number, named, refused,
+        )
+        return False
+    return True
 
 
 def _registration_thawed(artifacts: IssueArtifacts, named: Path) -> bool:
@@ -1888,6 +2166,12 @@ def _left_aside(
     an unreadable room and an empty one alike: it walks the same directory and
     keeps nothing it could not walk, so a room that may be entered and not
     listed comes back as one with nothing in it.
+
+    A room that is not there at all is the one refusal that is an answer. An
+    issue whose last checkout came down took its room with it if it was the
+    last one in it, and nothing can have been left aside in a directory that
+    does not exist -- so the pass goes on to find the checkout gone, which is
+    the success an already-finished teardown deserves.
     """
     aside = _ASIDE_PREFIX.format(artifacts.issue_number)
     try:
@@ -1896,6 +2180,8 @@ def _left_aside(
                 worktree.parent / entry.name
                 for entry in room if entry.name.startswith(aside)
             ))
+    except FileNotFoundError:
+        return ()
     except OSError as read_error:
         log.warning(
             "issue=#%d %s could not be read for what an earlier pass left "
@@ -2392,13 +2678,7 @@ def _still_cleared(
     all fails the same comparison, because what it answers with is not a
     commit.
     """
-    if worktree != paths._worktree_path(
-        artifacts.spec, artifacts.issue_number,
-    ):
-        log.warning(
-            "issue=#%d refusing to remove %s: not where this issue's checkout "
-            "belongs", artifacts.issue_number, worktree,
-        )
+    if not _where_it_belongs(artifacts, worktree):
         return False
     identity = evidence._checkout_identity(
         artifacts.spec, artifacts.issue_number, worktree,
@@ -2416,6 +2696,24 @@ def _still_cleared(
         )
         return False
     return True
+
+
+def _where_it_belongs(artifacts: IssueArtifacts, worktree: Path) -> bool:
+    """Whether this path is the one this issue's own creators derive.
+
+    Asked against the derivation rather than against anything on disk, since
+    a verdict is a value a caller hands over and the boundary does not take
+    its word for which directory it may write in.
+    """
+    if worktree == paths._worktree_path(
+        artifacts.spec, artifacts.issue_number,
+    ):
+        return True
+    log.warning(
+        "issue=#%d refusing to remove %s: not where this issue's checkout "
+        "belongs", artifacts.issue_number, worktree,
+    )
+    return False
 
 
 def _holding_nothing(artifacts: IssueArtifacts, worktree: Path) -> bool:

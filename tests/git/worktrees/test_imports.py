@@ -155,9 +155,11 @@ _OWNER_ONLY_NAMES = (
 # same reading a write is held to before it reports a note kept, and the one
 # environment setting that keeps each of those local. Then the teardown that
 # spends one of those verdicts on the checkout it cleared: the entry a
-# candidate is handed to and the line every deletion is said out loud on, what
-# a verdict keeping its candidate is answered with, the removal and the
-# boundary around it, the presence read that tells a path that is gone from
+# candidate is handed to and the line every deletion is said out loud on, the
+# note this host is still pinning when a pass is over, what a verdict keeping
+# its candidate is answered with, the removal and the boundary around it, the
+# derivation every write under that boundary is gated on, the presence read
+# that tells a path that is gone from
 # one nobody could answer for, the whole verdict's worth of readings retaken
 # one process before the removal -- the derived path, the identity, the tip,
 # and the two tree reads that tell what is carried from what is hidden -- and
@@ -178,7 +180,8 @@ _OWNER_ONLY_NAMES = (
 # to, the move itself, and the link a lock that turned out to be somebody's is
 # put back under -- the give-back spent through the same take, and the check
 # before the removal that each of them is bound to, asked of every hold at
-# once with the command the next thing after it;
+# once with the command the next thing after it -- the ref the checkout stands
+# on derived again and matched against what is held among them;
 # the checkout itself, opened as a directory of its own and held that way, the
 # reading that says the path still leads to it, and the one afterwards that
 # says nothing links to it any more -- with the count that means -- and the
@@ -198,13 +201,17 @@ _OWNER_ONLY_NAMES = (
 # this pass's own staged under a name of its own -- written whole, however
 # little a write takes at a time, replaced whole where a descriptor is written
 # through twice, and dropped however that ended -- and
-# renamed into place only while the original still is what it was and still
-# says it, read once more AFTER that rename with whatever it displaced written
-# back where it stood, held by the mode taken off the object rather than the
-# name, put back the same way, and asked once more -- both what the name
-# resolves to and what the object says -- whether it still means what it
-# meant; the note this host is still pinning when a pass is over, reported
-# beside the checkout because it outlives it; the comparison
+# filed by taking whatever is at that name away FIRST -- to a witness name of
+# this pass's own, read there against the object and the text that were
+# validated, linked in only then, and given back under a link when it was
+# somebody's -- read once more AFTER that filing with whatever it displaced
+# written back where it stood, held by the mode taken off the object rather
+# than the name, put back the same way, and asked once more -- both what the
+# name resolves to and what the object says -- whether it still means what it
+# meant; the reading that says what one registration spells, the text
+# comparison a path nothing is at yet is asked through, the writes that aim
+# one back, and the two ends of the recovery a stopped pass leaves; the
+# comparison
 # telling a path that IS a tree from one that merely leads to it and the
 # object identity under it, the last word on whether the path named is gone
 # and which of the two ways it got that way, and the take, the discard, and
@@ -316,6 +323,7 @@ _OWNER_DEFINED = (
     ("_branch_reasons", eligibility),
     ("_branch_ref", reclamation),
     ("_branch_retentions", eligibility),
+    ("_branch_still_frozen", reclamation),
     ("_branch_tip", eligibility),
     ("_came_down", reclamation),
     ("_candidate_issue_branches", recovery),
@@ -392,6 +400,7 @@ _OWNER_DEFINED = (
     ("_mode_taken_off", reclamation),
     ("_move_branch_onto", creation),
     ("_moved_aside", reclamation),
+    ("_names_tree", reclamation),
     ("_note_at", obligations),
     ("_note_value", obligations),
     ("_nothing_ignored", evidence),
@@ -428,19 +437,29 @@ _OWNER_DEFINED = (
     ("_registration_checked", reclamation),
     ("_registration_dropped", reclamation),
     ("_registration_filed", reclamation),
+    ("_registration_given", reclamation),
     ("_registration_given_back", reclamation),
     ("_registration_held", reclamation),
+    ("_registration_linked", reclamation),
+    ("_registration_moved", reclamation),
     ("_registration_now", reclamation),
     ("_registration_opened", reclamation),
+    ("_registration_ours", reclamation),
+    ("_registration_put", reclamation),
+    ("_registration_put_right", reclamation),
     ("_registration_read", reclamation),
     ("_registration_replaced", reclamation),
+    ("_registration_rewritten", reclamation),
+    ("_registration_says", reclamation),
     ("_registration_settled", reclamation),
+    ("_registration_spelled", reclamation),
     ("_registration_staged", reclamation),
     ("_registration_still", reclamation),
     ("_registration_taken", reclamation),
     ("_registration_thawed", reclamation),
     ("_registration_told", reclamation),
     ("_registration_unchanged", reclamation),
+    ("_registration_witness", reclamation),
     ("_remind", obligations),
     ("_removal_aside", reclamation),
     ("_removal_under_lock", reclamation),
@@ -485,6 +504,7 @@ _OWNER_DEFINED = (
     ("_thawed", reclamation),
     ("_tip_retentions", eligibility),
     ("_untouched", reclamation),
+    ("_where_it_belongs", reclamation),
     ("_workflow_members", claims),
     ("_worktree_issue_numbers", probes),
     ("_walked_entry", obligations),

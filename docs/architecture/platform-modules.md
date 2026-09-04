@@ -408,8 +408,13 @@ orchestrator/
                         registration's mode comes back writable whatever was found, for the same reason. Both
                         the take-again and the give-back are bound to the exact file the line inside it names,
                         never to the name alone -- two passes meeting one leftover would otherwise each delete
-                        what the other had just created and both go on -- and every lock is asked once more,
-                        immediately before the removal, whether it is still the one this pass took. Then
+                        what the other had just created and both go on -- and every hold is asked once more
+                        IMMEDIATELY before the removal, with nothing between the asking and the command, since
+                        what they were asked when they were taken was asked before the move, the aiming and both
+                        tree reads, and a lock gone in any of that is a checkout something else may commit in.
+                        The ref under the tree's HEAD is derived again there rather than its lock file merely
+                        read back, a lock being the one this pass made saying nothing about what the ref beside
+                        it now means. Then
                         with that checkout's HEAD pinned to an anchor one process before it and read back one
                         process after: a commit made before the locks went on comes down with the checkout, and
                         the anchor is what keeps it nameable and has the surface report the removal as the
@@ -446,10 +451,16 @@ orchestrator/
                         inside the room it already sits in, to a name this pass makes and tells nobody, and the
                         registration — which nothing else can write — is aimed after it, so what the command
                         deletes is a path nobody else holds a name for and what the tree hides is read once more
-                        where it now stands. A removal that did not take it puts it back, the scan reading this
-                        host's candidates off the derived path; a pass killed between the two leaves it under a
-                        name carrying its issue, and the pass after finds it, puts it back, and repairs the
-                        registration behind it before it reads anything — dropping on sight the empty rooms a
+                        where it now stands. A removal that did not take it puts the tree back and aims the
+                        registration after it, the scan reading this host's candidates off the derived path and
+                        a canonical path something else arrived at being one the rename cannot go to; the
+                        recovery runs the other way round, aiming before it moves, because the name it aims at
+                        is the marker it is keyed on. Between them those orders leave only states a later pass
+                        recognises — the tree aside with the aiming already done, or the tree back with the
+                        registration still naming where it was — each put right before anything else is read,
+                        and the derived path established ahead of all of it since every write under this
+                        boundary lands somewhere that path decides. The recovery drops on sight the empty rooms
+                        a
                         rename that never happened reserved, since a checkout carries its own `.git` at the very
                         least, stopping rather than choosing when more than one tree is there, and stopping
                         outright on a room it could not read at all: that room is SCANNED rather than matched by
@@ -463,8 +474,12 @@ orchestrator/
                         padded to exactly it would otherwise read as the shorter thing it is not and the
                         take-over would file that truncation at the name -- and then TAKEN OVER: a copy of this
                         pass's own, carrying exactly what the original
-                        said, is written beside it and renamed into place, which leaves every descriptor
-                        somebody opened earlier pointing at an inode no name resolves to. The original stays
+                        said, is written beside it and taken there — whatever is at the name is moved away
+                        first, read where nothing else can reach it, and the copy linked in only once it is the
+                        file that was validated saying what it said, since reading a name and then replacing it
+                        is two steps with a file somebody renamed over it in between, deleted unseen. What lands
+                        leaves every descriptor somebody opened earlier pointing at an inode no name resolves
+                        to. The original stays
                         open across both halves and is asked once more -- still the file that was read, still
                         saying what it said -- immediately before that rename, because what the copy carries is
                         what the original SAID: a `git worktree move` landing in between rewrites that file in
@@ -504,7 +519,8 @@ orchestrator/
                         folded into it: an anchor outlives the tree it was taken from, so a pass that found the
                         tree already gone would otherwise report the issue settled while this host went on being
                         the only name a commit has. It is reported only as a failure, since a note standing is a
-                        thing somebody has to settle.
+                        thing somebody has to settle — and a note nobody could READ is reported the same way, a
+                        name this host cannot read being one it cannot say is clear.
                         Every name here that an agent chooses what to put at -- the
                         registration and each of the three locks -- is read the same way besides: without
                         following, without waiting, and asked what the descriptor IS before it is asked what it
