@@ -463,7 +463,11 @@ orchestrator/
                         saying what it said -- immediately before that rename, because what the copy carries is
                         what the original SAID: a `git worktree move` landing in between rewrites that file in
                         place, and a take-over that went ahead would write the obsolete path over the one git
-                        had just recorded, deregistering a checkout it then refuses to touch. That is the half a
+                        had just recorded, deregistering a checkout it then refuses to touch. That reading and
+                        the rename are separate steps, so the original is read once more AFTER the rename too,
+                        through the descriptor the rename displaced: a move that finished in between recorded
+                        where it put the checkout, and what it recorded goes back at the name rather than under
+                        what this pass remembered. That is the half a
                         mode cannot buy, since write bits coming off say nothing to a handle that already
                         exists; the no-follow open is what keeps a link left there from having every read and
                         every mode change land on somebody else's file; and what the mode does buy is that the
@@ -490,7 +494,11 @@ orchestrator/
                         holding nothing but what its own rules cover passes every other reading and comes down
                         with all of it inside. That read is asked last of everything, and then once more where
                         the tree has been moved to, which is the first place it can be taken that nothing else
-                        is writing in.
+                        is writing in. What a pass leaves PINNED is answered beside the checkout rather than
+                        folded into it: an anchor outlives the tree it was taken from, so a pass that found the
+                        tree already gone would otherwise report the issue settled while this host went on being
+                        the only name a commit has. It is reported only as a failure, since a note standing is a
+                        thing somebody has to settle.
                         Every name here that an agent chooses what to put at -- the
                         registration and each of the three locks -- is read the same way besides: without
                         following, without waiting, and asked what the descriptor IS before it is asked what it

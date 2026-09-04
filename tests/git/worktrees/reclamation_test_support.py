@@ -119,15 +119,23 @@ def _left_aside(worktree: Path) -> tuple[Path, ...]:
 
 
 def _checkout_surface(
-    outcome: SurfaceOutcome,
+    outcome: SurfaceOutcome, anchor: SurfaceOutcome | None = None,
 ) -> tuple[tuple[ArtifactSurface, SurfaceOutcome], ...]:
     """The whole answer a candidate whose one artifact is a checkout gets.
 
     The whole of it rather than its first entry, so a case asserting what the
     checkout was left in is also asserting that nothing was reported for a
     surface this candidate does not have.
+
+    `anchor` is what a case expects to be left pinned, for the passes that
+    leave a note behind: it is a surface of its own because a note outlives
+    the checkout it was taken from, so until somebody settles it this host is
+    still holding something for that issue.
     """
-    return ((ArtifactSurface.WORKTREE, outcome),)
+    reported = ((ArtifactSurface.WORKTREE, outcome),)
+    if anchor is None:
+        return reported
+    return (*reported, (ArtifactSurface.ANCHOR, anchor))
 
 
 class _ReclaimTestCase(unittest.TestCase):

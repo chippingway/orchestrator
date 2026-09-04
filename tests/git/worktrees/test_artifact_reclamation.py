@@ -103,6 +103,10 @@ OVERSIZED_TAIL = "x"
 # about a namespace redirected wholesale.
 MOVED_ROOM = "-elsewhere"
 
+# The name a move that never happened leaves in the room a checkout is set
+# aside inside, spelled as a pass that stopped would have left it.
+_ASIDE_RESERVED = ".reclaiming-{0}-stopped"
+
 # The buffer the short-write cases offer, and the descriptor they never reach:
 # every call is answered by a stand-in, so nothing is written anywhere.
 WHOLE_WRITE = b"abc"
@@ -128,9 +132,19 @@ _GITDIR_SEAM = "_checkout_gitdir"
 # reaches into.
 _OWN_LOCKS_SEAM = "_own_locks"
 
-# The reading a registration's take-over spans, which the case about a
-# checkout git moved inside that window stands in front of.
+# The reading a registration's take-over spans, and the last question asked
+# in front of the rename that ends it -- the window the cases about a
+# registration rewritten under a take-over stand in.
 _CHECKED_SEAM = "_registration_checked"
+
+_STILL_SEAM = "_registration_still"
+
+# The name a lock is taken to before it is read, which is the step the case
+# about two passes reaching one leftover at once stands in front of, and the
+# listing of what a stopped pass left aside.
+_SCRATCH_SEAM = "_lock_scratch"
+
+_ASIDE_SEAM = "_left_aside"
 
 # The write that stages a lock before it is filed at its own name, which the
 # case about a lock that never landed stands in front of.
@@ -626,7 +640,9 @@ class DivergentWorkTest(_ReclaimTestCase):
         with patch.object(evidence, _CLEAN_SEAM, racer):
             reclaimed = self.spend(cleared)
 
-        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.outcomes(reclaimed), _checkout_surface(FAILED, FAILED),
+        )
         self.assertTrue(worktree.is_dir())
         self.assertEqual(self.anchored(), racer.made)
 
@@ -901,6 +917,87 @@ class RegistrationHoldTest(_ReclaimTestCase):
         self.assertFalse(self.writer.elsewhere.exists())
 
 
+class TakeOverSeamTest(_ReclaimTestCase):
+    """The window between reading a registration and filing a copy over it.
+
+    What the take-over files is a copy of what the original SAID, so anything
+    that rewrites the original in that window is something this pass would
+    otherwise write over -- including `git worktree move`, whose whole job is
+    to record where a checkout went.
+    """
+
+    def moving(self, named: Path, opened: int, says: str) -> bool:
+        """Ask as the take-over does, then move the checkout for real.
+
+        Installed in place of the last question in front of the rename, which
+        is the window nothing can close from in front of it: what the answer
+        establishes is a step old by the time the rename runs.
+        """
+        still = self.asking(named, opened, says)
+        self.moved = _ran_git(
+            self.clone, WORKTREE, "move",
+            str(self.worktree), str(self.elsewhere),
+        )
+        return still
+
+    def rewriting(self, named: Path, opened: int, says: str) -> bool:
+        """Ask as the take-over does, then write through an older handle."""
+        still = self.asking(named, opened, says)
+        aimed = _aiming_at(self.elsewhere).encode()
+        os.pwrite(self.older, aimed, 0)
+        os.ftruncate(self.older, len(aimed))
+        return still
+
+    def prepared(self) -> Path:
+        """This issue's checkout, with everything these cases read set up."""
+        self.published()
+        self.worktree = self.checkout()
+        self.registration = _registration_of(self.worktree)
+        self.elsewhere = self.world.path(MOVED_CHECKOUT)
+        return self.worktree
+
+    def spending(self, standing):
+        """Run one teardown with `standing` in place of the last question."""
+        cleared = self.verdict(
+            worktree=self.worktree, branches=self.branches,
+        )
+        self.asking = reclamation._registration_still
+        with patch.object(reclamation, _STILL_SEAM, standing):
+            return self.spend(cleared)
+
+    def test_a_move_mid_take_over_is_put_back(self) -> None:
+        # A real `git worktree move` finishing in that window records where it
+        # put the checkout, and the rename after it files what the file used
+        # to say over what it now says. What was displaced is still readable
+        # through the descriptor it displaced, so git's own record goes back
+        # at the name and the removal does not run.
+        self.prepared()
+
+        reclaimed = self.spending(self.moving)
+
+        self.assertEqual(self.moved, 0)
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.registration.read_text(), _aiming_at(self.elsewhere),
+        )
+        self.assertTrue((self.elsewhere / GIT_FILE).exists())
+
+    def test_a_handle_writing_mid_take_over_is_kept(self) -> None:
+        # The same window reached through a descriptor somebody opened while
+        # the file still had its write bits, which is what no mode answers.
+        self.prepared()
+        self.older = os.open(self.registration, os.O_WRONLY)
+        self.addCleanup(os.close, self.older)
+
+        reclaimed = self.spending(self.rewriting)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.registration.read_text(), _aiming_at(self.elsewhere),
+        )
+        self.assertTrue(self.worktree.is_dir())
+
+
 class MovedCheckoutTest(_ReclaimTestCase):
     """A path that stops being the tree it named, at two different moments.
 
@@ -915,45 +1012,6 @@ class MovedCheckoutTest(_ReclaimTestCase):
         return _MovedCheckout(
             worktree, self.world.path(MOVED_CHECKOUT), self.clone,
         )
-
-    def moving(self, artifacts, worktree: Path, opened: int):
-        """Validate as the take-over does, then move the checkout away.
-
-        Installed in place of the reading the take-over is decided on, which
-        is the window it spans: `git worktree move` rewrites the registration
-        in place, so what this pass is about to file at that name is the path
-        git has just stopped recording.
-        """
-        read = self.reading(artifacts, worktree, opened)
-        self.moved = _ran_git(
-            self.clone, WORKTREE, "move", str(worktree), str(self.elsewhere),
-        )
-        return read
-
-    def test_a_tree_moved_mid_take_over_stays_named(self) -> None:
-        # The take-over files a copy of what the registration SAID, so a move
-        # landing between the reading and the rename would have this pass
-        # write a path nothing is at over the one git had just recorded --
-        # destroying the registration of a checkout it then refuses to touch,
-        # and leaving `worktree list` naming somewhere the tree is not. The
-        # original is held open across both, and asked one last time whether
-        # it still says what it said.
-        self.published()
-        worktree = self.checkout()
-        cleared = self.verdict(worktree=worktree, branches=self.branches)
-        self.elsewhere = self.world.path(MOVED_CHECKOUT)
-        registration = _registration_of(worktree)
-        self.reading = reclamation._registration_checked
-
-        with patch.object(reclamation, _CHECKED_SEAM, self.moving):
-            reclaimed = self.spend(cleared)
-
-        self.assertEqual(self.moved, 0)
-        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
-        self.assertEqual(
-            registration.read_text(), _aiming_at(self.elsewhere),
-        )
-        self.assertTrue(self.elsewhere.is_dir())
 
     def test_a_tree_moved_before_the_read_is_kept(self) -> None:
         # The window the early type check leaves open: everything from that
@@ -1029,6 +1087,40 @@ class ConcurrentPassTest(_ReclaimTestCase):
 
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
         self.assertEqual(self.snatched.read_text(), HELD_BY_GIT)
+        self.assertTrue(worktree.is_dir())
+
+    def snatching_late(self, lock: Path):
+        """Let another pass take the leftover, then name where this takes it.
+
+        Installed in place of the naming that runs between the reading and the
+        take, which is the window a reading in front of a delete leaves open:
+        by the time the delete would run, what is at the name is a live lock
+        another pass has just made.
+        """
+        self.snatched = lock
+        lock.unlink()
+        lock.write_text(LEFT_BEHIND.format(TAKEN_BY_ANOTHER))
+        return self.naming(lock)
+
+    def test_a_lock_swapped_under_a_take_is_kept(self) -> None:
+        # Reading a name and then unlinking it is two steps, and a lock made
+        # in between is one the unlink would delete. So the take comes first
+        # and the reading second: what this ends up holding is one object, and
+        # a lock that turns out to be somebody's goes back where it was.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        left = _removal_locks(self.clone, worktree, self.branch)[0]
+        left.write_text(LEFT_BEHIND.format(_reaped()))
+        self.naming = reclamation._lock_scratch
+
+        with patch.object(reclamation, _SCRATCH_SEAM, self.snatching_late):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.snatched.read_text(), LEFT_BEHIND.format(TAKEN_BY_ANOTHER),
+        )
         self.assertTrue(worktree.is_dir())
 
     def test_a_stale_lock_another_pass_took_is_kept(self) -> None:
@@ -1574,7 +1666,9 @@ class AnchorReconciliationTest(_ReclaimTestCase):
         with patch.object(obligations, _ANCHOR_READ_SEAM, self.repointing):
             reclaimed = self.spend(cleared)
 
-        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.outcomes(reclaimed), _checkout_surface(FAILED, FAILED),
+        )
         self.assertFalse(worktree.exists())
         self.assertEqual(self.anchored(), self.repointed)
 
@@ -1591,10 +1685,103 @@ class AnchorReconciliationTest(_ReclaimTestCase):
         ):
             reclaimed = self.spend(cleared)
 
-        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.outcomes(reclaimed), _checkout_surface(FAILED, FAILED),
+        )
         self.assertFalse(reclaimed.settled)
         self.assertFalse(worktree.exists())
         self.assertEqual(self.anchored(), cleared.proven[0].sha)
+
+
+class StandingAnchorTest(_ReclaimTestCase):
+    """A note this host is still pinning is a surface of its own.
+
+    An anchor outlives the checkout it was taken from, so an answer about the
+    checkout says nothing about it: a pass that found the tree already gone
+    would otherwise report the issue settled while this host went on being the
+    only name a commit has.
+    """
+
+    def repointing(self, spec, issue_number: int) -> str:
+        """Read the anchor, then move it where a racer would."""
+        ref = obligations._anchor_ref(spec, issue_number)
+        anchored = obligations._note_at(spec, ref)
+        if anchored:
+            self.repointed = self.world.commit_on(
+                self.clone, f"{self.branch}{RACED_BRANCH}",
+            )
+            _run_git(_UPDATE_REF, ref, self.repointed, cwd=self.clone)
+        return anchored
+
+    def test_a_note_outliving_its_checkout_is_named(self) -> None:
+        # The checkout came down and the note over it did not, so the pass
+        # after has no checkout left to find the issue by -- and would report
+        # nothing at all left to do while the commit that note pins is one
+        # nothing else on this host names.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        with patch.object(obligations, _ANCHOR_READ_SEAM, self.repointing):
+            first = self.spend(cleared)
+        again = self.spend(cleared)
+
+        self.assertEqual(
+            self.outcomes(first), _checkout_surface(FAILED, FAILED),
+        )
+        self.assertEqual(
+            self.outcomes(again), _checkout_surface(ABSENT, FAILED),
+        )
+        self.assertFalse(again.settled)
+        self.assertFalse(worktree.exists())
+        self.assertEqual(self.anchored(), self.repointed)
+
+
+class AsideRoomTest(_ReclaimTestCase):
+    """What the room a checkout is moved aside inside is read for.
+
+    A name is made there before anything is moved onto it, and the reading
+    that finds one is what a pass killed mid-move is put right by -- so what
+    that reading answers, and what it makes of a name nothing was moved onto,
+    decides whether this issue is ever reclaimable again.
+    """
+
+    def reserved(self, worktree: Path) -> Path:
+        """One name a move that never happened left standing in that room."""
+        aside = worktree.parent / _ASIDE_RESERVED.format(ISSUE_NUMBER)
+        aside.mkdir()
+        return aside
+
+    def test_a_reservation_nothing_moved_onto_goes(self) -> None:
+        # A checkout carries its own `.git` at the very least, so an empty
+        # room is a name a rename never happened onto rather than a tree moved
+        # aside. Left standing, every later pass would read it as one and
+        # refuse over a checkout that never went anywhere.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        aside = self.reserved(worktree)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(CLEANED))
+        self.assertFalse(aside.exists())
+        self.assertFalse(worktree.exists())
+
+    def test_a_room_that_would_not_be_read_keeps_it(self) -> None:
+        # A room this pass could not read is not a room with nothing in it,
+        # and spending the second answer on the first is how a checkout an
+        # earlier pass left aside is passed over while this one takes another
+        # down -- or reported absent over a tree nothing could see.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+
+        with patch.object(reclamation, _ASIDE_SEAM, return_value=None):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertTrue(worktree.is_dir())
 
 
 class RepeatedPassTest(_ReclaimTestCase):
@@ -1636,8 +1823,12 @@ class RepeatedPassTest(_ReclaimTestCase):
         kept = self.spend(cleared)
         again = self.spend(cleared)
 
-        self.assertEqual(self.outcomes(kept), _checkout_surface(FAILED))
-        self.assertEqual(self.outcomes(again), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.outcomes(kept), _checkout_surface(FAILED, FAILED),
+        )
+        self.assertEqual(
+            self.outcomes(again), _checkout_surface(FAILED, FAILED),
+        )
         self.assertTrue(worktree.is_dir())
         self.assertEqual(self.anchored(), stranded)
 
@@ -1658,7 +1849,9 @@ class RepeatedPassTest(_ReclaimTestCase):
         with patch.object(commands, _HARDENED_SEAM, self.stopping):
             stopped = self.spend(cleared)
 
-        self.assertEqual(self.outcomes(stopped), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.outcomes(stopped), _checkout_surface(FAILED, FAILED),
+        )
         self.assertFalse(worktree.exists())
         self.assertEqual(len(_left_aside(worktree)), 1)
         self.assertEqual(self.anchored(), cleared.proven[0].sha)
@@ -1686,7 +1879,9 @@ class RepeatedPassTest(_ReclaimTestCase):
         ):
             kept = self.spend(cleared)
 
-        self.assertEqual(self.outcomes(kept), _checkout_surface(FAILED))
+        self.assertEqual(
+            self.outcomes(kept), _checkout_surface(FAILED, FAILED),
+        )
         self.assertTrue(worktree.is_dir())
 
 

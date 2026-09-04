@@ -173,8 +173,11 @@ _OWNER_ONLY_NAMES = (
 # marked is one an incomplete write leaves unrecognisable -- and the staging
 # file dropped however that ended, the bounded no-follow read that says what
 # one carries and the parse of the process it names, the reading that asks
-# whether a name still carries what this pass wrote, and the take-again, the
-# give-back, and the check before the removal that each of them is bound to;
+# whether a name still carries what this pass wrote, the take that reads what
+# it took rather than reading before it takes -- the scratch name it is taken
+# to, the move itself, and the link a lock that turned out to be somebody's is
+# put back under -- the give-back spent through the same take, and the check
+# before the removal that each of them is bound to;
 # the checkout itself, opened as a directory of its own and held that way, the
 # reading that says the path still leads to it, and the one afterwards that
 # says nothing links to it any more -- with the count that means -- and the
@@ -182,9 +185,11 @@ _OWNER_ONLY_NAMES = (
 # head that name is made under, the making, the move, the aim the registration
 # is given after it, the removal spent where the tree now stands, and the
 # put-back a removal that did not take it earns; then the reconciliation the
-# pass after a stopped one opens with -- what it finds left aside, the repair
-# that points git back at what it put back, and the write bits given to a
-# registration a stopped pass left held; the
+# pass after a stopped one opens with -- what it finds left aside and whether
+# that is a tree at all, the empty names a move that never happened reserved
+# and the taking away of each, the repair that points git back at what it put
+# back, and the write bits given to a registration a stopped pass left held;
+# the
 # registration the removal is aimed by: opened without following or waiting
 # and held open across the whole take-over, told whether the descriptor is a
 # regular file at all, read for what it says from its first byte and refused
@@ -193,9 +198,12 @@ _OWNER_ONLY_NAMES = (
 # little a write takes at a time, replaced whole where a descriptor is written
 # through twice, and dropped however that ended -- and
 # renamed into place only while the original still is what it was and still
-# says it, held by the mode taken off the object rather than the name, put
-# back the same way, and asked once more -- both what the name resolves to and
-# what the object says -- whether it still means what it meant; the comparison
+# says it, read once more AFTER that rename with whatever it displaced written
+# back where it stood, held by the mode taken off the object rather than the
+# name, put back the same way, and asked once more -- both what the name
+# resolves to and what the object says -- whether it still means what it
+# meant; the note this host is still pinning when a pass is over, reported
+# beside the checkout because it outlives it; the comparison
 # telling a path that IS a tree from one that merely leads to it and the
 # object identity under it, the last word on whether the path named is gone
 # and which of the two ways it got that way, and the take, the discard, and
@@ -293,6 +301,8 @@ _OWNER_DEFINED = (
     ("_anchors_prefix", obligations),
     ("_artifact_reading", eligibility),
     ("_artifact_verdict", eligibility),
+    ("_aside_dropped", reclamation),
+    ("_aside_moved", reclamation),
     ("_aside_repaired", reclamation),
     ("_aside_settled", reclamation),
     ("_attributed_issues", attribution),
@@ -363,8 +373,11 @@ _OWNER_DEFINED = (
     ("_lock_created", reclamation),
     ("_lock_dropped", reclamation),
     ("_lock_filed", reclamation),
+    ("_lock_moved", reclamation),
     ("_lock_names", reclamation),
+    ("_lock_put_back", reclamation),
     ("_lock_says", reclamation),
+    ("_lock_scratch", reclamation),
     ("_lock_staged", reclamation),
     ("_lock_still", reclamation),
     ("_lock_told", reclamation),
@@ -413,11 +426,13 @@ _OWNER_DEFINED = (
     ("_registration_checked", reclamation),
     ("_registration_dropped", reclamation),
     ("_registration_filed", reclamation),
+    ("_registration_given_back", reclamation),
     ("_registration_held", reclamation),
     ("_registration_now", reclamation),
     ("_registration_opened", reclamation),
     ("_registration_read", reclamation),
     ("_registration_replaced", reclamation),
+    ("_registration_settled", reclamation),
     ("_registration_staged", reclamation),
     ("_registration_still", reclamation),
     ("_registration_taken", reclamation),
@@ -434,6 +449,8 @@ _OWNER_DEFINED = (
     ("_repo_worktrees_root", paths),
     ("_reported", reclamation),
     ("_repository_key", obligations),
+    ("_reservation_let_go", reclamation),
+    ("_reservation_reclaimed", reclamation),
     ("_resolve_branch_name", paths),
     ("_resolved_commit", creation),
     ("_resolved_root", inventory),
@@ -450,7 +467,7 @@ _OWNER_DEFINED = (
     ("_shared_repository", evidence),
     ("_somewhere_aside", reclamation),
     ("_spent_anchor_cleared", reclamation),
-    ("_stale_let_go", reclamation),
+    ("_standing_anchor", reclamation),
     ("_stands_as", obligations),
     ("_slug_digest", paths),
     ("_slugs_by_worktrees_root", attribution),
@@ -459,6 +476,7 @@ _OWNER_DEFINED = (
     ("_still_cleared", reclamation),
     ("_still_ours", reclamation),
     ("_store_held", obligations),
+    ("_taken_away", reclamation),
     ("_taken_once", reclamation),
     ("_terminal_retentions", claims),
     ("_thawed", reclamation),
