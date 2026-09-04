@@ -58,7 +58,7 @@ from pathlib import Path
 from orchestrator import config
 from orchestrator.git import branch_transport, commands, locks
 from orchestrator.git.verification import probes as verification_probes
-from orchestrator.git.worktrees import paths
+from orchestrator.git.worktrees import paths, probes
 from orchestrator.git.worktrees.models import BranchTip, ProbeAnswer
 
 # The channel is named for the worktree-lifecycle domain rather than for this
@@ -369,37 +369,6 @@ def _nothing_ignored(worktree: Path) -> ProbeAnswer:
     return ProbeAnswer.CONFIRMED
 
 
-def _common_git_dir(root: Path) -> Path | None:
-    """The one git directory a checkout or a clone shares, or None.
-
-    What makes two paths the same repository: a linked worktree has a git
-    directory of its own, and the store it is registered in is the parent's
-    -- so the common directory is the only spelling that answers equal for a
-    checkout and the clone that created it.
-
-    Resolved against the directory the read ran in rather than asked for
-    absolutely, because git answers this one relatively whenever it can and
-    the two spellings would otherwise compare unequal for a healthy checkout.
-    A path that will not resolve at all is answered `None` for the reason the
-    scan answers its own root that way: the failure is version-dependent and
-    a caller must not read it as a repository identity that was established.
-    """
-    located = _hardened_read(root, "rev-parse", "--git-common-dir")
-    if located is None or located.returncode != 0:
-        return None
-    common_dir = (located.stdout or "").strip()
-    if not common_dir:
-        return None
-    try:
-        return (root / common_dir).resolve()
-    except (OSError, RuntimeError) as resolve_error:
-        log.debug(
-            "could not resolve the git directory of %s: %s",
-            root, resolve_error,
-        )
-        return None
-
-
 def _shared_repository(spec: config.RepoSpec, worktree: Path) -> ProbeAnswer:
     """Whether this checkout is a worktree of the configured clone.
 
@@ -411,8 +380,8 @@ def _shared_repository(spec: config.RepoSpec, worktree: Path) -> ProbeAnswer:
     and registers it under the parent's, so the common directory is the one
     spelling that comes back equal for a checkout and the clone that made it.
     """
-    checkout_dir = _common_git_dir(worktree)
-    clone_dir = _common_git_dir(spec.target_root)
+    checkout_dir = probes._checkout_clone(worktree)
+    clone_dir = probes._checkout_clone(spec.target_root)
     if checkout_dir is None or clone_dir is None:
         return ProbeAnswer.UNREADABLE
     if checkout_dir != clone_dir:

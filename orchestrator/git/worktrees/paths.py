@@ -256,6 +256,36 @@ def _worktree_path(spec: config.RepoSpec, issue_number: int) -> Path:
     return _repo_worktrees_root(spec) / f"issue-{issue_number}"
 
 
+def _legacy_worktree_path(issue_number: int) -> Path:
+    """The pre-slug-namespacing checkout path for an issue.
+
+    The path counterpart of `_legacy_branch_name`, and it carries no slug for
+    the same reason that name does not: before the per-repo parent existed,
+    every configured repository put its `issue-<n>` checkout directly under
+    `WORKTREES_DIR`. Nothing writes here now, and it is derived rather than
+    guessed because a caller reading such a directory has only its name to go
+    on -- and, since the derivation is the same for every entry, no name to say
+    which of them made it.
+    """
+    return config.WORKTREES_DIR / f"issue-{issue_number}"
+
+
+def _issue_worktree_paths(
+    spec: config.RepoSpec, issue_number: int,
+) -> tuple[Path, ...]:
+    """Every path this orchestrator could have checked one issue out at.
+
+    The per-repository path it writes now and the flat one an issue checked out
+    before slug namespacing is still sitting at -- both, in that order, because
+    a host running across the migration can be holding both at once and a
+    teardown takes the current one first.
+    """
+    return (
+        _worktree_path(spec, issue_number),
+        _legacy_worktree_path(issue_number),
+    )
+
+
 def _issue_segment_number(segment: str) -> int | None:
     """The issue number an `issue-<n>` name segment carries, or None.
 

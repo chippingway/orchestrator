@@ -66,14 +66,22 @@ class _CandidateWorld(_ArtifactWorld):
         `ls-remote` and the token resolution and the transport-config refusal
         in front of it -- runs for real against something that answers.
         """
-        self.remote = self.path(REMOTE_DIR)
-        self.remote.mkdir()
-        _run_git("init", "--bare", QUIET, "-b", BASE_BRANCH, cwd=self.remote)
-        self._serving.enter_context(
-            _SESSIONS.registered(spec.slug, str(self.remote)),
-        )
-        self.publish(spec.target_root, BASE_BRANCH, BASE_BRANCH)
+        self.remote = self._served(spec, REMOTE_DIR)
         return self.remote
+
+    def serve_beside(self, spec: config.RepoSpec, name: str) -> Path:
+        """Give a second repository sharing this clone a remote of its own.
+
+        A remote is the one thing two `REPOS` entries over a single checkout do
+        not share, so a case about what a shared clone's branches belong to
+        needs both of them answering: a fixture serving one would prove only
+        that the other could not be reached.
+
+        The world's own `remote` stays the first one, since that is what its
+        publications are spelled against -- what this hands back is the second
+        repository's, for a case that has to reach into it directly.
+        """
+        return self._served(spec, name)
 
     def unreachable(self, spec: config.RepoSpec) -> Path:
         """Point this repository's transport at a remote that is not there.
@@ -111,11 +119,23 @@ class _CandidateWorld(_ArtifactWorld):
         _branch_at(root, branch, tip)
         return tip
 
-    def publish(self, root: Path, branch: str, revision: str) -> str:
-        """Push `revision` onto the remote's `branch`, as a publication does."""
+    def publish(
+        self,
+        root: Path,
+        branch: str,
+        revision: str,
+        *,
+        remote: Path | None = None,
+    ) -> str:
+        """Push `revision` onto the remote's `branch`, as a publication does.
+
+        The world's own remote unless a case names another, which is what a
+        shared clone's second repository needs: the two entries publish to two
+        different hosts under names that are otherwise identical.
+        """
         pushed = _revision(root, revision)
         _run_git(
-            "push", QUIET, str(self.remote),
+            "push", QUIET, str(remote or self.remote),
             f"{pushed}:refs/heads/{branch}",
             cwd=root,
         )
@@ -133,13 +153,39 @@ class _CandidateWorld(_ArtifactWorld):
         self, spec: config.RepoSpec, issue_number: int, branch: str,
     ) -> Path:
         """Add the issue's worktree on the branch its creator leaves it on."""
-        worktree = paths._worktree_path(spec, issue_number)
+        return self.checkout_at(
+            spec, paths._worktree_path(spec, issue_number), branch,
+        )
+
+    def checkout_at(
+        self, spec: config.RepoSpec, worktree: Path, branch: str,
+    ) -> Path:
+        """Add a worktree of this clone at a named path, on a named branch.
+
+        The path is stated rather than derived, for the one case where it is
+        not what the derivation writes now: a checkout made before slug
+        namespacing sits directly under `WORKTREES_DIR`, and a host that was
+        running then can still be holding it.
+        """
         worktree.parent.mkdir(parents=True, exist_ok=True)
         _run_git(
             "worktree", "add", QUIET, str(worktree), branch,
             cwd=spec.target_root,
         )
         return worktree
+
+    def _served(self, spec: config.RepoSpec, name: str) -> Path:
+        """One bare repository, wired to this repository's authenticated calls."""
+        remote = self.path(name)
+        remote.mkdir()
+        _run_git("init", "--bare", QUIET, "-b", BASE_BRANCH, cwd=remote)
+        self._serving.enter_context(
+            _SESSIONS.registered(spec.slug, str(remote)),
+        )
+        self.publish(
+            spec.target_root, BASE_BRANCH, BASE_BRANCH, remote=remote,
+        )
+        return remote
 
 
 def _revision(root: Path, revision: str) -> str:

@@ -12,15 +12,17 @@ from importlib.util import find_spec
 
 from orchestrator.git import worktrees as _worktrees_package
 
-# The artifact scan's own owners and the classification over it, named apart
+# The artifact scan's own owners, the classification over it, and the
+# discovery that widens both with what the remote still carries, named apart
 # from the lifecycle ones above because that is the split the map draws: these
-# seven are read-only.
+# eight are read-only.
 from orchestrator.git.worktrees import (
     attribution,
     claims,
     cleanup,
     creation,
     decomposition,
+    discovery,
     eligibility,
     evidence,
     inventory,
@@ -52,6 +54,7 @@ _MODULES = (
     "orchestrator.git.worktrees.cleanup",
     "orchestrator.git.worktrees.creation",
     "orchestrator.git.worktrees.decomposition",
+    "orchestrator.git.worktrees.discovery",
     "orchestrator.git.worktrees.eligibility",
     "orchestrator.git.worktrees.evidence",
     "orchestrator.git.worktrees.inventory",
@@ -89,6 +92,7 @@ _OWNER_ONLY_NAMES = (
     "_ensure_worktree",
     "_decompose_worktree_path",
     "_local_issue_inventory",
+    "_maintenance_candidates",
     "_remove_issue_worktree",
     "_resolve_branch_name",
     "_sanitize_slug",
@@ -98,54 +102,75 @@ _OWNER_ONLY_NAMES = (
 
 # Every name the owners define, paired with the owner that defines it: the slug
 # pattern and the digest math behind it, the two sanitizers, the branch, root,
-# and worktree-path derivations, the pinned / legacy resolver and the
-# `issue-<n>` read that runs back the other way, the
-# candidate-branch and commit-count reads behind the unpushed-commit probe, the
-# two creators, the new-commit probe, the reported fetch and the start point a
-# restore picks, the handoff anchor with the target choice, the ref move, and the
-# revision read under it, and the `worktree` argv they run, the
-# decomposer's path, creation, and removal, the per-issue removal and local
-# branch deletion, the two teardowns composed from them, and the local artifact
-# scan: the two records it answers with, the branch listing and checkout reads
-# under it, the attribution rules for a branch and for a checkout directory,
-# the clone resolution, the grouping over it and the shape that grouping
-# takes, and the per-clone, per-repository, and per-issue assembly. Then the
-# classification over what that scan found: the three-answer probe vocabulary,
-# the two records a verdict is made of and the commit it hands over when it
-# clears one, the seven fail-closed reads -- the ignored-path one that answers
-# for what a status leaves out among them -- and the two runners under them,
-# the issue, pinned-state, and pull-request reads
-# GitHub answers with and the boundaries around each of them, and the
-# composition that turns both into one verdict per candidate, with the
-# checkout's own three-read order, the tables each of those is charged
-# through, the tip read that falls back to the remote, the HEAD read spent
-# twice, and the proof an eligible verdict is handed over as. Naming the
-# whole surface makes a helper added to an owner an edit here rather than a
-# definition site nothing checks.
+# and worktree-path derivations, the pinned / legacy resolver, the `issue-<n>`
+# read that runs back the other way, and the two paths one issue can have been
+# checked out at, the candidate-branch and commit-count reads behind the
+# unpushed-commit probe, the two creators, the new-commit probe, the reported
+# fetch and the start point a restore picks, the handoff anchor with the target
+# choice, the ref move, and the revision read under it, and the `worktree` argv
+# they run, the decomposer's path, creation, and removal, the per-issue removal
+# and local branch deletion, the two teardowns composed from them, and the local
+# artifact scan: the two records it answers with, the branch listing and the
+# checkout reads under it, the flat pre-namespacing checkouts among them, the
+# identity read that says which clone one of those is a worktree of, the
+# attribution rules for a branch, for a checkout directory, and for a flat
+# checkout no name can settle -- the record carrying the owner it found beside
+# the claimants nobody may act for, and the reporting behind it -- the clone
+# resolution, the grouping over it and the shape that grouping takes, the one
+# filing what a repository holds apart from what it may not touch, and the
+# per-clone, per-repository, and per-issue assembly. Then the classification
+# over what that scan found: the three-answer probe vocabulary, the two records
+# a verdict is made of and the commit it hands over when it clears one, the
+# seven fail-closed reads -- the ignored-path one that answers for what a status
+# leaves out among them -- and the two runners under them, the issue,
+# pinned-state, and pull-request reads GitHub answers with and the boundaries
+# around each of them, and the composition that turns both into one verdict per
+# candidate, with every checkout read on its own against the base and the branch
+# tips the whole candidate shares, that checkout's three-read order and the
+# record carrying what it is measured against, the tables each of those is
+# charged through, the tip read that falls back to the remote, the HEAD read
+# spent twice, and the proof an eligible verdict is handed over as. Then the
+# discovery over both halves at once: the remote listing and the namespace
+# pattern it asks for, the attribution and the grouping over it, the layout
+# reading and the merge that widens one candidate, and the whole scan those
+# produce. Naming the whole surface makes a helper added to an owner an edit
+# here rather than a definition site nothing checks.
 _OWNER_DEFINED = (
     ("ArtifactInventory", models),
     ("ArtifactVerdict", models),
     ("AttributedIssues", attribution),
     ("BranchTip", models),
+    ("CandidateKey", discovery),
+    ("CandidateLayout", models),
+    ("CheckoutClaim", attribution),
     ("CloneGroups", inventory),
     ("IssueArtifacts", models),
     ("IssueBranches", attribution),
+    ("IssueNumbers", inventory),
+    ("LegacyCheckouts", inventory),
+    ("MaintenanceCandidate", models),
+    ("MaintenanceScan", models),
     ("ProbeAnswer", models),
     ("ProvenTip", models),
+    ("PublishedBranches", discovery),
     ("Retention", models),
     ("RetentionReason", models),
     ("TERMINAL_LABELS", claims),
     ("_CLEANLINESS_REASONS", eligibility),
+    ("_CheckoutReads", eligibility),
     ("_GIT_NEGATIVE", evidence),
     ("_HEAD", evidence),
     ("_HIDDEN_REASONS", eligibility),
     ("_IDENTITY_REASONS", eligibility),
     ("_ISSUE_SEGMENT_RE", paths),
+    ("_LISTED", attribution),
     ("_LOCAL_BRANCH_PREFIX", probes),
     ("_LOCAL_REF_PREFIX", evidence),
     ("_OPEN_PULL_REQUEST", claims),
     ("_ORCHESTRATOR_BRANCH_REFS", probes),
+    ("_ORCHESTRATOR_REMOTE_REFS", discovery),
     ("_REF_SEPARATOR", attribution),
+    ("_REMOTE_BRANCH_PREFIX", discovery),
     ("_SAFE_CHAR", paths),
     ("_SLUG_DIGEST_LEN", paths),
     ("_SLUG_SAFE_RE", paths),
@@ -158,6 +183,7 @@ _OWNER_DEFINED = (
     ("_artifact_reading", eligibility),
     ("_artifact_verdict", eligibility),
     ("_attributed_issues", attribution),
+    ("_attributed_legacy", inventory),
     ("_base_contains", evidence),
     ("_branch_attribution", attribution),
     ("_branch_commit_count", recovery),
@@ -167,10 +193,16 @@ _OWNER_DEFINED = (
     ("_branch_retentions", eligibility),
     ("_branch_tip", eligibility),
     ("_candidate_issue_branches", recovery),
+    ("_candidate_keys", discovery),
+    ("_candidate_layout", discovery),
+    ("_candidate_order", discovery),
     ("_carrying_pull_request", claims),
+    ("_checkout_clone", probes),
     ("_checkout_entries", probes),
     ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
+    ("_checkout_numbers", probes),
+    ("_checkout_reading", eligibility),
     ("_checkout_reason", eligibility),
     ("_checkout_retentions", eligibility),
     ("_checkout_tip", evidence),
@@ -185,7 +217,8 @@ _OWNER_DEFINED = (
     ("_colliding_worktree_slugs", attribution),
     ("_commit_accounting", claims),
     ("_commit_count_from_stdout", recovery),
-    ("_common_git_dir", evidence),
+    ("_countable_legacy_checkouts", attribution),
+    ("_current_names", discovery),
     ("_decompose_worktree_path", decomposition),
     ("_delete_local_issue_branch", cleanup),
     ("_ended_retentions", claims),
@@ -194,16 +227,27 @@ _OWNER_DEFINED = (
     ("_ensure_worktree", creation),
     ("_fetch_for_restore", creation),
     ("_fetched_issue", claims),
+    ("_file_claim", inventory),
+    ("_group_published", discovery),
     ("_hardened_read", evidence),
     ("_has_new_commits", creation),
     ("_head_is_own_branch", evidence),
     ("_head_ref", evidence),
+    ("_held_checkouts", inventory),
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
+    ("_issue_worktree_paths", paths),
+    ("_keyed_candidate", discovery),
+    ("_legacy_checkout_claim", attribution),
+    ("_legacy_checkout_numbers", probes),
+    ("_legacy_claim", inventory),
+    ("_legacy_names", discovery),
+    ("_legacy_worktree_path", paths),
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
     ("_local_orchestrator_branches", probes),
+    ("_maintenance_candidates", discovery),
     ("_matching_owners", attribution),
     ("_merged", inventory),
     ("_move_branch_onto", creation),
@@ -211,13 +255,19 @@ _OWNER_DEFINED = (
     ("_open_pull_request_retentions", claims),
     ("_pr_branch_start_point", creation),
     ("_proven_tips", eligibility),
+    ("_published_branches", discovery),
     ("_published_tip", evidence),
+    ("_read_artifacts", eligibility),
     ("_read_orchestrator_refs", probes),
     ("_read_state", claims),
     ("_record_attribution", attribution),
     ("_recorded_pull_request", claims),
+    ("_remote_half", discovery),
+    ("_remote_issue_branches", discovery),
+    ("_remote_orchestrator_branches", discovery),
     ("_remove_issue_worktree", cleanup),
     ("_repo_worktrees_root", paths),
+    ("_report_unsettled", attribution),
     ("_resolve_branch_name", paths),
     ("_resolved_commit", creation),
     ("_resolved_root", inventory),
@@ -228,6 +278,7 @@ _OWNER_DEFINED = (
     ("_run_local_branch_deletion", cleanup),
     ("_sanitize_branch_segment", paths),
     ("_sanitize_slug", paths),
+    ("_scanned", inventory),
     ("_shared_repository", evidence),
     ("_slug_digest", paths),
     ("_slugs_by_worktrees_root", attribution),
@@ -235,6 +286,7 @@ _OWNER_DEFINED = (
     ("_specs_by_clone", inventory),
     ("_terminal_retentions", claims),
     ("_tip_retentions", eligibility),
+    ("_widened", discovery),
     ("_workflow_members", claims),
     ("_worktree_issue_numbers", probes),
     ("_worktree_path", paths),
@@ -243,8 +295,8 @@ _OWNER_DEFINED = (
 # The owners that report, each binding the channel an operator's level and
 # handler selection is keyed on.
 _REPORTING_OWNERS = (
-    attribution, claims, cleanup, creation, decomposition, evidence,
-    inventory, probes, terminal,
+    attribution, claims, cleanup, creation, decomposition, discovery,
+    evidence, inventory, probes, terminal,
 )
 
 
