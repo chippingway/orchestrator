@@ -108,6 +108,16 @@ def _removal_locks(clone: Path, worktree: Path, branch: str) -> tuple[Path, ...]
     )
 
 
+def _left_aside(worktree: Path) -> tuple[Path, ...]:
+    """Every name a stopped pass may have left this issue's checkout under.
+
+    Read off the room the checkout sits in rather than remembered, because the
+    tail of that name is one the pass under test makes and tells nobody.
+    """
+    aside = reclamation._ASIDE_PREFIX.format(ISSUE_NUMBER)
+    return tuple(sorted(worktree.parent.glob(f"{aside}*")))
+
+
 def _checkout_surface(
     outcome: SurfaceOutcome,
 ) -> tuple[tuple[ArtifactSurface, SurfaceOutcome], ...]:

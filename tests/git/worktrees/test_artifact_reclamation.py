@@ -17,7 +17,6 @@ stub was consulted.
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 import unittest
 from pathlib import Path
@@ -54,6 +53,7 @@ from tests.git.worktrees.reclamation_test_support import (
     OTHER_ISSUE_NUMBER,
     _checkout_surface,
     _dirty,
+    _left_aside,
     _ran_git,
     _ReclaimTestCase,
     _removal_locks,
@@ -333,17 +333,14 @@ class _StaleHandle:
         os.close(self.opened)
 
     def swap(self) -> None:
-        """Move the tree, aim the handle at it, and link the old path back.
+        """Aim the handle at a tree of somebody's, and read the name back.
 
         What is recorded is what the NAME says once the write has happened,
         which is the whole of what the removal after it will be aimed by.
         """
-        self.worktree.rename(self.elsewhere)
-        (self.elsewhere / MOVED_FILE).write_text(MOVED_CONTENT)
         aimed = _aiming_at(self.elsewhere).encode()
         os.pwrite(self.opened, aimed, 0)
         os.ftruncate(self.opened, len(aimed))
-        self.worktree.symlink_to(self.elsewhere)
         self.aimed_at = self.named.read_text()
 
 
@@ -887,7 +884,8 @@ class RegistrationHoldTest(_ReclaimTestCase):
         # this pass can take. So the file is not merely read and held: a copy
         # of this pass's own, saying exactly what the original said, is
         # renamed over the name, which leaves every handle opened earlier
-        # pointing at an inode nothing is filed at.
+        # pointing at an inode nothing is filed at. What the removal is aimed
+        # by is therefore untouched, and the checkout comes down.
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
@@ -898,9 +896,9 @@ class RegistrationHoldTest(_ReclaimTestCase):
         with patch.object(commands, _HARDENED_SEAM, self.swapped):
             reclaimed = self.spend(cleared)
 
-        self.assertEqual(self.writer.aimed_at, _aiming_at(worktree))
-        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
-        self.assertEqual(_read(self.writer.elsewhere), MOVED_CONTENT)
+        self.assertNotIn(MOVED_CHECKOUT, self.writer.aimed_at)
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(CLEANED))
+        self.assertFalse(self.writer.elsewhere.exists())
 
 
 class MovedCheckoutTest(_ReclaimTestCase):
@@ -917,17 +915,6 @@ class MovedCheckoutTest(_ReclaimTestCase):
         return _MovedCheckout(
             worktree, self.world.path(MOVED_CHECKOUT), self.clone,
         )
-
-    def removing(self, *args: str, **options):
-        """Swap the tree away in the one window no reading can close.
-
-        Installed in place of the local git runner and acting on the removal
-        itself: what is left between the last reading and the command is the
-        command's own argument, which the command resolves for itself.
-        """
-        if " ".join(args[:2]) == _WORKTREE_REMOVE:
-            self.moved()
-        return self.hardened(*args, **options)
 
     def moving(self, artifacts, worktree: Path, opened: int):
         """Validate as the take-over does, then move the checkout away.
@@ -985,30 +972,6 @@ class MovedCheckoutTest(_ReclaimTestCase):
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
         self.assertEqual(moved.repaired, 0)
         self.assertEqual(_read(moved.elsewhere), MOVED_CONTENT)
-        self.assertTrue(worktree.is_symlink())
-
-    def test_a_tree_moved_at_the_last_moment_stays(self) -> None:
-        # The window no reading can close, since the command resolves its own
-        # argument. What closes it instead is that the argument only picks a
-        # registration: what comes down is the path that registration names,
-        # and while a removal is running this pass holds that file still. The
-        # repair the swap needs is refused, so the removal is left aimed at
-        # the path it was always aimed at -- a link by then, which git will
-        # not delete as a directory -- and the tree at the far end is
-        # untouched.
-        self.published()
-        worktree = self.checkout()
-        cleared = self.verdict(worktree=worktree, branches=self.branches)
-        self.moved = self.swapping(worktree)
-        self.hardened = commands._git_hardened
-
-        with patch.object(commands, _HARDENED_SEAM, self.removing):
-            reclaimed = self.spend(cleared)
-
-        self.assertNotEqual(self.moved.repaired, 0)
-        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
-        self.assertFalse(reclaimed.settled)
-        self.assertEqual(_read(self.moved.elsewhere), MOVED_CONTENT)
         self.assertTrue(worktree.is_symlink())
 
 
@@ -1261,111 +1224,91 @@ class SpecialFileTest(_ReclaimTestCase):
 class CommandSeamTest(_ReclaimTestCase):
     """The window between the last reading and the command that resolves a path.
 
-    `worktree remove` takes a path and resolves it for itself, and no lock
-    this pass holds stops a rename in that window. So what the answer is read
-    off is not the path and not the exit status but the checkout itself, held
-    open since before the readings: a directory nothing links to any more is
-    one that came down, and anything else is a removal that took something
-    else or took nothing.
+    `worktree remove` deletes the path its registration names and resolves it
+    at the moment it runs, so every reading this pass takes is about what that
+    name meant beforehand. What closes the window is that the name stops being
+    the checkout's before the command runs at all: the tree is moved, inside
+    its own room, to a name this pass makes and nobody was told, and the
+    registration -- which nothing else can write -- is aimed at where it went.
+    Whatever arrives at the old name after that arrives at a path this
+    teardown has finished with.
     """
 
-    def renaming(self, *args: str, **options):
-        """Move the tree away in the one window no reading can close."""
+    def arriving(self, *args: str, **options):
+        """Put a checkout of somebody's where this issue's used to be."""
         if " ".join(args[:2]) == _WORKTREE_REMOVE:
-            self.worktree.rename(self.elsewhere)
-            (self.elsewhere / MOVED_FILE).write_text(MOVED_CONTENT)
-        return self.hardened(*args, **options)
-
-    def replacing(self, *args: str, **options):
-        """Move the tree away and leave a copy of it in its place.
-
-        A copy carries what the checkout kept at its root, so git reads the
-        path as the registered worktree; it carries every tracked file, so git
-        reads it as clean; and what is added to it is a path the repository's
-        own rules hide, which is what `worktree remove` takes without a word.
-        Every reading about the PATH therefore agrees, and the command deletes
-        a tree that has not been this issue's checkout since before it ran.
-        """
-        if " ".join(args[:2]) == _WORKTREE_REMOVE:
-            self.worktree.rename(self.elsewhere)
-            shutil.copytree(self.elsewhere, self.worktree, symlinks=True)
+            self.worktree.mkdir(parents=True, exist_ok=True)
+            (self.worktree / GIT_FILE).write_text(_aiming_at(self.worktree))
             (self.worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
         return self.hardened(*args, **options)
 
-    def spending(self, cleared, standing) -> None:
-        """Run one teardown with `standing` in place of the command."""
-        self.elsewhere = self.world.path(MOVED_CHECKOUT)
+    def hiding(self, *args: str, **options):
+        """Leave a file the repository's own rules hide at the old name."""
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            self.worktree.mkdir(parents=True, exist_ok=True)
+            (self.worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
+        return self.hardened(*args, **options)
+
+    def renaming(self, *args: str, **options):
+        """Try to move whatever is at the old name out from under the command."""
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            self.moved = _ran_git(
+                self.clone, WORKTREE, "list", "--porcelain",
+            )
+            self.swapped = self.worktree.exists()
+        return self.hardened(*args, **options)
+
+    def spending(self, standing) -> None:
+        """Run one teardown with `standing` in place of the local runner."""
+        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
+        self.published()
+        self.worktree = self.checkout()
+        cleared = self.verdict(
+            worktree=self.worktree, branches=self.branches,
+        )
         self.hardened = commands._git_hardened
         with patch.object(commands, _HARDENED_SEAM, standing):
             self.reclaimed = self.spend(cleared)
 
-    def test_a_tree_renamed_at_the_command_is_kept(self) -> None:
-        # The path is gone by the time the command resolves it, so nothing
-        # about the path says whether this checkout came down -- and it did
-        # not: it is standing where the rename left it, with work in it
-        # nobody adjudicated.
-        self.published()
-        self.worktree = self.checkout()
-        cleared = self.verdict(
-            worktree=self.worktree, branches=self.branches,
+    def test_the_path_is_no_longer_the_checkout_s(self) -> None:
+        # The name the command would have been pointed at is not the tree by
+        # the time the command runs: this pass took the tree out of reach of
+        # it first, which is the whole of what closes the window.
+        self.spending(self.renaming)
+
+        self.assertFalse(self.swapped)
+        self.assertEqual(
+            self.outcomes(self.reclaimed), _checkout_surface(CLEANED),
         )
 
-        self.spending(cleared, self.renaming)
+    def test_a_checkout_at_the_old_name_is_kept(self) -> None:
+        # A tree somebody puts where this issue's used to be is one the
+        # command never reaches: it is aimed where this pass moved the
+        # checkout to, so what arrives at the old name -- and everything the
+        # repository's rules hide inside it -- is untouched.
+        self.spending(self.arriving)
 
         self.assertEqual(
-            self.outcomes(self.reclaimed), _checkout_surface(FAILED),
+            self.outcomes(self.reclaimed), _checkout_surface(CLEANED),
         )
-        self.assertFalse(self.reclaimed.settled)
-        self.assertEqual(_read(self.elsewhere), MOVED_CONTENT)
-
-    def test_a_path_recreated_at_the_command_is_kept(self) -> None:
-        # Everything the command reads about the path agrees, because what is
-        # at the path is a checkout somebody built to agree. What does not
-        # agree is the tree this pass has held open since it cleared it, which
-        # is standing where the rename left it.
-        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
-        self.published()
-        self.worktree = self.checkout()
-        cleared = self.verdict(
-            worktree=self.worktree, branches=self.branches,
+        self.assertTrue(self.worktree.is_dir())
+        self.assertEqual(
+            (self.worktree / GIT_FILE).read_text(), _aiming_at(self.worktree),
+        )
+        self.assertEqual(
+            (self.worktree / HIDDEN_FILE).read_text(), HIDDEN_CONTENT,
         )
 
-        self.spending(cleared, self.replacing)
+    def test_a_file_hidden_at_the_old_name_is_kept(self) -> None:
+        # The one reading git does not make for itself is the one no reading
+        # in front of the command can be later than: an ignored path is what
+        # `worktree remove` takes without a word. What answers it is that the
+        # tree the command deletes is not the tree anybody can reach by name.
+        self.spending(self.hiding)
 
         self.assertEqual(
-            self.outcomes(self.reclaimed), _checkout_surface(FAILED),
+            self.outcomes(self.reclaimed), _checkout_surface(CLEANED),
         )
-        self.assertTrue((self.elsewhere / GIT_FILE).exists())
-
-    def hiding(self, artifacts, registration) -> bool:
-        """Ask the registration as the removal does, then hide a file.
-
-        Installed in place of the last hold asked about, which is the step the
-        two tree reads now come after: what a repository's own rules cover is
-        what `worktree remove` takes without a word, so that reading has to be
-        the last word before the command and not merely one of the ones near
-        it.
-        """
-        asked = self.asking(artifacts, registration)
-        (self.worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
-        return asked
-
-    def test_a_file_hidden_at_the_last_hold_keeps_it(self) -> None:
-        # The one reading git does not make for itself, asked after every
-        # other question this pass puts -- the holds included -- so the window
-        # in front of the command carries nothing else.
-        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
-        self.published()
-        self.worktree = self.checkout()
-        cleared = self.verdict(
-            worktree=self.worktree, branches=self.branches,
-        )
-        self.asking = reclamation._registration_unchanged
-
-        with patch.object(reclamation, _UNCHANGED_SEAM, self.hiding):
-            reclaimed = self.spend(cleared)
-
-        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
         self.assertEqual(
             (self.worktree / HIDDEN_FILE).read_text(), HIDDEN_CONTENT,
         )
@@ -1702,10 +1645,11 @@ class RepeatedPassTest(_ReclaimTestCase):
         # A note is created and never overwritten, which is what keeps a
         # commit an earlier pass could not account for -- and what a pass that
         # stopped between the note and the removal leaves behind over a
-        # checkout that is still standing. The pass after it reads what the
-        # note pins: the commit its own verdict clears is one nothing else has
-        # to hold, so the note is spent and taken again rather than refusing
-        # this issue forever.
+        # checkout it had already moved out of reach of its own name. The pass
+        # after it puts that checkout back where the scan reads it from, and
+        # reads what the note pins: the commit its own verdict clears is one
+        # nothing else has to hold, so the note is spent and taken again
+        # rather than refusing this issue forever.
         self.published()
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
@@ -1715,7 +1659,8 @@ class RepeatedPassTest(_ReclaimTestCase):
             stopped = self.spend(cleared)
 
         self.assertEqual(self.outcomes(stopped), _checkout_surface(FAILED))
-        self.assertTrue(worktree.is_dir())
+        self.assertFalse(worktree.exists())
+        self.assertEqual(len(_left_aside(worktree)), 1)
         self.assertEqual(self.anchored(), cleared.proven[0].sha)
 
         finished = self.spend(cleared)

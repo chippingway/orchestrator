@@ -53,14 +53,29 @@ to the name it is for, so what appears there appears complete and a write that
 followed somebody's link could not have put this host's mark in their file.
 
 The checkout itself is held open the same way, and for what no name can
-answer afterwards. `worktree remove` resolves the path it is handed at the
-moment it runs, and nothing this pass takes stops a rename in front of that:
-a tree moved away and a copy of it left in its place is one every reading
-about the PATH agrees with. So the descriptor opened before the readings is
-what they are checked against and what the answer is read off -- a directory
-nothing links to any more is one that came down, and a removal that took
-anything else, or took nothing, is reported as the failure it is rather than
-as this checkout's.
+answer afterwards: a directory nothing links to any more is one that came
+down, so the descriptor opened before the readings is what they are checked
+against and what the answer is read off. A removal that took anything else,
+or took nothing, is the failure it is rather than this checkout's.
+
+But the reading afterwards is not what keeps the tree safe, because
+`worktree remove` deletes the path its registration names and resolves that
+path at the moment it runs -- after every reading this pass can take. A
+directory left where the checkout was would be deleted, and a file the
+repository's rules hide, arriving at that same name in that same window, would
+go with it. So the name stops being the checkout's before the command runs at
+all: the tree is moved, inside the room it already sits in, to a name this
+pass makes and tells nobody, and the registration -- which this pass holds and
+nothing else can write -- is aimed at where it went. What arrives at the old
+name from then on arrives at a path this teardown has finished with, and what
+the tree hides is read once more where it now stands, which is the first time
+that reading can be taken somewhere nothing is writing.
+
+A removal that did not take it puts it back, since the scan reads this host's
+candidates off the path the creators derive. A pass killed between the two
+leaves it under a name carrying the issue it was made for, and the pass after
+finds it there, puts it back, and repairs the registration behind it before it
+reads anything at all.
 
 What the removal is aimed by is not the path it is handed either. That path
 only selects a registration, and what comes down is the tree the registration
@@ -84,10 +99,8 @@ file that truncation at its name. Every write is finished for the same
 reason: what a write took is what it says it took, and half a lock is one no
 later pass can recognise.
 
-What none of this reaches is a file the repository's own rules hide, arriving
-in the window between the last reading and git's own. That reading is asked
-last of everything for want of a way to make it later, and it is the one thing
-here whose window a path-resolving command leaves open.
+That is the whole of what a path-resolving command leaves open, and it is
+closed by not leaving the tree at a path anybody else is holding a name for.
 
 **Absent is success.** A checkout already gone is the ordinary shape of a
 second pass, and reporting it as a failure would keep an issue in a report
@@ -171,9 +184,12 @@ _STAGED_SUFFIX = ".lock"
 _LOCK_LIMIT = 4096
 
 # The file in a checkout's administrative directory that says where that
-# checkout is. It is what `worktree remove` reads to decide what to delete and
-# what `worktree repair` rewrites.
+# checkout is, and what a registration names inside the checkout it points at.
+# The first is what `worktree remove` reads to decide what to delete and what
+# `worktree repair` rewrites; the second is what the first always ends in.
 _REGISTRATION = "gitdir"
+
+_CHECKOUT_GIT_FILE = ".git"
 
 # What the copy this pass puts at that name is called while it is being
 # written, before the rename that files it there. Named for the process that
@@ -200,6 +216,13 @@ _OWNER_WRITE = 0o200
 _CHECKOUT_HANDLE = (
     os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK
 )
+
+# What a checkout is renamed to while it comes down, under the room it already
+# sits in. The tail is unpredictable, because the whole point of moving it is
+# that the name the command is about to delete is one nobody else can reach;
+# the head names the issue, so a pass that stopped between the move and the
+# removal leaves something the next pass can find and put back.
+_ASIDE_PREFIX = ".reclaiming-{0}-"
 
 # What `st_nlink` reads as once nothing on this host names an object any more,
 # which for a directory is the `rmdir` that ended it.
@@ -397,16 +420,29 @@ def _removal_under_lock(
     nothing afterwards. So the removal goes through the anchor, which is not a
     reading at all.
     """
+    if not _aside_settled(artifacts, worktree):
+        return SurfaceOutcome.FAILED
     present = _checkout_present(worktree)
     if present is ProbeAnswer.REFUTED:
         return SurfaceOutcome.ABSENT
     if present is ProbeAnswer.UNREADABLE:
         return SurfaceOutcome.FAILED
-    if not _still_cleared(artifacts, worktree, proven_sha):
-        return SurfaceOutcome.FAILED
-    if not _holding_nothing(artifacts, worktree):
+    if not _cleared_and_empty(artifacts, worktree, proven_sha):
         return SurfaceOutcome.FAILED
     return _anchored_removal(artifacts, worktree, proven_sha)
+
+
+def _cleared_and_empty(
+    artifacts: IssueArtifacts, worktree: Path, proven_sha: str | None,
+) -> bool:
+    """Whose tree this is, and then what it is holding, in that order.
+
+    Whose it is comes first, because what a tree is carrying says nothing at
+    all about a tree that is not this issue's to read.
+    """
+    if not _still_cleared(artifacts, worktree, proven_sha):
+        return False
+    return _holding_nothing(artifacts, worktree)
 
 
 def _anchored_removal(
@@ -645,6 +681,18 @@ def _registration_read(pinned: int) -> str:
             f"a registration is not {_REGISTRATION_LIMIT} bytes or more",
         )
     return read.decode()
+
+
+def _written_over(writing: int, written: bytes) -> None:
+    """Replace the whole of what one descriptor holds with this.
+
+    From the first byte and no further than the last, because the descriptor
+    has been written through before: a write that started where the one before
+    it ended would leave what it was aiming at appended to what it replaced.
+    """
+    os.lseek(writing, 0, os.SEEK_SET)
+    _written_whole(writing, written)
+    os.ftruncate(writing, len(written))
 
 
 def _written_whole(writing: int, written: bytes) -> None:
@@ -1249,20 +1297,270 @@ def _removal_while_held(
     dirty since is one the removal stops over, and a HEAD that has moved is
     what the anchor is read back against afterwards.
     """
-    spec = artifacts.spec
     if not _anchor_taken(artifacts, worktree, proven_sha):
         return SurfaceOutcome.FAILED
     if not _ready_to_go(artifacts, worktree, proven_sha, held):
         return _anchor_settled(
             artifacts, proven_sha, taken=SurfaceOutcome.FAILED,
         )
-    removed = commands._git_hardened(
-        "worktree", "remove", str(worktree), cwd=spec.target_root,
-    )
     return _anchor_settled(
         artifacts, proven_sha,
-        taken=_came_down(artifacts, worktree, removed, held.checkout),
+        taken=_out_of_reach(artifacts, worktree, held),
     )
+
+
+def _out_of_reach(
+    artifacts: IssueArtifacts, worktree: Path, held: _Holds,
+) -> SurfaceOutcome:
+    """Take the checkout out of reach of its own name, then take it down.
+
+    The one window nothing else here closes. `worktree remove` deletes the
+    path its registration names, and it resolves that path at the moment it
+    runs -- so every reading this pass takes is about what the name meant
+    beforehand, and a tree renamed away with a directory left in its place has
+    the command delete the replacement instead. A file the repository's rules
+    hide, arriving at that same name in that same window, goes the same way:
+    git takes an ignored path without a word, and no reading in front of the
+    command can be later than the command.
+
+    So the name stops being reachable before the command runs. The checkout is
+    moved, inside the room it already sits in, to a name this pass makes and
+    nobody was told -- and the registration, which this pass holds and nobody
+    else can write, is aimed at where it went. What is at the old name from
+    then on is somebody else's business: the command is not pointed there, and
+    anything that arrives there arrives at a path this teardown has finished
+    with. What the tree hides is read once more where it now is, which is the
+    first time that reading can be taken somewhere nothing is writing.
+
+    A removal that did not take it puts it back, because the scan reads this
+    host's candidates off the path the creators derive: left aside, the issue
+    would be one no later pass finds by looking. A move that cannot be undone
+    is reported at error and left for the pass after, which settles it before
+    it reads anything.
+    """
+    aside = _moved_aside(artifacts, worktree, held)
+    if aside is None:
+        return SurfaceOutcome.FAILED
+    taken = _removal_aside(artifacts, aside, held)
+    if _checkout_gone(held.checkout):
+        return taken
+    _put_back(artifacts, aside, worktree, held)
+    return taken
+
+
+def _removal_aside(
+    artifacts: IssueArtifacts, aside: Path, held: _Holds,
+) -> SurfaceOutcome:
+    """Read what the tree hides where it stands now, and take it down."""
+    if not _holding_nothing(artifacts, aside):
+        return SurfaceOutcome.FAILED
+    removed = commands._git_hardened(
+        "worktree", "remove", str(aside), cwd=artifacts.spec.target_root,
+    )
+    return _came_down(artifacts, aside, removed, held.checkout)
+
+
+def _moved_aside(
+    artifacts: IssueArtifacts, worktree: Path, held: _Holds,
+) -> Path | None:
+    """Move the checkout to a name of this pass's own, and aim at it there.
+
+    The room is the one the checkout already sits in, since a rename is only
+    atomic within a filesystem and the worktrees root is where this pass may
+    write. The name is made rather than derived: a name anybody could work out
+    is one anybody could plant a directory at -- which would refuse the move
+    -- or reach into once the move had happened, which is the very window this
+    is closing.
+
+    What was moved is checked against the descriptor this pass has held since
+    it cleared the tree, so a rename that took something else is one this puts
+    back rather than deletes.
+    """
+    aside = _somewhere_aside(artifacts, worktree)
+    if aside is None:
+        return None
+    if not _renamed(artifacts, worktree, aside):
+        return None
+    if not _checkout_held(artifacts, aside, held.checkout):
+        _renamed(artifacts, aside, worktree)
+        return None
+    if _registration_aimed(artifacts, held.registration, aside):
+        return aside
+    _renamed(artifacts, aside, worktree)
+    return None
+
+
+def _somewhere_aside(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> Path | None:
+    """One name in this issue's own room that nothing else has been told."""
+    try:
+        return Path(tempfile.mkdtemp(
+            dir=worktree.parent,
+            prefix=_ASIDE_PREFIX.format(artifacts.issue_number),
+        ))
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout %s: it could not be given a name "
+            "to come down under (%s)",
+            artifacts.issue_number, worktree, refused,
+        )
+        return None
+
+
+def _renamed(artifacts: IssueArtifacts, moved: Path, onto: Path) -> bool:
+    """Move one directory onto a name, and say so when it would not go."""
+    try:
+        os.rename(moved, onto)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d %s could not be moved to %s: %s",
+            artifacts.issue_number, moved, onto, refused,
+        )
+        return False
+    return True
+
+
+def _registration_aimed(
+    artifacts: IssueArtifacts, registration: _Registration, at: Path,
+) -> bool:
+    """Point the registration this pass holds at where the checkout now is.
+
+    Written through the descriptor rather than the name, which is the only way
+    it can be written at all: what is filed there is this pass's own file with
+    the write bits off, so a `worktree repair` cannot open it and nothing else
+    can aim the removal. This is the one caller entitled to move it, and it
+    moves it only between two paths it established are the same tree.
+    """
+    aimed = f"{at}/{_CHECKOUT_GIT_FILE}\n".encode()
+    try:
+        _written_over(registration.pinned, aimed)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout: its registration could not be "
+            "aimed at %s (%s)", artifacts.issue_number, at, refused,
+        )
+        return False
+    return True
+
+
+def _put_back(
+    artifacts: IssueArtifacts, aside: Path, worktree: Path, held: _Holds,
+) -> None:
+    """Put a checkout that did not come down back where the scan reads it."""
+    if not _registration_aimed(artifacts, held.registration, worktree):
+        log.error(
+            "issue=#%d the registration of %s is left aimed at %s",
+            artifacts.issue_number, worktree, aside,
+        )
+    if not _renamed(artifacts, aside, worktree):
+        log.error(
+            "issue=#%d the checkout of this issue is left at %s rather than "
+            "at %s, where the scan reads it from",
+            artifacts.issue_number, aside, worktree,
+        )
+
+
+def _aside_settled(artifacts: IssueArtifacts, worktree: Path) -> bool:
+    """Put back anything a stopped pass moved aside for this issue.
+
+    A pass killed between the move and the removal leaves the checkout under a
+    name only it knew, which is a checkout no scan finds by looking. The name
+    carries the issue it was made for, so the pass after can find it -- and
+    the room it was made in is one only this orchestrator writes.
+
+    Nothing to put back is the ordinary answer. Something to put back over a
+    path that is occupied is not settled at all: what is there was not put
+    there by a pass that got this far, and moving one onto the other would
+    take whichever of the two lost.
+    """
+    aside = _left_aside(artifacts, worktree)
+    if not aside:
+        return True
+    if worktree.exists():
+        log.error(
+            "issue=#%d %s was left aside by a pass that did not come back, "
+            "and %s is occupied, so neither can be settled here",
+            artifacts.issue_number, ", ".join(str(left) for left in aside),
+            worktree,
+        )
+        return False
+    log.warning(
+        "issue=#%d %s was left aside by a pass that did not come back, and is "
+        "put back", artifacts.issue_number, aside[0],
+    )
+    if not _renamed(artifacts, aside[0], worktree):
+        return False
+    return _aside_repaired(artifacts, worktree)
+
+
+def _aside_repaired(artifacts: IssueArtifacts, worktree: Path) -> bool:
+    """Point git's registration back at where the checkout is again.
+
+    The other half of what a stopped pass leaves. It moved the checkout and
+    aimed the registration after it, so putting the tree back alone would
+    leave git holding a name nothing is at -- and the pass that read it would
+    refuse the checkout as one no registration names.
+
+    Through `worktree repair`, which is the command for exactly this, with the
+    write bits put back on that file first: what a stopped pass left is one of
+    this pass's own copies with them taken off, which is why nothing else has
+    fixed it and why nothing else could. Whether what is at that name is a
+    file git can use at all is what the repair itself answers.
+    """
+    gitdir = _checkout_gitdir(artifacts, worktree)
+    if gitdir is None:
+        return False
+    if not _registration_thawed(artifacts, gitdir / _REGISTRATION):
+        return False
+    repaired = commands._git_hardened(
+        "worktree", "repair", str(worktree), cwd=artifacts.spec.target_root,
+    )
+    if repaired.returncode == 0:
+        return True
+    log.error(
+        "issue=#%d %s was put back and its registration was not: %s",
+        artifacts.issue_number, worktree, (repaired.stderr or "").strip(),
+    )
+    return False
+
+
+def _registration_thawed(artifacts: IssueArtifacts, named: Path) -> bool:
+    """Give a registration a stopped pass left held its write bits back."""
+    opened = _registration_opened(artifacts, named)
+    if opened is None:
+        return False
+    with contextlib.ExitStack() as thawing:
+        thawing.callback(os.close, opened)
+        return _mode_put_back(artifacts, opened)
+
+
+def _mode_put_back(artifacts: IssueArtifacts, opened: int) -> bool:
+    """Put owner-write back on the object one descriptor is open on."""
+    try:
+        os.fchmod(opened, S_IMODE(os.fstat(opened).st_mode) | _OWNER_WRITE)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d a registration left held could not be given back: %s",
+            artifacts.issue_number, refused,
+        )
+        return False
+    return True
+
+
+def _left_aside(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> tuple[Path, ...]:
+    """Every name this issue's checkout may have been left aside under."""
+    aside = _ASIDE_PREFIX.format(artifacts.issue_number)
+    try:
+        return tuple(sorted(worktree.parent.glob(f"{aside}*")))
+    except OSError as read_error:
+        log.warning(
+            "issue=#%d %s could not be read for what an earlier pass left "
+            "aside: %s", artifacts.issue_number, worktree.parent, read_error,
+        )
+        return ()
 
 
 def _ready_to_go(

@@ -177,13 +177,21 @@ _OWNER_ONLY_NAMES = (
 # give-back, and the check before the removal that each of them is bound to;
 # the checkout itself, opened as a directory of its own and held that way, the
 # reading that says the path still leads to it, and the one afterwards that
-# says nothing links to it any more -- with the count that means; the
+# says nothing links to it any more -- with the count that means -- and the
+# whole of taking it out of reach of its own name before the command runs: the
+# head that name is made under, the making, the move, the aim the registration
+# is given after it, the removal spent where the tree now stands, and the
+# put-back a removal that did not take it earns; then the reconciliation the
+# pass after a stopped one opens with -- what it finds left aside, the repair
+# that points git back at what it put back, and the write bits given to a
+# registration a stopped pass left held; the
 # registration the removal is aimed by: opened without following or waiting
 # and held open across the whole take-over, told whether the descriptor is a
 # regular file at all, read for what it says from its first byte and refused
 # past its bound, told whether it says this checkout, taken over by a copy of
 # this pass's own staged under a name of its own -- written whole, however
-# little a write takes at a time, and dropped however that ended -- and
+# little a write takes at a time, replaced whole where a descriptor is written
+# through twice, and dropped however that ended -- and
 # renamed into place only while the original still is what it was and still
 # says it, held by the mode taken off the object rather than the name, put
 # back the same way, and asked once more -- both what the name resolves to and
@@ -216,7 +224,9 @@ _OWNER_DEFINED = (
     ("SurfaceResult", models),
     ("TERMINAL_LABELS", claims),
     ("_ABSENT_LEASE", obligations),
+    ("_ASIDE_PREFIX", reclamation),
     ("_BRANCH_REF_PREFIX", reclamation),
+    ("_CHECKOUT_GIT_FILE", reclamation),
     ("_CHECKOUT_HANDLE", reclamation),
     ("_CHECKOUT_LOCKS", reclamation),
     ("_CLEANLINESS_REASONS", eligibility),
@@ -283,6 +293,8 @@ _OWNER_DEFINED = (
     ("_anchors_prefix", obligations),
     ("_artifact_reading", eligibility),
     ("_artifact_verdict", eligibility),
+    ("_aside_repaired", reclamation),
+    ("_aside_settled", reclamation),
     ("_attributed_issues", attribution),
     ("_base_contains", evidence),
     ("_branch_attribution", attribution),
@@ -315,6 +327,7 @@ _OWNER_DEFINED = (
     ("_cleanup_decompose_worktree", decomposition),
     ("_cleanup_question_worktree", terminal),
     ("_cleanup_terminal_branch", terminal),
+    ("_cleared_and_empty", reclamation),
     ("_clone_read", evidence),
     ("_colliding_worktree_slugs", attribution),
     ("_commit_accounting", claims),
@@ -343,6 +356,7 @@ _OWNER_DEFINED = (
     ("_issue_artifacts", inventory),
     ("_issue_checkout_number", probes),
     ("_issue_segment_number", paths),
+    ("_left_aside", reclamation),
     ("_left_behind", reclamation),
     ("_let_go", reclamation),
     ("_local_branch_tip", evidence),
@@ -360,8 +374,10 @@ _OWNER_DEFINED = (
     ("_local_orchestrator_branches", probes),
     ("_matching_owners", attribution),
     ("_merged", inventory),
+    ("_mode_put_back", reclamation),
     ("_mode_taken_off", reclamation),
     ("_move_branch_onto", creation),
+    ("_moved_aside", reclamation),
     ("_note_at", obligations),
     ("_note_value", obligations),
     ("_nothing_ignored", evidence),
@@ -370,6 +386,7 @@ _OWNER_DEFINED = (
     ("_obligation_ref", obligations),
     ("_one_directory", reclamation),
     ("_open_pull_request_retentions", claims),
+    ("_out_of_reach", reclamation),
     ("_own_locks", reclamation),
     ("_own_way_down", obligations),
     ("_parsed_record", obligations),
@@ -378,6 +395,7 @@ _OWNER_DEFINED = (
     ("_process_alive", reclamation),
     ("_proven_tips", eligibility),
     ("_published_tip", evidence),
+    ("_put_back", reclamation),
     ("_read_notes", obligations),
     ("_read_orchestrator_refs", probes),
     ("_read_state", claims),
@@ -391,6 +409,7 @@ _OWNER_DEFINED = (
     ("_recorded_obligations", obligations),
     ("_recorded_pull_request", claims),
     ("_records_prefix", obligations),
+    ("_registration_aimed", reclamation),
     ("_registration_checked", reclamation),
     ("_registration_dropped", reclamation),
     ("_registration_filed", reclamation),
@@ -402,13 +421,16 @@ _OWNER_DEFINED = (
     ("_registration_staged", reclamation),
     ("_registration_still", reclamation),
     ("_registration_taken", reclamation),
+    ("_registration_thawed", reclamation),
     ("_registration_told", reclamation),
     ("_registration_unchanged", reclamation),
     ("_remind", obligations),
+    ("_removal_aside", reclamation),
     ("_removal_under_lock", reclamation),
     ("_removal_while_held", reclamation),
     ("_remove_issue_worktree", cleanup),
     ("_removed_checkout", reclamation),
+    ("_renamed", reclamation),
     ("_repo_worktrees_root", paths),
     ("_reported", reclamation),
     ("_repository_key", obligations),
@@ -426,6 +448,7 @@ _OWNER_DEFINED = (
     ("_sanitize_slug", paths),
     ("_shared_ref_store", obligations),
     ("_shared_repository", evidence),
+    ("_somewhere_aside", reclamation),
     ("_spent_anchor_cleared", reclamation),
     ("_stale_let_go", reclamation),
     ("_stands_as", obligations),
@@ -448,6 +471,7 @@ _OWNER_DEFINED = (
     ("_worktree_path", paths),
     ("_writes_here", obligations),
     ("_written_note", obligations),
+    ("_written_over", reclamation),
     ("_written_whole", reclamation),
 )
 

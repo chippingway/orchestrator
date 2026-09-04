@@ -435,12 +435,21 @@ orchestrator/
                         the tree this orchestrator owns. The two are compared as filesystem objects rather than
                         as spellings, an operator whose worktrees root sits under a link of their own having
                         every checkout answer a resolved path that is not the derived one. The checkout is held
-                        OPEN across all of it besides, for the one question no name answers afterwards: the
-                        command resolves the path it is handed at the moment it runs, and nothing here stops a
-                        rename in front of that -- so a tree moved away with a clean copy of it left in its
-                        place is one every reading about the path agrees with. The descriptor opened before the
-                        readings is what they are checked against and what the result is read off, a directory
-                        nothing links to any more being the only thing that says this checkout came down. What
+                        OPEN across all of it besides, since a directory nothing links to any more is the only
+                        thing that says THIS checkout came down: the descriptor opened before the readings is
+                        what they are checked against and what the result is read off. The reading afterwards is
+                        not what keeps the tree safe, though — `worktree remove` deletes the path its
+                        registration names and resolves it at the moment it runs, after every reading this pass
+                        can take, so a directory left where the checkout was would be deleted and a file the
+                        repository's rules hide, arriving at that name in that window, would go with it. The
+                        name therefore stops being the checkout's before the command runs: the tree is moved,
+                        inside the room it already sits in, to a name this pass makes and tells nobody, and the
+                        registration — which nothing else can write — is aimed after it, so what the command
+                        deletes is a path nobody else holds a name for and what the tree hides is read once more
+                        where it now stands. A removal that did not take it puts it back, the scan reading this
+                        host's candidates off the derived path; a pass killed between the two leaves it under a
+                        name carrying its issue, and the pass after finds it, puts it back, and repairs the
+                        registration behind it before it reads anything. What
                         the command actually deletes is not the path it is handed, though -- that path only selects a
                         registration, and the registration names the tree that comes down -- so that file is
                         opened without following, refused unless it is a regular one naming this checkout's own
@@ -479,9 +488,9 @@ orchestrator/
                         agrees. What the tree carries is read twice for the same reason: git refuses a removal
                         over an untracked or modified path and takes an ignored one without a word, so a checkout
                         holding nothing but what its own rules cover passes every other reading and comes down
-                        with all of it inside. That read is asked last of everything, with the command the next
-                        thing after it, which is as late as a reading can be put: what lands in the window a
-                        path-resolving command leaves open is the one thing here nothing closes.
+                        with all of it inside. That read is asked last of everything, and then once more where
+                        the tree has been moved to, which is the first place it can be taken that nothing else
+                        is writing in.
                         Every name here that an agent chooses what to put at -- the
                         registration and each of the three locks -- is read the same way besides: without
                         following, without waiting, and asked what the descriptor IS before it is asked what it
