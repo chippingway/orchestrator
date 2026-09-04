@@ -242,7 +242,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             verbatim copy anything else is preserved through, and the all-or-nothing reading of the
                             ordered child register, whose entries are positional and so may not be skipped past
     keys.py                 the `late_*` pinned keys one GENERATION owns -- the frozen evidence, the misses a
-                            reading of it lost and the step the last one stopped at, the publication provenance,
+                            reading of it lost and the step a notice about it named, the publication provenance,
                             the ledgers, the hold's route bookkeeping, and the cancellation and
                             pending-owner-check markers -- spelled once, as the tuple a clear is defined as
                             dropping exactly
@@ -1151,18 +1151,29 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             owner's retirement window with the latch asked ahead of it and the window's own
                             answer behind it, where a close is answered by putting the cycle back cancelled; both
                             verdicts are also where a measurement park is retired, since an answer is what it was
-                            waiting for and a tick that only re-read the pair has not given it one
+                            waiting for and a tick that only re-read the pair has not given it one, and the measured
+                            one is where the step a notice named is dropped -- every failure-prone step is behind
+                            that line, and the record it clears from is the one an oversized candidate is
+                            adjudicated from
       late_parks.py         the one park shape every unreadable reading takes, worded on the side of publication it
                             was taken on, the typed failure both sinks carry under the stage the reading happened in,
                             the bounded quiet retry the two TRANSPORT steps get instead -- the miss counted on the
                             record and written before anything is reported or said, since a fresh process remembers no
-                            miss, with the park taken only past the bound, a tick that finds that park already
-                            standing over THE SAME PAIR, and still latched, held silently rather than counted and
-                            mentioned again -- silent to the thread alone, since the typed failure still reaches both
-                            sinks and a base id the remote finally named is written even there -- a park standing over
+                            miss, with the park taken only past the bound; the announce-once guard every refusal of a
+                            typed step passes through, holding a tick that finds a park already standing over THE
+                            SAME PAIR, still latched, and stopping at the step that park's own notice named -- the
+                            member recorded by the roads that announce and by no other, so a quiet miss cannot pass
+                            for a notice and a base that comes back -- which is not the last step a reading can stop
+                            at -- cannot unsay one -- silent to the thread alone,
+                            since the typed failure still reaches both sinks and a base id the remote finally named
+                            is written even there, with a refusal stopping somewhere else announced once instead and
+                            taking that member's place, and the notice itself naming the member and the line an
+                            operator acts on it by with whatever the failing step said for itself carried up beside
+                            it -- a park standing over
                             some other pair retired inside the write that records that pair rather than obeyed, since
                             nothing on the comment says which commit a park was taken over and a resumed developer's
-                            fresh commit owes its own bound, and the count ended by a base that was reached -- the
+                            fresh commit owes its own bound, the count ended by a base that was reached and both it
+                            and the member ended by a reading that landed -- the
                             bare continue that re-reads rather than re-runs, the measurement park a reading that
                             SETTLED retires -- latch and all, since a reconciliation has no run behind it to clear the
                             flag, and from the verdict rather than from the gate's door, since entering the gate is

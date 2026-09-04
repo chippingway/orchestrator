@@ -266,7 +266,7 @@ def _frozen_pair(
     base = _measurement_commits._freeze_base_commit(gate.spec, gate.worktree)
     minted = _records._minted(gate, recorded, candidate_sha, base.sha)
     if not base.is_frozen:
-        _parks._lost_reading(gate, minted, base.failure)
+        _parks._lost_reading(gate, minted, base.failure, base.detail)
         return None
     reached = _parks._reached(minted)
     _parks._persisted(gate, reached)
@@ -316,7 +316,9 @@ def _refrozen_base(
         "a fetch (%s); refusing to re-read the remote for a different one",
         gate.issue.number, recorded.base_sha, base.detail,
     )
-    _parks._lost_reading(gate, recorded, MeasurementFailure.BASE_ABSENT)
+    _parks._lost_reading(
+        gate, recorded, MeasurementFailure.BASE_ABSENT, base.detail,
+    )
     return None
 
 

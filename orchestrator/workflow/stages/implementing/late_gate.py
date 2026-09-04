@@ -309,7 +309,7 @@ def _unnameable(
     named = _records._named(gate, recorded, candidate.sha)
     if named.candidate_sha and named.candidate_sha != recorded.candidate_sha:
         _parks._persisted(gate, named)
-    _parks._unmeasured(gate, named, candidate.failure)
+    _parks._unmeasured(gate, named, candidate.failure, candidate.detail)
     return _records._HELD
 
 

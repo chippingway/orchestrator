@@ -292,7 +292,7 @@ class LateGateDamagedRecordTest(support._GateCase, unittest.TestCase):
         mocks = self._run_gate(base_object_present=False)
 
         self._assert_held(mocks)
-        self._assert_missed(MeasurementFailure.BASE_ABSENT)
+        self._assert_missed()
 
 
 class LateGateDamagedIdentityTest(support._GateCase, unittest.TestCase):
@@ -522,7 +522,7 @@ class LateGateRefusalTest(support._GateCase, unittest.TestCase):
         )
 
         self._assert_unmeasured(mocks)
-        self._assert_missed(MeasurementFailure.BASE_UNREADABLE)
+        self._assert_missed()
         pinned = self._pinned()
         self.assertEqual(
             pinned[support.KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA,
@@ -632,7 +632,7 @@ class LateGateBaseIdentityTest(support._GateCase, unittest.TestCase):
             ),
         )
 
-        self._assert_missed(MeasurementFailure.BASE_ABSENT)
+        self._assert_missed()
         self.assertEqual(self._pinned()[support.KEY_BASE_SHA], MEASURED_BASE_SHA)
 
     def test_a_moved_base_is_not_read_again(self) -> None:
@@ -648,7 +648,7 @@ class LateGateBaseIdentityTest(support._GateCase, unittest.TestCase):
         mocks[support.FREEZE_BASE_COMMIT].assert_not_called()
         self._assert_unmeasured(mocks)
         self._assert_held(mocks)
-        self._assert_missed(MeasurementFailure.BASE_ABSENT)
+        self._assert_missed()
         self.assertEqual(self._pinned()[support.KEY_BASE_SHA], MEASURED_BASE_SHA)
 
     def test_a_restored_base_object_measures(self) -> None:

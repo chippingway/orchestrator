@@ -83,6 +83,17 @@ _FINISHED = "done"
 # What a resumed run says when it answered instead of building.
 _ASKED = "which half of this did you mean?"
 
+# What a scrubbed transport failure hands up for a human to read, and the two
+# things the notice built around it has to say for itself: which invocation
+# could not be taken, and where the operator reads what it wrote.
+_REMOTE_SAID = "fatal: Authentication failed for 'https://github.com/o/r/'"
+_LS_REMOTE = "ls-remote"
+_GIT_PLUMBING = "orchestrator.git_plumbing"
+
+# The hidden receipt every comment this workflow posts carries, which is what
+# the user-content hash reads a bot comment by once its id has been evicted.
+_ORCH_COMMENT_MARKER = "<!--orchestrator-comment-->"
+
 # The steps a second reading cannot change: nothing here can pin the diff,
 # git refused it, or what came back was unreadable. Each is a park on the
 # first miss, since the retry a transport fault is owed would buy the same
@@ -199,7 +210,6 @@ class LateGateStrandedPairTest(support._GateCase, unittest.TestCase):
         # on the record it is settled under.
         self._seed(**support.recorded_generation(
             measurement_miss_count=_MISS_BOUND - 1,
-            measurement_failure=MeasurementFailure.BASE_ABSENT,
         ))
 
         mocks = self._run_gate(
@@ -228,7 +238,7 @@ class LateGateStrandedPairTest(support._GateCase, unittest.TestCase):
         self._assert_no_agent(mocks)
         self._assert_unmeasured(mocks)
         self._assert_held(mocks)
-        self._assert_missed(MeasurementFailure.BASE_ABSENT)
+        self._assert_missed()
 
 
 class LateGateMovedPairTest(support._GateCase, unittest.TestCase):
@@ -396,7 +406,7 @@ class LateGateContinueTest(support._ParkedRetryCase, unittest.TestCase):
         self._assert_no_agent(mocks)
         self._assert_unmeasured(mocks)
         self._assert_held(mocks)
-        self._assert_missed(MeasurementFailure.BASE_ABSENT)
+        self._assert_missed()
         self._assert_frozen()
 
     def test_a_moved_head_refuses_the_bare_retry(self) -> None:
@@ -475,15 +485,14 @@ class LateGateMissBoundTest(support._ParkedRetryCase, unittest.TestCase):
                 self._assert_no_agent(mocks)
                 self._assert_held(mocks)
                 if not parks:
-                    self._assert_missed(
-                        MeasurementFailure.BASE_ABSENT, count=lost + 1,
-                    )
+                    self._assert_missed(count=lost + 1)
                     continue
                 self._assert_parked()
-                self.assertEqual(len(self.github.posted_comments), 1)
-                mention = self.github.posted_comments[0][1]
-                self.assertIn(config.HITL_MENTIONS, mention)
-                self.assertIn(MeasurementFailure.BASE_ABSENT, mention)
+                # The step the mention NAMED goes on the record with the
+                # count, and only here: what the guard past this park asks is
+                # whether the sentence already on the thread covers the step a
+                # later reading stopped at.
+                self._assert_announced(MeasurementFailure.BASE_ABSENT)
 
     def test_the_count_precedes_the_report(self) -> None:
         # Every tick is a fresh process, so a miss reported before it is
@@ -513,6 +522,14 @@ class LateGateMissBoundTest(support._ParkedRetryCase, unittest.TestCase):
             mentioned.pinned[support.KEY_MISS_COUNT],
             _MISS_BOUND + 1,
         )
+        # And the step that mention names is durable with it, for the reason
+        # the count is: announced and not written down, it is announced again
+        # by the next poll, once a poll, for as long as the transport stays
+        # where it is.
+        self.assertEqual(
+            mentioned.pinned[support.KEY_MEASUREMENT_FAILURE],
+            MeasurementFailure.BASE_ABSENT,
+        )
 
     def test_a_base_never_named_keeps_counting(self) -> None:
         # A base the remote would not answer for records no base at all, so
@@ -523,9 +540,7 @@ class LateGateMissBoundTest(support._ParkedRetryCase, unittest.TestCase):
         self._park_state(
             support.BARE_CONTINUE,
             **support.recorded_generation(
-                base_sha="",
-                measurement_miss_count=1,
-                measurement_failure=MeasurementFailure.BASE_UNREADABLE,
+                base_sha="", measurement_miss_count=1,
             ),
         )
 
@@ -534,23 +549,30 @@ class LateGateMissBoundTest(support._ParkedRetryCase, unittest.TestCase):
         ))
 
         self._assert_unmeasured(mocks)
-        self._assert_missed(MeasurementFailure.BASE_UNREADABLE, count=2)
+        self._assert_missed(count=2)
         self.assertEqual(self._pinned()[support.KEY_GENERATION], 2)
 
     def test_a_base_this_host_reaches_ends_the_run(self) -> None:
         # The count is readings lost IN A ROW, so one that was taken ends the
         # row -- durably, since the tick after it is the one a stale count
-        # would hand to a human early. Proved on a road that fails afterwards
-        # for a reason of its own, where nothing else rewrites the record.
-        self._park_after_misses(_MISS_BOUND - 1)
+        # would hand to a human early. The count and only it: the member
+        # beside it says what the thread was TOLD, which a base coming back
+        # does not unsay, and it moves when a notice naming another step takes
+        # its place. Proved on a road that reaches the base and then fails for
+        # a reason of its own, which is exactly that.
+        self._park_after_misses(
+            _MISS_BOUND + 1, announced=MeasurementFailure.BASE_ABSENT,
+        )
 
         mocks = self._run_gate(added_lines=MeasurementFailure.DIFF_FAILED)
 
         self._assert_measured(mocks)
         self._assert_parked()
-        pinned = self._pinned()
-        self.assertNotIn(support.KEY_MISS_COUNT, pinned)
-        self.assertNotIn(support.KEY_MEASUREMENT_FAILURE, pinned)
+        self.assertNotIn(support.KEY_MISS_COUNT, self._pinned())
+        # And what the record names afterwards is the step THIS tick told the
+        # human about, rather than the transport failure they were told about
+        # before the base came back.
+        self._assert_announced(MeasurementFailure.DIFF_FAILED)
 
     def test_a_fresh_candidate_starts_its_own(self) -> None:
         # Guidance is the opposite reply to a bare continue: the developer is
@@ -577,25 +599,64 @@ class LateGateMissBoundTest(support._ParkedRetryCase, unittest.TestCase):
 
         self._assert_resumed(mocks)
         self._assert_held(mocks)
-        self._assert_missed(MeasurementFailure.BASE_UNREADABLE)
+        self._assert_missed()
         self.assertEqual(self._pinned()[support.KEY_CANDIDATE_SHA], _MOVED_SHA)
         self.assertEqual(
             len(self._records(support.EVENT_LATE_FAILURE)), 1,
         )
 
-    def _park_after_misses(self, lost: int) -> None:
-        """Seed the park a human answered, over a pair that has lost readings.
 
-        Lost to the TRANSPORT, since that is the only step the bound counts:
-        a record carrying misses of any other kind is one no retry wrote.
-        """
+class LateGateNoticeTest(support._ParkedRetryCase, unittest.TestCase):
+    """What the mention a spent bound makes carries, and what ends it."""
+
+    def test_the_notice_explains_the_step(self) -> None:
+        # What the operator holding this issue is handed: the mentions and the
+        # park reason a bare continue is read against, the member every other
+        # surface carries -- and, because the member alone is a term this
+        # vocabulary owns, the sentence saying which of a remote, a token, or
+        # a throttled request they are looking at, with the line the transport
+        # itself wrote scrubbed and carried from the freeze that took it.
         self._park_state(
             support.BARE_CONTINUE,
             **support.recorded_generation(
-                measurement_miss_count=lost,
-                measurement_failure=MeasurementFailure.BASE_ABSENT,
+                base_sha="", measurement_miss_count=_MISS_BOUND,
             ),
         )
+
+        self._run_gate(frozen_base=FrozenCommit(
+            failure=MeasurementFailure.BASE_UNREADABLE, detail=_REMOTE_SAID,
+        ))
+
+        self._assert_parked()
+        self._assert_announced(MeasurementFailure.BASE_UNREADABLE)
+        notice = self.github.posted_comments[-1][1]
+        self.assertIn(_LS_REMOTE, notice)
+        self.assertIn(_GIT_PLUMBING, notice)
+        self.assertIn(_REMOTE_SAID, notice)
+        self.assertIn(_ORCH_COMMENT_MARKER, notice)
+
+    def test_a_reading_that_lands_clears_the_step(self) -> None:
+        # A count in hand is the end of every step a reading can stop at, so
+        # the member the notice named describes a refusal that is over. The
+        # record an oversized candidate leaves is what the adjudication is
+        # driven from, and it survives this write: carried into it, the step
+        # would describe a refusal nobody is making on an issue whose park
+        # this same verdict retired.
+        self._park_after_misses(
+            _MISS_BOUND + 1, announced=MeasurementFailure.BASE_ABSENT,
+        )
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_measured(mocks)
+        self._assert_held(mocks)
+        self.assertIn(_DECOMPOSING, self.github.label_history)
+        pinned = self._pinned()
+        self.assertEqual(
+            pinned[support.KEY_ADDITIONS], support.OVERSIZED_ADDITIONS,
+        )
+        self.assertNotIn(support.KEY_MISS_COUNT, pinned)
+        self.assertNotIn(support.KEY_MEASUREMENT_FAILURE, pinned)
 
 
 class _WritesDuringTheTick:
@@ -675,7 +736,7 @@ class LateGateStalePairParkTest(support._ParkedRetryCase, unittest.TestCase):
 
         self._assert_no_agent(mocks)
         self._assert_held(mocks)
-        self._assert_missed(MeasurementFailure.BASE_ABSENT)
+        self._assert_missed()
         self.assertEqual(len(self._records(support.EVENT_LATE_FAILURE)), 1)
 
 

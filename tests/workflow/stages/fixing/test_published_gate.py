@@ -68,12 +68,39 @@ PENDING_FIX_AT = fixing.PENDING_FIX_AT
 # again, so a case names the bound rather than a number beside it.
 _MISS_BOUND = _implementing_state._MEASUREMENT_MISSES_BEFORE_PARK
 
+# The park a measurement nobody could take leaves, spelled as the pinned
+# reason a later poll reads it back by.
+PARK_MEASUREMENT_FAILED = support.PARK_MEASUREMENT_FAILED
 
-def _after_misses(lost: int) -> dict:
-    """The record a pair that has lost `lost` readings in a row is retried from."""
+# The two ways this host can fail to reach the base, in the order a transport
+# coming back part-way produces them: a remote that names nothing at all, and
+# then one that names the commit while a fetch still brings no object here.
+_UNNAMED_BASE = support.FrozenCommit(
+    failure=support.MeasurementFailure.BASE_UNREADABLE,
+)
+_UNFETCHED_BASE = support.FrozenCommit(
+    sha=MEASURED_BASE_SHA, failure=support.MeasurementFailure.BASE_ABSENT,
+)
+
+# A refusal no retry can change: the checkout carries something that decides
+# what counts as text, so every poll past the park stops in the same place.
+_UNPINNABLE_DIFF = support.MeasurementFailure.DIFF_UNPINNABLE
+
+# How many polls a case drives: one to take the park, and two past it, so a
+# second notice would have somewhere to appear.
+_POLLS_PAST_A_PARK = 3
+
+
+def _after_misses(lost: int, announced=None) -> dict:
+    """The record a pair that has lost `lost` readings in a row is retried from.
+
+    `announced` is the step a notice on the thread already named, which only a
+    pair whose bound has run out carries: a quiet miss tells nobody anything,
+    so it leaves that field exactly as it found it.
+    """
     return recorded_generation(
         measurement_miss_count=lost,
-        measurement_failure=support.MeasurementFailure.BASE_ABSENT,
+        measurement_failure=announced,
     )
 
 
@@ -293,7 +320,7 @@ class RecordedPairRetryTest(unittest.TestCase, _SizeGateFixtureMixin):
         mocks[FREEZE_BASE_COMMIT].assert_not_called()
         self._assert_unmeasured(mocks)
         self._assert_held(scenario, mocks)
-        self._assert_missed(scenario, support.MeasurementFailure.BASE_ABSENT)
+        self._assert_missed(scenario)
         pinned = self._pinned(scenario)
         self.assertEqual(pinned[support.KEY_BASE_SHA], MEASURED_BASE_SHA)
         self.assertEqual(
@@ -320,11 +347,7 @@ class RecordedPairRetryTest(unittest.TestCase, _SizeGateFixtureMixin):
 
                 self.assertFalse(handled)
                 if poll <= _MISS_BOUND:
-                    self._assert_missed(
-                        scenario,
-                        support.MeasurementFailure.BASE_ABSENT,
-                        count=poll,
-                    )
+                    self._assert_missed(scenario, count=poll)
                     continue
                 self._assert_parked(scenario)
                 self.assertEqual(len(scenario.github.posted_comments), 1)
@@ -352,6 +375,10 @@ class RecordedPairRetryTest(unittest.TestCase, _SizeGateFixtureMixin):
         self.assertFalse(pinned[fixing.AWAITING_HUMAN])
         self.assertIsNone(pinned[fixing.PARK_REASON])
         self.assertNotIn(support.KEY_MISS_COUNT, pinned)
+        # And the step that park's notice named goes with it. The record this
+        # write leaves is the one the adjudication is driven from, so a member
+        # carried into it would describe a refusal that is over on an issue
+        # where nothing is refusing anything.
         self.assertNotIn(support.KEY_MEASUREMENT_FAILURE, pinned)
 
     def test_the_count_is_durable_before_the_mention(self) -> None:
@@ -369,20 +396,93 @@ class RecordedPairRetryTest(unittest.TestCase, _SizeGateFixtureMixin):
             mentioned.pinned[support.KEY_MISS_COUNT],
             _MISS_BOUND + 1,
         )
+        # The step that mention names rides the same write, because the guard
+        # that keeps the polls after it silent is the one that reads it back.
+        self.assertEqual(
+            mentioned.pinned[support.KEY_MEASUREMENT_FAILURE],
+            support.MeasurementFailure.BASE_ABSENT,
+        )
 
-    def _assert_missed(self, scenario, failure, count: int = 1) -> None:
+    def _assert_missed(self, scenario, count: int = 1) -> None:
         """One reading the transport lost, counted and otherwise unsaid.
 
-        The count and the step are the whole of what a miss inside the bound
-        leaves: nothing is waiting on a human, so nothing on the issue says it
-        is, and the next tick re-enters the same pair by itself.
+        The count is the whole of what a miss inside the bound leaves: the
+        step it stopped at is said to the log and to both streams and to no
+        human, so nothing on the issue says one is waiting and the next poll
+        re-enters the same pair by itself.
         """
         pinned = self._pinned(scenario)
         self.assertEqual(pinned[support.KEY_MISS_COUNT], count)
-        self.assertEqual(pinned[support.KEY_MEASUREMENT_FAILURE], failure)
+        self.assertNotIn(support.KEY_MEASUREMENT_FAILURE, pinned)
         self.assertFalse(pinned.get(fixing.AWAITING_HUMAN))
         self.assertIsNone(pinned.get(fixing.PARK_REASON))
         self.assertEqual(scenario.github.posted_comments, [])
+
+
+class StandingParkTest(unittest.TestCase, _SizeGateFixtureMixin):
+    """What a park that is still standing owes each reading past it.
+
+    The reading is re-entered on every poll by design -- that is how a
+    transport coming back settles a pair with no human at all -- so what those
+    polls owe the thread is one sentence per thing there is to say rather than
+    one per poll.
+    """
+
+    def test_a_repeated_cause_is_said_once(self) -> None:
+        # A diff nothing here can pin is the sharpest case: it does not clear
+        # itself, so the polls go on for as long as the checkout carries
+        # whatever was planted in it, and a notice on each of them would
+        # mention the same people once a poll until they cleared it.
+        scenario = self._seed_fix_round(**recorded_generation())
+
+        for _ in range(_POLLS_PAST_A_PARK):
+            self._poll(scenario, added_lines=_UNPINNABLE_DIFF)
+
+        self.assertEqual(len(scenario.github.posted_comments), 1)
+        self.assertIn(
+            _UNPINNABLE_DIFF, scenario.github.posted_comments[0][1],
+        )
+        self.assertEqual(
+            self._pinned(scenario)[support.KEY_MEASUREMENT_FAILURE],
+            _UNPINNABLE_DIFF,
+        )
+
+    def test_an_unnamed_step_is_announced_once(self) -> None:
+        # The park spares the thread a repeat, not a new fact. A remote that
+        # has come back far enough to NAME the base while a fetch still brings
+        # nothing back is a different sentence and a different next move from
+        # the one this human was sent, so it is said -- once, with the record
+        # moved to it in the write the notice rides out on, and never again
+        # for as long as the reading stops there.
+        scenario = self._seed_fix_round(**{
+            fixing.AWAITING_HUMAN: True,
+            fixing.PARK_REASON: PARK_MEASUREMENT_FAILED,
+            **recorded_generation(
+                base_sha="",
+                measurement_miss_count=_MISS_BOUND + 1,
+                measurement_failure=support.MeasurementFailure.BASE_UNREADABLE,
+            ),
+        })
+        announced = support._RecordAtNotice(scenario.github)
+
+        self._poll(scenario, frozen_base=_UNNAMED_BASE)
+        self.assertEqual(scenario.github.posted_comments, [])
+        with announced.held():
+            self._poll(scenario, frozen_base=_UNFETCHED_BASE)
+        self._poll(scenario, base_object_present=False)
+
+        self.assertEqual(len(scenario.github.posted_comments), 1)
+        self.assertIn(
+            support.MeasurementFailure.BASE_ABSENT,
+            scenario.github.posted_comments[0][1],
+        )
+        self.assertEqual(
+            announced.pinned[support.KEY_MEASUREMENT_FAILURE],
+            support.MeasurementFailure.BASE_ABSENT,
+        )
+        pinned = self._pinned(scenario)
+        self.assertEqual(pinned[support.KEY_MISS_COUNT], _MISS_BOUND + 1)
+        self.assertEqual(pinned[fixing.PARK_REASON], PARK_MEASUREMENT_FAILED)
 
 
 class SwitchedOffTest(unittest.TestCase, _SizeGateFixtureMixin):

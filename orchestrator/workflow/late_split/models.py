@@ -250,17 +250,21 @@ class LateGeneration:
     remembers one: every tick is a fresh process, so a gate holding the count
     in memory would either re-read a permanently broken pair forever or spend
     a human on the first reading a fetch happened to interrupt. The count is
-    how many consecutive readings this CANDIDATE has lost and the failure is
-    the step the last one stopped at, kept typed because the two answers are
-    different next moves -- a base this clone does not hold is a fetch that
-    brought nothing back, and a diff nothing here can pin is a checkout an
-    operator has to clear first. Both are scoped to the CANDIDATE rather than
-    to the generation counter beside it: a base the remote would not name
-    records no base at all, so the next reading of that same commit freezes
-    afresh under a new generation, and misses reset there would never reach
-    their bound. A candidate that MOVED is fresh work whose reading nobody has
-    lost yet, so its own count starts at zero rather than inheriting one taken
-    over a commit nothing measures any more.
+    how many consecutive readings this CANDIDATE has lost. The failure is the
+    step a NOTICE about it named -- written by the roads that tell a human and
+    by no other, so a park still standing can ask whether the sentence already
+    on the thread covers what the reading in hand stopped at, and dropped by
+    the verdict a reading that HAPPENED settles, which is the first point
+    every step it could have stopped at is behind it. It is kept typed
+    because the members are different next moves: a base this clone does not
+    hold is a fetch that brought nothing back, and a diff nothing here can pin
+    is a checkout an operator has to clear first. Both are scoped to the
+    CANDIDATE rather than to the generation counter beside it: a base the
+    remote would not name records no base at all, so the next reading of that
+    same commit freezes afresh under a new generation, and misses reset there
+    would never reach their bound. A candidate that MOVED is fresh work whose
+    reading nobody has lost yet, so its own count starts at zero rather than
+    inheriting one taken over a commit nothing measures any more.
 
     `plan_pr_number`, `plan_pr_head`, and `plan_pr_body` are one hold's whole
     record: the pull request a cycle-marked notice was written onto, the tip

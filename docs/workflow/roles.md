@@ -414,8 +414,13 @@ branch has already overtaken.
   TRANSPORT could not reach is the one exception, and a bounded one: `base_unreadable` and `base_absent` clear
   themselves, so the first three consecutive misses on a pair record the miss, emit that same typed failure, log
   at WARNING and stop with nothing parked and nothing said — the next tick re-reads the pair by itself, spawning
-  nothing — and only the fourth asks a human, once: past it the reading goes on being retried and the park goes on
-  standing, retired by the verdict a reading that finally lands settles. A trusted bare
+  nothing — and only the fourth asks a human. Every park here asks once per thing there is to say, whatever its
+  cause: the pair goes on being re-read while the park stands, and a reading that stops where that park's own notice
+  already said it stops is held silently, while one that stops at a *different* member is announced once and takes
+  its place. The park is retired by the verdict a reading that finally lands settles. Every notice names the member
+  and explains it in a line written for the operator — which of a remote, a token, a checkout, or a planted
+  attribute file they are looking at, and where the invocation behind it is logged — with whatever the failing step
+  wrote for itself, scrubbed, carried up beside it. A trusted bare
   `/orchestrator continue` re-measures exactly that pair and re-publishes through the same seam; it spawns no
   agent, since the developer that produced the commit finished long ago — and because no agent ran, a checkout
   that has left the recorded commit is refused rather than measured or published, under either switch setting.

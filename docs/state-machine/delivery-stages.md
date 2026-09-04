@@ -1263,22 +1263,39 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        bound allows: a base the remote would not answer for (`base_unreadable`) and one a fetch did not bring back
        (`base_absent`) clear themselves, so the first three consecutive misses on one pair write the pair and the
        incremented `late_measurement_miss_count`, emit the same typed `late_failure`, log at WARNING and stop —
-       leaving no `awaiting_human`, no `park_reason` and no comment, so the next tick re-enters that exact pair with
-       nothing spawned — and only the fourth parks and mentions a human. That mention is made ONCE: the
-       post-publication reconciliation re-enters the same pair on every poll after it, and a tick that finds the
-       park already standing over that same pair is held silently — no further miss counted, no second notice, but
+       leaving no `awaiting_human`, no `park_reason`, no comment and no recorded step, so the next tick re-enters
+       that exact pair with nothing spawned — and only the fourth parks and mentions a human, recording in the same
+       write the `MeasurementFailure` that mention names. Every mention this gate makes is made ONCE PER THING THERE
+       IS TO SAY, whatever the cause: the post-publication reconciliation re-enters the pair on every poll after a
+       park, and a tick that finds the park already standing over that same pair, stopping at the step
+       `late_measurement_failure` already names, is held silently — no further miss counted, no second notice, but
        the typed `late_failure` still reaches both sinks, since those polls exist nowhere else, and a base id the
-       remote finally names is recorded even there because it is what the next retry asks for.
+       remote finally names is recorded even there because it is what the next retry asks for. Without that field a
+       candidate this host cannot peel, or a diff nothing here can pin, would mention the same people once a poll
+       for as long as it took them to clear it. A poll that stops at a DIFFERENT member is not a repeat: it is a
+       different next move for whoever is holding the issue and nothing else would ever tell them, so it is
+       announced once and takes that field's place in the write the notice rides out on — which makes the poll after
+       it a repeat rather than a second announcement. No miss is counted for it either; the bound is spent. Every
+       notice a refused reading makes, on either road, names the member and explains it in a line written for the
+       operator — which of a remote, a token, a throttled request, a checkout, or a planted attribute file they are
+       looking at, and where the invocation itself is logged — with whatever the failing step wrote for itself,
+       scrubbed, carried up beside it.
        The hold is keyed on a human still WAITING — the latch, since a resume consumes it and leaves the reason
        standing — and on the pair the park was taken over. A park failing either test is spent: a fresh candidate,
        which is what answering the park with guidance produces, retires it and starts its own bound, in the same
        durable write that records that candidate: nothing says which commit a park was taken over, so a park left
        behind by one would be read as the fresh pair's own by every tick after it. A base that IS reached
-       ends the run in the write that records the pair, and the park is retired by the verdict that reading settles
-       rather than on the way into the gate, since entering it is not answering the question the park was taken for
-       and a retirement there would leave an issue durably unparked whose next reading can miss again. Every other
-       member parks on its first miss, because a second reading of a candidate this host does not hold, or of a diff
-       nothing here can pin, comes back with the same answer.
+       ends the run of misses in the write that records the pair — the count and only it, since reaching the base is
+       not the last step a reading can stop at and the member beside the count says what the thread was told. That
+       member is dropped where every failure-prone step is behind it: the verdict a reading that HAPPENED settles,
+       which clears it and the count together in the write it settles on, so the record an oversized candidate is
+       adjudicated from carries no step at all. The park is retired by that same verdict rather than on the way into
+       the gate, since entering it is not answering the
+       question the park was taken for and a retirement there would leave an issue durably unparked whose next
+       reading can miss again. Every other member parks on its FIRST miss, because a second reading of a candidate
+       this host does not hold, or of a diff nothing here can pin, comes back with the same answer — and every poll
+       after that park is held silently by the same guard, since the answer it comes back with is the one the notice
+       already named.
        Which is a pair whenever one can be established at all: a revision that resolved and would not peel comes
        back carrying the id it resolved to, and that id is recorded with the park, so the retry asks for that exact
        object and the reconciliation ahead of the next spawn proves it. A revision that would not resolve names

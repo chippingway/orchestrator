@@ -1130,42 +1130,63 @@ rather than preserving.
 - **Measurement retries.** `late_measurement_miss_count` and `late_measurement_failure` are the record of a reading
   that did *not* happen: how many consecutive readings this CANDIDATE has lost — across generations, since a base the
   remote would not name records none and the next reading of that same commit freezes afresh under a new one — and the
-  `MeasurementFailure` step the last one stopped at (`base_unreadable`, `base_absent`, `candidate_unreadable`,
+  `MeasurementFailure` step a NOTICE about it named (`base_unreadable`, `base_absent`, `candidate_unreadable`,
   `candidate_absent`, `diff_unpinnable`, `diff_failed`, `diff_unreadable` — the vocabulary
-  [`orchestrator/git/measurement/models.py`](../../orchestrator/git/measurement/models.py) owns). They are durable
-  because nothing else remembers a miss — every tick is a fresh process, so a gate counting in memory would either
-  re-read a permanently broken pair forever or spend a human on the first reading a fetch happened to interrupt — and
-  the ceiling a bounded retry is held to is `_MEASUREMENT_MISSES_BEFORE_PARK` (3), spelled on
+  [`orchestrator/git/measurement/models.py`](../../orchestrator/git/measurement/models.py) owns). The second is
+  written by the roads that TELL somebody and by no other, so it reads as "the sentence on this thread names this
+  step" rather than "the last reading stopped here": recorded by a quiet miss instead, it would be a notice nobody
+  made, and the miss that finally spends the bound would find its own step already there and hand the issue over
+  without a word. They are durable because nothing else remembers a miss — every tick is a fresh process, so a gate
+  counting in memory would either re-read a permanently broken pair forever or spend a human on the first reading a
+  fetch happened to interrupt — and the ceiling a bounded retry is held to is `_MEASUREMENT_MISSES_BEFORE_PARK` (3),
+  spelled on
   [`orchestrator/workflow/stages/implementing/state.py`](../../orchestrator/workflow/stages/implementing/state.py)
   beside the silent-park bound. Only the two steps that name the TRANSPORT are counted against it — `base_unreadable`
   and `base_absent`, a remote that would not answer for the base branch and a fetch that did not bring the object back
   — because those are the ones that clear themselves. Misses 1 through 3 write the pair and the incremented count,
-  emit the typed `late_failure`, log at WARNING and stop, with no `awaiting_human`, no `park_reason` and no comment,
-  so the next tick re-enters the same pair by itself on both roads and spawns nothing; the fourth takes the
-  `late_measurement_failed` park and mentions a human once. Every other member still parks on its first miss, since
-  re-reading a candidate this host does not hold or a diff nothing can pin buys the same answer, and so does a record
-  nobody may act on at all: the pair is proved usable before its transport is retried — everything a reuse needs
-  except the base itself, which is the one field the failure being retried leaves absent. The retry WRITES the record
-  back, and the mint behind it keeps the record's cycle, scope and spent readings while re-stamping the issue number,
-  the ceiling and the boundary from the process running now — so unproved it would adopt a reading taken against
-  another issue under this one's identity, or re-judge a generation that lost its ceiling against whatever
-  `MAX_ADDED_LINES` has been retuned to since, either of them ready to publish here the moment the base came back.
-  Past that park the pair is still re-read on every poll — the post-publication reconciliation runs ahead of every
-  handler — but the tick is held silently there: no further miss is counted and no second mention is made, because the
-  human the first one asked cannot answer any faster. Silent to the THREAD and to nothing else: the typed
-  `late_failure` still reaches both sinks on every one of those readings, since the stream is the only place they
-  exist at all, and a base id the remote finally names is written down even then, because it is the exact object every
-  retry after it asks for. And the silence is scoped twice over: to a park a human is still WAITING behind — the latch
-  rather than the reason beside it, since a resume consumes the one and leaves the other standing — and to the pair
-  that park was taken over. A fresh candidate, which is what guidance answered with, retires it and starts its own
-  bound rather than having its first miss swallowed by one; so does a reason whose latch a resume already spent. That
-  retirement rides the durable write that records the fresh candidate, because the two are read back as one: nothing
-  on the comment says which commit a park was taken over, so a crash between that write and the verdict would leave a
-  park over one commit beside a record naming another, and every later reading of that pair would be held silently
-  against a bound it never reaches. A base that IS reached puts the count back to zero in the write that records the
-  pair, and the park is retired by the verdict that reading settles rather than by the gate's own door, since entering
-  the gate is not answering the question the park was taken for and a retirement there would durably unpark an issue
-  whose next reading can miss again, as
+  emit the typed `late_failure`, log at WARNING and stop, with no `awaiting_human`, no `park_reason`, no comment and
+  no step recorded, so the next tick re-enters the same pair by itself on both roads and spawns nothing; the fourth
+  takes the `late_measurement_failed` park, records the step it is about to name in the same write as that count, and
+  mentions a human once. What that mention says is the member and a line written for the operator holding the issue —
+  which of a remote, a token, a throttled request, a checkout, or a planted attribute file they are looking at, and
+  where the invocation behind it is logged (`orchestrator.git_plumbing`) — with whatever the failing step wrote for
+  itself carried up beside it, already scrubbed of the credential by the transport that ran it. Every other member
+  still parks on its first miss, since re-reading a candidate this host does not hold or a diff nothing can pin
+  buys the same answer, and so does a record nobody may act on at all: the pair is proved usable before its transport
+  is retried — everything a reuse needs except the base itself, which is the one field the failure being retried
+  leaves absent. The retry WRITES the record back, and the mint behind it keeps the record's cycle, scope and spent
+  readings while re-stamping the issue number, the ceiling and the boundary from the process running now — so unproved
+  it would adopt a reading taken against another issue under this one's identity, or re-judge a generation that lost
+  its ceiling against whatever `MAX_ADDED_LINES` has been retuned to since, either of them ready to publish here the
+  moment the base came back. Past a measurement park of ANY cause the pair is still re-read on every poll — the
+  post-publication reconciliation runs ahead of every handler — and each of those readings is announced at most once
+  per thing there is to say: one that stops at the step `late_measurement_failure` already names repeats a sentence
+  the human cannot answer any faster, so the tick is held silently and no further miss is counted. That is the whole
+  reason the field is written by the roads that ANNOUNCE — without it a candidate this host cannot peel, or a diff
+  nothing here can pin, would mention the same people once a poll for as long as it took them to fix it. A reading
+  that stops at a *different* member is not a repeat: it is a different next move, and nothing else would ever say
+  so, so it is announced once and takes that field's place in the write the notice rides out on, which makes the poll
+  after it a repeat rather than a second announcement; no miss is counted for it either. Silent to the THREAD and to
+  nothing else: the typed `late_failure` still reaches both sinks on every one of those readings, since the stream is
+  the only place they exist at all, and a base id the remote finally names is written down even then, because it is
+  the exact object every retry after it asks for. And the
+  silence is scoped twice over: to a park a human is still WAITING behind — the latch rather than the reason beside
+  it, since a resume consumes the one and leaves the other standing — and to the pair that park was taken over. A
+  fresh candidate, which is what guidance answered with, retires it and starts its own bound rather than having its
+  first miss swallowed by one; so does a reason whose latch a resume already spent. That retirement rides the durable
+  write that records the fresh candidate, because the two are read back as one: nothing on the comment says which
+  commit a park was taken over, so a crash between that write and the verdict would leave a park over one commit
+  beside a record naming another, and every later reading of that pair would be held silently against a bound it never
+  reaches. A base that IS reached puts the count — and only the count — back to zero in the write that records the
+  pair: reaching the base is not the last step a reading can stop at, and the member beside the count says what the
+  thread was TOLD, so dropping it there would announce the diff failure behind it afresh on every poll. The member
+  goes where every one of those steps is behind it — the verdict a reading that HAPPENED settles, which clears it and
+  the count together in the write it settles on, before that record becomes the one an oversized candidate is
+  adjudicated from — and it goes with the record itself wherever a small candidate retires one. Until then a notice
+  naming another step is what replaces it. The park is retired by that same verdict rather than by the gate's own
+  door, since entering the gate is not
+  answering the question the park was taken for and a retirement there would durably unpark an issue whose next
+  reading can miss again, as
   [`delivery-stages.md`](delivery-stages.md#_handle_implementing-label-workflowimplementing) describes. The count is
   read as a non-negative whole number and the failure as one of that vocabulary's own members, so a hand-edited count,
   a bool, or a `LateFailure` spelling in the failure field reads back as no miss recorded rather than as one a retry

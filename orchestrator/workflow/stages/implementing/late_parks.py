@@ -18,11 +18,29 @@ else is done at all, and only a pair that has lost the last of them is worth a
 human's attention. Every other member still parks on its first miss, because
 re-reading a candidate this host does not hold or a diff nothing can pin buys
 exactly the same answer.
+
+Past ANY of those parks the pair is still read on every poll -- the
+post-publication reconciliation takes that reading ahead of every handler --
+and what those readings owe the thread is one sentence per thing there is to
+say rather than one per poll. So the member a notice named is recorded, and it
+is recorded by the roads that announce and by no other: a quiet miss tells
+nobody anything, and a step written down by one would be a notice the guard
+thinks was made. A reading stopping at the recorded member repeats a sentence
+already on the issue and is held silently -- reported to the log and to both
+sinks, said to no one. One stopping somewhere else is a different next move
+for whoever is holding the issue, and nothing else would ever tell them, so it
+is announced once and takes the recorded member's place.
+
+What each member means to that person is spelled out here too. The vocabulary
+is written for the code that branches on it, and a park that named only the
+member would leave a human to work out for themselves whether they are looking
+at a remote, a token, a checkout, or something planted in one.
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from types import MappingProxyType
 
 from github.Issue import Issue
 
@@ -91,6 +109,92 @@ _UNMEASURED_PUBLISHED_PARK = (
     "Fix what the reading needs and the same pair is measured again."
 )
 
+# What each step means to the operator who has to clear it, one line apiece.
+# The member is what code branches on and what the record and the streams
+# carry, and on a thread it says nothing: `candidate_absent` names a host to
+# bring a commit to and `diff_unpinnable` names a checkout to clean, and the
+# difference between them is the whole of somebody's next move. The lines are
+# here rather than beside the vocabulary because they are addressed to the
+# human on this issue -- what was refused, and what would change it -- rather
+# than to the step that stopped.
+_FAILURE_LINES = MappingProxyType({
+    MeasurementFailure.BASE_UNREADABLE: (
+        "The `git ls-remote` this reading takes against the base branch never "
+        "came back with a commit, so there was no base to diff against: a "
+        "remote that could not be reached or was throttling the request, or a "
+        "token that has expired or cannot see this repository. Three retries "
+        "have already been taken quietly, one per tick, and the same pair "
+        "goes on being re-read on every tick after this notice -- so a "
+        "transport that comes back settles this with no reply at all. The "
+        "invocation that failed is logged under `orchestrator.git_plumbing`."
+    ),
+    MeasurementFailure.BASE_ABSENT: (
+        "The remote named the base commit and a fetch did not bring that "
+        "object to this host, so there was nothing here to take the diff "
+        "against: a base branch rewritten under this clone, an object a prune "
+        "took, or a fetch that could not finish. It is retried on the same "
+        "quiet bound as `base_unreadable` and re-read on every tick after "
+        "this notice, and the fetch is logged under "
+        "`orchestrator.git_plumbing`."
+    ),
+    MeasurementFailure.CANDIDATE_UNREADABLE: (
+        "The commit this issue is about does not resolve in the worktree on "
+        "this host -- a checkout that was rebuilt, reset, or reaped out from "
+        "under the record. Restore the checkout that holds it, or commit the "
+        "work again; another reading of the same worktree answers the same "
+        "way."
+    ),
+    MeasurementFailure.CANDIDATE_ABSENT: (
+        "The revision resolved to an object id this host cannot read as a "
+        "commit -- work made on a host this one is not, or an object a prune "
+        "took. The commit has to be here before any reading of it can be "
+        "taken."
+    ),
+    MeasurementFailure.DIFF_UNPINNABLE: (
+        "The checkout carries configuration that would decide what counts as "
+        "text -- a repository diff driver, or a planted `info/attributes` "
+        "file -- and no override this reading takes reaches either, so a "
+        "count taken under it could be made to read as a small candidate. "
+        "Clear it in the worktree before the pair is measured again."
+    ),
+    MeasurementFailure.DIFF_FAILED: (
+        "`git diff` over the two frozen commits exited non-zero, so no count "
+        "came back at all. The invocation and what it wrote are logged under "
+        "`orchestrator.git_plumbing`."
+    ),
+    MeasurementFailure.DIFF_UNREADABLE: (
+        "`git diff --numstat` answered with a record this build cannot count, "
+        "so no number could be taken from it. The invocation is logged under "
+        "`orchestrator.git_plumbing`."
+    ),
+})
+
+# What the step said for itself, where it said anything. Free text a human
+# reads rather than anything to branch on, and scrubbed of the credential by
+# the transport long before it reaches here.
+_REPORTED_DETAIL = "The step reported: {detail}"
+
+
+def _described(failure, detail: str) -> str:
+    """The line an operator acts on, and what the step said for itself.
+
+    The member alone is a contract term: it tells the reading what to do and
+    tells the person holding the issue nothing about what to fix. So the
+    notice carries the sentence written for them, and the transport's own line
+    after it where there is one -- by the time a human reads this the process
+    that saw that stderr is minutes and a tick gone, and nothing else kept it.
+
+    Empty for a member no line covers, which is what keeps the notice's own
+    sentences the contract: a park says what was refused whether or not this
+    table has caught up with the vocabulary.
+    """
+    described = _FAILURE_LINES.get(failure, "")
+    if not detail:
+        return described
+    reported = _REPORTED_DETAIL.format(detail=detail)
+    return f"{described} {reported}" if described else reported
+
+
 def _parked(
     gate: _records._Gate, generation: LateGeneration, failure, message: str,
 ) -> bool:
@@ -124,24 +228,138 @@ def _parked(
 
 def _unmeasured(
     gate: _records._Gate, generation: LateGeneration, failure,
+    detail: str = "",
 ) -> bool:
     """Park a candidate nobody could measure, loudly and with its reason.
 
     Never "small". What a failed `git` invocation writes to stdout is nothing,
     which is what a candidate that changes nothing writes too, so publishing
     on that reading is precisely how an unadjudicated implementation goes out.
+
+    The step is named twice over: as the member every other surface carries,
+    and as the line an operator acts on. A notice that named only the member
+    would hand somebody a term this vocabulary owns and leave them to guess
+    which of a remote, a token, a checkout, or a planted attribute file the
+    next move is about.
+
+    Loudly ONCE per cause, and this is the one place that can be decided:
+    every reading refused for a typed step reaches a human through here, and
+    the pair behind a park is re-read on every poll after it. Said again each
+    time, a base nobody can fetch or a diff nothing can pin would mention the
+    same people once a poll, for as long as it takes them to fix it -- which
+    is a notification channel nobody can answer faster by reading twice. So a
+    refusal a standing park has already announced is held instead: reported to
+    the log and to both sinks like every other reading that did not happen,
+    and said to no one. A refusal that stops SOMEWHERE ELSE is not a repeat --
+    it is a different next move for whoever is holding the issue, and nothing
+    else would ever tell them -- so it is said, and takes the announced
+    member's place.
     """
+    if _repeats_a_notice(gate, generation, failure):
+        return _held_quietly(gate, generation, failure)
+    _records_the_notice(gate, generation, failure)
     unmeasured = _UNMEASURED_PARK
     if gate.entry is not None:
         unmeasured = _UNMEASURED_PUBLISHED_PARK
-    return _parked(
-        gate, generation, failure,
-        unmeasured.format(mentions=config.HITL_MENTIONS, failure=failure),
+    refused = unmeasured.format(
+        mentions=config.HITL_MENTIONS, failure=failure,
     )
+    described = _described(failure, detail)
+    if described:
+        refused = f"{refused}\n\n{described}"
+    return _parked(gate, _announced(generation, failure), failure, refused)
+
+
+def _repeats_a_notice(
+    gate: _records._Gate, generation: LateGeneration, failure,
+) -> bool:
+    """Whether the thread has already been told THIS about THIS pair.
+
+    Both halves are required and each rules out a different way of swallowing
+    a notice nobody has made. The park has to be one somebody is still waiting
+    behind and taken over this very pair, which `_stands_over` answers; and
+    the step has to be the one that park's own notice named, which only a road
+    that announced something ever wrote down. A record that says nothing is a
+    pair nobody has been told about, so it is told.
+    """
+    if not _stands_over(gate, generation):
+        return False
+    recorded = _late_state.read_late_generation(gate.state)
+    return recorded.measurement_failure == failure
+
+
+def _held_quietly(
+    gate: _records._Gate, generation: LateGeneration, failure,
+) -> bool:
+    """Report a refusal a human has already been sent, and tell them nothing.
+
+    Silent to the THREAD and to nothing else. The typed failure goes to both
+    sinks here as it does on every other reading that did not happen: the
+    published road deliberately re-reads this pair on every poll, so the
+    stream is the only place those readings exist at all, and a hold that
+    reported none of them would make a pair nobody can measure look
+    indistinguishable from one nobody is looking at.
+
+    What the reading LEARNED is written down even here, and one thing can be
+    learned past a park: the base's identity. A remote that would not answer
+    records no base at all, so the first pass that finally gets an id for one
+    is what gives every retry after it an exact object to ask for -- dropped
+    here, the next pass asks the remote again and freezes whatever the branch
+    has moved to since, which is a different pair under the same generation.
+
+    Nothing else is written and nothing is counted. The bound is spent, so a
+    count past it measures nothing, and a record that says what it already
+    said is a pinned write bought for no reader.
+    """
+    log.warning(
+        "issue=#%d still cannot measure its committed candidate %s (%s); "
+        "holding the tick without a second notice",
+        gate.issue.number, generation.candidate_sha, failure,
+    )
+    if _late_state.read_late_generation(gate.state).base_sha != (
+        generation.base_sha
+    ):
+        _persisted(gate, generation)
+    _emit(
+        gate, generation,
+        _events.LateEvent(
+            family=_events.LateEventFamily.FAILURE,
+            failure=LateFailure.MEASUREMENT_FAILED,
+        ),
+    )
+    return True
+
+
+def _records_the_notice(
+    gate: _records._Gate, generation: LateGeneration, failure,
+) -> None:
+    """Write the member a notice is about to name, before it is said.
+
+    That order is what makes the notice the only one: every tick is a fresh
+    process, so a member said and not written down is one the next poll says
+    again, once a poll, for as long as the transport or the checkout stays
+    where it is.
+
+    A record already naming it pays no write -- the road that spends the bound
+    puts the member down with the count, in the one write that carries both --
+    and a refusal that froze no candidate writes nothing at all: a pinned
+    cycle with no commit under it freezes nothing, reconciles nothing, and is
+    read as a live cycle by the guard that ends one when the issue closes.
+    Nothing re-enters such a park either, so there is no second notice for it
+    to suppress.
+    """
+    if not generation.candidate_sha:
+        return
+    if _late_state.read_late_generation(
+        gate.state,
+    ).measurement_failure == failure:
+        return
+    _persisted(gate, _announced(generation, failure))
 
 
 def _lost_reading(
     gate: _records._Gate, generation: LateGeneration, failure,
+    detail: str = "",
 ) -> bool:
     """Count one reading the transport lost, and end the tick either way.
 
@@ -170,11 +388,22 @@ def _lost_reading(
     A park this owner already took OVER THIS PAIR ends the counting outright:
     the bound is spent, the human it asked has been asked, and the reading is
     retried each tick only so the transport coming back settles it without
-    one. There the tick is held nearly silently -- no second mention on a
-    thread whose first one nobody can answer any faster, and no reading
-    counted against a bound that is already gone. What clears it is a reading
-    that succeeds, or the human's own bare continue, which drops the reason
-    before the gate is entered and so buys exactly one more counted attempt.
+    one. The reading is still reported, and whether it is also SAID is the
+    announce-once guard above rather than this road's: a step that park
+    already named is a repeat, and one it did not is a notice nobody has made.
+    What clears the park is a reading that succeeds, or the human's own bare
+    continue, which drops the reason before the gate is entered and so buys
+    exactly one more counted attempt.
+
+    The member that goes on the record is the one a notice NAMED, and the
+    reading that spends the bound writes it in the same write as the count:
+    the two are one fact -- this reading ran the retries out and is about to
+    be said -- so a crash between them would leave a mention nothing could
+    tell from a repeat. A quiet miss writes only the count, because it says
+    nothing to anybody: the step it stopped at recorded there would be a
+    notice the guard thinks was made, and the miss that finally spends the
+    bound would find its own step already down and hand the issue over
+    without a word.
 
     A park standing over some OTHER pair is a spent one, and it is retired
     here rather than obeyed. The commonest way to reach one is the opposite
@@ -186,16 +415,19 @@ def _lost_reading(
     tick to reconcile against.
     """
     if _stands_over(gate, generation):
-        return _still_lost(gate, generation, failure)
+        return _unmeasured(gate, generation, failure, detail)
     # Nobody is waiting on this pair, so no park may outlive the miss about to
     # be counted: a reason standing with its latch already spent -- what a
     # resume leaves -- still freezes the branch out of base sync and still
     # tells every announce-once guard a human has been notified.
     _retire_spent_park(gate.state)
     missed = _one_more_miss(generation, failure)
+    announcing = not _retries_quietly(missed, failure)
+    if announcing:
+        missed = _announced(missed, failure)
     _persisted(gate, missed)
-    if not _retries_quietly(missed, failure):
-        return _unmeasured(gate, missed, failure)
+    if announcing:
+        return _unmeasured(gate, missed, failure, detail)
     log.warning(
         "issue=#%d could not reach the base its committed candidate %s is "
         "measured against (%s); re-reading the same pair on the next tick "
@@ -235,48 +467,15 @@ def _stands_over(gate: _records._Gate, generation: LateGeneration) -> bool:
     return recorded.candidate_sha == generation.candidate_sha
 
 
-def _still_lost(
-    gate: _records._Gate, generation: LateGeneration, failure,
-) -> bool:
-    """Hold a tick that lost the same pair's reading again, telling no human.
+def _announced(generation: LateGeneration, failure) -> LateGeneration:
+    """The record a notice naming this step leaves behind.
 
-    Silent to the THREAD and to nothing else. The typed failure goes to both
-    sinks here as it does on every other reading that did not happen: the
-    published road deliberately re-reads this pair on every poll, so the
-    stream is the only place those readings exist at all, and a hold that
-    reported none of them would make a pair nobody can measure look
-    indistinguishable from one nobody is looking at. What is spared is the
-    human -- one mention, on the poll that spent the bound.
-
-    What the reading LEARNED is still written down, and one thing can be
-    learned past the park: the base's identity. A remote that would not answer
-    records no base at all, so the first pass that finally gets an id for one
-    is what gives every retry after it an exact object to ask for -- dropped
-    here, the next pass asks the remote again and freezes whatever the branch
-    has moved to since, which is a different pair under the same generation.
-
-    Nothing else is written and nothing is counted. The bound is spent, so a
-    count past it measures nothing, and a record that says what it already
-    said is a pinned write bought for no reader.
+    The field is what the thread has been TOLD, so it is written by the two
+    roads that tell somebody and by nothing else. Read that way it answers the
+    only question the retry after it has: does the sentence already on this
+    issue cover the step this reading stopped at?
     """
-    log.warning(
-        "issue=#%d still cannot reach the base its committed candidate %s is "
-        "measured against (%s); holding the tick without a second notice",
-        gate.issue.number, generation.candidate_sha, failure,
-    )
-    missed = replace(generation, measurement_failure=failure)
-    if _late_state.read_late_generation(gate.state).base_sha != (
-        generation.base_sha
-    ):
-        _persisted(gate, missed)
-    _emit(
-        gate, missed,
-        _events.LateEvent(
-            family=_events.LateEventFamily.FAILURE,
-            failure=LateFailure.MEASUREMENT_FAILED,
-        ),
-    )
-    return True
+    return replace(generation, measurement_failure=failure)
 
 
 def _one_more_miss(generation: LateGeneration, failure) -> LateGeneration:
@@ -285,13 +484,17 @@ def _one_more_miss(generation: LateGeneration, failure) -> LateGeneration:
     A step outside the bound is handed on untouched. The count is what says
     how close this pair is to being handed to a human, so a failure nothing
     retries may not spend one of the readings a transport fault is owed.
+
+    The count and nothing beside it. What a quiet miss stopped at is said to
+    the log and to both streams and to no human at all, and the member on the
+    record is the one a human was TOLD -- so writing this reading's step there
+    would leave the announce-once guard reading a notice nobody made.
     """
     if failure not in _TRANSPORT_STEPS:
         return generation
     return replace(
         generation,
         measurement_miss_count=generation.measurement_miss_count + 1,
-        measurement_failure=failure,
     )
 
 
@@ -310,10 +513,34 @@ def _reached(generation: LateGeneration) -> LateGeneration:
     A freeze that succeeded is what the count exists to be ended by, and the
     end has to be recorded rather than assumed. Carried past it, readings lost
     to a transport that has since recovered would be spent on the next fault
-    instead -- a pair that lost three of them and then measured would hand the
-    issue to a human on the first hiccup after that -- and the step recorded
-    beside the count would go on naming a failure this record no longer
-    describes.
+    instead: a pair that lost three of them and then measured would hand the
+    issue to a human on the first hiccup after that.
+
+    The count and only it. Reaching the base is not the end of the steps a
+    reading can stop at -- the diff still has to be pinned, taken and read --
+    and the member beside the count is what a NOTICE named, so dropping it
+    here would lose the record of what a human was told on the very tick that
+    reaches the base, and the diff failure behind it would be announced afresh
+    on every poll for as long as the base stayed reachable. `_measured` is
+    where it goes, once the reading it describes has actually happened.
+    """
+    return replace(generation, measurement_miss_count=0)
+
+
+def _measured(generation: LateGeneration) -> LateGeneration:
+    """The record a reading that HAPPENED leaves: nothing outstanding at all.
+
+    The end of every step a measurement can stop at, which is the first point
+    a member on this record describes a refusal that is over. So it goes here,
+    before the verdict settles on the record -- and the count with it, since
+    the same reading ended the row of lost ones.
+
+    Before this and not after: the settlement WRITES this record, and an
+    oversized candidate's survives the write to be adjudicated from. Cleared
+    afterwards instead, the pinned comment would carry a step a human was told
+    about into an adjudication where nothing is refusing anything, and the
+    announce-once guard would read it as a sentence still standing on a thread
+    whose park was retired by this very verdict.
     """
     return replace(
         generation, measurement_miss_count=0, measurement_failure=None,
