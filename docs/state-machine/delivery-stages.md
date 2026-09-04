@@ -1298,9 +1298,14 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        the gate, since entering it is not answering the
        question the park was taken for and a retirement there would leave an issue durably unparked whose next
        reading can miss again. Every other member parks on its FIRST miss, because a second reading of a candidate
-       this host does not hold, or of a diff nothing here can pin, comes back with the same answer — and every poll
-       after that park is held silently by the same guard, since the answer it comes back with is the one the notice
-       already named.
+       this host does not hold, or of a diff nothing here can pin, comes back with the same answer — and a reading
+       retaken past that park is held silently by the same guard, since the answer it comes back with is the one the
+       notice already named. Which readings there are to hold is decided by the road the pair was frozen on, and
+       this seam is the one that retakes none by itself: a park taken here owns every tick until a trusted bare
+       `/orchestrator continue` arrives, and that command clears the latch and the reason before the pair is
+       re-measured, so its own miss is answering a human rather than repeating a sentence and is said out loud.
+       The silent hold is the post-publication road's, where the reconciliation ahead of every handler re-enters the
+       pair once a poll with nobody asked.
        Which is a pair whenever one can be established at all: a revision that resolved and would not peel comes
        back carrying the id it resolved to, and that id is recorded with the park, so the retry asks for that exact
        object and the reconciliation ahead of the next spawn proves it. A revision that would not resolve names
@@ -1814,6 +1819,37 @@ publication context at all.
   what keeps the push it licenses off a pull request somebody moved, and the one fallback available here is the head
   read NOW, which is exactly the move it exists to catch. So it parks with the rest rather than pinning to the
   present.
+- **A reading the gate did take and could not finish is answered one step earlier, and on two of its steps a human is
+  not asked at all.** Those seven refuse a record or an entry; this is the diff itself failing, and it goes through
+  the same `late_parks` owner the implementing seam's readings do, so what a thread, a stream, and a base refresh see
+  here is what they see there: the reason is `late_measurement_failed`, the record is one `late_failure` carrying
+  `measurement_failed` with the `MeasurementFailure` step and the line that step wrote beside it, and a notice is an
+  ordinary comment carrying the same hidden `<!--orchestrator-comment-->` marker every park's does — so a tick held
+  silently posts nothing, leaves no marker, and moves no comment watermark, while an announced one is read back as
+  this orchestrator's own exactly as every other notice is. `base_unreadable` and `base_absent` name the TRANSPORT
+  between this host and the base rather than the work, and clear themselves, so the first three consecutive misses on
+  one pair write the pair and the incremented `late_measurement_miss_count`, emit that record, log at WARNING and
+  stop — leaving no
+  `awaiting_human`, no `park_reason`, no comment and no step on the pinned record — and only the fourth parks and
+  mentions a human, recording the step that mention names in the same write as the count. Every other member parks on
+  its first miss, because a candidate this host does not hold or a diff nothing here can pin answers a second reading
+  as it answered the first.
+- **A park here bounds the mentions rather than the readings.** The frozen-pair reading below runs ahead of every
+  handler on all five of these stages and is not gated on the park, so a parked pair is re-measured once a poll — the
+  recorded base asked for as that exact object where one was named, and the remote asked again only where the failure
+  left none — and a transport that comes back settles the park with nothing said on the thread. What that costs the
+  issue is bounded to one sentence per thing there is to say: a reading stopping at the step `late_measurement_failure`
+  already names repeats a sentence the human cannot answer any faster, so the tick is held silently — the typed
+  `late_failure` still reaching both sinks, since those polls exist nowhere else, and a base id the remote finally
+  names still recorded, since it is what the next retry asks for — while one stopping at a *different* member is a
+  different next move nothing else would report, so it is announced once and takes that field's place. No miss is
+  counted for either: the bound is spent. The refusals on this page that announce once are keyed on the standing park
+  and nothing else — a missing checkout, a reading stranded on another stage, and a record nothing can parse are each
+  a wall this process cannot walk back from, so any tick finding the reason already there is held. Only the reading's
+  own guard asks more, because a reading is the one of them that can come back: the latch as well as the reason, the
+  pair the park was taken over, and the step its notice named. A base that IS reached puts the count back to zero and
+  leaves the member alone, since reaching the base is not the last step a reading can stop at; the verdict a reading
+  that HAPPENED settles clears both, and retires the park with them.
 - **A hold closes the caller's own bookkeeping.** The gate holding a candidate is not a park — the commit is on the
   branch and a `single` verdict publishes it from there — so what the caller's tick was in the middle of is finished
   even though its tail never ran, and no later tick of that stage can do it: a settled adjudication publishes before

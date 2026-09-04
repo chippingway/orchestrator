@@ -156,9 +156,33 @@ _HEAD_HELD_KEYS: tuple[str, ...] = (
 # makes both unanswerable: the frozen commit is gone, and the checkout the
 # refusal was protecting is standing on the base.
 #
-# It ends the way every other park does, by being answered: the retry either
-# takes the reading, hands the issue to the developer, or takes the park
-# again with the reason it fails for now.
+# A reading lost to the TRANSPORT reaches this reason only once the gate has
+# spent the three tries it takes quietly, and what holds the branch through
+# those ticks is the reading group above rather than anything here: each of
+# those misses writes the frozen candidate back -- with the base beside it
+# wherever the reading got that far -- and those are the keys on that list.
+# The count it increments is not one of them, and neither is the step a notice
+# named. Those two say what happened to a READING; a freeze is held by the
+# commits, which are what a rebase takes away and what the retry has to find
+# still standing. It is the same division as the paragraph above draws --
+# what this reason covers is the refusals that leave no pair to find, and none
+# of those is retried quietly at all, because a candidate this host does not
+# hold and a diff nothing here can pin answer a second reading exactly as they
+# answered the first.
+#
+# It ends the way every other park does, by being answered, and which road
+# does the asking is what says how long the freeze has to hold. PAST
+# publication the reconciliation ahead of every handler re-measures the exact
+# pair once a poll whatever the park says, so a remote that comes back
+# settles it with nothing said on the thread -- and the checkout has to be
+# standing where the record left it for every one of those readings, not
+# merely for the one that took the park. BEFORE it nothing retakes the
+# reading at all: the park owns the tick, and what re-enters the gate is a
+# human's own trusted bare continue, however many polls later that is. Either
+# window ends the same way if the branch is rewritten inside it -- the frozen
+# commit is gone, and the reading that would have ended the park has nothing
+# left to take. The retry either takes the reading, hands the issue to the
+# developer, or takes the park again with the reason it fails for now.
 _MEASUREMENT_PARK_REASON = "late_measurement_failed"
 
 # The park an implementer timeout leaves, and the one record here that names a

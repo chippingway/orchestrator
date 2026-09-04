@@ -415,12 +415,18 @@ branch has already overtaken.
   that step wrote, so an operator reading only the stream can tell these apart the way the human on the thread can
   ([`../observability/event-streams.md`](../observability/event-streams.md#late-split-records-both-sinks)). A base the
   TRANSPORT could not reach is the one exception, and a bounded one: `base_unreadable` and `base_absent` clear
-  themselves, so the first three consecutive misses on a pair record the miss, emit that same typed failure, log
-  at WARNING and stop with nothing parked and nothing said — the next tick re-reads the pair by itself, spawning
-  nothing — and only the fourth asks a human. Every park here asks once per thing there is to say, whatever its
-  cause: the pair goes on being re-read while the park stands, and a reading that stops where that park's own notice
-  already said it stops is held silently, while one that stops at a *different* member is announced once and takes
-  its place. The park is retired by the verdict a reading that finally lands settles. Every notice names the member
+  themselves, so the first three consecutive misses on a pair count one on `late_measurement_miss_count`, emit that
+  same typed failure, log at WARNING and stop with nothing parked and nothing said — the next tick re-reads the pair
+  by itself, spawning nothing — and only the fourth asks a human. Every park here asks once per thing there is to
+  say, whatever its cause: a reading retaken with nobody asked and stopping where that park's own notice already said
+  it stops — which is what `late_measurement_failure` records, written by the roads that tell somebody and by no
+  other — is held silently, while one that stops at a *different* member is announced once and takes its place. What
+  retakes it is the road the gate was entered on: past publication the reconciliation ahead of every handler re-reads
+  the parked pair once a poll, which is what that silence is for, while before it the park owns the tick until the
+  bare continue below arrives — and that reading, being a human's answer, is announced again if it misses. A base
+  this host does reach ends the run of misses in the write that records the pair,
+  and the member beside the count stays, since reaching the base is not the last step a reading can stop at. Both go
+  together, with the park, on the verdict a reading that finally lands settles. Every notice names the member
   and explains it in a line written for the operator — which of a remote, a token, a checkout, or a planted
   attribute file they are looking at, and, for the remote read, the fetch and the two diff steps, the
   `orchestrator.git_plumbing` channel their invocation is logged under — with whatever the failing step wrote for

@@ -612,9 +612,23 @@ name, a base or candidate object this host does not hold, a diff nothing could p
 worktree took with it. Which of those it was is on the record rather than left to the reader — `measurement_failure`
 names the step, and `detail` carries the line that step wrote — so a run of these can be counted by cause without
 reading the issue thread back. Every one of them is recorded whether or not a human is told about it — the two
-transport steps are retried quietly a bounded number of times before the issue is parked, and the stream is where
-those misses are visible at all. What that park bounds is the MENTIONS rather than the readings: on the five stages
-that publish onto a pull request the remote already carries, the reconciliation ahead of every handler goes on
+transport steps are retried quietly, three consecutive misses on one pair before the fourth parks the issue, and the
+stream is where those misses are visible at all. A quiet miss and the park that ends the run write the same record:
+the same `late_failure`, the same `measurement_failed`, the same step and line, since a reading that did not happen
+is the thing being counted and a stream counting causes may not lose the ones nobody was told about. What tells them
+apart is the `park_awaiting_human` record beside them, carrying `reason="late_measurement_failed"` — and it dates an
+ANNOUNCEMENT rather than the state of the bound. One goes down where the fourth miss parks, again where a reading
+stops at a member the thread has not been told about, and again where a human's own reply has spent the park before
+it: a bare `/orchestrator continue` clears the latch and the reason ahead of the gate, so the reading it buys is
+announced whatever it stops at, the member the last notice named included. The readings between those — the ones
+inside the bound, and the ones a standing park holds silently — write their `late_failure` with no park record beside
+them and read alike here. What a run of them is takes the records before it under the same cycle and CANDIDATE
+(`source_sha`) rather than the same generation: a base the remote would not name records no base at all, so each
+retry of that pair freezes afresh and mints the next generation under the one cycle. Or it takes the pinned
+`late_measurement_miss_count` and `late_measurement_failure`, which no payload field carries. What that
+park bounds is the MENTIONS rather
+than the readings: on the five stages that publish onto a pull request the remote already carries, the
+reconciliation ahead of every handler goes on
 re-reading the parked pair once a poll, and every one of those
 readings reports again. So a single unreachable base can carry an unbounded run of `late_failure` records under one
 cycle and generation while the thread stays silent, and it is the reading that finally lands — not a human — that

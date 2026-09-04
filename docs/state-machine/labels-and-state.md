@@ -1165,20 +1165,25 @@ rather than preserving.
   and the boundary from the process running now — so unproved it would adopt a reading taken against another issue
   under this one's identity, or re-judge a generation that lost its ceiling against whatever `MAX_ADDED_LINES` has
   been retuned to since, either of them ready to publish here the moment the base came back. Past a measurement park
-  of ANY cause the pair is still re-read on every poll — the post-publication reconciliation runs ahead of every
-  handler — and each of those readings is announced at most once per thing there is to say: one that stops at the step
+  of ANY cause the pair goes on being re-read once a poll on ONE of the two roads: the post-publication
+  reconciliation, which runs ahead of every handler on the five stages that publish onto a pull request the remote
+  already carries and asks nobody first. A park taken before publication is re-read by nothing at all — it owns every
+  tick until a trusted bare `/orchestrator continue`, which clears the latch and the reason ahead of the gate and so
+  buys one more counted attempt, whose own miss is answering a human and is said out loud. Each reading retaken with
+  nobody asked is announced at most once per thing there is to say: one that stops at the step
   `late_measurement_failure` already names repeats a sentence the human cannot answer any faster, so the tick is held
   silently and no further miss is counted. That is the whole reason the field is written by the roads that ANNOUNCE —
   without it a candidate this host cannot peel, or a diff nothing here can pin, would mention the same people once a
   poll for as long as it took them to fix it. A reading that stops at a *different* member is not a repeat: it is a
   different next move, and nothing else would ever say so, so it is announced once and takes that field's place in the
-  write the notice rides out on, which makes the poll after it a repeat rather than a second announcement; no miss is
-  counted for it either. Silent to the THREAD and to nothing else: the typed `late_failure` still reaches both sinks
-  on every one of those readings, each naming the step that reading stopped at, since the stream is the only place
-  they exist at all and a run nobody can break down by cause reads like a pair nobody is looking at; and a base id the
-  remote finally names is written down even then, because it is the exact object every retry after it asks for. And
-  the silence is scoped twice over: to a park a human is still WAITING behind — the latch rather than the reason beside
-  it, since a resume consumes the one and leaves the other standing — and to the pair that park was taken over. A
+  write the notice rides out on, which makes the reading after it a repeat rather than a second announcement; no miss
+  is counted for it either. Silent to the THREAD and to nothing else: the typed `late_failure` still reaches both
+  sinks on every one of those readings, each naming the step that reading stopped at, since the stream is the only
+  place they exist at all and a run nobody can break down by cause reads like a pair nobody is looking at; and a base
+  id the remote finally names is written down even then, because it is the exact object every retry after it asks
+  for. And the silence is scoped twice over: to a park a human is still WAITING behind — the latch rather than the
+  reason beside it, since a resume consumes the one and leaves the other standing — and to the pair that park was
+  taken over. A
   fresh candidate, which is what guidance answered with, retires it and starts its own bound rather than having its
   first miss swallowed by one; so does a reason whose latch a resume already spent. That retirement rides the durable
   write that records the fresh candidate, because the two are read back as one: nothing on the comment says which
@@ -1864,6 +1869,20 @@ the same wall stay quiet — suppressing the others would leave an outcome recor
 loud. A retirement is a state
 change like any other, so the one branch that would otherwise return without writing — the reuse of a recorded
 answer that owes no announcement — persists it rather than clearing a park only in memory.
+
+A revised candidate nobody could measure is this mode's own reading, and it parks on the FIRST miss whatever step it
+stopped at. `late_revision_unmeasured` is the reason, neither guard reads the other's — the size gate's silence is
+scoped to a standing `late_measurement_failed`, and this mode's to its own list — so the bounded quiet retry the two
+transport steps earn at the gate buys nothing here: a remote that would not answer for the base asks a human on the
+tick it happens, and `late_measurement_miss_count` and `late_measurement_failure` above go on describing the gate's
+own readings, so a miss taken once the issue is back there starts a bound of its own. What the two reading roads do
+share is the record: the same `late_failure` carrying `measurement_failed`, with the same `measurement_failure` step
+and `detail` line beside it, under `stage: decomposing` because that is where a re-measurement is taken
+([`../observability/event-streams.md`](../observability/event-streams.md#late-split-records-both-sinks)). And what
+each suppression is keyed on follows what re-takes the park: here a reconciliation that spawned nothing and met the
+same wall, which is the same sentence under the same REASON, and at the gate the pair the post-publication
+reconciliation re-reads once a poll, which is the same sentence only while those readings go on stopping at the same
+STEP.
 
 The record goes out before the effect it earns, and the owner read goes out between them. A question is written and
 persisted BEFORE the comment announcing it, so a crash between them costs one repeated comment — the window every
