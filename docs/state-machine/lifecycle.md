@@ -76,30 +76,41 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      -- with whatever the step wrote for
                                      itself, scrubbed, beside it. It is made
                                      once per STEP: late_measurement_failure
-                                     records which one was named, so polls past
-                                     the park re-read and hold silently while
-                                     the reading stops there, and one stopping
+                                     records which one was named, so a reading
+                                     retaken with nobody asked holds silently
+                                     while it stops there, and one stopping
                                      at a DIFFERENT member is announced once
-                                     and takes its place
+                                     and takes its place. Which readings those
+                                     are is the gate's own road: HERE the park
+                                     owns every tick until the continue above
+                                     arrives, and its own miss is a fresh
+                                     answer that says so, while past
+                                     publication the reconciliation below
+                                     re-reads the pair once a poll and is what
+                                     the silence is for
      ... the base was unreachable ─► counted instead, for the first three in a
                                      row: base_unreadable and base_absent are
                                      the transport rather than the work, so the
-                                     pair and the miss go on the record, the
-                                     typed late_failure is emitted, and the
-                                     tick stops with nothing parked, nothing
-                                     said, and no step on the PINNED record --
+                                     pair and the incremented
+                                     late_measurement_miss_count go on the
+                                     record, the typed late_failure is
+                                     emitted, and the tick stops with nothing
+                                     parked, nothing said, and no step on the
+                                     PINNED record --
                                      that field is what a NOTICE named, not
                                      what a reading stopped at, and the record
                                      emitted here names the step regardless,
-                                     since a stream is counted by cause. The
-                                     next tick re-enters that same pair with no
-                                     agent; the fourth miss takes the park
-                                     above, records the step it names in the
-                                     same write as the count, and mentions
-                                     once. Polls past it hold silently as
-                                     above, though each still reports its typed
-                                     late_failure, and a base id the remote
-                                     finally names is recorded even then. A
+                                     since a stream is counted by cause.
+                                     Nothing stands in the way of the next
+                                     tick, so it re-enters that same pair with
+                                     no agent and no reply; the fourth miss
+                                     takes the park above, records the step it
+                                     names in the same write as the count, and
+                                     mentions once. A reading retaken past it
+                                     holds silently as above, though each
+                                     still reports its typed late_failure, and
+                                     a base id the remote finally names is
+                                     recorded even then. A
                                      base REACHED puts the COUNT back to zero
                                      and leaves the member alone, since
                                      reaching the base is not the last step a
