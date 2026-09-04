@@ -77,11 +77,21 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     went on to lose the reading again would leave an issue durably unparked
     with nothing measured and nothing said: the reading a human was told
     about is still the reading nobody has taken.
+
+    The record of what that park SAID goes with the flag, and it goes here
+    for the same reason: every step a reading can stop at is behind this line,
+    so the member describes a refusal that is over. It is dropped before the
+    record is settled on rather than after, because an oversized candidate's
+    record survives the settlement to be adjudicated from -- and a step a
+    human was told about, carried into an adjudication where nothing is
+    refusing anything, is a sentence the announce-once guard would read as
+    still standing on a thread whose park this very verdict retired.
     """
     _parks._retire_spent_park(gate.state)
-    if generation.is_oversized:
-        return _routed(gate, generation)
-    return _accepted(gate, generation)
+    settled = _parks._measured(generation)
+    if settled.is_oversized:
+        return _routed(gate, settled)
+    return _accepted(gate, settled)
 
 
 def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:

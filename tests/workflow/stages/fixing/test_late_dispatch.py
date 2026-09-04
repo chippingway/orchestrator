@@ -63,6 +63,12 @@ AWAITING_HUMAN = fixing.AWAITING_HUMAN
 # What a reading nobody could take left behind, for the tick that takes it.
 _MEASUREMENT_PARK = ((AWAITING_HUMAN, True), (PARK_REASON, PARK_MEASUREMENT_FAILED))
 
+# The step that park's own notice named, which every measurement park this
+# road takes records with the flags: it is what tells the poll after it
+# whether the sentence on the thread already covers what the reading stopped
+# at.
+_ANNOUNCED_STEP = support.MeasurementFailure.BASE_ABSENT
+
 # The five states the gate can take an issue out of, and so the five that can
 # be left holding a pair their own tick froze and never counted.
 PUBLISHING_LABELS = (
@@ -105,6 +111,8 @@ class _FrozenPairMixin(_PatchedWorkflowMixin):
         github = FakeGitHubClient()
         issue = make_issue(ISSUE, label=label)
         github.add_issue(issue)
+        if parked:
+            recorded.setdefault("measurement_failure", _ANNOUNCED_STEP)
         github.seed_state(
             ISSUE,
             branch=_issue_branch(ISSUE),

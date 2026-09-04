@@ -82,7 +82,9 @@ def _freshly_measured(
         gate.worktree, frozen.base_sha, frozen.candidate_sha,
     )
     if not counted.is_measured:
-        return _parks._unmeasured(gate, frozen, counted.failure)
+        return _parks._unmeasured(
+            gate, frozen, counted.failure, counted.detail,
+        )
     measured = replace(frozen, additions=counted.additions)
     _parks._emit(
         gate, measured,

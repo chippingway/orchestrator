@@ -14,6 +14,7 @@ from pathlib import Path
 from types import MappingProxyType
 from unittest.mock import patch
 
+from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import run_ledger as _run_ledger
@@ -85,7 +86,8 @@ KEY_BASE_SHA = "late_base_sha"
 KEY_THRESHOLD = "late_threshold"
 KEY_ADDITIONS = "late_additions"
 # What a reading the transport lost leaves on the pair it was owed for: the
-# readings lost in a row, and the step the last of them stopped at.
+# readings lost in a row, and -- once one of them has been announced -- the
+# step the notice on the thread named.
 KEY_MISS_COUNT = "late_measurement_miss_count"
 KEY_MEASUREMENT_FAILURE = "late_measurement_failure"
 KEY_PHASE = "late_phase"
@@ -231,16 +233,32 @@ class _MeasurementAssertions:
         self.assertTrue(pinned[AWAITING_HUMAN])
         self.assertEqual(pinned[PARK_REASON], PARK_MEASUREMENT_FAILED)
 
-    def _assert_missed(self, failure, count: int = 1) -> None:
+    def _assert_announced(self, failure) -> None:
+        """One mention, naming the step, over a record that already says so.
+
+        The record is half of the assertion because it is what makes the
+        mention the only one: the poll after this reads that field back and
+        holds its tick silently where it finds the step it stopped at.
+        """
+        self.assertEqual(len(self.github.posted_comments), 1)
+        mention = self.github.posted_comments[0][1]
+        self.assertIn(config.HITL_MENTIONS, mention)
+        self.assertIn(failure, mention)
+        self.assertEqual(
+            self._pinned()[KEY_MEASUREMENT_FAILURE], failure,
+        )
+
+    def _assert_missed(self, count: int = 1) -> None:
         """One reading the transport lost, counted and otherwise unsaid.
 
-        The count and the step are the whole of what a miss inside the bound
-        leaves: nothing is waiting on a human, so nothing on the issue says it
-        is, and the next tick re-reads the same pair by itself.
+        The count is the whole of what a miss inside the bound leaves: the
+        step it stopped at is said to the log and to both streams and to no
+        human, so nothing on the issue says one is waiting and the next tick
+        re-reads the same pair by itself.
         """
         pinned = self._pinned()
         self.assertEqual(pinned[KEY_MISS_COUNT], count)
-        self.assertEqual(pinned[KEY_MEASUREMENT_FAILURE], failure)
+        self.assertNotIn(KEY_MEASUREMENT_FAILURE, pinned)
         self.assertFalse(pinned.get(AWAITING_HUMAN))
         self.assertIsNone(pinned.get(PARK_REASON))
         self.assertEqual(self.github.posted_comments, [])
@@ -313,6 +331,19 @@ class _ParkedRetryCase(_GateCase):
     def _park_without_a_record(self, reply: str = BARE_CONTINUE) -> None:
         """The same park, taken before any pair could be frozen."""
         self._park_state(reply)
+
+    def _park_after_misses(self, lost: int, announced=None) -> None:
+        """The same park, over a pair that has lost `lost` readings in a row.
+
+        Lost to the TRANSPORT, since that is the only step the bound counts:
+        a record carrying misses of any other kind is one no retry wrote.
+        `announced` is the step a notice on the thread already named, which
+        only a pair whose bound has run out carries -- a quiet miss tells
+        nobody anything, so it leaves that field exactly as it found it.
+        """
+        self._park_state(reply=BARE_CONTINUE, **recorded_generation(
+            measurement_miss_count=lost, measurement_failure=announced,
+        ))
 
     def _park_state(self, reply: str, **recorded) -> None:
         """Seed one measurement park and the human reply answering it."""

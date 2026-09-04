@@ -61,7 +61,8 @@ KEY_BASE_SHA = "late_base_sha"
 KEY_THRESHOLD = "late_threshold"
 KEY_ADDITIONS = "late_additions"
 # What a reading the transport lost leaves on the pair it was owed for: the
-# readings lost in a row, and the step the last of them stopped at.
+# readings lost in a row, and -- once one of them has been announced -- the
+# step the notice on the thread named.
 KEY_MISS_COUNT = "late_measurement_miss_count"
 KEY_MEASUREMENT_FAILURE = "late_measurement_failure"
 KEY_PHASE = "late_phase"
