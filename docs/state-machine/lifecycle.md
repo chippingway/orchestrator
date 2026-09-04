@@ -87,18 +87,21 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      pair and the miss go on the record, the
                                      typed late_failure is emitted, and the
                                      tick stops with nothing parked, nothing
-                                     said, and no step recorded -- that field
-                                     is what a NOTICE named, not what a reading
-                                     stopped at. The next tick re-enters that
-                                     same pair with no agent; the fourth miss
-                                     takes the park above, records the step it
-                                     names in the same write as the count, and
-                                     mentions once. Polls past it hold silently
-                                     as above, though each still reports its
-                                     typed late_failure, and a base id the
-                                     remote finally names is recorded even
-                                     then. A base REACHED puts the COUNT back
-                                     to zero and leaves the member alone, since
+                                     said, and no step on the PINNED record --
+                                     that field is what a NOTICE named, not
+                                     what a reading stopped at, and the record
+                                     emitted here names the step regardless,
+                                     since a stream is counted by cause. The
+                                     next tick re-enters that same pair with no
+                                     agent; the fourth miss takes the park
+                                     above, records the step it names in the
+                                     same write as the count, and mentions
+                                     once. Polls past it hold silently as
+                                     above, though each still reports its typed
+                                     late_failure, and a base id the remote
+                                     finally names is recorded even then. A
+                                     base REACHED puts the COUNT back to zero
+                                     and leaves the member alone, since
                                      reaching the base is not the last step a
                                      reading can stop at; what retires the
                                      park, dropping the member with the count,

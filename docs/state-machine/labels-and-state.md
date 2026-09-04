@@ -1136,25 +1136,31 @@ rather than preserving.
   written by the roads that TELL somebody and by no other, so it reads as "the sentence on this thread names this
   step" rather than "the last reading stopped here": recorded by a quiet miss instead, it would be a notice nobody
   made, and the miss that finally spends the bound would find its own step already there and hand the issue over
-  without a word. They are durable because nothing else remembers a miss — every tick is a fresh process, so a gate
-  counting in memory would either re-read a permanently broken pair forever or spend a human on the first reading a
-  fetch happened to interrupt — and the ceiling a bounded retry is held to is `_MEASUREMENT_MISSES_BEFORE_PARK` (3),
+  without a word. The `measurement_failure` on the emitted record is a different field answering the other question,
+  and the two are deliberately not kept in step: every `late_failure` this gate writes — the quiet misses included —
+  names the step THAT reading stopped at. A stream is read by somebody counting causes, so it reports every reading;
+  the pinned field is read by the guard deciding whether to speak, so it reports what was said
+  ([`../observability/event-streams.md`](../observability/event-streams.md#late-split-records-both-sinks)).
+  They are durable because nothing else remembers a miss — every tick is a fresh process, so a gate counting in memory
+  would either re-read a permanently broken pair forever or spend a human on the first reading a fetch happened to
+  interrupt — and the ceiling a bounded retry is held to is `_MEASUREMENT_MISSES_BEFORE_PARK` (3),
   spelled on
   [`orchestrator/workflow/stages/implementing/state.py`](../../orchestrator/workflow/stages/implementing/state.py)
   beside the silent-park bound. Only the two steps that name the TRANSPORT are counted against it — `base_unreadable`
   and `base_absent`, a remote that would not answer for the base branch and a fetch that did not bring the object back
   — because those are the ones that clear themselves. Misses 1 through 3 write the pair and the incremented count,
-  emit the typed `late_failure`, log at WARNING and stop, with no `awaiting_human`, no `park_reason`, no comment and
-  no step recorded, so the next tick re-enters the same pair by itself on both roads and spawns nothing; the fourth
-  takes the `late_measurement_failed` park, records the step it is about to name in the same write as that count, and
-  mentions a human once. What that mention says is the member and a line written for the operator holding the issue —
-  which of a remote, a token, a throttled request, a checkout, or a planted attribute file they are looking at, and,
-  for the remote read, the fetch and the two diff steps, the `orchestrator.git_plumbing` channel their invocation is
-  logged under — with whatever the failing step wrote for itself carried up beside it, already scrubbed of the
-  credential by the transport that ran it. Every other member still parks on its first miss, since re-reading a
-  candidate this host does not hold or a diff nothing can pin buys the same answer, and so does a record nobody may
-  act on at all: the pair is proved usable before its transport is retried — everything a reuse needs except the base
-  itself, which is the one field the failure being retried leaves absent. The retry WRITES the record back, and the
+  emit the typed `late_failure`, log at WARNING and stop, with no `awaiting_human`, no `park_reason`, no comment and no
+  step on the PINNED record — the emitted one names it either way — so the next tick re-enters the same pair by itself
+  on both roads and spawns nothing; the fourth takes the `late_measurement_failed` park, records the step it is about to
+  name in the same write as that count, and mentions a human once. What that mention says is the member and a line
+  written for the operator holding the issue — which of a remote, a token, a throttled request, a checkout, or a planted
+  attribute file they are looking at, and, for the remote read, the fetch and the two diff steps, the
+  `orchestrator.git_plumbing` channel their invocation is logged under — with whatever the failing step wrote for itself
+  carried up beside it, already scrubbed of the credential by the transport that ran it. Every other member still parks
+  on its first miss, since re-reading a candidate this host does not hold or a diff nothing can pin buys the same
+  answer, and so does a record nobody may act on at all: the pair is proved usable before its transport is retried —
+  everything a reuse needs except the base itself, which is the one field the failure being retried leaves absent. The
+  retry WRITES the record back, and the
   mint behind it keeps the record's cycle, scope and spent readings while re-stamping the issue number, the ceiling
   and the boundary from the process running now — so unproved it would adopt a reading taken against another issue
   under this one's identity, or re-judge a generation that lost its ceiling against whatever `MAX_ADDED_LINES` has
@@ -1168,9 +1174,10 @@ rather than preserving.
   different next move, and nothing else would ever say so, so it is announced once and takes that field's place in the
   write the notice rides out on, which makes the poll after it a repeat rather than a second announcement; no miss is
   counted for it either. Silent to the THREAD and to nothing else: the typed `late_failure` still reaches both sinks
-  on every one of those readings, since the stream is the only place they exist at all, and a base id the remote
-  finally names is written down even then, because it is the exact object every retry after it asks for. And the
-  silence is scoped twice over: to a park a human is still WAITING behind — the latch rather than the reason beside
+  on every one of those readings, each naming the step that reading stopped at, since the stream is the only place
+  they exist at all and a run nobody can break down by cause reads like a pair nobody is looking at; and a base id the
+  remote finally names is written down even then, because it is the exact object every retry after it asks for. And
+  the silence is scoped twice over: to a park a human is still WAITING behind — the latch rather than the reason beside
   it, since a resume consumes the one and leaves the other standing — and to the pair that park was taken over. A
   fresh candidate, which is what guidance answered with, retires it and starts its own bound rather than having its
   first miss swallowed by one; so does a reason whose latch a resume already spent. That retirement rides the durable
