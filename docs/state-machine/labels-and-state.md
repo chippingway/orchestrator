@@ -1131,7 +1131,7 @@ rather than preserving.
   that did *not* happen: how many consecutive readings this CANDIDATE has lost — across generations, since a base the
   remote would not name records none and the next reading of that same commit freezes afresh under a new one — and the
   `MeasurementFailure` step a NOTICE about it named (`base_unreadable`, `base_absent`, `candidate_unreadable`,
-  `candidate_absent`, `diff_unpinnable`, `diff_failed`, `diff_unreadable` — the vocabulary
+  `candidate_absent`, `diff_unpinnable`, `diff_failed`, `diff_unreadable` — one of the two vocabularies
   [`orchestrator/git/measurement/models.py`](../../orchestrator/git/measurement/models.py) owns). The second is
   written by the roads that TELL somebody and by no other, so it reads as "the sentence on this thread names this
   step" rather than "the last reading stopped here": recorded by a quiet miss instead, it would be a notice nobody
