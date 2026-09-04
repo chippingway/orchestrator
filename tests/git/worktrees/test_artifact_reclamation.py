@@ -17,6 +17,7 @@ stub was consulted.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import unittest
 from pathlib import Path
@@ -27,6 +28,7 @@ from orchestrator.git import commands
 from orchestrator.git.worktrees import evidence, obligations, reclamation
 from orchestrator.git.worktrees.models import (
     ArtifactVerdict,
+    BranchTip,
     ProbeAnswer,
     ProvenTip,
     SurfaceOutcome,
@@ -75,9 +77,37 @@ _BRANCH_REFS = "refs/heads/"
 # The local git runner every case that stands in front of one patches.
 _HARDENED_SEAM = "_git_hardened"
 
-# The cleanliness read a case stands in front of, and the ref update the
-# racers in these cases run.
+# The cleanliness read a case stands in front of, the tip read that settles
+# whose tree this is, and the ref update the racers in these cases run.
 _CLEAN_SEAM = "_clean_worktree"
+
+_TIP_SEAM = "_checkout_tip"
+
+# The last of the holds asked about before the removal, which the case about
+# what the tree hides arriving as late as anything can stands in front of.
+_UNCHANGED_SEAM = "_registration_unchanged"
+
+# The write that stages a lock, named here so a case can plant something at
+# the name a derived one would have used.
+_DERIVED_STAGING = "{0}.{1}.lock"
+
+# What a file of somebody else's beside a lock says, for the cases about a
+# staging name a write must not follow.
+FOREIGN_CONTENT = "an operator's own file\n"
+
+# A registration padded out past the bound, whose first bytes still read as
+# this checkout's own.
+OVERSIZED_TAIL = "x"
+
+# Where a room on the way to this issue's branch is moved to, for the case
+# about a namespace redirected wholesale.
+MOVED_ROOM = "-elsewhere"
+
+# The buffer the short-write cases offer, and the descriptor they never reach:
+# every call is answered by a stand-in, so nothing is written anywhere.
+WHOLE_WRITE = b"abc"
+
+WRITE_NOWHERE = -1
 
 _UPDATE_REF = "update-ref"
 
@@ -741,8 +771,8 @@ class RegistrationHoldTest(_ReclaimTestCase):
     is a way the removal can be aimed somewhere nobody adjudicated.
     """
 
-    def replacing(self, worktree: Path) -> ProbeAnswer:
-        """Rename a file of somebody's over the registration, and answer clean.
+    def replacing(self, worktree: Path) -> BranchTip:
+        """Rename a file of somebody's over the registration, and read as before.
 
         Where taking the write bits off reaches its limit: the file itself
         cannot be rewritten, and the NAME can be replaced through the
@@ -750,12 +780,16 @@ class RegistrationHoldTest(_ReclaimTestCase):
         removal will never read -- and a writable one at that name for the
         next command to rewrite. What is written says exactly what the file
         it replaces says, so nothing but the object itself gives it away.
+
+        Installed in place of the tip read, which is one of the readings that
+        settle whose tree this is -- and so one of the ones the registration
+        is asked about after.
         """
         registration = _registration_of(worktree)
         decoy = self.world.path(DECOY_FILE)
         decoy.write_text(registration.read_text())
         decoy.rename(registration)
-        return ProbeAnswer.CONFIRMED
+        return self.reading(worktree)
 
     def rewriting(self, spec, worktree: Path, issue_number: int) -> bool:
         """Pin the checkout, then rewrite the registration in place.
@@ -813,9 +847,10 @@ class RegistrationHoldTest(_ReclaimTestCase):
         worktree = self.checkout()
         cleared = self.verdict(worktree=worktree, branches=self.branches)
         watched = _Removals()
+        self.reading = evidence._checkout_tip
 
         with patch.object(
-            evidence, _CLEAN_SEAM, self.replacing,
+            evidence, _TIP_SEAM, self.replacing,
         ), patch.object(commands, _HARDENED_SEAM, watched):
             reclaimed = self.spend(cleared)
 
@@ -1126,10 +1161,14 @@ class AnotherPassTest(_ReclaimTestCase):
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
         self.assertTrue(_mode(registration) & OWNER_WRITE)
 
-    def staging(self, staged: Path, marked: str) -> None:
-        """Write the staging file and stop there, as a killed pass would."""
-        self.staged = staged
-        self.writing(staged, marked)
+    def staging(self, lock: Path, marked: str) -> Path:
+        """Stage the lock and stop there, as a killed pass would.
+
+        The staging file is written and never linked, which is what a process
+        killed in that window leaves: a file under a name nothing reads, and
+        nothing at all at the name the lock is for.
+        """
+        self.staged = self.writing(lock, marked)
         raise OSError("the pass stopped here")
 
     def test_a_lock_that_never_landed_leaves_nothing(self) -> None:
@@ -1152,7 +1191,7 @@ class AnotherPassTest(_ReclaimTestCase):
 
         self.assertEqual(self.outcomes(stopped), _checkout_surface(FAILED))
         self.assertFalse(held.exists())
-        self.staged.write_text(HELD_BY_GIT)
+        self.assertTrue(self.staged.exists())
 
         finished = self.spend(cleared)
 
@@ -1217,6 +1256,284 @@ class SpecialFileTest(_ReclaimTestCase):
         self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
         self.assertTrue(held.is_fifo())
         self.assertTrue(worktree.is_dir())
+
+
+class CommandSeamTest(_ReclaimTestCase):
+    """The window between the last reading and the command that resolves a path.
+
+    `worktree remove` takes a path and resolves it for itself, and no lock
+    this pass holds stops a rename in that window. So what the answer is read
+    off is not the path and not the exit status but the checkout itself, held
+    open since before the readings: a directory nothing links to any more is
+    one that came down, and anything else is a removal that took something
+    else or took nothing.
+    """
+
+    def renaming(self, *args: str, **options):
+        """Move the tree away in the one window no reading can close."""
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            self.worktree.rename(self.elsewhere)
+            (self.elsewhere / MOVED_FILE).write_text(MOVED_CONTENT)
+        return self.hardened(*args, **options)
+
+    def replacing(self, *args: str, **options):
+        """Move the tree away and leave a copy of it in its place.
+
+        A copy carries what the checkout kept at its root, so git reads the
+        path as the registered worktree; it carries every tracked file, so git
+        reads it as clean; and what is added to it is a path the repository's
+        own rules hide, which is what `worktree remove` takes without a word.
+        Every reading about the PATH therefore agrees, and the command deletes
+        a tree that has not been this issue's checkout since before it ran.
+        """
+        if " ".join(args[:2]) == _WORKTREE_REMOVE:
+            self.worktree.rename(self.elsewhere)
+            shutil.copytree(self.elsewhere, self.worktree, symlinks=True)
+            (self.worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
+        return self.hardened(*args, **options)
+
+    def spending(self, cleared, standing) -> None:
+        """Run one teardown with `standing` in place of the command."""
+        self.elsewhere = self.world.path(MOVED_CHECKOUT)
+        self.hardened = commands._git_hardened
+        with patch.object(commands, _HARDENED_SEAM, standing):
+            self.reclaimed = self.spend(cleared)
+
+    def test_a_tree_renamed_at_the_command_is_kept(self) -> None:
+        # The path is gone by the time the command resolves it, so nothing
+        # about the path says whether this checkout came down -- and it did
+        # not: it is standing where the rename left it, with work in it
+        # nobody adjudicated.
+        self.published()
+        self.worktree = self.checkout()
+        cleared = self.verdict(
+            worktree=self.worktree, branches=self.branches,
+        )
+
+        self.spending(cleared, self.renaming)
+
+        self.assertEqual(
+            self.outcomes(self.reclaimed), _checkout_surface(FAILED),
+        )
+        self.assertFalse(self.reclaimed.settled)
+        self.assertEqual(_read(self.elsewhere), MOVED_CONTENT)
+
+    def test_a_path_recreated_at_the_command_is_kept(self) -> None:
+        # Everything the command reads about the path agrees, because what is
+        # at the path is a checkout somebody built to agree. What does not
+        # agree is the tree this pass has held open since it cleared it, which
+        # is standing where the rename left it.
+        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
+        self.published()
+        self.worktree = self.checkout()
+        cleared = self.verdict(
+            worktree=self.worktree, branches=self.branches,
+        )
+
+        self.spending(cleared, self.replacing)
+
+        self.assertEqual(
+            self.outcomes(self.reclaimed), _checkout_surface(FAILED),
+        )
+        self.assertTrue((self.elsewhere / GIT_FILE).exists())
+
+    def hiding(self, artifacts, registration) -> bool:
+        """Ask the registration as the removal does, then hide a file.
+
+        Installed in place of the last hold asked about, which is the step the
+        two tree reads now come after: what a repository's own rules cover is
+        what `worktree remove` takes without a word, so that reading has to be
+        the last word before the command and not merely one of the ones near
+        it.
+        """
+        asked = self.asking(artifacts, registration)
+        (self.worktree / HIDDEN_FILE).write_text(HIDDEN_CONTENT)
+        return asked
+
+    def test_a_file_hidden_at_the_last_hold_keeps_it(self) -> None:
+        # The one reading git does not make for itself, asked after every
+        # other question this pass puts -- the holds included -- so the window
+        # in front of the command carries nothing else.
+        _track_file(self.clone, IGNORE_FILE, f"{HIDDEN_FILE}\n")
+        self.published()
+        self.worktree = self.checkout()
+        cleared = self.verdict(
+            worktree=self.worktree, branches=self.branches,
+        )
+        self.asking = reclamation._registration_unchanged
+
+        with patch.object(reclamation, _UNCHANGED_SEAM, self.hiding):
+            reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertEqual(
+            (self.worktree / HIDDEN_FILE).read_text(), HIDDEN_CONTENT,
+        )
+
+
+class StagedLockTest(_ReclaimTestCase):
+    """What a lock is written under before it is filed at the name it is for.
+
+    A staging name anybody can derive is a name anybody can plant something
+    at, and the write that follows one would put this host's mark wherever it
+    led -- or wait forever on something that never answers, with the target
+    root and git's own locks already held.
+    """
+
+    def planted(self, worktree: Path) -> Path:
+        """The name a staging file derived from a lock would have taken.
+
+        Beside the lock git takes for the branch, which is the one of the
+        three that lives in the store the clone keeps: what is planted there
+        outlives the removal, so a case can say afterwards that nothing here
+        touched it.
+        """
+        lock = _removal_locks(self.clone, worktree, self.branch)[-1]
+        return lock.with_name(_DERIVED_STAGING.format(lock.name, os.getpid()))
+
+    def test_a_link_at_a_derived_name_is_not_written(self) -> None:
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        foreign = self.world.path(FOREIGN_FILE)
+        foreign.write_text(FOREIGN_CONTENT)
+        staged = self.planted(worktree)
+        staged.symlink_to(foreign)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(CLEANED))
+        self.assertEqual(foreign.read_text(), FOREIGN_CONTENT)
+        self.assertTrue(staged.is_symlink())
+
+    def test_a_fifo_at_a_derived_name_is_not_opened(self) -> None:
+        # A write that opened one would wait for a reader that never comes,
+        # holding the target root and both of the checkout's own locks for as
+        # long as it waited.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        waiting = self.planted(worktree)
+        os.mkfifo(waiting)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(CLEANED))
+        self.assertTrue(waiting.is_fifo())
+
+
+class IndirectRefTest(_ReclaimTestCase):
+    """A branch standing for another name is one no lock at it holds still.
+
+    Git reads a ref two ways this pass has to care about: a loose file that IS
+    a filesystem link, and one whose contents name another ref. Either way an
+    `update-ref` on this issue's branch moves the ref at the far end, and the
+    lock this pass would take is at the near one.
+    """
+
+    def elsewhere(self, tip: str) -> str:
+        """A branch of somebody else's, standing where this issue's does."""
+        other = f"{self.branch}{OTHER_BRANCH}"
+        _branch_at(self.clone, other, tip)
+        return f"{_BRANCH_REFS}{other}"
+
+    def loose(self, ref: str | None = None) -> Path:
+        """Where one branch is filed as a file of its own under this clone."""
+        ref = ref or f"{_BRANCH_REFS}{self.branch}"
+        return self.clone / GIT_FILE / ref
+
+    def linked(self, tip: str) -> None:
+        """Leave this issue's branch as a link onto somebody else's."""
+        aimed = self.loose(self.elsewhere(tip))
+        loose = self.loose()
+        loose.unlink()
+        loose.symlink_to(aimed)
+
+    def test_a_ref_linked_at_another_is_refused(self) -> None:
+        # Git reads a ref that IS a filesystem link by following it, so this
+        # issue's branch and somebody else's are one file -- and the lock an
+        # `update-ref` on the far name takes is not the one at this name.
+        tip = self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        self.linked(tip)
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertTrue(worktree.is_dir())
+
+    def test_a_room_on_the_way_to_a_ref_is_refused(self) -> None:
+        # Git walks every room on the way to a ref, not only the last step, so
+        # a namespace replaced with a link files this issue's branch somewhere
+        # this pass never looked -- and every listing of that namespace
+        # answers for whatever is at the far end. Asked of the lock itself,
+        # since what a room redirected wholesale costs is not one reading.
+        self.published()
+        worktree = self.checkout()
+        rooms = self.loose().parent
+        moved = rooms.with_name(f"{rooms.name}{MOVED_ROOM}")
+        rooms.rename(moved)
+        rooms.symlink_to(moved)
+
+        self.assertIsNone(
+            reclamation._branch_lock(
+                _candidate(self.spec, ISSUE_NUMBER, worktree=worktree),
+                worktree,
+            ),
+        )
+
+
+class BoundedReadingTest(_ReclaimTestCase):
+    """What is read is read to a bound, and what is past it is refused."""
+
+    def test_an_oversized_registration_is_refused(self) -> None:
+        # Read only as far as the bound, a file padded so its first bytes
+        # strip to this checkout's own path passes every comparison here --
+        # and the take-over then files that truncation at the name, throwing
+        # away whatever the rest of it was.
+        self.published()
+        worktree = self.checkout()
+        cleared = self.verdict(worktree=worktree, branches=self.branches)
+        registration = _registration_of(worktree)
+        padded = _aiming_at(worktree).ljust(
+            reclamation._REGISTRATION_LIMIT,
+        )
+        registration.write_text(f"{padded}{OVERSIZED_TAIL}")
+
+        reclaimed = self.spend(cleared)
+
+        self.assertEqual(self.outcomes(reclaimed), _checkout_surface(FAILED))
+        self.assertTrue(worktree.is_dir())
+        self.assertTrue(registration.read_text().endswith(OVERSIZED_TAIL))
+
+
+class WholeWriteTest(unittest.TestCase):
+    """A write that takes less than it was given is offered the rest.
+
+    What `os.write` answers is how much it took, and a caller reading that as
+    "done" files half a registration or a lock carrying a mark nothing can
+    recognise -- which is a lock that refuses its issue for good.
+    """
+
+    def short(self, writing: int, written: bytes) -> int:
+        """Take one byte of whatever was offered, and say so."""
+        self.offered.append(bytes(written))
+        return 1
+
+    def test_what_a_short_write_left_is_written_again(self) -> None:
+        self.offered: list[bytes] = []
+
+        with patch.object(reclamation.os, "write", self.short):
+            reclamation._written_whole(WRITE_NOWHERE, WHOLE_WRITE)
+
+        self.assertEqual(self.offered, [b"abc", b"bc", b"c"])
+
+    def test_a_write_that_takes_nothing_is_refused(self) -> None:
+        with patch.object(
+            reclamation.os, "write", return_value=0,
+        ), self.assertRaises(OSError):
+            reclamation._written_whole(WRITE_NOWHERE, WHOLE_WRITE)
 
 
 class StepFailureTest(_ReclaimTestCase):

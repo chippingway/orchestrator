@@ -167,19 +167,23 @@ _OWNER_ONLY_NAMES = (
 # once the first two are held, since a HEAD read before its lock is one that
 # can move -- the exclusive creation each is taken by, marked with the process
 # that took it so a lock a killed pass left behind is one a later pass tells
-# from one a running command holds -- staged whole under a name of its own,
-# with the open that name is written under and the suffix keeping it out of
-# every ref listing, and then linked to the name it is for, since a lock
-# created before it is marked is one an incomplete write leaves unrecognisable
-# -- and the staging file dropped however that ended, the bounded no-follow
-# read that says what one carries and the parse of the process it names, the
-# reading that asks whether a name still carries what this pass wrote, and the
-# take-again, the give-back, and the check before the removal that each of them
-# is bound to; the registration the removal is aimed by: opened without
-# following or waiting and held open across the whole take-over, told whether
-# the descriptor is a regular file at all, read for what it says from its first
-# byte, told whether it says this checkout, taken over by a copy of this pass's
-# own staged under a name of its own -- dropped however that ended -- and
+# from one a running command holds -- staged whole under a name nothing can
+# have planted, with the suffix keeping that name out of every ref listing,
+# and then linked to the name it is for, since a lock created before it is
+# marked is one an incomplete write leaves unrecognisable -- and the staging
+# file dropped however that ended, the bounded no-follow read that says what
+# one carries and the parse of the process it names, the reading that asks
+# whether a name still carries what this pass wrote, and the take-again, the
+# give-back, and the check before the removal that each of them is bound to;
+# the checkout itself, opened as a directory of its own and held that way, the
+# reading that says the path still leads to it, and the one afterwards that
+# says nothing links to it any more -- with the count that means; the
+# registration the removal is aimed by: opened without following or waiting
+# and held open across the whole take-over, told whether the descriptor is a
+# regular file at all, read for what it says from its first byte and refused
+# past its bound, told whether it says this checkout, taken over by a copy of
+# this pass's own staged under a name of its own -- written whole, however
+# little a write takes at a time, and dropped however that ended -- and
 # renamed into place only while the original still is what it was and still
 # says it, held by the mode taken off the object rather than the name, put
 # back the same way, and asked once more -- both what the name resolves to and
@@ -213,6 +217,7 @@ _OWNER_DEFINED = (
     ("TERMINAL_LABELS", claims),
     ("_ABSENT_LEASE", obligations),
     ("_BRANCH_REF_PREFIX", reclamation),
+    ("_CHECKOUT_HANDLE", reclamation),
     ("_CHECKOUT_LOCKS", reclamation),
     ("_CLEANLINESS_REASONS", eligibility),
     ("_COMMIT_OBJECT", obligations),
@@ -232,8 +237,6 @@ _OWNER_DEFINED = (
     ("_LOCAL_REF_PREFIX", evidence),
     ("_LOCK_LIMIT", reclamation),
     ("_LOCK_MARK", reclamation),
-    ("_LOCK_MODE", reclamation),
-    ("_LOCK_STAGED", reclamation),
     ("_NO_DEREF", obligations),
     ("_NO_LAZY_FETCH", obligations),
     ("_NO_NOTE", obligations),
@@ -258,6 +261,7 @@ _OWNER_DEFINED = (
     ("_SLUG_SAFE_RE", paths),
     ("_STAGED_SUFFIX", reclamation),
     ("_UNFOLLOWED", reclamation),
+    ("_UNLINKED", reclamation),
     ("_VERIFY_QUIETLY", evidence),
     ("_VERIFY_REF", creation),
     ("_WORKTREE_ADD", creation),
@@ -295,7 +299,10 @@ _OWNER_DEFINED = (
     ("_carrying_pull_request", claims),
     ("_checkout_entries", probes),
     ("_checkout_gitdir", reclamation),
+    ("_checkout_gone", reclamation),
+    ("_checkout_handle", reclamation),
     ("_checkout_head", eligibility),
+    ("_checkout_held", reclamation),
     ("_checkout_identity", evidence),
     ("_checkout_present", reclamation),
     ("_checkout_reason", eligibility),
@@ -441,6 +448,7 @@ _OWNER_DEFINED = (
     ("_worktree_path", paths),
     ("_writes_here", obligations),
     ("_written_note", obligations),
+    ("_written_whole", reclamation),
 )
 
 # The owners that report, each binding the channel an operator's level and

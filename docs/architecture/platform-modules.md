@@ -389,13 +389,22 @@ orchestrator/
                         only once the first two locks are held: an issue publishes under a namespaced name and a
                         legacy flat one, both of which read as its own, so a HEAD read in front of `HEAD.lock`
                         could have moved between the two by the time the ref is frozen -- leaving this pass
-                        holding the ref the checkout moved off. Each lock carries the process that took
+                        holding the ref the checkout moved off. That name also has to stand for itself: git
+                        reaches a loose ref by walking its path, so a room on the way replaced with a link, or
+                        the ref replaced with one, files this issue's branch where another name is, and an
+                        `update-ref` on the far name moves what the checkout stands on while the lock sits at
+                        the near one. A ref this pass cannot hold still by its own name is refused rather than
+                        locked. Each lock carries the process that took
                         it, so a lock a killed pass left behind is one a later pass tells from one a running
                         command holds and takes again rather than refusing this issue for good -- and each is
-                        written whole under a name of its own and then LINKED to the name it is for, since a
-                        lock created first and marked afterwards is one a failed write or a stopped process
-                        leaves carrying nothing, which no later pass can recognise as this host's and which
-                        therefore refuses that issue permanently; the
+                        written whole under a name nothing can have planted, created for this pass alone rather
+                        than derived from the lock's own, and then LINKED to the name it is for. A lock created
+                        first and marked afterwards is one a failed write or a stopped process leaves carrying
+                        nothing, which no later pass can recognise as this host's and which therefore refuses
+                        that issue permanently; a staging name anybody could derive is one anybody could leave a
+                        link or a fifo at, which the write would follow into somebody's file or wait on forever
+                        while these same locks were held. Every write here is finished rather than offered once,
+                        since what a write reports is only how much it took; the
                         registration's mode comes back writable whatever was found, for the same reason. Both
                         the take-again and the give-back are bound to the exact file the line inside it names,
                         never to the name alone -- two passes meeting one leftover would otherwise each delete
@@ -425,11 +434,20 @@ orchestrator/
                         registration repaired and a link left in its place would have it take a directory outside
                         the tree this orchestrator owns. The two are compared as filesystem objects rather than
                         as spellings, an operator whose worktrees root sits under a link of their own having
-                        every checkout answer a resolved path that is not the derived one. What the command
-                        actually deletes is not the path it is handed, though -- that path only selects a
+                        every checkout answer a resolved path that is not the derived one. The checkout is held
+                        OPEN across all of it besides, for the one question no name answers afterwards: the
+                        command resolves the path it is handed at the moment it runs, and nothing here stops a
+                        rename in front of that -- so a tree moved away with a clean copy of it left in its
+                        place is one every reading about the path agrees with. The descriptor opened before the
+                        readings is what they are checked against and what the result is read off, a directory
+                        nothing links to any more being the only thing that says this checkout came down. What
+                        the command actually deletes is not the path it is handed, though -- that path only selects a
                         registration, and the registration names the tree that comes down -- so that file is
                         opened without following, refused unless it is a regular one naming this checkout's own
-                        tree, and then TAKEN OVER: a copy of this pass's own, carrying exactly what the original
+                        tree -- read to a bound with the byte past that bound asked for as well, since a file
+                        padded to exactly it would otherwise read as the shorter thing it is not and the
+                        take-over would file that truncation at the name -- and then TAKEN OVER: a copy of this
+                        pass's own, carrying exactly what the original
                         said, is written beside it and renamed into place, which leaves every descriptor
                         somebody opened earlier pointing at an inode no name resolves to. The original stays
                         open across both halves and is asked once more -- still the file that was read, still
@@ -461,7 +479,10 @@ orchestrator/
                         agrees. What the tree carries is read twice for the same reason: git refuses a removal
                         over an untracked or modified path and takes an ignored one without a word, so a checkout
                         holding nothing but what its own rules cover passes every other reading and comes down
-                        with all of it inside. Every name here that an agent chooses what to put at -- the
+                        with all of it inside. That read is asked last of everything, with the command the next
+                        thing after it, which is as late as a reading can be put: what lands in the window a
+                        path-resolving command leaves open is the one thing here nothing closes.
+                        Every name here that an agent chooses what to put at -- the
                         registration and each of the three locks -- is read the same way besides: without
                         following, without waiting, and asked what the descriptor IS before it is asked what it
                         says, to a bound. A fifo at one of them would otherwise block a pass that is holding the

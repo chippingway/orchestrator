@@ -33,7 +33,12 @@ legacy flat one -- and both read as its own, so a checkout switched from one
 to the other in the window before the locks would leave this pass holding the
 ref it moved OFF while the ref it moved ONTO went on moving. HEAD is read once
 `HEAD.lock` is this pass's, where it cannot change, and the third lock is
-taken on what that read named.
+taken on what that read named -- and only where that name stands for itself.
+Git reaches a loose ref by walking its path, so a room on the way replaced
+with a link, or the ref itself replaced with one, files this issue's branch
+where another name is: an `update-ref` on the far name then moves what this
+checkout stands on while the lock sits at the near one. A ref this pass
+cannot hold still by its own name is one it refuses rather than locks.
 
 Every hold here is bound to the object it was taken on rather than to the name
 it was taken at, because the names all sit in directories an agent can write.
@@ -42,7 +47,20 @@ created; a lock a stopped pass left is taken away only while the name still
 resolves to that exact leftover, so two passes meeting one leftover cannot
 delete each other's live lock and both go on; and every lock is asked once
 more, immediately before the removal, whether it is still the one this pass
-took.
+took. Each is written whole under a name nothing can have planted -- created
+for this pass alone rather than derived from the lock's own -- and then linked
+to the name it is for, so what appears there appears complete and a write that
+followed somebody's link could not have put this host's mark in their file.
+
+The checkout itself is held open the same way, and for what no name can
+answer afterwards. `worktree remove` resolves the path it is handed at the
+moment it runs, and nothing this pass takes stops a rename in front of that:
+a tree moved away and a copy of it left in its place is one every reading
+about the PATH agrees with. So the descriptor opened before the readings is
+what they are checked against and what the answer is read off -- a directory
+nothing links to any more is one that came down, and a removal that took
+anything else, or took nothing, is reported as the failure it is rather than
+as this checkout's.
 
 What the removal is aimed by is not the path it is handed either. That path
 only selects a registration, and what comes down is the tree the registration
@@ -57,9 +75,19 @@ rather than aimed by.
 
 Every name that is read here is read the same way, because two of them are
 names an agent chooses what to put at: opened without following, refused
-unless the descriptor is a regular file, and read to a bound. A fifo left at
-one of them would otherwise block a pass that is holding git's own locks, and
-a pass that blocks holding those never comes back to give them up.
+unless the descriptor is a regular file, and read to a bound with the byte
+past that bound asked for as well. A fifo left at one of them would otherwise
+block a pass that is holding git's own locks, and a pass that blocks holding
+those never comes back to give them up; a file padded to exactly the bound
+would otherwise read as the shorter thing it is not, and the take-over would
+file that truncation at its name. Every write is finished for the same
+reason: what a write took is what it says it took, and half a lock is one no
+later pass can recognise.
+
+What none of this reaches is a file the repository's own rules hide, arriving
+in the window between the last reading and git's own. That reading is asked
+last of everything for want of a way to make it later, and it is the one thing
+here whose window a path-resolving command leaves open.
 
 **Absent is success.** A checkout already gone is the ordinary shape of a
 second pass, and reporting it as a failure would keep an issue in a report
@@ -76,6 +104,7 @@ import contextlib
 import logging
 import os
 import subprocess
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -130,21 +159,11 @@ _REF_LOCK = ".lock"
 # holding right now from one a killed pass left behind.
 _LOCK_MARK = "orchestrator-reclaim"
 
-# How one is written before it is filed at its own name: under a name of this
-# pass's own, which nothing else reads and which a leftover of this process's
-# may be written over. The exclusion is the link that files it afterwards, not
-# this.
-_LOCK_STAGED = os.O_CREAT | os.O_TRUNC | os.O_WRONLY
-
-# The suffix that name carries, which is what keeps a staging file out of
-# every ref listing while it is there: git skips a loose file whose name ends
-# in this when it walks `refs/`, and the branch lock a removal takes is a name
-# under exactly that room.
+# The suffix a staging file carries, which is what keeps it out of every ref
+# listing while it is there: git skips a loose file whose name ends in this
+# when it walks `refs/`, and the branch lock a removal takes is a name under
+# exactly that room.
 _STAGED_SUFFIX = ".lock"
-
-# The mode git gives its own locks, so an operator reading the directory finds
-# nothing unusual.
-_LOCK_MODE = 0o666
 
 # How much of one is read back. A lock this host wrote is a mark and a process
 # id, so anything past this is not one -- and the read is bounded because the
@@ -173,6 +192,18 @@ _WRITABLE = 0o222
 # back regardless: a mode without it is this host's own hold, left by a pass
 # that did not come back to release it.
 _OWNER_WRITE = 0o200
+
+# How the checkout itself is opened and held for the length of a removal: as
+# a directory in its own right, without following and without waiting. What
+# the descriptor is for is what no path can answer afterwards -- whether the
+# tree this pass validated is the tree that came down.
+_CHECKOUT_HANDLE = (
+    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK
+)
+
+# What `st_nlink` reads as once nothing on this host names an object any more,
+# which for a directory is the `rmdir` that ended it.
+_UNLINKED = 0
 
 # How every name an agent can choose what to put at is opened: read-only,
 # refusing to follow, and refusing to wait. A link at the name fails the open
@@ -227,6 +258,7 @@ class _Registration:
 class _Holds:
     """Everything one removal runs under, in the shape it is checked in."""
 
+    checkout: int
     locks: tuple[_HeldLock, ...]
     registration: _Registration
 
@@ -368,9 +400,11 @@ def _removal_under_lock(
     present = _checkout_present(worktree)
     if present is ProbeAnswer.REFUTED:
         return SurfaceOutcome.ABSENT
-    if present is ProbeAnswer.UNREADABLE or not _still_cleared(
-        artifacts, worktree, proven_sha,
-    ):
+    if present is ProbeAnswer.UNREADABLE:
+        return SurfaceOutcome.FAILED
+    if not _still_cleared(artifacts, worktree, proven_sha):
+        return SurfaceOutcome.FAILED
+    if not _holding_nothing(artifacts, worktree):
         return SurfaceOutcome.FAILED
     return _anchored_removal(artifacts, worktree, proven_sha)
 
@@ -429,6 +463,10 @@ def _everything_held(
     on, since the readings before the removal have to be able to ask whether
     the names still mean them.
     """
+    checkout = _checkout_handle(artifacts, worktree)
+    if checkout is None:
+        return None
+    holding.callback(os.close, checkout)
     held = _held_still(artifacts, worktree, gitdir)
     if not held:
         return None
@@ -437,7 +475,35 @@ def _everything_held(
     if registration is None:
         return None
     holding.callback(_thawed, registration)
-    return _Holds(held, registration)
+    return _Holds(checkout, held, registration)
+
+
+def _checkout_handle(
+    artifacts: IssueArtifacts, worktree: Path,
+) -> int | None:
+    """Open the checkout itself, to be held until the removal is over.
+
+    The one hold here that is not about stopping anything. `worktree remove`
+    resolves the path it is handed at the moment it runs, and nothing this
+    pass can take stops a rename in front of that -- so what the descriptor is
+    for is afterwards: a directory nothing links to any more is one that was
+    removed, and a path that is gone says only that something took the name.
+    Held from before the readings, it is also what those readings are checked
+    against, so the tree they clear is the tree the answer is read off.
+
+    Opened as a directory in its own right, without following and without
+    waiting, for the reason every name here is: a link where the checkout
+    belongs is refused rather than followed to whatever it stands for.
+    """
+    try:
+        return os.open(worktree, _CHECKOUT_HANDLE)
+    except OSError as refused:
+        log.warning(
+            "issue=#%d keeping the checkout %s: it would not open as a "
+            "directory of its own (%s)",
+            artifacts.issue_number, worktree, refused,
+        )
+        return None
 
 
 def _registration_held(
@@ -566,8 +632,37 @@ def _registration_read(pinned: int) -> str:
     Read at an offset rather than at wherever the descriptor happens to be,
     so the reading before the removal is the same reading as the one that
     established what the file said in the first place.
+
+    One byte past the bound is asked for, and anything that answers it is
+    refused rather than cut short. A registration is one path and a newline,
+    so a longer one is not a registration at all -- and reading only as far as
+    the bound would have a file padded to exactly the right prefix pass every
+    comparison here while the take-over filed the truncation at its name.
     """
-    return os.pread(pinned, _REGISTRATION_LIMIT, 0).decode()
+    read = os.pread(pinned, _REGISTRATION_LIMIT + 1, 0)
+    if len(read) > _REGISTRATION_LIMIT:
+        raise ValueError(
+            f"a registration is not {_REGISTRATION_LIMIT} bytes or more",
+        )
+    return read.decode()
+
+
+def _written_whole(writing: int, written: bytes) -> None:
+    """Write the whole of one buffer, however little a call takes at a time.
+
+    A write is allowed to take less than it was given, and a caller reading
+    its answer as "done" would file half a registration -- or a lock carrying
+    a mark no later pass can recognise, which is one that refuses its issue
+    for good. What was left is offered again until the buffer is out, and a
+    write taking nothing at all is the failure it is.
+    """
+    put = 0
+    whole = len(written)
+    while put < whole:
+        wrote = os.write(writing, written[put:])
+        if not wrote:
+            raise OSError(f"a write of {whole} bytes would not finish")
+        put += wrote
 
 
 def _registration_replaced(
@@ -623,7 +718,7 @@ def _registration_staged(
         )
         return None
     try:
-        os.write(pinned, says.encode())
+        _written_whole(pinned, says.encode())
     except OSError as refused:
         log.warning(
             "issue=#%d keeping the checkout: its registration could not be "
@@ -847,7 +942,15 @@ def _branch_lock(
             artifacts.issue_number, worktree,
         )
         return None
-    return (common / f"{_branch_ref(branch)}{_REF_LOCK}",)
+    ref = _branch_ref(branch)
+    if not obligations._direct_note(artifacts.spec, ref):
+        log.warning(
+            "issue=#%d keeping the checkout %s: %s stands for another name "
+            "rather than for itself, so a lock at it holds nothing",
+            artifacts.issue_number, worktree, ref,
+        )
+        return None
+    return (common / f"{ref}{_REF_LOCK}",)
 
 
 def _taken_once(artifacts: IssueArtifacts, lock: Path) -> _HeldLock | None:
@@ -919,44 +1022,57 @@ def _lock_created(lock: Path) -> _HeldLock | None:
     with contextlib.suppress(OSError):
         lock.parent.mkdir(parents=True, exist_ok=True)
     marked = f"{_LOCK_MARK} {os.getpid()}\n"
-    staged = lock.with_name(f"{lock.name}.{os.getpid()}{_STAGED_SUFFIX}")
     try:
-        return _lock_filed(lock, staged, marked)
+        staged = _lock_staged(lock, marked)
     except OSError as refused:
         log.warning("the lock %s could not be written: %s", lock, refused)
         return None
-    finally:
+    with contextlib.ExitStack() as filing:
+        filing.callback(_lock_dropped, staged)
+        return _lock_filed(lock, staged, marked)
+
+
+def _lock_staged(lock: Path, marked: str) -> Path:
+    """Write one lock's whole content under a name nothing can have planted.
+
+    Created rather than opened, and at a name this pass is handed rather than
+    one it derives. A staging name anybody can predict is one an agent can put
+    a link at, and a write that followed it would put this host's mark into
+    somebody else's file -- and then hard-link that file in as the lock every
+    later pass reads. A name that does not exist until this call makes it has
+    nothing to follow and nothing to wait on.
+
+    The suffix is what keeps it out of every ref listing while it is there:
+    git skips a loose file whose name ends in it, and one of the three locks a
+    removal takes lives under `refs/heads/`.
+    """
+    writing, named = tempfile.mkstemp(
+        prefix=f"{lock.name}.", suffix=_STAGED_SUFFIX, dir=lock.parent,
+    )
+    staged = Path(named)
+    try:
+        with contextlib.ExitStack() as taking:
+            taking.callback(os.close, writing)
+            _written_whole(writing, marked.encode())
+    except OSError:
         _lock_dropped(staged)
+        raise
+    return staged
 
 
 def _lock_filed(lock: Path, staged: Path, marked: str) -> _HeldLock | None:
-    """Write the whole of one lock, then file it at the name it is for.
+    """File the staged lock at the name it is for, or leave that name alone.
 
     `None` is the name already being taken, which is what the link answers
     with rather than an exception this reads as a failure to write: a lock
     somebody else is holding is the ordinary answer, and the caller tells it
     from a leftover of this host's by reading what is there.
     """
-    _lock_staged(staged, marked)
     try:
         os.link(staged, lock)
     except OSError:
         return None
     return _HeldLock(lock, marked)
-
-
-def _lock_staged(staged: Path, marked: str) -> None:
-    """Write one lock's whole content under the name it is staged at.
-
-    Not created exclusively, because the name carries this process's own id:
-    what could be there is this host's own leftover from a pass that stopped
-    between the write and the link, and refusing over one would be refusing
-    every removal for that issue on the strength of a file nothing reads.
-    """
-    writing = os.open(staged, _LOCK_STAGED, _LOCK_MODE)
-    with contextlib.ExitStack() as taking:
-        taking.callback(os.close, writing)
-        os.write(writing, marked.encode())
 
 
 def _lock_dropped(staged: Path) -> None:
@@ -1012,10 +1128,16 @@ def _lock_says(lock: Path) -> str | None:
 
 
 def _lock_told(opened: int) -> str | None:
-    """What a descriptor says, if what it is open on is a regular file."""
+    """What a descriptor says, if what it is open on is a lock at all.
+
+    A regular file, and one no longer than a lock this host writes: a mark and
+    a process id is the whole of one, so a file that answers past the bound is
+    something else and is refused rather than read up to it.
+    """
     if not S_ISREG(os.fstat(opened).st_mode):
         return None
-    return os.read(opened, _LOCK_LIMIT).decode()
+    read = os.read(opened, _LOCK_LIMIT + 1)
+    return None if len(read) > _LOCK_LIMIT else read.decode()
 
 
 def _lock_names(written: str) -> int | None:
@@ -1139,7 +1261,7 @@ def _removal_while_held(
     )
     return _anchor_settled(
         artifacts, proven_sha,
-        taken=_came_down(artifacts, worktree, removed),
+        taken=_came_down(artifacts, worktree, removed, held.checkout),
     )
 
 
@@ -1162,18 +1284,26 @@ def _ready_to_go(
     What is asked is what the verdict was taken on: the path is this issue's
     own, the tree is a worktree of the configured clone standing on one of
     this issue's branches, its HEAD is on the commit that was cleared, and it
-    is carrying and hiding nothing. Then the holds themselves are asked
-    whether they are still holding -- the locks, and the registration this
-    removal is aimed by -- neither of which is about the tree, and both of
-    which decide what a command that resolves its own argument would take.
+    is standing on the commit that was cleared. Then the holds themselves are
+    asked whether they are still holding -- the locks, and the registration
+    this removal is aimed by -- neither of which is about the tree, and both
+    of which decide what a command that resolves its own argument would take.
+
+    What the tree is carrying and hiding comes last of everything, with the
+    removal the next thing after it. It is the one reading git does not make
+    for itself -- an ignored file is what `worktree remove` takes without a
+    word -- so it is asked where the window in front of the command is as
+    short as this pass can make it.
     """
-    if not _still_ours(artifacts, worktree):
+    if not _still_ours(artifacts, worktree, held.checkout):
         return False
     if not _still_cleared(artifacts, worktree, proven_sha):
         return False
     if not _locks_unchanged(artifacts, held.locks):
         return False
-    return _registration_unchanged(artifacts, held.registration)
+    if not _registration_unchanged(artifacts, held.registration):
+        return False
+    return _holding_nothing(artifacts, worktree)
 
 
 def _registration_unchanged(
@@ -1226,13 +1356,21 @@ def _registration_now(registration: _Registration) -> tuple[bool, str]:
     )
 
 
-def _still_ours(artifacts: IssueArtifacts, worktree: Path) -> bool:
+def _still_ours(
+    artifacts: IssueArtifacts, worktree: Path, checkout: int,
+) -> bool:
     """Whether the path about to be handed to git is still this checkout.
 
     The type first, as the scan reads it: anything at that path which is not a
     directory of its own is a name standing for a tree somewhere else, and
     handing one to a command that resolves what it is given is how a directory
     outside the tree this orchestrator owns comes down.
+
+    Then whether the name still leads to the directory this pass has held open
+    since before the readings. That is what binds the whole of the rest to one
+    object: every clearance below is about the tree at this path, and the
+    answer read off the removal afterwards is about the tree behind that
+    descriptor, so the two have to be the same tree or neither means anything.
 
     Then where the path actually leads, because the type alone does not say.
     A checkout renamed away, its registration repaired to where it went, and a
@@ -1245,7 +1383,31 @@ def _still_ours(artifacts: IssueArtifacts, worktree: Path) -> bool:
             "checkout this may take down", artifacts.issue_number, worktree,
         )
         return False
+    if not _checkout_held(artifacts, worktree, checkout):
+        return False
     return _same_place(artifacts, worktree)
+
+
+def _checkout_held(
+    artifacts: IssueArtifacts, worktree: Path, checkout: int,
+) -> bool:
+    """Whether that path still leads to the tree this pass is holding open."""
+    try:
+        held = _same_object(worktree.lstat(), os.fstat(checkout))
+    except OSError as read_error:
+        log.warning(
+            "issue=#%d keeping %s: it could not be compared against the "
+            "checkout this pass holds open (%s)",
+            artifacts.issue_number, worktree, read_error,
+        )
+        return False
+    if held:
+        return True
+    log.warning(
+        "issue=#%d keeping %s: it is no longer the checkout this pass opened",
+        artifacts.issue_number, worktree,
+    )
+    return False
 
 
 def _same_place(artifacts: IssueArtifacts, worktree: Path) -> bool:
@@ -1305,22 +1467,35 @@ def _came_down(
     artifacts: IssueArtifacts,
     worktree: Path,
     removed: subprocess.CompletedProcess,
+    checkout: int,
 ) -> SurfaceOutcome:
-    """What became of the path this named, whatever the command answered.
+    """What became of the tree this pass validated, whatever the command said.
 
-    The last word on a step whose one argument is a path git resolves for
-    itself, and the path is what it is read off rather than the exit status. A
-    removal reporting success over a path still standing took something else
-    down, and a surface reported cleaned over one would have the issue settled
-    -- with whatever is still at that path never named by this host again.
+    Read off the directory itself rather than off the path or the exit status,
+    because both of those answer about a NAME. `worktree remove` resolves the
+    path it is handed at the moment it runs, and nothing this pass holds stops
+    a rename in front of that: a tree moved away and a fresh directory left in
+    its place has the command act on the replacement, and a path that is gone
+    afterwards says only that something took the name. The descriptor held
+    open since the readings answers about the tree -- a directory nothing
+    links to any more is one that was removed -- so a removal that took
+    something else, or took nothing, cannot be reported as one that took this.
 
-    The other way round is the ordinary shape of two passes over one host: a
-    command that refused over a path that is gone is this removal having
-    happened without it, which is the success every other absence in this
-    domain is. Reported apart from the deletion this pass made, so a caller
-    counting what came down does not count one checkout twice.
+    Then which of the two ways it went, told apart by who did it. The command
+    reporting success is this pass's own deletion; one that refused over a
+    checkout gone all the same is this removal having happened without it,
+    which is the success every other absence in this domain is. Reported apart
+    so a caller counting what came down does not count one checkout twice.
     """
-    if _checkout_present(worktree) is ProbeAnswer.REFUTED:
+    gone = _checkout_gone(checkout)
+    if gone is None:
+        log.error(
+            "issue=#%d %s could not be read back after the removal, so what "
+            "came down is not established",
+            artifacts.issue_number, worktree,
+        )
+        return SurfaceOutcome.FAILED
+    if gone:
         return _nothing_left(artifacts, worktree, removed)
     if removed.returncode != 0:
         log.warning(
@@ -1329,11 +1504,23 @@ def _came_down(
         )
         return SurfaceOutcome.FAILED
     log.error(
-        "issue=#%d worktree remove came back clean and %s is still there: "
-        "what came down was not what this named",
+        "issue=#%d worktree remove came back clean and the checkout %s named "
+        "is still standing: what came down was not what this named",
         artifacts.issue_number, worktree,
     )
     return SurfaceOutcome.FAILED
+
+
+def _checkout_gone(checkout: int) -> bool | None:
+    """Whether nothing on this host links to the tree this pass held open."""
+    try:
+        return os.fstat(checkout).st_nlink == _UNLINKED
+    except OSError as read_error:
+        log.warning(
+            "the checkout this pass held open could not be read back: %s",
+            read_error,
+        )
+        return None
 
 
 def _nothing_left(
@@ -1554,8 +1741,10 @@ def _still_cleared(
 
     Then the readings the classification took, taken again. The tree is a
     worktree of the configured clone and on a branch this issue publishes
-    under, its HEAD is on the commit that was cleared, and it is holding
-    nothing the removal would take with it.
+    under, and its HEAD is on the commit that was cleared. What it is carrying
+    and hiding is asked apart from these, because it is asked at a different
+    moment: these settle whose tree it is, and that one has to be the last
+    word before the removal.
 
     The tip is compared rather than merely resolved, which is what makes work
     made after the proof survive: the commit somebody cleared is somewhere the
@@ -1587,7 +1776,7 @@ def _still_cleared(
             "cleared", artifacts.issue_number, worktree, proven_sha,
         )
         return False
-    return _holding_nothing(artifacts, worktree)
+    return True
 
 
 def _holding_nothing(artifacts: IssueArtifacts, worktree: Path) -> bool:
