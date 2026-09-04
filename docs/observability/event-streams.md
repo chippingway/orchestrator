@@ -611,7 +611,12 @@ writes a `late_failure` carrying `measurement_failed` for **every** reading it
 could not take: a base the remote would not name, a base or candidate object this host does not hold, a diff
 nothing could pin, and a recorded candidate a reaped worktree took with it. Every one of them is recorded whether
 or not a human is told about it — the two transport steps are retried quietly a bounded number of times before the
-issue is parked, and the stream is where those misses are visible at all. A candidate refused before either
+issue is parked, and the stream is where those misses are visible at all. What that park bounds is the MENTIONS
+rather than the readings: on the five stages that publish onto a pull request the remote already carries, the
+reconciliation ahead of every handler goes on re-reading the parked pair once a poll, and every one of those
+readings reports again. So a single unreachable base can carry an unbounded run of `late_failure` records under one
+cycle and generation while the thread stays silent, and it is the reading that finally lands — not a human — that
+ends the run. A candidate refused before either
 end of the diff was frozen has no generation of its own to be correlated by, so the identity is *minted* for the
 record — derived from what the pinned comment already says, so a reading that keeps failing reports the same
 attempt rather than a fresh cycle per tick — and deliberately not persisted, since a pinned cycle with no

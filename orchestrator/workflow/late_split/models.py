@@ -250,7 +250,7 @@ class LateGeneration:
     remembers one: every tick is a fresh process, so a gate holding the count
     in memory would either re-read a permanently broken pair forever or spend
     a human on the first reading a fetch happened to interrupt. The count is
-    how many consecutive readings this generation has lost and the failure is
+    how many consecutive readings this CANDIDATE has lost and the failure is
     the step the last one stopped at, kept typed because the two answers are
     different next moves -- a base this clone does not hold is a fetch that
     brought nothing back, and a diff nothing here can pin is a checkout an
