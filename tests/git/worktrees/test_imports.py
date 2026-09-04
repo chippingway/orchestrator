@@ -119,13 +119,15 @@ _OWNER_ONLY_NAMES = (
 # scan: the two records it answers with, the branch listing and checkout reads
 # under it, the attribution rules for a branch and for a checkout directory,
 # the clone resolution, the grouping over it and the shape that grouping
-# takes, the flat pre-namespacing checkouts and who may claim them, and the
+# takes, the flat pre-namespacing checkouts, the identity read that says which
+# clone each is a worktree of and the rule that turns it into an owner, and the
 # per-clone, per-repository, and per-issue assembly. Then the
 # classification over what that scan found: the three-answer probe vocabulary,
 # the two records a verdict is made of and the commit it hands over when it
 # clears one, the eight fail-closed reads -- the ignored-path one that answers
-# for what a status leaves out and the one asking when a tree was last
-# disturbed among them -- and the two runners under them,
+# for what a status leaves out, and the one asking when a tree was last
+# disturbed, over the checkout's own git directory and the two files in it a
+# commit rewrites -- and the two runners under them,
 # the issue, pinned-state, and pull-request reads
 # GitHub answers with and the boundaries around each of them, and the
 # composition that turns both into one verdict per candidate, with the
@@ -167,8 +169,10 @@ _OWNER_DEFINED = (
     ("_CheckoutReads", eligibility),
     ("_GIT_NEGATIVE", evidence),
     ("_HEAD", evidence),
+    ("_HEAD_REFLOG", evidence),
     ("_HIDDEN_REASONS", eligibility),
     ("_IDENTITY_REASONS", eligibility),
+    ("_INDEX", evidence),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LISTED", attribution),
     ("_LOCAL_BRANCH_PREFIX", probes),
@@ -197,6 +201,7 @@ _OWNER_DEFINED = (
     ("_artifact_reading", eligibility),
     ("_artifact_verdict", eligibility),
     ("_attributed_issues", attribution),
+    ("_attributed_legacy", inventory),
     ("_base_contains", evidence),
     ("_branch_attribution", attribution),
     ("_branch_commit_count", recovery),
@@ -210,7 +215,9 @@ _OWNER_DEFINED = (
     ("_candidate_layout", discovery),
     ("_candidate_order", discovery),
     ("_carrying_pull_request", claims),
+    ("_checkout_clone", probes),
     ("_checkout_entries", probes),
+    ("_checkout_git_dir", evidence),
     ("_checkout_head", eligibility),
     ("_checkout_identity", evidence),
     ("_checkout_numbers", probes),
@@ -232,7 +239,7 @@ _OWNER_DEFINED = (
     ("_colliding_worktree_slugs", attribution),
     ("_commit_accounting", claims),
     ("_commit_count_from_stdout", recovery),
-    ("_common_git_dir", evidence),
+    ("_countable_legacy_checkouts", attribution),
     ("_current_names", discovery),
     ("_decompose_worktree_path", decomposition),
     ("_delete_local_issue_branch", cleanup),
@@ -256,9 +263,11 @@ _OWNER_DEFINED = (
     ("_issue_worktree_paths", paths),
     ("_kept_subject", maintenance),
     ("_keyed_candidate", discovery),
-    ("_legacy_checkout_attribution", attribution),
+    ("_last_touched", evidence),
     ("_legacy_checkout_numbers", probes),
+    ("_legacy_checkout_owner", attribution),
     ("_legacy_names", discovery),
+    ("_legacy_owner", inventory),
     ("_legacy_worktree_path", paths),
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),

@@ -20,6 +20,7 @@ to check anything out to make one.
 from __future__ import annotations
 
 import contextlib
+import os
 from pathlib import Path
 
 from orchestrator import config
@@ -40,6 +41,10 @@ REMOTE_DIR = "remote.git"
 UNREACHABLE_DIR = "unreachable.git"
 COMMIT_MESSAGE = "candidate work"
 QUIET = "-q"
+# The two files under a checkout's own git directory that git writes when
+# somebody works in the tree.
+INDEX_FILE = "index"
+HEAD_REFLOG = "logs/HEAD"
 
 
 class _CandidateWorld(_ArtifactWorld):
@@ -250,15 +255,34 @@ def _track_file(root: Path, name: str, written: str) -> str:
     return _revision(root, "HEAD")
 
 
-def _index_path(worktree: Path) -> Path:
-    """The index file this checkout compares its tree against.
+def _checkout_git_dir(worktree: Path) -> Path:
+    """The git directory this checkout keeps for itself.
 
     Asked of git rather than assembled, because a linked worktree keeps its
-    own index under the parent's git directory and the `.git` at its root is a
-    file pointing there.
+    own under the parent's `worktrees/` and the `.git` at its root is a file
+    pointing there.
     """
     located = _run_git("rev-parse", "--absolute-git-dir", cwd=worktree)
-    return Path((located.stdout or "").strip()) / "index"
+    return Path((located.stdout or "").strip())
+
+
+def _index_path(worktree: Path) -> Path:
+    """The index file this checkout compares its tree against."""
+    return _checkout_git_dir(worktree) / INDEX_FILE
+
+
+def _settle_checkout(worktree: Path, when: float) -> None:
+    """Back-date every trace of somebody having worked in this checkout.
+
+    The tree's own directory and the two files under its git directory that
+    git writes when it is worked in -- a fixture that moved only the first
+    would leave a checkout the probe still reads as touched a moment ago, and
+    a case expecting a pass to act would fail for a reason it is not about.
+    """
+    git_dir = _checkout_git_dir(worktree)
+    for touched in (worktree, git_dir / INDEX_FILE, git_dir / HEAD_REFLOG):
+        if touched.exists():
+            os.utime(touched, (when, when))
 
 
 def _foreign_checkout(spec: config.RepoSpec, issue_number: int) -> Path:

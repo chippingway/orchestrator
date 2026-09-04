@@ -4,17 +4,28 @@
 
 Which issues this host has work for is normally GitHub's answer. This scan
 answers the local half of it instead, from what the host already holds: every
-`issue-<n>` checkout under a spec's worktrees root and every branch in that
-clone's orchestrator-owned namespace names an issue this orchestrator has
-already worked on. Nothing here fetches, writes, or asks GitHub anything, so
-the answer costs one directory listing and one `for-each-ref` per clone and
-stays valid to take at any point in a tick.
+`issue-<n>` checkout under a spec's worktrees root, every one still standing
+under the flat root that predates that per-repository parent, and every branch
+in the clone's orchestrator-owned namespace names an issue this orchestrator
+has already worked on. Nothing here fetches, writes, or asks GitHub anything,
+so the answer costs one directory listing per repository, one more for the
+whole host, one `for-each-ref` per clone, and -- only where that flat listing
+found something -- one identity read per configured entry and per flat
+checkout. It stays valid to take at any point in a tick.
 
-The two sides are deduplicated into one entry per issue, because they are two
-views of one thing: a checkout whose branch was deleted, a branch whose
-checkout was removed, and an issue still carrying both are all one issue, and
-an issue published under both the namespaced and the legacy branch layout is
-one issue with two names rather than two candidates.
+Every side is deduplicated into one entry per issue, because they are views of
+one thing: a checkout whose branch was deleted, a branch whose checkout was
+removed, and an issue still carrying both are all one issue. So is an issue
+published under both branch layouts, and so is one sitting in both checkout
+layouts -- a host running across the migration kept the flat tree and made the
+per-repository one beside it, and those are two directories of one issue
+rather than two issues.
+
+The flat root is read once for the whole host rather than per repository,
+because it had no per-repository parent to read: what comes back is a set of
+issue numbers with nothing on them saying whose they are, and it is
+``attribution`` that settles each against the clone the directory turns out to
+be a worktree of.
 
 The scan is grouped by clone rather than run per repository because several
 ``REPOS`` entries may share one `target_root`, and a shared ref store is the
@@ -45,11 +56,12 @@ log = logging.getLogger("orchestrator.worktree_lifecycle")
 # what that store holds.
 CloneGroups = dict[Path, tuple[config.RepoSpec, ...]]
 
-# The flat pre-namespacing checkouts, as the one repository that may claim
-# them and the issues they name. `None` for the repository is the answer on a
-# host where more than one entry could equally own them, and the numbers are
-# empty with it.
-LegacyCheckouts = tuple[config.RepoSpec | None, frozenset[int]]
+# The flat pre-namespacing checkouts, by the repository each was found to be
+# a worktree of. A repository nothing was attributed to is absent rather than
+# present with an empty entry, so a caller reads the same shape whether the
+# host holds one entry's flat checkouts or several entries' -- and one nobody
+# could be attributed to is in no entry at all.
+LegacyCheckouts = dict[config.RepoSpec, frozenset[int]]
 
 
 def _resolved_root(spec: config.RepoSpec) -> Path | None:
@@ -222,12 +234,9 @@ def _root_inventory(
             issues=(), refused=tuple(spec.slug for spec in reportable),
         )
     owned = attribution._attributed_issues(branches, root_specs)
-    owner, flat = legacy
     return _merged(tuple(
         _spec_inventory(
-            spec,
-            owned.get(spec, {}),
-            flat if spec == owner else frozenset(),
+            spec, owned.get(spec, {}), legacy.get(spec, frozenset()),
         )
         for spec in reportable
     ))
@@ -251,6 +260,41 @@ def _merged(
             slug for scan in inventories for slug in scan.refused
         })),
     )
+
+
+def _legacy_owner(
+    issue_number: int,
+    clones: dict[config.RepoSpec, Path | None],
+) -> config.RepoSpec | None:
+    """Which configured repository one flat checkout is a worktree of."""
+    worktree = paths._legacy_worktree_path(issue_number)
+    return attribution._legacy_checkout_owner(
+        probes._checkout_clone(worktree), clones, str(worktree),
+    )
+
+
+def _attributed_legacy(
+    configured: tuple[config.RepoSpec, ...], flat: frozenset[int],
+) -> LegacyCheckouts:
+    """Which repository each flat pre-namespacing checkout belongs to.
+
+    The clones are resolved once for the whole host and only when there is
+    something to attribute, because that read costs a git process per
+    configured entry and the layout it settles is one nothing has written to
+    for a long time: a host with no flat checkouts left pays nothing at all.
+    """
+    counted = attribution._countable_legacy_checkouts(configured, flat)
+    if not counted:
+        return {}
+    clones = {
+        spec: probes._checkout_clone(spec.target_root) for spec in configured
+    }
+    owned: LegacyCheckouts = {}
+    for issue_number in sorted(counted):
+        owner = _legacy_owner(issue_number, clones)
+        if owner is not None:
+            owned[owner] = owned.get(owner, frozenset()) | {issue_number}
+    return owned
 
 
 def _scanned(
@@ -308,7 +352,4 @@ def _local_issue_inventory(
             issues=(),
             refused=tuple(sorted({spec.slug for spec in configured})),
         )
-    return _scanned(
-        configured,
-        attribution._legacy_checkout_attribution(configured, flat),
-    )
+    return _scanned(configured, _attributed_legacy(configured, flat))

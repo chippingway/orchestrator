@@ -10,7 +10,7 @@ published by whichever of them owns that issue. Attribution is therefore a
 question about the whole set of configured specs rather than about one name in
 isolation, and every function here takes that set.
 
-Two rules, both exact and both failing closed:
+Three rules, all exact and all failing closed:
 
 * A name is attributed only when a spec's own derivation in ``paths``
   produces it character for character. Nothing is parsed back into a slug, so
@@ -23,6 +23,13 @@ Two rules, both exact and both failing closed:
   lossy, so two entries whose slugs differ only in a character it rewrites
   are handed one directory to keep their checkouts in, and an `issue-<n>` in
   it names an issue in whichever of them created it.
+* Where no name can settle it, the repository the artifact is OF does. The
+  flat pre-namespacing checkout is the one artifact with nothing in its name
+  at all -- every entry derived it identically -- so it is attributed by the
+  git directory it and its clone share, which is the same identity the
+  classification tests a named checkout by. That leaves exactly one case
+  ambiguous, and it is the case the rule above already names: two entries on
+  one clone.
 
 Both refusals cost the same thing -- an artifact this scan will not report --
 and the alternative costs more: an artifact attributed to the wrong repository
@@ -31,7 +38,7 @@ is one a caller acts on against the wrong GitHub issue.
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 from orchestrator import config
@@ -170,47 +177,72 @@ def _slugs_by_worktrees_root(
     return by_root
 
 
-def _legacy_checkout_attribution(
-    specs: tuple[config.RepoSpec, ...], found: frozenset[int],
-) -> tuple[config.RepoSpec | None, frozenset[int]]:
-    """Which repository the flat `issue-<n>` checkouts belong to, and which count.
+def _countable_legacy_checkouts(
+    specs: Iterable[config.RepoSpec], found: frozenset[int],
+) -> frozenset[int]:
+    """The flat `issue-<n>` directories that are checkouts rather than roots.
 
-    The path counterpart of the legacy branch rule, and it fails closed the
-    same way for the same reason. The flat layout carries no slug, and unlike a
-    branch it does not even carry a clone: every configured entry derived
-    `WORKTREES_DIR/issue-<n>` identically, so on a host driving more than one
-    repository the directory names an issue in whichever of them created it and
-    nothing on disk says which. More than one claimant is therefore attributed
-    to none of them, and a single configured entry resolves without a special
-    case.
-
-    A number whose flat path is also some entry's per-repository root is
-    dropped even then. That takes a `REPOS` slug which sanitizes to an
-    `issue-<n>` of its own, and what sits at that path is a directory full of
-    checkouts rather than a checkout -- so the two must not be confused
-    whichever of them the scan reached first.
-
-    The refusal is reported only when there is something to refuse: a
-    multi-repo host with no flat checkouts left has nothing an operator would
-    go and look at, and a scan that ran every tick would say so every tick.
+    A number whose flat path is also some entry's per-repository worktrees root
+    is dropped, which takes a `REPOS` slug that sanitizes to an `issue-<n>` of
+    its own: what sits at that path is then a directory full of checkouts
+    rather than a checkout, and the two must not be confused whichever of them
+    the scan reached first.
     """
-    counted = frozenset(
+    roots = {paths._repo_worktrees_root(spec) for spec in specs}
+    return frozenset(
         issue_number for issue_number in found
-        if paths._legacy_worktree_path(issue_number) not in {
-            paths._repo_worktrees_root(spec) for spec in specs
-        }
+        if paths._legacy_worktree_path(issue_number) not in roots
     )
-    if not counted:
-        return None, frozenset()
-    if len(specs) > 1:
+
+
+def _legacy_checkout_owner(
+    clone: Path | None,
+    clones: Mapping[config.RepoSpec, Path | None],
+    subject: str,
+) -> config.RepoSpec | None:
+    """The one configured repository a flat checkout belongs to, or none.
+
+    The flat layout carries no slug, so unlike every other rule here the
+    question cannot be settled by re-deriving a name: `WORKTREES_DIR/issue-<n>`
+    is what every configured entry produced, identically. What settles it
+    instead is the same identity the classification tests a named checkout by
+    -- the git directory the checkout and its clone share -- so a host driving
+    several repositories on several clones still attributes each flat checkout
+    to the one entry whose clone it is a worktree of.
+
+    Three answers come back as nobody's, and each is the fail-closed reading of
+    its case. A clone that could not be read establishes nothing. A clone no
+    configured entry is on is somebody else's repository sitting where this
+    orchestrator used to put a checkout. And a clone more than one entry is on
+    is the shared-clone ambiguity the legacy BRANCH rule already refuses over,
+    reaching the paths one derivation later: the two entries published to that
+    store under one name, and nothing on disk says which of them checked it
+    out.
+    """
+    if clone is None:
         log.warning(
-            "the flat checkouts %s could belong to any of %s; refusing to "
-            "attribute them rather than charging one of them for them",
-            _LISTED.join(f"issue-{number}" for number in sorted(counted)),
-            _LISTED.join(spec.slug for spec in specs),
+            "could not tell which clone the flat checkout %s is of; leaving "
+            "it alone", subject,
         )
-        return None, frozenset()
-    return (specs[0], counted) if specs else (None, frozenset())
+        return None
+    owners = tuple(
+        spec for spec, configured_at in clones.items()
+        if configured_at is not None and configured_at == clone
+    )
+    if len(owners) > 1:
+        log.warning(
+            "the flat checkout %s could belong to any of %s; refusing to "
+            "attribute it rather than charging one of them for it",
+            subject, _LISTED.join(spec.slug for spec in owners),
+        )
+        return None
+    if not owners:
+        log.debug(
+            "the flat checkout %s is no configured repository's; leaving it "
+            "alone", subject,
+        )
+        return None
+    return owners[0]
 
 
 def _colliding_worktree_slugs(

@@ -18,6 +18,8 @@ ref store can be made to turn a valid deletion down.
 
 from __future__ import annotations
 
+import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -30,6 +32,7 @@ from orchestrator.git.worktrees.models import (
     RetentionReason,
 )
 from tests.git.worktrees.artifact_test_support import (
+    BASE_BRANCH,
     WIDGET_SLUG,
     _legacy_branch,
 )
@@ -45,10 +48,14 @@ from tests.git.worktrees.eligibility_test_support import (
     _terminal_issue,
 )
 from tests.git.worktrees.maintenance_test_support import (
+    SETTLED_SECONDS,
     _always_claimed,
     _MaintenanceTestCase,
     _refused_delete,
     _unanswerable_claim,
+)
+from tests.workflow.stages.question.question_real_git_test_support import (
+    _run_git,
 )
 
 PR_NUMBER = 42
@@ -132,9 +139,9 @@ class LegacyLayoutCleanupTest(_MaintenanceTestCase):
         self.assertEqual(self.remote_branches(), ())
 
     def test_both_checkout_layouts_go_in_one_pass(self) -> None:
-        # The bug a single-checkout report hides: the pass answers `cleaned`,
-        # both branches go, and nothing is left that any later discovery could
-        # find the flat tree by.
+        # Both trees are the issue's, so both come down together: a pass that
+        # answered `cleaned` having taken one of them would leave the other
+        # standing with nothing left for a later discovery to find it by.
         legacy = _legacy_branch(ISSUE_NUMBER)
         tip = self.landed()
         _branch_at(self.clone, legacy, tip)
@@ -173,6 +180,28 @@ class LegacyLayoutCleanupTest(_MaintenanceTestCase):
         self.assertEqual(self.remote_branches(), (self.branch, legacy))
 
 
+class DistinctCloneCleanupTest(_MaintenanceTestCase):
+    """A second configured repository does not strand the flat checkout.
+
+    The end of the reading the discovery takes: attributed to the clone it is
+    a worktree of, the tree comes down with its branches instead of being left
+    on a host that answered `cleaned`.
+    """
+
+    def test_a_flat_checkout_goes_beside_a_sibling(self) -> None:
+        legacy = _legacy_branch(ISSUE_NUMBER)
+        self.landed(legacy)
+        worktree = self.legacy_checkout(legacy)
+        specs = (self.spec, self.sibling_on_its_own_clone())
+
+        swept = self.swept(self.discovered(specs))
+
+        self.assertEqual(len(swept), 1)
+        self.assertEqual(swept[0].outcome, MaintenanceOutcome.CLEANED)
+        self.assertFalse(worktree.exists())
+        self.assertEqual(self.discovered(specs), ())
+
+
 class GuardedCandidateTest(_MaintenanceTestCase):
     """Everything in front of the mutation keeps the artifacts where they are."""
 
@@ -180,6 +209,7 @@ class GuardedCandidateTest(_MaintenanceTestCase):
         super().setUp()
         self.landed()
         self.worktree = self.settled_checkout()
+        self.long_ago = time.time() - SETTLED_SECONDS
 
     def assert_untouched(self, swept) -> None:
         """The candidate is kept, and every artifact is still where it was."""
@@ -212,6 +242,24 @@ class GuardedCandidateTest(_MaintenanceTestCase):
 
         self.assert_untouched(swept)
         self.assertEqual(swept.reason, MaintenanceReason.RECENT_ACTIVITY)
+
+    def test_a_just_committed_checkout_is_left_alone(self) -> None:
+        # The tree is clean, the commit is in the base, and the directory's own
+        # timestamp is old -- a commit does not move it. What keeps the
+        # checkout is the index and reflog that commit rewrote.
+        _run_git(
+            "commit", "-q", "--allow-empty", "-m", "an agent's own round",
+            cwd=self.worktree,
+        )
+        self.world.publish(self.clone, self.branch, self.branch)
+        self.world.publish(self.clone, BASE_BRANCH, self.branch)
+        os.utime(self.worktree, (self.long_ago, self.long_ago))
+
+        swept = self.only_result()
+
+        self.assert_untouched(swept)
+        self.assertEqual(swept.reason, MaintenanceReason.RECENT_ACTIVITY)
+        self.assertEqual(swept.subject, str(self.worktree))
 
     def test_an_untimeable_checkout_is_left_alone(self) -> None:
         # The last gate fails closed like every one before it: a tree nobody

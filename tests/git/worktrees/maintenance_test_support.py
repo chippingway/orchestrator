@@ -22,7 +22,6 @@ stop testing the guard that says so.
 
 from __future__ import annotations
 
-import os
 import time
 import unittest
 from collections.abc import Sequence
@@ -36,6 +35,7 @@ from orchestrator.git.worktrees.models import (
 )
 from tests.git.worktrees.artifact_test_support import (
     BASE_BRANCH,
+    GADGET_SLUG,
     WIDGET_SLUG,
     _namespaced_branch,
     _spec,
@@ -43,6 +43,7 @@ from tests.git.worktrees.artifact_test_support import (
 from tests.git.worktrees.candidate_host_test_support import (
     CLONE_NAME,
     _CandidateWorld,
+    _settle_checkout,
 )
 from tests.git.worktrees.eligibility_test_support import ISSUE_NUMBER, _github
 
@@ -50,9 +51,11 @@ from tests.git.worktrees.eligibility_test_support import ISSUE_NUMBER, _github
 # derived from that period rather than written out so the two cannot drift.
 SETTLED_SECONDS = 2 * maintenance._QUIET_PERIOD_SECONDS
 
-# The second bare repository a shared-clone case serves, named apart from the
-# world's own so both can stand at once.
+# The second bare repository and the second clone a multi-repository case
+# builds, named apart from the world's own so both can stand at once.
 SIBLING_REMOTE_DIR = "sibling.git"
+
+SIBLING_CLONE_NAME = "sibling"
 
 LIFECYCLE_LOGGER = "orchestrator.worktree_lifecycle"
 
@@ -74,8 +77,7 @@ def _unanswerable_claim(_repo_slug: str, _issue_number: int) -> bool:
 
 def _settle(worktree: Path) -> None:
     """Back-date a checkout to before the pass's quiet period."""
-    settled = time.time() - SETTLED_SECONDS
-    os.utime(worktree, (settled, settled))
+    _settle_checkout(worktree, time.time() - SETTLED_SECONDS)
 
 
 def _refused_delete(*_args, **_options) -> bool:
@@ -140,6 +142,18 @@ class _MaintenanceTestCase(unittest.TestCase):
         )
         _settle(worktree)
         return worktree
+
+    def sibling_on_its_own_clone(self) -> config.RepoSpec:
+        """A second configured repository, on a clone and a remote of its own.
+
+        What a multi-repo host normally looks like: the entries do not share a
+        ref store, so nothing about one of them makes the other's artifacts
+        ambiguous -- which is the whole difference between this and a shared
+        `target_root`.
+        """
+        sibling = _spec(GADGET_SLUG, self.world.clone(SIBLING_CLONE_NAME))
+        self.world.serve_beside(sibling, SIBLING_REMOTE_DIR)
+        return sibling
 
     @property
     def only_branch(self) -> tuple[str, ...]:

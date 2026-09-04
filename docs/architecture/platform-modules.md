@@ -346,19 +346,25 @@ orchestrator/
                         says: the three answers a fail-closed read has, the ref reading that carries a commit
                         with them, the reasons, subjects, and verdict a retained candidate is reported as, and
                         the commits an eligible one hands over as cleared
-      probes.py         the local reads a scan is built from: the `refs/heads/orchestrator/` listing and the
+      probes.py         the local reads a scan is built from: the `refs/heads/orchestrator/` listing, the
                         checkout directories under both roots -- the spec's own and, once for the whole host, the
                         flat `WORKTREES_DIR` every entry shared before namespacing -- a real directory under the
                         exact name, never a symlink into a tree the creators never wrote, read through the `lstat`
                         that reports what the
                         `is_dir` predicates suppress -- each answering "could not read", listing and entry alike
-                        and a listing that warned about a ref it skipped included, apart from "nothing here"
+                        and a listing that warned about a ref it skipped included, apart from "nothing here"; and
+                        the one read that is not a listing, which git directory a checkout and a clone share, since
+                        a flat checkout's name says nothing about whose it is and a named one's claim has to be
+                        tested. Both halves of the domain ask that one, so it is defined once and here
       attribution.py    which configured repository a discovered artifact belongs to, by re-deriving each spec's
                         own name for it; a name several entries could own -- every legacy flat branch on a shared
-                        clone, every checkout directory two lossily-sanitized slugs are handed, and every flat
-                        pre-namespacing checkout on a host driving more than one repository at all, since that
-                        layout had no per-repository parent to tell them apart -- is attributed to none of them
-      inventory.py      the read-only scan over those reads: the flat checkouts attributed once for the host,
+                        clone, every checkout directory two lossily-sanitized slugs are handed -- is attributed to
+                        none of them. The flat pre-namespacing checkout is the one artifact no name can settle,
+                        since every entry derived it identically, so it is attributed by the clone the directory
+                        turns out to be a worktree of -- which leaves exactly the shared-clone case ambiguous and
+                        every host whose entries keep their own clones answered
+      inventory.py      the read-only scan over those reads: the flat checkouts read once for the host and put
+                        to the clone each is a worktree of, paid for only where that listing found something;
                         which entries share a clone, one listing per clone,
                         worktree-only and branch-only candidates deduplicated into one entry per issue -- both
                         checkout layouts of one issue among them, since a host running across the migration can
@@ -368,9 +374,12 @@ orchestrator/
                         still put to the attribution, since a repository this scan will not answer for is one the
                         flat branch on its clone could equally belong to
       evidence.py       the eight hardened reads a candidate is judged by -- a checkout that is a worktree of
-                        this clone and on one of this issue's own branch names, a tree that PROVED it carries
+                        this clone (asked of `probes`, which owns that identity read) and on one of this issue's
+                        own branch names, a tree that PROVED it carries
                         nothing loose and one that PROVED it hides nothing besides, a tree that PROVED nothing
-                        has touched it since a caller-named instant, a local branch tip, the
+                        has touched it since a caller-named instant -- its own directory for what is created or
+                        removed at the top of it, and the index and reflog under its own git directory for the
+                        edit-and-commit that moves neither -- a local branch tip, the
                         commit the checkout's own HEAD stands on and which branch
                         that HEAD is, what the REMOTE
                         says a branch is at, and whether the base the remote named already contains a given tip
@@ -474,7 +483,8 @@ off a facade:
   it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against, and only `probes`
   reaches `commands` and `locks`. `models` carries only data. Nothing in the scan writes, fetches, or names GitHub,
   which is what lets a caller take it at any point in a tick. The classification over it keeps that split visible:
-  `evidence` calls `commands`, `locks`, `paths`, both `git/verification/` tree reads (the status one, and the
+  `evidence` calls `commands`, `locks`, `paths`, `probes` for the clone-identity read the scan owns, both
+  `git/verification/` tree reads (the status one, and the
   ignored-path one git leaves out of it and out of its own refusal to remove a dirty worktree), and
   `branch_transport` for the one question a local ref may not answer — what the remote says a branch is at;
   `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on

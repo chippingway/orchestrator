@@ -7,11 +7,13 @@ is the half it cannot answer -- a branch this clone no longer has a ref for --
 and the reading that says which layout an issue was published under.
 
 Driven against real clones, real branches, real checkouts, and real bare
-remotes, because both halves of the question are things git answers: the
-namespace listing, the ref store the local half is read from, and the exact
-names attribution re-derives and compares. A shared clone gets two remotes, so
-the one name neither of its repositories can be charged for is refused while
-each of them still answers for its own.
+remotes, because every part of the question is something git answers: the
+namespace listing, the ref store the local half is read from, the exact names
+attribution re-derives and compares, and the git directory that says which
+clone a checkout carrying no name at all is a worktree of. The multi-repository
+cases are built both ways round for that last one -- two entries on one clone,
+where the flat checkout is nobody's, and two entries on their own clones, where
+each is answered for.
 """
 
 from __future__ import annotations
@@ -38,6 +40,8 @@ from tests.git.worktrees.maintenance_test_support import (
 
 OTHER_ISSUE_NUMBER = 315
 WARNING = "WARNING"
+# The one name every layout this module builds shares.
+LEGACY_BRANCH = _legacy_branch(ISSUE_NUMBER)
 
 
 class CandidateLayoutTest(_MaintenanceTestCase):
@@ -54,7 +58,7 @@ class CandidateLayoutTest(_MaintenanceTestCase):
         self.assertEqual(len(found.artifacts.worktrees), 1)
 
     def test_the_flat_name_reads_as_the_legacy_layout(self) -> None:
-        legacy = _legacy_branch(ISSUE_NUMBER)
+        legacy = LEGACY_BRANCH
         self.published(legacy)
 
         found = self.only_candidate()
@@ -66,7 +70,7 @@ class CandidateLayoutTest(_MaintenanceTestCase):
         # A migration leaves an issue carrying both, and no single derivation
         # produces that pair -- so it is one issue with two names rather than
         # two candidates.
-        legacy = _legacy_branch(ISSUE_NUMBER)
+        legacy = LEGACY_BRANCH
         self.published()
         self.published(legacy)
 
@@ -104,7 +108,7 @@ class CandidateLayoutTest(_MaintenanceTestCase):
     def test_a_local_and_a_remote_name_read_mixed(self) -> None:
         # The two halves are merged into one candidate in the order a teardown
         # takes them, whichever host each name was found on.
-        legacy = _legacy_branch(ISSUE_NUMBER)
+        legacy = LEGACY_BRANCH
         self.published()
         self.published(legacy)
         _branch_at(self.clone, legacy, None)
@@ -129,7 +133,7 @@ class LegacyCheckoutTest(_MaintenanceTestCase):
         # The shape a host that was mid-issue at the migration is left in, once
         # its branch has gone: the flat directory is the only thing here naming
         # the issue, and it still makes a candidate.
-        legacy = _legacy_branch(ISSUE_NUMBER)
+        legacy = LEGACY_BRANCH
         self.published(legacy)
         worktree = self.legacy_checkout(legacy)
 
@@ -143,7 +147,7 @@ class LegacyCheckoutTest(_MaintenanceTestCase):
         # What the migration really left: the flat checkout the issue started
         # in and the per-repository one the next tick made, current-first and
         # under one candidate rather than two.
-        legacy = _legacy_branch(ISSUE_NUMBER)
+        legacy = LEGACY_BRANCH
         _branch_at(self.clone, legacy, self.published())
         current = self.settled_checkout()
         flat = self.legacy_checkout(legacy)
@@ -175,6 +179,32 @@ class CandidateOrderTest(_MaintenanceTestCase):
         )
 
 
+class DistinctCloneDiscoveryTest(_MaintenanceTestCase):
+    """A flat checkout is attributed by the clone it is a worktree of.
+
+    Its name says nothing -- every configured entry derived
+    `WORKTREES_DIR/issue-<n>` identically -- but the directory itself is a
+    worktree of exactly one repository, and on a host whose entries keep their
+    own clones that settles it. Refusing here instead would leave the checkout
+    where it is with nothing left to find it by once its branches have gone.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.specs = (self.spec, self.sibling_on_its_own_clone())
+
+    def test_a_flat_checkout_belongs_to_its_own_clone(self) -> None:
+        legacy = LEGACY_BRANCH
+        self.published(legacy)
+        worktree = self.legacy_checkout(legacy)
+
+        found = self.only_candidate(self.specs)
+
+        self.assertEqual(found.artifacts.spec.slug, WIDGET_SLUG)
+        self.assertEqual(found.artifacts.worktrees, (worktree,))
+        self.assertEqual(found.layout, CandidateLayout.LEGACY)
+
+
 class SharedCloneDiscoveryTest(_MaintenanceTestCase):
     """A name two repositories could own is charged to neither of them.
 
@@ -190,7 +220,7 @@ class SharedCloneDiscoveryTest(_MaintenanceTestCase):
         self.specs = (self.spec, self.sibling)
 
     def test_a_shared_flat_name_is_nobody_s(self) -> None:
-        legacy = _legacy_branch(ISSUE_NUMBER)
+        legacy = LEGACY_BRANCH
 
         with self.assertLogs(LIFECYCLE_LOGGER, level=WARNING):
             self.published(legacy)
@@ -199,7 +229,7 @@ class SharedCloneDiscoveryTest(_MaintenanceTestCase):
         self.assertEqual(found, ())
 
     def test_a_shared_flat_name_out_there_is_too(self) -> None:
-        legacy = _legacy_branch(ISSUE_NUMBER)
+        legacy = LEGACY_BRANCH
         self.published(legacy)
         _branch_at(self.clone, legacy, None)
 

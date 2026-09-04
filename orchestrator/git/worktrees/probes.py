@@ -1,22 +1,30 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The two local reads a per-issue artifact scan is assembled from.
+"""The local reads a per-issue artifact scan is assembled from.
 
-What this host holds for an issue is a checkout under the spec's worktrees
-root and a branch in the clone's `refs/heads/orchestrator/` namespace. Both
-are read here, and neither read writes, fetches, or asks GitHub anything: the
-scan above exists to answer from artifacts alone, so an issue nobody
-remembers is still found by what it left behind.
+What this host holds for an issue is a branch in the clone's
+`refs/heads/orchestrator/` namespace and a checkout under one of two roots:
+the spec's own worktrees directory, and -- for an issue that was in flight
+before the slug went into the path -- the flat `WORKTREES_DIR` every entry
+once shared. All of that is read here, and none of it writes, fetches, or asks
+GitHub anything: the scan above exists to answer from artifacts alone, so an
+issue nobody remembers is still found by what it left behind.
 
-Both reads fail closed, and for the same reason. A directory that could not be
-listed and a ref store that could not be read are answered with `None` rather
-than with the empty answer they resemble, because emptiness is what a caller
-spends to conclude that a repository is holding nothing -- and a scan that
-reports a clone as artifact-free because git could not be run is the reading
-that costs an issue its branch. A reading that came back short of what is
-there is answered the same way, since nothing in it says that it is short. An
-absence that was actually established, on the other hand, is a real answer and
-is returned as one.
+One read here is not a listing at all. A checkout under the flat root carries
+nothing in its name saying whose it is, so the scan has to ask the directory
+itself which clone it is a worktree of -- the same identity the classification
+tests a named checkout by, which is why the read lives here for both of them
+rather than twice.
+
+Every listing fails closed, and for the same reason. A directory that could
+not be listed and a ref store that could not be read are answered with `None`
+rather than with the empty answer they resemble, because emptiness is what a
+caller spends to conclude that a repository is holding nothing -- and a scan
+that reports a clone as artifact-free because git could not be run is the
+reading that costs an issue its branch. A reading that came back short of what
+is there is answered the same way, since nothing in it says that it is short.
+An absence that was actually established, on the other hand, is a real answer
+and is returned as one.
 
 Only `refs/heads/` is walked. The snapshot refs this orchestrator also writes
 live outside it by design, so they are not something this scan has to know
@@ -120,6 +128,54 @@ def _local_orchestrator_branches(root: Path) -> tuple[str, ...] | None:
         for line in (listed.stdout or "").splitlines()
         if line.startswith(_LOCAL_BRANCH_PREFIX)
     )
+
+
+def _checkout_clone(root: Path) -> Path | None:
+    """The one git directory a checkout or a clone shares, or None.
+
+    What makes two paths the same repository: a linked worktree has a git
+    directory of its own, and the store it is registered in is the parent's
+    -- so the common directory is the only spelling that answers equal for a
+    checkout and the clone that created it.
+
+    Two callers ask exactly this, one from each half of the domain. The scan
+    asks it of a checkout whose NAME says nothing about whose it is -- the flat
+    pre-namespacing layout -- and the classification asks it of a checkout
+    whose name does, to establish that the directory at that path really is a
+    worktree of the clone the name claims. It lives here because this is the
+    lower of the two, and because it is one read rather than two.
+
+    Resolved against the directory the read ran in rather than asked for
+    absolutely, because git answers this one relatively whenever it can and
+    the two spellings would otherwise compare unequal for a healthy checkout.
+    A path that will not resolve at all is answered `None` for the reason the
+    listings answer their own root that way: the failure is version-dependent
+    and a caller must not read it as a repository identity that was
+    established.
+    """
+    try:
+        located = commands._git_hardened(
+            "rev-parse", "--git-common-dir", cwd=root,
+        )
+    except OSError as spawn_error:
+        log.warning(
+            "could not ask which repository %s belongs to: %s",
+            root, spawn_error,
+        )
+        return None
+    if located.returncode != 0:
+        return None
+    common_dir = (located.stdout or "").strip()
+    if not common_dir:
+        return None
+    try:
+        return (root / common_dir).resolve()
+    except (OSError, RuntimeError) as resolve_error:
+        log.debug(
+            "could not resolve the git directory of %s: %s",
+            root, resolve_error,
+        )
+        return None
 
 
 def _issue_checkout_number(entry: Path) -> int | None:
