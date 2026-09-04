@@ -132,6 +132,7 @@ from types import MappingProxyType
 
 from orchestrator.git import commands
 from orchestrator.git.measurement.models import (
+    FINGERPRINT_FORMAT,
     ContributionFingerprint,
     FingerprintFailure,
 )
@@ -213,8 +214,12 @@ _LOCAL_AND_WHOLE = MappingProxyType({
 # behind a label naming what they are, so a fingerprint cannot collide with a
 # digest something else in this system takes over some other listing, and a
 # later representation is a different scheme rather than a silently different
-# answer under the same name.
-_SCHEME = b"chipping-orchestrator/prospective-diff/1\0"
+# answer under the same name. The version in it is the one the record owner
+# publishes for callers that PERSIST a digest, so what a stored id says it was
+# taken under and what it was really taken under cannot drift apart.
+_SCHEME = (
+    f"chipping-orchestrator/prospective-diff/{FINGERPRINT_FORMAT}\0".encode()
+)
 
 # How the failing call's own line is read for a human. Lossy is fine here and
 # nowhere else in this module: this is prose an operator reads, not the bytes

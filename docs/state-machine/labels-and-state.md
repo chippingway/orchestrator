@@ -1080,8 +1080,9 @@ once, on [`orchestrator/workflow/late_split/keys.py`](../../orchestrator/workflo
 `write_late_generation` on the [`state`](../../orchestrator/workflow/late_split/state.py) owner beside it are the
 round trip through them, and `clear_late_generation` is defined as dropping exactly
 that list and nothing else. The late keys that deliberately sit outside it all do for the same reason — each is
-written so the generation CAN be cleared and would be worthless if the clear took it. `late_exempt_sha`, described
-below, lives on the [`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner;
+written so the generation CAN be cleared and would be worthless if the clear took it. `late_exempt_sha` and the
+semantic identity beside it, both described below, live on the
+[`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner;
 `late_retired_cycle_id` and the two-phase terminal record beside it live on the
 [`endings`](../../orchestrator/workflow/late_split/endings.py) owner. The typed record the
 group round-trips through is `LateGeneration` on the `models` owner beside
@@ -1468,6 +1469,34 @@ rather than preserving.
   back as no exemption at all. The one write that does drop it is a restart's projection, which keeps nothing about
   the attempt that ended: the branch that commit was on goes with it, so an exemption left behind would name work
   the fresh cycle has no way to reach and never adjudicated.
+
+  **What that commit carries.** `late_exempt_base_sha`, `late_exempt_candidate_sha`, `late_exempt_fingerprint`, and
+  `late_exempt_fingerprint_format` are the semantic identity of the accepted change, written with the exemption in
+  the same pinned write and outside `LATE_STATE_KEYS` on the same terms — the exemption says which COMMIT was
+  adjudicated, and these say which CHANGE was, which is the only question left once that commit has been rebased,
+  squashed, or made afresh. The pair is the generation's own frozen base and the accepted candidate, and the digest
+  is the canonical fingerprint of the contribution between them
+  ([`../architecture/platform-modules.md`](../architecture/platform-modules.md)), taken from the frozen pair the
+  decomposer inspected rather than from the checkout's head or a base read at settlement time: the worktree is
+  writable for the whole of an adjudication, so what it stands on is not evidence of what a human ruled on. The
+  format version travels with the digest because two ids taken under different rules are not comparable and nothing
+  about the ids themselves would say so. The group is read whole or not at all: a missing member, a member that is
+  not the shape its field takes (an abbreviated end, a truncated digest, a version spelled as text), a candidate that
+  is not the commit `late_exempt_sha` names, a version this build does not compute, and a pinned comment written
+  before the group existed each read back as no transferable identity — while the exact-SHA exemption beside them
+  goes on exempting the matching commit exactly as it did. A settlement whose fingerprint reading could not be taken
+  records none of them and settles anyway, for the same reason: what an absent identity costs a later tick is the
+  transfer, never the decision a human already made. `record_semantic_identity` refuses on the way in too — a field
+  that is not a whole object id or a whole digest, and an identity naming any commit but the exempt one, are not
+  written at all.
+
+  The group belongs to the commit `late_exempt_sha` named when it was written, so `record_exemption` **drops it
+  whenever it moves that field to another commit**. Nothing else would: a verdict whose fingerprint could not be read
+  records the commit alone and writes nothing over the fields beside it, and those fields match by name — an issue
+  that accepts A with an identity, then B with none, then A again with none would otherwise hand A's first digest
+  back as what the last adjudication decided, over a base that generation never measured. Re-recording the SAME
+  commit keeps it, which is what a settlement resumed between the exemption write and its handoff needs: the identity
+  standing there is one its own earlier pass derived from the pair this generation is still frozen on.
 - **Sealed consumer ledger.** `split_ledger_sealed` says the register of children a split recorded is FINAL. The
   count written before the first create (`expected_children_count`) is what tells a partial ledger from a whole one,
   and a loop a cancellation stopped can never reach it — so the ref its children were cut from would be held on a
@@ -1755,8 +1784,9 @@ rather than preserving.
   travels beside the count so a fresh cycle is not parked on its first run by a ceiling the projection dropped), and
   the fresh generation's own identity. Everything else goes — every session id, `pr_number` and `branch`, `children` /
   `dep_graph` / `expected_children_count` / `split_ledger_sealed`, the whole `late_ancestry_*` group and the
-  exemption beside it, `awaiting_human` / `park_reason`, `user_content_hash`, the retry, review-round and park
-  counters, `agent_run_reservation` (a launch, not a fact about the issue — the fresh cycle has none),
+  exemption beside it with the identity it carries, `awaiting_human` / `park_reason`, `user_content_hash`, the
+  retry, review-round and park counters, `agent_run_reservation` (a launch, not a fact about the issue — the fresh
+  cycle has none),
   `agent_run_limit_notice` beside the park it explains (an obligation is a claim about one park, and the sentence it
   carries quotes a spend the fresh cycle will re-read for itself), and every
   timestamp.

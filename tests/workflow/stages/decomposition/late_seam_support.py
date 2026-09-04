@@ -3,12 +3,13 @@
 """What the world answers a late run's probes with, and how it is held.
 
 The seams a late adjudication would otherwise really reach are a checkout on
-disk, a size measurement that shells out to git, and -- on a cleared `split`
-alone -- a push and a fetch against a real remote. Every one of them is held,
-and a case says which answers it is about by handing one of the two seeds
-here; what is not asked about is held at the answer that lets the run proceed,
-except the measurement, which is held at a failure because a test that reaches
-it without saying what it expects has not decided anything.
+disk, a size measurement and a contribution fingerprint that each shell out to
+git, and -- on a cleared `split` alone -- a push and a fetch against a real
+remote. Every one of them is held, and a case says which answers it is about
+by handing one of the two seeds here; what is not asked about is held at the
+answer that lets the run proceed, except the measurement, which is held at a
+failure because a test that reaches it without saying what it expects has not
+decided anything.
 """
 from __future__ import annotations
 
@@ -19,6 +20,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from orchestrator.git.measurement.models import (
+    ContributionFingerprint,
+    FingerprintFailure,
     FrozenCommit,
     MeasurementFailure,
     _BaseObject,
@@ -29,6 +32,7 @@ from orchestrator.git.verification.probes import _WorktreeStatus
 from tests.workflow.git_owners import seam_patch
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
+    CONTRIBUTION_DIGEST,
     UNASKED_MEASUREMENT,
 )
 
@@ -58,6 +62,11 @@ class WorktreeSeed:
     # about a host the branch never reached says so here.
     candidate_object: bool = True
     base_object: bool = True
+    # What the contribution between the frozen pair fingerprints to, which a
+    # settled `single` records beside the commit it exempts. A
+    # `FingerprintFailure` is the reading this store could not answer, which
+    # leaves the exemption standing with no identity beside it.
+    fingerprint: object = CONTRIBUTION_DIGEST
     # Whether the push a settled post-publication verdict makes lands. A
     # `single` taken over a pull request the remote already carries publishes
     # from the settlement itself -- it is the last tick holding the head the
@@ -161,9 +170,9 @@ local_teardown = LocalTeardown.held
 
 
 class _Checkout:
-    """The three reads one checkout answers, on both sides of the push.
+    """The four reads one checkout answers, on both sides of the push.
 
-    One holder rather than three independent seams, because a case about a
+    One holder rather than four independent seams, because a case about a
     worktree something wrote to while the push ran states a single fact and
     the reads that answer for it have to flip together -- on the push, and
     not before. The head proof carries two questions rather than one: what
@@ -186,6 +195,28 @@ class _Checkout:
         if self._pushed and self._seed.dirty_after_push:
             dirty = self._seed.dirty_after_push
         return _WorktreeStatus(readable=self._seed.readable, paths=tuple(dirty))
+
+    def fingerprints(
+        self, _worktree, base_sha: str, candidate_sha: str,
+    ) -> ContributionFingerprint:
+        """Which contribution the pair this reading was HANDED carries.
+
+        Named against that pair rather than against the seed, which is what
+        lets a case prove the settlement fingerprinted the commits it froze
+        rather than whatever the checkout stands on: the record comes back
+        naming the two it was asked about, and the identity written from it
+        carries them.
+        """
+        seeded = self._seed.fingerprint
+        if isinstance(seeded, FingerprintFailure):
+            return ContributionFingerprint(
+                base_sha=base_sha,
+                candidate_sha=candidate_sha,
+                failure=seeded,
+            )
+        return ContributionFingerprint(
+            base_sha=base_sha, candidate_sha=candidate_sha, digest=seeded,
+        )
 
     def proves(self, _worktree, revision: str) -> FrozenCommit:
         """What one revision this checkout names peels to right now."""
@@ -228,6 +259,7 @@ def hold_late_seams(
         ("_push_branch", reads.pushes),
         ("_worktree_status", reads.status),
         ("_prove_candidate_commit", reads.proves),
+        ("_fingerprint_contribution", reads.fingerprints),
     ):
         stack.enter_context(seam_patch(name, MagicMock(side_effect=answer)))
     LocalTeardown(checkout)._hold(

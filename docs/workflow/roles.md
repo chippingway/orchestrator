@@ -709,6 +709,18 @@ is the whole invalidation rule: work committed on top of an accepted candidate i
 measured as the fresh candidate it is
 ([`../state-machine/labels-and-state.md#late-generation-state`][late-state]).
 
+Beside that commit goes the **identity of what it contributes**: the generation's frozen base, the accepted
+candidate, the canonical digest of the contribution between them, and the version of the scheme that digest was taken
+under. It is derived from the frozen pair the decomposer inspected and from nothing else — never from the checkout's
+head or a base read now, since the worktree is writable for the whole of an adjudication — and it goes down in the
+same write as the exemption, because the retirement a few steps later takes that pair off the record. The exemption
+says which COMMIT a human ruled on; the identity says which CHANGE they ruled on, which is the only question left
+once the commit itself has been rebased, squashed, or made afresh. Where the reading could not be taken, or where any
+field of the record cannot be vouched for, there is simply no transferable identity and the exact-SHA exemption
+stands untouched. The record belongs to the commit on the exemption field, so moving that field to another commit
+drops it: a later verdict that records the commit alone writes nothing over those fields, and left there they would
+match the first commit by name the next time one put it back.
+
 Beside the exemption goes the **exact-commit reconciliation** of the pull request the issue records
 (`late_reconcile.py`, with the hold release beside it and the head a published-side verdict is proved against one
 owner over in `late_proof.py`), and it is the half the ordinary publication cannot do: that one searches for an OPEN
@@ -744,7 +756,8 @@ request would be a permanent block bought for nothing, and the ordinary exact-co
 candidate goes on to.
 
 The order is chosen so every window a crash can land in is one the next tick repairs. The hold is released first,
-while nothing else has moved; the exemption is written next, with the generation still live behind it; only then is
+while nothing else has moved; the exemption and the identity beside it are written next, with the generation still
+live behind them; only then is
 `workflow:implementing` handed back; and only after that is the generation retired (`late_handback.py` owns that
 half) — behind the one comment naming the accepted commit and the measurement it was judged on, posted immediately
 before the write that drops the generation,

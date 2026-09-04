@@ -258,11 +258,13 @@ orchestrator/
     measurement/        how large a committed candidate is, which contribution it is, and why either is
                         sometimes unknown
       models.py         the two typed failure vocabularies -- one per reading, spelled apart so a park reason
-                        says which one stopped -- and the four records a reading hands around: one frozen end of
+                        says which one stopped -- the four records a reading hands around: one frozen end of
                         a diff, the measurement over both ends, the fingerprint over the same pair -- each of
                         those three carrying the failing step's own scrubbed line beside the typed reason it
                         stands next to -- and the readback saying whether an end this host was supposed to hold
-                        is really here
+                        is really here, plus the version the digest scheme is at, which every caller that
+                        PERSISTS a fingerprint records beside it because two ids taken under different rules are
+                        not comparable and nothing about the ids says so
       commits.py        the remote-authoritative base freeze (fetched once when the object is missing) and the
                         candidate proof that an id resolves, is held here, and peels to the commit it names --
                         each handing back whatever id it did establish beside the failure, so a retry has one
@@ -273,7 +275,8 @@ orchestrator/
                         refusing outright on the attribute file and diff-driver config no pin reaches — and the
                         measurement composing the three steps
       fingerprint.py    the SHA-256 digest of the whole prospective contribution over the same three-dot range, taken
-                        over git's `--raw -z` listing (modes, unabbreviated object ids, status, and path bytes) and
+                        behind a label carrying the scheme version the record owner publishes, over git's `--raw -z`
+                        listing (modes, unabbreviated object ids, status, and path bytes) and
                         then over the content of every object that listing names, so nothing that decides how content
                         would be RENDERED decides the id and no id has to be taken on trust — git serves a substituted
                         loose object under the name its file sits at, and only `fsck` ever says otherwise. Renames are

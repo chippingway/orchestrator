@@ -37,6 +37,13 @@ MEASURED_CANDIDATE_SHA = "c" * SHA_LENGTH
 HEAD_BEFORE_RUN = "be40e5ba" * SHA_LENGTH_EIGHTHS
 HEAD_AFTER_RUN = MEASURED_CANDIDATE_SHA
 
+# What the contribution between the two frozen commits fingerprints to in the
+# world a test says nothing about. A whole SHA-256 digest, because that is
+# what a fingerprint field is read at: a shorter stand-in would come back
+# absent and no identity written from it would round-trip.
+DIGEST_LENGTH = 64
+CONTRIBUTION_DIGEST = "d" * DIGEST_LENGTH
+
 STATE_CLOSED = "closed"
 STATE_OPEN = "open"
 

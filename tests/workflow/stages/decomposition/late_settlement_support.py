@@ -23,6 +23,7 @@ import contextlib
 from types import MappingProxyType
 from unittest.mock import MagicMock, patch
 
+from orchestrator.git.measurement.models import FingerprintFailure
 from orchestrator.workflow.stages.decomposition import late_hold as _late_hold, late_owner as _late_owner
 from orchestrator.workflow.stages.decomposition.late_session import (
     MAX_RECORDED_BODY,
@@ -93,6 +94,13 @@ UNRECORDABLE_RUN = agent_reply(late_block(
 # A worktree the read-only adjudicator moved. The run finished and its verdict
 # is refused, which is one more completion that only parks.
 MOVED_CANDIDATE = WorktreeSeed(head=OTHER_SHA)
+
+# A store that holds both commits and cannot hand back the content between
+# them. The verdict settles exactly as it would have -- the exact commit is
+# exempt -- and there is no identity of the accepted change to carry.
+UNFINGERPRINTED = WorktreeSeed(
+    fingerprint=FingerprintFailure.CONTENT_ABSENT,
+)
 
 PARK_TIMEOUT = "late_adjudicator_timeout"
 PARK_UNPARSED = "late_manifest_invalid"

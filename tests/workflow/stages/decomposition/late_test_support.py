@@ -32,6 +32,9 @@ from tests.support.fakes import (
 from tests.workflow.fixtures import LABEL_DECOMPOSING
 
 SHA_LENGTH = 40
+# What a whole fingerprint is: a SHA-256 digest, which is the exact length the
+# identity field beside an exemption is read at.
+DIGEST_LENGTH = 64
 CANDIDATE_SHA = "a" * SHA_LENGTH
 BASE_SHA = "b" * SHA_LENGTH
 OTHER_SHA = "c" * SHA_LENGTH
@@ -73,6 +76,12 @@ PLAN_PATH = "plans/issue-41.md"
 UNASKED_MEASUREMENT = AdditionMeasurement(
     failure=MeasurementFailure.DIFF_FAILED,
 )
+
+# What the contribution between the frozen pair fingerprints to, in the world
+# a case says nothing about. Spelled once for the seam that answers the
+# reading and the tests that read the identity a settled verdict writes.
+CONTRIBUTION_DIGEST = "9" * DIGEST_LENGTH
+
 
 LATE_SESSION_ID = "late-sess"
 LATE_SPEC = "claude --effort high"
@@ -116,6 +125,14 @@ class _StateKeys:
     resources: str = "late_resources"
     owner_check_pending: str = "late_owner_check_pending"
     exempt_sha: str = "late_exempt_sha"
+    # What the exempt commit CARRIES: the frozen pair the verdict was taken
+    # between, the digest of the contribution between them, and the scheme
+    # that digest was taken under. Written with the exemption and outliving
+    # the retirement on the same terms.
+    exempt_base_sha: str = "late_exempt_base_sha"
+    exempt_candidate_sha: str = "late_exempt_candidate_sha"
+    exempt_fingerprint: str = "late_exempt_fingerprint"
+    exempt_fingerprint_format: str = "late_exempt_fingerprint_format"
     post_publication: str = "late_post_publication"
     published_pr_number: str = "late_published_pr_number"
     published_sha: str = "late_published_sha"
@@ -138,6 +155,16 @@ class _StateKeys:
 
 
 KEYS = _StateKeys()
+
+# What the accepted commit CARRIES, as one group: it is written with the
+# exemption, refused as a whole where any member of it cannot be vouched for,
+# and outlives the retirement on the same terms the exemption does.
+IDENTITY_KEYS = (
+    KEYS.exempt_base_sha,
+    KEYS.exempt_candidate_sha,
+    KEYS.exempt_fingerprint,
+    KEYS.exempt_fingerprint_format,
+)
 
 
 def late_block(payload: str) -> str:

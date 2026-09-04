@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """What a verdict the owner read cleared actually earns, and what it does not.
 
-A `single` is an exemption for one commit and a hand-back to the ordinary
-publication; a `split` is a handoff to the transaction that creates its
-children; a `question` is neither. None of the three creates a snapshot here.
+A `single` is an exemption for one commit -- with the identity of what that
+commit contributes beside it -- and a hand-back to the ordinary publication; a
+`split` is a handoff to the transaction that creates its children; a
+`question` is neither. None of the three creates a snapshot here.
 
 The plan-PR hold is the other half of the same pull request, so what it left
 standing is asked here too: a notice a human removed is what stops a new agent
@@ -43,6 +44,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     EVENT_LATE_FAILURE,
     HOLD_MARKER_PREFIX,
+    IDENTITY_KEYS,
     KEYS,
     OTHER_SHA,
     PLAN_PR_BODY,
@@ -100,13 +102,17 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
 
     def test_the_generation_it_settles_is_retired(self) -> None:
         # Left standing, it would keep pinning the decomposing label and keep
-        # reading as a candidate nobody has decided about.
+        # reading as a candidate nobody has decided about. What the accepted
+        # commit carries is written outside that group and stays.
         self._decide(SINGLE_RUN)
 
         pinned = self._pinned()
         for retired in _RETIRED_KEYS:
             with self.subTest(key=retired):
                 self.assertNotIn(retired, pinned)
+        for carried in IDENTITY_KEYS:
+            with self.subTest(key=carried):
+                self.assertIn(carried, pinned)
 
     def test_it_creates_no_snapshot_or_children(self) -> None:
         # A snapshot exists so children can be cut from a candidate about to

@@ -34,6 +34,14 @@ same ceiling and adjudicate it again forever. The exemption names the measured
 commit and only it -- work committed after the verdict is work nobody
 adjudicated, and the gate measures it as the fresh candidate it is.
 
+Beside it goes the IDENTITY of what that commit contributes: the frozen pair
+the adjudication was taken between and the canonical digest of the
+contribution between them, derived from the pinned pair the decomposer
+inspected rather than from a checkout that has been writable throughout. It is
+written here because this is the last owner holding that pair -- the
+retirement a few steps down takes it off the record -- and a reading that
+could not be taken leaves the exact exemption standing on its own.
+
 A candidate nothing had published earns only that. It is already committed in
 the developer's own worktree, and the ordinary `implementing` publication the
 issue is handed back to is what pushes it, opens or reuses its pull request,
@@ -47,19 +55,21 @@ nothing -- it publishes as itself, from the branch it is already on.
 
 The order is chosen so every window a crash can land in is one the next tick
 repairs. The hold is released first, while nothing else has moved. The
-exemption is written next -- with the commit a push is still owed for beside
-it -- and the generation is still live behind them, so the issue is still an
-adjudication in flight. Then the push, then the label, and only after that is
-the generation cleared: a `decomposing` issue with no generation on it is one
-the INITIAL decomposer would pick up and re-decompose, and an issue back on
-its own stage with a live generation is one the relabel guard puts back and
-this tick re-settles.
+exemption is written next -- with the identity of what it contributes and the
+commit a push is still owed for beside it -- and the generation is still live
+behind them, so the issue is still an adjudication in flight. Then the push,
+then the label, and only after that is the generation cleared: a `decomposing`
+issue with no generation on it is one the INITIAL decomposer would pick up and
+re-decompose, and an issue back on its own stage with a live generation is one
+the relabel guard puts back and this tick re-settles.
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import replace
 
+from orchestrator.git.measurement import fingerprint as _fingerprint
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.late_split import exemption as _exemption
 from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.stages.decomposition import (
@@ -198,6 +208,12 @@ def _handed_back(context: _LateContext) -> _LateDisposition | None:
     second developer over an implementation a human has already ruled on.
     Recorded, the implementing gate proves the commit before anything runs and
     parks for the checkout instead.
+
+    The identity of what that commit CONTRIBUTES rides the same write, and has
+    to: the retirement behind these steps takes the frozen pair off the
+    record, and past it nothing on the issue could say which base the accepted
+    work was measured over. Where the reading could not be taken there is
+    simply none, and the exact commit is exempt on its own as it is with one.
     """
     stopped = _late_owner._latch_stops(context)
     if stopped is not None:
@@ -205,12 +221,65 @@ def _handed_back(context: _LateContext) -> _LateDisposition | None:
     _exemption.record_exemption(
         context.state, context.generation.candidate_sha,
     )
+    _recorded_identity(context)
     _recorded_debt(context)
     _late_parks._persist(context)
     stopped = _late_owner._latch_stops(context)
     if stopped is not None:
         return stopped
     return _late_handback._continued(context)
+
+
+def _recorded_identity(context: _LateContext) -> None:
+    """Record WHAT was accepted, beside the commit it was accepted on.
+
+    Taken over the frozen pair this adjudication was run against -- the base
+    the generation was measured from and the candidate the verdict named --
+    and never over the checkout's head or a base read now. The worktree is
+    writable for the whole of an adjudication, so what it stands on says
+    nothing about what a human ruled on; the pinned pair is what the
+    decomposer was pointed at, and it is the only thing the digest may be
+    taken between.
+
+    A reading that could not be taken records nothing at all, which is the
+    same answer a comment older than this group gives. The exemption is
+    already durable beside it and covers the exact commit either way, so what
+    an absent identity costs a later tick is the transfer and never the
+    decision a human has already made -- and where an earlier candidate left
+    an identity of its own, the exemption write immediately ahead of this
+    dropped it with the commit it described.
+
+    A pair this record cannot name, and a checkout that is not there, are the
+    same answer for the same reason. Both are proved long before a verdict is
+    settled, so what the guard is really standing in front of is a teardown
+    racing this tick -- and running git in a directory that has gone would
+    raise here, between the exemption write and the debt beside it.
+    """
+    generation = context.generation
+    worktree = _worktree_paths._worktree_path(
+        context.spec, context.issue.number,
+    )
+    frozen = generation.base_sha and generation.candidate_sha
+    if not (frozen and worktree.exists()):
+        return
+    contribution = _fingerprint._fingerprint_contribution(
+        worktree, generation.base_sha, generation.candidate_sha,
+    )
+    if not contribution.is_fingerprinted:
+        log.warning(
+            "issue=#%d settles the accepted candidate %s with no semantic "
+            "identity (%s); only the exact commit is exempt",
+            context.issue.number,
+            generation.candidate_sha,
+            contribution.failure,
+        )
+        return
+    _exemption.record_semantic_identity(
+        context.state,
+        base_sha=contribution.base_sha,
+        candidate_sha=contribution.candidate_sha,
+        fingerprint=contribution.digest,
+    )
 
 
 def _recorded_debt(context: _LateContext) -> None:
