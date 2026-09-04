@@ -77,6 +77,7 @@ _OWNER_ONLY_NAMES = (
     "_git",
     _AUTH_SESSION,
     "_git_hardened",
+    "_git_hardened_bytes",
     "_push_branch",
     "_push_ref",
     _REF_READ,

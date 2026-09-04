@@ -406,6 +406,16 @@ path is bytes, and a committed file whose name is not valid UTF-8 makes a strict
 before any caller sees a return code -- taking the tick out where the probe should have reported the extra path and
 parked the artifact it invalidates.
 
+One caller cannot afford to decode at all, so the same envelope has an undecoded form
+(`_git_hardened_bytes`). Text capture folds a CR LF pair and a lone CR into a single LF, and a carriage return is a
+byte a committed path may contain: a listing read as text names two different paths identically, which is harmless
+for a probe comparing against a permitted set and fatal for a digest. A third form, `_git_hardened_streamed`, takes
+the request on stdin and hands stdout to a caller-supplied consumer a chunk at a time, assembling none of it, for
+output whose size an agent decides; its other two streams are files rather than pipes, so reading stdout to
+exhaustion cannot deadlock against a stderr nobody is draining, and what git wrote there still comes back on the
+record. All three take the same `env_extra` and build their environment through the one `_hardened_env`, so none can
+drift into keeping a protection the others have lost, and a caller pinning a reading pins every call of it.
+
 It also turns object replacement off — `GIT_NO_REPLACE_OBJECTS=1` for `refs/replace/<oid>` and
 `GIT_GRAFT_FILE=/dev/null` for the graft file. Neither of those is config, so nothing above reaches them, and each is
 writable by an agent whose linked worktree shares the clone's refs and git dir. Left on, they change what git says a
@@ -457,6 +467,75 @@ repository's own config turns a path binary the moment any attribute assigns it.
 worktree, so a measurement that finds either records a typed `diff_unpinnable` failure instead of a count — and it
 inspects that path without opening it (`lstat`, no link followed, anything but a regular file refused), since a FIFO
 or a `/dev/zero` symlink planted there would otherwise block or exhaust the tick that read it.
+
+### Fingerprinting a prospective contribution (`git/measurement/fingerprint.py`)
+
+The same three-dot range answers a second question — not how large a candidate is but which contribution it is — and
+`_fingerprint_contribution` is the SHA-256 digest that answers it for a pair of already-proven commits. Everything
+cheaper is wrong in a way somebody can arrange: an added-line count is equal for any two candidates of the same size,
+a subject is prose the agent writes, a rename similarity score says nothing about what was written, tree equality
+ignores the base the work will be reviewed against, and `git patch-id` survives rebases precisely by discarding
+binary content, file modes, and whitespace.
+
+What is hashed is git's raw listing (`--raw -z --no-abbrev`) followed by the content of every object that listing
+names — neither of them a patch. Raw format renders no content, so the whole surface the added-line count has to pin
+one setting at a time — attributes, attribute files, textconv, external helpers, the diff algorithm, the big-file
+threshold, a diff driver — decides nothing here, and none of it needs refusing; the content behind the ids is read
+through `cat-file`, which applies no filter and converts no line ending. Each record carries the pre- and post-image
+modes and object ids, the status, and the path bytes, which is what makes path moves, mode-only changes, and
+deletions move the digest, while the streamed content is what makes a changed byte move it — binary included.
+`--no-renames` is what makes a rename representable the same way twice: with detection on, whether one record or two
+come back is decided by a similarity threshold and a rename limit that a `git config` beside the work can retune. The
+remaining pins are `--no-abbrev` against `core.abbrev`, `--ignore-submodules=none`, `--no-relative`, and an empty
+`-O/dev/null` order file against `diff.orderFile` — a digest over a permutation of the same records is a different
+digest for the same work.
+
+Two more pins sit in the environment, where a `-c` on the command line does not reach them, and both are about what
+this store is allowed to be while the reading is taken. `$GIT_DIR/shallow` is a file the agent's checkout shares
+rather than a setting, and a commit named there is walked as though it had no parents — which moves the base a
+three-dot range resolves to, or removes it, so the same two objects read as another contribution or as none; it is
+pointed at `/dev/null`. And a clone made with a filter keeps a promisor remote, so git answers an id it is missing by
+fetching it rather than by failing: left alone, a store that does not hold this contribution would go and get it
+mid-reading, turning a local digest into a network call whose answer depends on what the remote still serves and
+leaving packs behind in a store the tick was only reading. `GIT_NO_LAZY_FETCH=1` turns that off.
+
+Both pins ride every call of the reading, the endpoint presence probes included: a commit made after a filtered clone
+is precisely what a lazy fetch would supply, and precisely what `fingerprint_candidate_absent` is for, so an unpinned
+probe would fetch the end and let the reading fingerprint a contribution the store never held. Neither pin goes in
+the envelope every hardened call shares, because a shallow clone and a partial clone are things a repository
+legitimately IS — a rebase in one needs its objects fetched, and `git/measurement/commits.py` probes for an object
+precisely so it can go and fetch it — while this reading has to be answerable from this store alone, over the whole
+history these commits have, or refuse.
+
+The content is in the digest rather than merely named by it because an object id is a claim about content only where
+something checks the two against each other, and git does not: a loose object swapped for a different, perfectly
+valid one is served under the name its file sits at, and nothing short of `fsck` notices. The store here is the one
+the agent works in. Hashing the bytes git actually produces settles that without a verification step — substituted
+content is not the same contribution and does not fingerprint like one.
+
+The two endpoints decide what is fingerprinted and are deliberately not in the digest, so the same work over the same
+base fingerprints alike no matter which commits carry it. Both commits are proven present before the listing runs, so
+an end this host does not hold is reported as `fingerprint_base_absent` / `fingerprint_candidate_absent` rather than
+surfacing as a diff error, and a listing that failed records `fingerprint_diff_failed` with no digest beside it —
+what a failed `git diff` writes to stdout is nothing, which is also what a candidate that changes nothing writes.
+
+Proving the commits is not proving the contribution, and closing that gap is the last step before anything is hashed.
+A raw listing is walked out of trees and never opens a blob, so a repository holding both commits and every tree under
+them — but missing the content at one changed path, from a fetch that half-arrived, a store pruned under a running
+tick, or an object file that will not inflate — produces the same listing a complete repository does and git exits 0.
+The listing is therefore parsed before anything is read — a stream whose records this build cannot account for is
+`fingerprint_diff_unreadable`, and that includes a non-empty listing not ending in the NUL every one of its fields is
+terminated by, which is a last path cut short rather than a whole record. Every object id it names on either side —
+the pre-image as much as the post-image — is then asked for in one `git cat-file --batch`, and that single read is
+where the content is both taken and checked. Asking one command whether the objects are there and reading them with
+another would leave a window between the two answers wide enough for a `gc` in the checkout or an agent still running
+beside the tick, and what falls into it does not surface as an error: `--batch` reports an object it cannot find as
+the bare word `missing` on the same stdout the digest is taken over, and exits 0. So the answer is read as a protocol
+— every id asked for, in the order asked, answered as a blob of the length its header claims — with the content
+folded into the digest as it passes that check, and anything else is `fingerprint_content_absent`. A blob corrupt
+past a header that inflated fine is caught by the same read, since git stops mid-stream and exits non-zero. Gitlinks
+are excluded: mode `160000` names a commit in the submodule's repository, which this store has no reason to hold, so
+requiring it would refuse a fingerprint to every candidate that touches a submodule.
 
 ## Push path (`git.branch_transport._push_branch`)
 

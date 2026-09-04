@@ -83,6 +83,7 @@ per-file-ignores =
     orchestrator/observability/usage/trajectory_codex_items.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
+    orchestrator/git/commands.py:WPS202
     orchestrator/git/verification/probes.py:WPS202
     orchestrator/git/worktrees/claims.py:WPS202
     orchestrator/git/worktrees/creation.py:WPS202
