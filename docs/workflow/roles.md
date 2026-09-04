@@ -486,6 +486,19 @@ force-push the remote refuses puts the branch back onto the commit the exemption
 owes is dropping the permission it will never spend. Refused, nothing moves and the ordinary cumulative gate
 measures it like any other candidate.
 
+A crash between that grant and the push it licenses leaves the one approval that was never a reading this gate
+took, and it is read as exactly that: an approval standing beside an outstanding permission defers back to the
+permit, which is re-asked in full over the record the grant left — the recovery has no plan behind it, so both
+pairs, the publication, and the lease come off the permission itself. Asked of the permission rather than of the
+commit it names, because the two go down in one write for one commit and a hand-edited target would otherwise make
+the permit invisible and leave the approval looking ordinary. It is also what tells a lost receipt from a moved
+remote: a remote already standing on the rewritten commit, while the permission is still outstanding, is this
+permit's own push having landed rather than somebody else's move, and remeasuring there would re-adjudicate a
+squash the pull request already carries. Nothing in this build *spends* a permission, so that deferral outlives the
+push it licensed: a later approval on the same issue is re-asked through the permit too, refused — by then the
+exemption no longer names the commit the record came from — and measured by the ordinary gate instead of waved
+past. That is the same rule failing conservatively, and it costs a reading rather than a decision.
+
 The approval holds the switch back for the commit it *names* and no other, which is why the switch is asked twice —
 once at the door, cheaply, and once past the proof. An approval is a claim about one object id, and nothing can say
 whether the head is that id until the head is proved; past that proof and not it, the approval describes work this

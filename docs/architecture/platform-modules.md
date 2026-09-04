@@ -232,7 +232,10 @@ orchestrator/
     publication/        what a branch becomes before review reads it
       models.py         the record a squash hands back, in the three shapes it can end in -- published, refused, or
                         held by the size gate for the adjudication
-      planning.py       the merge-base, HEAD, dirty, and subject preconditions plus the squash message they select
+      planning.py       the merge-base, HEAD, dirty, and subject preconditions plus the squash message they select,
+                        and the pre-squash head pinned beside them -- the rollback target, the head the entry takes
+                        its lease from, and the commit the gate is told this rewrite collapsed, none of which a
+                        reading taken past the reset could recover
       probes.py         the subject vocabulary and predicates, one divergence reading -- the fetched ref resolved
                         ONCE and HEAD counted against that immutable commit, since the counts are a claim about the
                         tip and a ref something moves between two readings would leave a branch proved against one
@@ -241,16 +244,24 @@ orchestrator/
                         what an in-sync branch answers and what every caller acting on it would rebase, spawn over,
                         and force-push on
       rewrite.py        the soft reset, the orchestrator-identity commit, the gated publication of the commit it
-                        just made -- measured, then named against it and pinned to the head the entry froze -- and
+                        just made -- measured, then named against it and pinned to the head the entry froze, with
+                        the plan's pre-squash head and merge base handed over beside it, since a rewrite of the
+                        exact commit an adjudication accepted may carry that exemption over and both ends of both
+                        contributions are what says so -- and
                         the rollback a post-reset failure takes -- the ref and the index, never the working tree,
                         since a squash has the same tree as the head it replaces and the only thing taking the
                         worktree too would restore is an edit somebody made while the rewrite ran -- which drops the
-                        approval it abandons only once the reset has actually landed -- a reset that failed may
+                        approval it abandons, and the permission a granted transfer will never spend, only once the
+                        reset has actually landed -- a reset that failed may
                         leave the branch still standing on the approved commit, and the approval is the only record
                         naming the one commit this issue may publish. A HELD candidate is spared that rollback only
                         where the squash is somebody's: a
                         live record naming it -- oversized, or a pair still owed its count -- already on the remote,
-                        or under a commit something else made. A hold the gate REFUSED is none of those, and froze
+                        named by the approval as a push this issue still owes -- a reset there leaves the
+                        reconciliation ahead of every later handler asking for a commit only the reflog has, and it
+                        is where a transfer whose grant landed and whose push the remote took ends up, its receipt
+                        still naming the head the squash replaced -- or under a commit something else made. A hold
+                        the gate REFUSED is none of those, and froze
                         nothing to say otherwise -- a pull request closed or moved in the window the reset and the
                         commit sit in -- and the branch goes back there, since a squash nobody measured, published,
                         or recorded is the one commit a retry finds, and one commit is the nothing-to-squash road
