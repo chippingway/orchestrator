@@ -220,7 +220,11 @@ of the drift and resume roads below it, so the only thing that lifts it is a tru
 one more attempt, exactly as on `workflow:decomposing`. New commits on a clean
 tree are measured by the late size gate and then push the branch, open or reuse a PR, and set `workflow:validating`;
 a candidate strictly past `MAX_ADDED_LINES` is held unpublished and routed to `workflow:decomposing` instead, and one
-that could not be measured parks rather than publishing. So does a checkout that cannot name the commit it is on:
+that could not be measured parks rather than publishing — except a base the TRANSPORT could not reach, which is
+counted quietly for three consecutive misses on the same pair, saying nothing and spawning nothing, before the fourth
+takes that park. The park keeps the frozen pair, names the step the reading stopped at once per step, and is answered
+here by a trusted bare `/orchestrator continue`, which re-measures that exact pair and spawns no agent. So does a
+checkout that cannot name the commit it is on:
 where the gate proved none — a new candidate while `DECOMPOSE=off` — the checkout is what names the commit the push
 carries, the receipt records, and both proofs around the push compare against, so one that can name none publishes
 nothing. A dirty tree, a tree `git status` could not report on, or a no-commit reply parks; a tree that stops being
@@ -265,7 +269,10 @@ head it stands on are frozen into the record before any effect; the push it allo
 commit and leased against that frozen head; a tree that is not provably clean, an unreadable or closed pull request,
 and a head that moved off the frozen one each park rather than push. A pair frozen and never counted is measured
 ahead of the handler on the next tick, by the dispatcher, on the stage the record names — and one whose checkout is
-not on this host stops the tick instead of letting the stage run over a candidate nobody read. Full flow:
+not on this host stops the tick instead of letting the stage run over a candidate nobody read. That same reading is
+what a measurement park here is retried by: it retakes the parked pair once a poll and asks nobody first, so a
+transport that comes back settles the park without the human it mentioned ever replying, and each of those readings
+is held silently while it goes on stopping at the step the standing notice named. Full flow:
 [`state-machine/delivery-stages.md`][published-gate].
 
 ### `_handle_in_review` (label `in_review`)
