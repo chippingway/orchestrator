@@ -66,7 +66,14 @@ matching `ANALYTICS_LOG_PATH`.
   ([`event-streams.md`](event-streams.md#late-split-records-both-sinks)).
   `tests/observability/analytics/sync/test_live_postgres.py` replays one of those records against a real Postgres and
   reads both of those fields back out of the blob, so widening that payload stays an emitter change rather than a
-  migration an operator has to apply. `source_path` / `source_line` are
+  migration an operator has to apply. The daily terminal-artifact maintenance pass's per-candidate result is a
+  fourth, and the smallest: `outcome`, `reason`, `layout`, and the `branch` it carries only where the reason names one
+  are all outside the promoted set, so the whole payload rides in `extras`
+  ([`event-streams.md`](event-streams.md#terminal_artifact_cleanup-records)). Like the repo-level skill catalog it
+  passes no `stage`, so that promoted column is NULL on every one of its rows — which the schema already allows, and
+  which the dashboard's stage filter is deliberately asymmetric about
+  ([`analytics-dashboard.md`](analytics-dashboard.md#dashboard-orchestratorappsanalytics_dashboardpy)).
+  `source_path` / `source_line` are
   forensic context; the authoritative dedup key is `content_hash` — SHA-256 over the canonical (`sort_keys=True`)
   JSON form of the record.
 - **Indexes.** A plain (non-partial) unique index on `content_hash` plus `INSERT ... ON CONFLICT (content_hash) DO
