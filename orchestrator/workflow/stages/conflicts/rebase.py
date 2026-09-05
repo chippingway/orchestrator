@@ -25,6 +25,7 @@ from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.base_sync import pre_pr as _base_sync_pre_pr
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.conflicts import (
+    evidence as _evidence,
     models as _models,
     publication as _publication,
     state as _state,
@@ -113,12 +114,31 @@ def _rebase_and_dispose(
     force-overwritten by work that was never proved against it. Refused here,
     nothing is rebased, no agent is spawned over a checkout nobody could read,
     and the next tick reads it again.
+
+    The fork point that head's contribution is read over is taken in the same
+    breath, and it is the other half of the same rule: a rebase replays the
+    branch onto a base that has moved, so the base the replaced commit was
+    read over is gone from the branch the moment the replay lands and no
+    reading afterwards could recover it. Together they are what tells the gate
+    that a change a human already adjudicated is the change the rebased commit
+    still carries. A reading that failed costs the evidence and nothing else
+    -- the rebase runs, and the commit it produces is measured like any other.
+
+    Both go down DURABLY before the replay, beside the pull request they are
+    being made against, and only for a branch standing on the commit this
+    issue exempts. The tick that runs a rebase is not always
+    the tick that publishes one: a crash between the replay and the size gate
+    leaves the rebased commit on the branch, unpushed, with nothing on the
+    comment saying a rebase is what put it there -- and no reading of the
+    branch afterwards tells it from a resolution an agent wrote.
     """
     spec = ctx.spec
     before_sha = _verification_probes._head_sha(wt)
     if not before_sha:
         _transitions._park_unreadable_head(ctx)
         return
+    replayed = _evidence._replayed(spec, wt, before_sha)
+    _evidence._records_the_replay(ctx, replayed, pr_number)
     succeeded, conflicted_files = _base_sync_pre_pr._rebase_base_into_worktree(
         spec, wt,
     )
@@ -137,7 +157,7 @@ def _rebase_and_dispose(
 
     if succeeded:
         _publication._publish_clean_rebase(
-            ctx, wt, before_sha, conflict_round, pr_number,
+            ctx, wt, replayed, conflict_round, pr_number,
         )
         return
 

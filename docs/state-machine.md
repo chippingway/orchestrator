@@ -301,7 +301,7 @@ Rebases the PR branch onto `<remote>/<base>` under a hardened git envelope and f
 flipping back to `workflow:validating` with `review_round=0` and `conflict_round` bumped — reached from an operator
 relabel, from the base refresh when a rebase actually conflicts, or from `_handle_fixing`'s dead-lock breaker. A
 conflicted rebase resumes the dev; a diverged branch parks unless the worktree is a recognizably orchestrator-produced
-unpushed rebase. `MAX_CONFLICT_ROUNDS` caps it. Full flow:
+unpushed rebase, or one this stage's own replay record accounts for. `MAX_CONFLICT_ROUNDS` caps it. Full flow:
 [`state-machine/delivery-stages.md`][resolving-conflict].
 
 ### `_handle_question` (label `question`)

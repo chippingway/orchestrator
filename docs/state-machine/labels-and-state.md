@@ -521,6 +521,29 @@ The keys that matter for the state machine fall into a few groups:
   not re-derive either: the settlement publishes the commit, so the branch it comes back to already carries its base
   and would be flipped as `base_up_to_date` — the one exit that resolves nothing and stamps no
   `last_conflict_resolved_at`. Dropped by whichever pushed-round tail finally pays the round.
+  - **The replay a rebase made.** `conflict_replay_from_sha`, `conflict_replay_from_base_sha`,
+  `conflict_replay_to_sha`, and `conflict_replay_pr_number` are what a `workflow:resolving_conflict` rebase records
+  ABOUT ITSELF, because the tick that runs a replay is not always the tick that publishes one. The head it is about
+  to replace, the fork point that head's contribution is read over, and the pull request it is being made against go
+  down before the rebase runs — the first two because the rebase destroys them, the third because `pr_number` is a
+  field a later tick can find pointing somewhere else and a rewrite is evidence about ONE publication. The commit it
+  produced is stamped on once there is one, before the size gate is entered. Written only for a branch standing on
+  the commit `late_exempt_sha` names, because nowhere else could a transfer ever be granted and a record there would
+  be a request spent to protect nothing. Two readers, both on the tick that finds the replayed commit unpushed after
+  a crash. The divergence guard asks it FIRST, because a replay moves the branch off the head it replayed and so
+  comes back ahead of the publication and behind it -- the shape a stale checkout carrying somebody else's commit
+  also has, which this stage parks. A record naming that exact head, that exact commit and that pull request is what
+  tells the two apart, and it leases the force-push to the pre-rebase head. The recovered push
+  (`conflicts/divergence._push_recovered_commits`) reads it again for the evidence it hands the gate: no probe of
+  the branch tells a replay from a resolution an agent wrote or the unpushed fix commits the `fixing` drift reroute
+  sends over — on base as readily as behind it — so the record is the only thing that can. It is acted on only where
+  it is about the publication and the commit in hand: the pull request it names has to be the one the issue still
+  records, the head it names has to be the head that push is leased against, and the commit it names has to be the
+  one the checkout is standing on. Read live, that first one is the gap: a repointed `pr_number` would let this
+  branch's replay be offered as a rewrite of some other open pull request, and one standing on the same head would
+  satisfy every check the permit makes. The stamped commit is also what makes a stale group inert rather than
+  dangerous, which is why clearing it is tidiness: the no-op flip and whichever tail publishes the replay drop it on
+  writes they were already making, and never for a request of its own.
 - **PR / branch.** `branch`, `pr_number`, `review_round`, `conflict_round`. The first two are also what a published
   discussion plan records, beside `discussion_plan_path` — the path of the Markdown file that PR carries. The stage
   reads the plan path and `pr_number` together as its "already published" gate, since an issue relabeled into
@@ -1535,55 +1558,63 @@ rather than preserving.
 
   **What authorized it to move.** `late_rewrite_kind`, `late_rewrite_phase`, `late_rewrite_from_sha`,
   `late_rewrite_from_base_sha`, `late_rewrite_to_sha`, `late_rewrite_to_base_sha`, `late_rewrite_fingerprint`,
-  `late_rewrite_fingerprint_format`, `late_rewrite_pr_number`, `late_rewrite_source_stage`, and
-  `late_rewrite_lease` are the evidence one transfer was granted on, on the
+  `late_rewrite_fingerprint_format`, `late_rewrite_pr_number`, `late_rewrite_source_stage`, and `late_rewrite_lease`
+  are the evidence one transfer was granted on, on the
   [`rewrites`](../../orchestrator/workflow/late_split/rewrites.py) owner and outside `LATE_STATE_KEYS` on the same
   terms as the two groups above. They go down BEFORE the push they license and they move **nothing**: the exemption
   and its identity stay on the commit a human ruled on, because the object the rewrite produced is on no remote yet
-  and a verdict rotated onto it there would be stranded by a push that failed or a process that died. What this group
-  records is the *permission* for a later write to move it — and that later write is the one that receipts the landed
-  push, where the exemption, the identity, and the account of what the remote holds go down together or not at
-  all. `record_rewrite_publication` is that write, staged by `late_rotation` into the push tail's settlement, and it
-  moves all three in one statement — a reader is entitled to find them agreeing, and any two of them apart is a
+  and a verdict rotated onto it there would be stranded by a push that failed or a process that died. What this
+  group records is the *permission* for a later write to move it — and that later write is the one that receipts the
+  landed push, where the exemption, the identity, and the account of what the remote holds go down together or not
+  at all. `record_rewrite_publication` is that write, staged by `late_rotation` into the push tail's settlement, and
+  it moves all three in one statement — a reader is entitled to find them agreeing, and any two of them apart is a
   comment nothing here can tell from a hand edit. It is held to the record rather than to its caller: only a
-  permission this build can read back whole and still finds `authorized` is spent, so a damaged group, one bound to a
-  commit this issue does not exempt, and one already `published` each refuse instead of being repaired. Being
+  permission this build can read back whole and still finds `authorized` is spent, so a damaged group, one bound to
+  a commit this issue does not exempt, and one already `published` each refuse instead of being repaired. Being
   readable is not being *valid*, and the settlement is held to the second as well: what licenses the move is the
   permit `late_transfer` re-asked on that same tick, carried down the push tail beside the commit it proved out for.
   A refusal there is not a hold — the rewrite falls through to the ordinary cumulative gate, and a count under the
   ceiling publishes the same commit — so a settlement reading this group alone would rotate a verdict onto a rewrite
-  nothing revalidated and install the digest the permit had just declined. A permission no permit vouched for is left
-  exactly where it stands: not spent, and not dropped either, since the remote is now on a head the permit accounts
-  for and a later tick whose refusal has cleared can still settle it. A permission
-  the publication went PAST — the push put some other commit on the pull request, so the head it was granted against
-  is gone — is dropped on the rollback's own terms instead, since what is left is a claim about a push that cannot
-  happen. `late_approved_sha` and its lease ride the GRANT's own write instead,
-  and they have to: by then the rewrite has already replaced the branch's commits
-  with one, so a comment that explains that commit and does not say a push is outstanding is one the next squash
-  reads as *nothing to squash* — reported as success, never measured, never pushed. The kind is
-  bounded to rewrites this workflow makes itself, and there are two: `squash`, the collapse a reviewer's approval
-  earns, and `auto_clean_rebase`, the replay the pre-tick base refresh force-pushes once the stage that had to act
-  on the exempt commit has handed the issue on. The publication group scopes
-  the whole claim to one push onto one pull request. `late_rewrite_phase` is what says whether the move has
-  happened, and every other reading turns on it. It binds the group to the exemption, and which end binds follows
-  from it: `late_rewrite_from_sha` while the record stands at `authorized`, `late_rewrite_to_sha` once the receipt
-  has moved it to `published`. It is also what a rollback reads — a force-push the remote refuses resets the branch
-  back onto the head the rewrite found it on, which the record names as `late_rewrite_from_sha` for a squash (it
-  collapsed that commit) and as `late_rewrite_lease` for a rebase (it read the anchor for itself), so what the reset
-  owes is dropping the permission it will never spend; an `authorized` record is therefore droppable and a
-  `published` one is not.
-  An *outstanding* permission is read two more ways on the tick after a crash: it says a push is owed for the commit
-  it names, so the approval beside it defers to the permit rather than being spent on the object id, and it says the
-  receipt has not landed, so a remote already standing on `late_rewrite_to_sha` is that permit's own push rather than
-  a move somebody else made. Both are asked of the phase, not of the commit — the permission and the debt go down in
-  one write for one commit, and a hand-edited target would otherwise make the permit invisible.
-  The group is read whole or not at all on the same terms as the identity: a missing member, a value that is not
-  the shape its field takes, a kind or a phase this build cannot account for, a digest scheme it does not compute,
-  a stage no publication is entered from, and a bound end that is not the commit `late_exempt_sha` names each read
-  back as no authorization, which costs a rollback the drop and never lets one happen on evidence nobody can
-  check. `late_rewrite_fingerprint` is held to the same standard from the other side: a permit re-derives both
-  contributions for itself and refuses where the digest already recorded is not the one it took, since a grant that
-  carried on would write its own reading over the record — a repair of evidence nobody checked.
+  nothing revalidated and install the digest the permit had just declined. A permission no permit vouched for is
+  left exactly where it stands: not spent, and not dropped either, since the remote is now on a head the permit
+  accounts for and a later tick whose refusal has cleared can still settle it. A permission the publication went
+  PAST — the push put some other commit on the pull request, so the head it was granted against is gone — is dropped
+  on the rollback's own terms instead, since what is left is a claim about a push that cannot happen.
+  `late_approved_sha` and its lease ride the GRANT's own write instead, and they have to: by then the rewrite has
+  already replaced the branch's commits with one, so a comment that explains that commit and does not say a push is
+  outstanding is one the next squash reads as *nothing to squash* — reported as success, never measured, never
+  pushed. The kind and `late_rewrite_source_stage` are held TOGETHER rather than one at a time, since each is a
+  value this build knows and only the pair says whether the record describes a rewrite anything here produced: a
+  `conflict_rebase` recorded against `validating`, or a `squash` against `resolving_conflict`, types in both halves
+  and names a rewrite that stage does not make. The kind is bounded to rewrites this workflow makes itself, and
+  there are three: `squash`, the collapse a reviewer's approval earns; `auto_clean_rebase`, the replay the pre-tick
+  base refresh force-pushes once the stage that had to act on the exempt commit has handed the issue on; and
+  `conflict_rebase`, the one `workflow:resolving_conflict` runs when a branch has stopped merging cleanly. Each is
+  held to the stages its own producer names -- `validating` for the squash, `resolving_conflict` for the conflict
+  rebase, and the four the refresh drives for its own -- so a pairing no owner here produces reads back as no
+  authorization at all. None of them claims the contribution SURVIVED either: a replay that resolved content
+  conflicts and a squash of work nobody adjudicated both carry a kind this build authorizes over evidence that
+  fingerprints to something else, and the permit refuses them on the fingerprints rather than on the kind. The
+  publication group scopes the whole claim to one push onto one pull request. `late_rewrite_phase` is what says
+  whether the move has happened, and every other reading turns on it. It binds the group to the exemption, and which
+  end binds follows from it: `late_rewrite_from_sha` while the record stands at `authorized`, `late_rewrite_to_sha`
+  once the receipt has moved it to `published`. It is also what a rollback reads — a force-push the remote refuses
+  resets the branch back onto the head the rewrite found it on, which the record names as `late_rewrite_from_sha`
+  for a squash (it collapsed that commit) and as `late_rewrite_lease` for a rebase (it read the anchor for itself),
+  so what the reset owes is dropping the permission it will never spend; an `authorized` record is therefore
+  droppable and a `published` one is not. An *outstanding* permission is read two more ways on the tick after a
+  crash: it says a push is owed for the commit it names, so the approval beside it defers to the permit rather than
+  being spent on the object id, and it says the receipt has not landed, so a remote already standing on
+  `late_rewrite_to_sha` is that permit's own push rather than a move somebody else made. Both are asked of the
+  phase, not of the commit — the permission and the debt go down in one write for one commit, and a hand-edited
+  target would otherwise make the permit invisible. The group is read whole or not at all on the same terms as the
+  identity: a missing member, a value that is not the shape its field takes, a kind or a phase this build cannot
+  account for, a digest scheme it does not compute, a stage that does not make the kind recorded beside it, and a
+  bound end that is not the commit `late_exempt_sha` names each read back as no authorization, which costs a
+  rollback the drop and never lets one happen on evidence nobody can check. `late_rewrite_fingerprint` is held to
+  the same standard from the other side: a permit re-derives both contributions for itself and refuses where the
+  digest already recorded is not the one it took, since a grant that carried on would write its own reading over the
+  record — a repair of evidence nobody checked.
 
   Being unreadable is not being absent, and the difference is what a WRITER asks. A grant replaces the whole group
   rather than adding beside it, so a group that CLAIMS the commit currently exempt and cannot be read back is

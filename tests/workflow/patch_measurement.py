@@ -9,6 +9,7 @@ and a test about one of them seeds exactly what it is about.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from unittest.mock import MagicMock
 
 from orchestrator.git.measurement.models import (
@@ -21,6 +22,7 @@ from orchestrator.git.measurement.models import (
 )
 from tests.workflow.patch_models import _WorkflowRunContext
 from tests.workflow.repo_values import (
+    CONTRIBUTION_DIGEST,
     MEASURED_BASE_SHA,
     MEASURED_CANDIDATE_SHA,
 )
@@ -68,6 +70,11 @@ class _FingerprintedContribution:
     no digest at all, because a digest over the empty stdout a failed `git
     diff` writes is one every broken reading in the fleet would agree on.
 
+    A mapping keyed on the CANDIDATE is what a rewrite needs, since the whole
+    question a transfer turns on is whether two commits contribute the same
+    thing: a case about a replay that moved content seeds the rewritten end
+    apart and leaves the accepted one where the adjudication recorded it.
+
     Built from the seed alone rather than from a run context, since both
     harnesses that hold this seam -- the stage-handler patch set and the late
     adjudication's own -- seed it the same way.
@@ -77,16 +84,22 @@ class _FingerprintedContribution:
         self._seeded = seeded
 
     def __call__(self, worktree, base_sha: str, candidate_sha: str):
-        if isinstance(self._seeded, FingerprintFailure):
+        answered = self._answer(candidate_sha)
+        if isinstance(answered, FingerprintFailure):
             return ContributionFingerprint(
                 base_sha=base_sha,
                 candidate_sha=candidate_sha,
-                failure=self._seeded,
+                failure=answered,
             )
         return ContributionFingerprint(
-            base_sha=base_sha, candidate_sha=candidate_sha,
-            digest=self._seeded,
+            base_sha=base_sha, candidate_sha=candidate_sha, digest=answered,
         )
+
+    def _answer(self, candidate_sha: str):
+        """What this candidate contributes, from either spelling of the seed."""
+        if isinstance(self._seeded, Mapping):
+            return self._seeded.get(candidate_sha, CONTRIBUTION_DIGEST)
+        return self._seeded
 
 
 class _ProvedCommit:

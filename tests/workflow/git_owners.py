@@ -65,6 +65,7 @@ GIT_SEAM_OWNERS = MappingProxyType({
     "_ensure_worktree": _worktree_creation,
     "_fingerprint_contribution": _measurement_fingerprint,
     "_first_commit_subject": _publication_probes,
+    "_fork_point": _publication_probes,
     "_freeze_base_commit": _measurement_commits,
     "_git": _commands,
     "_git_hardened": _commands,

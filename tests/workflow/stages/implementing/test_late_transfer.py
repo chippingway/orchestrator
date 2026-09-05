@@ -54,7 +54,10 @@ _STANDING_CLAIMS = MappingProxyType({
         _rewrites.LATE_REWRITE_PHASE: "reverted",
     },
     "one for a kind this build does not authorize": {
-        _rewrites.LATE_REWRITE_KIND: "rebase",
+        _rewrites.LATE_REWRITE_KIND: "amend",
+    },
+    "one for a kind the recorded stage does not make": {
+        _rewrites.LATE_REWRITE_KIND: str(_rewrites.LateRewriteKind.CONFLICT_REBASE),
     },
     "one with a hand-edited accepted commit": {
         _rewrites.LATE_REWRITE_FROM_SHA: ACCEPTED_SHA[:7],
@@ -83,8 +86,11 @@ _UNPEELABLE_HEAD = FrozenCommit(
 # Every way the evidence itself fails to describe a rewrite this build may
 # authorize, offered through the record the squash hands in.
 _UNUSABLE_EVIDENCE = MappingProxyType({
-    "an unknown rewrite kind": {"kind": "rebase"},
+    "an unknown rewrite kind": {"kind": "amend"},
     "no rewrite kind at all": {"kind": None},
+    "a kind the recorded stage does not make": {
+        "kind": _rewrites.LateRewriteKind.CONFLICT_REBASE,
+    },
     "an abbreviated accepted commit": {"from_sha": ACCEPTED_SHA[:7]},
     "an accepted base that is prose": {"from_base_sha": "the merge base"},
     "a rewritten base that is not a commit": {"to_base_sha": 7},

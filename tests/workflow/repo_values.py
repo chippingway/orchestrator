@@ -37,6 +37,15 @@ MEASURED_CANDIDATE_SHA = "c" * SHA_LENGTH
 HEAD_BEFORE_RUN = "be40e5ba" * SHA_LENGTH_EIGHTHS
 HEAD_AFTER_RUN = MEASURED_CANDIDATE_SHA
 
+# The commit a contribution is read over: the fork point where its branch left
+# the base. Two values, because telling them apart is the whole of what a
+# rebase does -- the head it replays forks from one commit and the head it
+# produces from another -- so a world with one answer for both is a branch
+# nothing rebased. Whole object ids for the reason the pair above is: a rewrite
+# record reads every end at its exact length.
+FORK_POINT_SHA = "e" * SHA_LENGTH
+REPLAYED_FORK_POINT_SHA = "f" * SHA_LENGTH
+
 # What the contribution between the two frozen commits fingerprints to in the
 # world a test says nothing about. A whole SHA-256 digest, because that is
 # what a fingerprint field is read at: a shorter stand-in would come back

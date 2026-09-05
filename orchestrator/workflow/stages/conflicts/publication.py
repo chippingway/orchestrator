@@ -36,6 +36,7 @@ from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.engine import prompts as _prompts
 from orchestrator.workflow.stages.conflicts import (
+    evidence as _evidence,
     models as _models,
     outcomes as _outcomes,
     resume as _resume,
@@ -97,7 +98,7 @@ _DIRTY_WORKTREE = "dirty_worktree"
 def _publish_clean_rebase(
     ctx: _models._ConflictContext,
     wt: Path,
-    before_sha: str,
+    replayed: _evidence._Replayed,
     conflict_round: int,
     pr_number,
 ) -> None:
@@ -108,8 +109,16 @@ def _publish_clean_rebase(
     rebase, still counted against the cap); or force-pushes the rebased head
     and flips to `validating`. The caller returns immediately after; every
     exit writes pinned state.
+
+    `replayed` is what the caller read while the branch still stood where it
+    did: the head this push is leased against, and the fork point that head's
+    contribution was read over. A rebase destroys both, and together they are
+    the whole of the evidence a change a human already adjudicated may be
+    recognized in the object that replaced it -- which is what keeps the last
+    push before the merge button from adjudicating the same change twice.
     """
     spec = ctx.spec
+    before_sha = replayed.head
     if _unprovable_tree(ctx, wt):
         return
     after_sha = _verification_probes._head_sha(wt)
@@ -139,6 +148,11 @@ def _publish_clean_rebase(
     if after_sha == before_sha:
         _flip_base_up_to_date(ctx, conflict_round, pr_number, after_sha)
         return
+    # The other half of the record the caller opened before it rebased, made
+    # durable before the gate is entered rather than after: the window it
+    # exists for is exactly the one between the replay and the permission the
+    # gate's own grant persists.
+    _evidence._records_the_replayed_commit(ctx, replayed, after_sha)
     published = _late_push._publishes(
         _late_records._gate(ctx.gh, spec, ctx.issue, ctx.state, wt),
         _worktree_paths._resolve_branch_name(ctx.state, spec, ctx.issue.number),
@@ -155,6 +169,15 @@ def _publish_clean_rebase(
             # which resolves nothing and stamps no `last_conflict_resolved_at`.
             spends=_transitions._settles_the_held_round(
                 "base_rebased_clean", after_sha,
+            ),
+            # What this replay REPLACED, which nothing past the rebase could
+            # recover. Handed over whether or not this issue has an exemption
+            # to carry, since only the gate holds the record that would say --
+            # and it decides nothing here: a replay that moved a byte
+            # fingerprints to some other contribution and is measured like any
+            # other candidate.
+            rewrite=_evidence._rewritten(
+                ctx, wt, replayed, after_sha, pr_number,
             ),
         ),
     )
@@ -173,7 +196,10 @@ def _publish_clean_rebase(
         )
         return
     # Pushed branch diff -> hand straight back to validating; the single docs
-    # pass runs after final reviewer approval.
+    # pass runs after final reviewer approval. The replay record goes with it:
+    # the commit it explains is on the remote, so nothing is left for a later
+    # tick to recover, and this tail's own write carries the drop.
+    _evidence._forgets_the_replay(ctx.state)
     _transitions._hand_resolved_round_to_validating(
         ctx, conflict_round, pr_number,
         outcome="base_rebased_clean", sha=after_sha,
@@ -243,11 +269,16 @@ def _flip_base_up_to_date(
     in_review <-> resolving_conflict forever with the cap never firing.
     Counting the no-op against the cap surfaces it within MAX_CONFLICT_ROUNDS
     ticks. Does NOT stamp `last_conflict_resolved_at` -- nothing was resolved.
+
+    The replay record the caller opened goes with it, on this exit's own
+    write: a rebase that moved nothing replaced nothing, so the account it
+    began describes no replay for any later tick to finish.
     """
     log.info(
         "issue=#%d resolving_conflict: branch already up-to-date with %s/%s",
         ctx.issue.number, ctx.spec.remote_name, ctx.spec.base_branch,
     )
+    _evidence._forgets_the_replay(ctx.state)
     ctx.state.set(_state._REVIEW_ROUND, 0)
     ctx.state.set(_state._CONFLICT_ROUND, conflict_round + 1)
     _transitions._emit_conflict_round_incremented(

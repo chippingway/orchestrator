@@ -5,11 +5,11 @@
 An exemption names the exact commit a human adjudicated, and nothing else is
 exempt. That is the whole of its safety, and it is also what a workflow
 REWRITE breaks: a squash on approval collapses the accepted commit into a new
-object, and the refresh's own clean base rebase replays it onto a base that
-moved, so either way the identical contribution comes back on a commit nothing
-exempts -- and the gate, which recognizes a decided candidate by one commit
-and only it, would measure that object past the same ceiling and adjudicate
-the same change a second time.
+object, and a clean base rebase -- the refresh's own, or the one the conflict
+stage runs -- replays it onto a base that moved, so either way the identical
+contribution comes back on a commit nothing exempts. The gate, which
+recognizes a decided candidate by one commit and only it, would measure that
+object past the same ceiling and adjudicate the same change a second time.
 
 This record is what says the move is earned. It is written before anything
 reaches the remote and it moves NOTHING -- the exemption stays on the commit a
@@ -70,10 +70,12 @@ already carries.
 Read fail-closed, whole or not at all, like every other late record. A field
 that is missing, one that is not the shape it claims, a kind or a phase this
 build cannot account for, a digest taken under a scheme it does not compute, a
-stage no publication is entered from, and a record whose new commit is not the
-one the exemption currently names each read back as no authorization -- which
-costs a rollback the reversal and never lets one happen on evidence nobody can
-check.
+stage that does not make the kind recorded beside it, and a record whose new
+commit is not the one the exemption currently names each read back as no
+authorization -- which costs a rollback the reversal and never lets one happen
+on evidence nobody can check. The kind and the stage are held TOGETHER rather
+than one at a time, because each is a value this build knows and only the pair
+says whether the rewrite is one anything here produced.
 
 A WRITER asks something else, and it is the question the fail-closed reader
 cannot answer for it: whether a group standing here CLAIMS the commit this
@@ -90,6 +92,7 @@ so the write that clears a generation may take none of them.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
@@ -103,7 +106,7 @@ from orchestrator.workflow.late_split import (
 )
 from orchestrator.workflow.state import (
     WorkflowLabel,
-    publishes_onto_a_pull_request,
+    rebased_by_the_base_refresh,
 )
 
 
@@ -112,13 +115,23 @@ class LateRewriteKind(StrEnum):
 
     Bounded, and small on purpose: a member is a rewrite this workflow makes
     itself, over a checkout it is holding still, out of commits it can name
-    both ends of. Two are. The SQUASH a reviewer's approval earns collapses
-    the accepted commit into an object of the orchestrator's own making. The
-    clean automatic base REBASE the per-tick refresh publishes replays it onto
-    a base that moved -- the refresh holds a branch standing on an exempt
-    commit out of the rebase only while the stage that has to act on that
-    commit still has the issue, and past that handoff keeping the pushed head
-    in step with base is the PR-aware sync's own job.
+    both ends of. Three are, and two of them are rebases told apart by which
+    owner runs one. The SQUASH a reviewer's approval earns collapses the
+    accepted commit into an object of the orchestrator's own making. The
+    AUTO_CLEAN_REBASE the per-tick refresh publishes replays it onto a base
+    that moved -- the refresh holds a branch standing on an exempt commit out
+    of the rebase only while the stage that has to act on that commit still
+    has the issue, and past that handoff keeping the pushed head in step with
+    base is the PR-aware sync's own job. The CONFLICT_REBASE is the replay
+    `workflow:resolving_conflict` runs when a branch has stopped merging
+    cleanly, which is the one rebase that refresh never drives: it does not
+    own that label.
+
+    No member is a claim that the contribution survived. A rebase that
+    resolved content conflicts and a squash of work nobody adjudicated are
+    both a kind this build authorizes carrying evidence that fingerprints to
+    some other change, and the permit refuses them on the fingerprints rather
+    than on the kind.
 
     A wire string this build does not know is not a kind to widen the
     vocabulary for at read time. It is a record from another build or a hand
@@ -129,6 +142,59 @@ class LateRewriteKind(StrEnum):
 
     SQUASH = "squash"
     AUTO_CLEAN_REBASE = "auto_clean_rebase"
+    CONFLICT_REBASE = "conflict_rebase"
+
+
+# Which stages each kind is entered from, because the two fields are one claim
+# rather than two. A rewrite record says which rewrite this workflow made and
+# where it was made, and each half types perfectly on its own -- so a
+# `conflict_rebase` recorded against `validating`, or a `squash` against
+# `resolving_conflict`, passes every check asked a field at a time while
+# describing a rewrite that stage does not make. Believed, it carries a
+# human's verdict onto an object under a provenance nothing here can account
+# for, which is the one thing this domain may never do.
+#
+# Each set is what its producer really names. The SQUASH is the push a
+# reviewer's approval earns, made from `validating` and made there before the
+# approval handoff relabels. The CONFLICT_REBASE is the replay
+# `workflow:resolving_conflict` runs, and that owner spells its own label. The
+# AUTO_CLEAN_REBASE names whichever stage the refresh found the issue on, so
+# its set is the four that refresh drives -- and telling those from
+# `resolving_conflict` is exactly what keeps the two rebase kinds apart.
+#
+# Every member also publishes onto a pull request the remote already carries,
+# which is the predicate the entry a rewrite is made under was frozen against
+# -- so this is the narrower of the two questions and never admits a record
+# that one would refuse.
+_ENTERED_FROM: Mapping[LateRewriteKind, frozenset] = MappingProxyType({
+    LateRewriteKind.SQUASH: frozenset((WorkflowLabel.VALIDATING,)),
+    LateRewriteKind.CONFLICT_REBASE: frozenset(
+        (WorkflowLabel.RESOLVING_CONFLICT,),
+    ),
+})
+
+
+def entered_from(
+    kind: LateRewriteKind | None, stage: WorkflowLabel | None,
+) -> bool:
+    """Whether this stage is one that makes this kind of rewrite.
+
+    The cross-field question, asked in one place so the reader and the writer
+    cannot answer it differently -- and asked of the PAIR, since each field
+    alone is a value this build knows and only the two together say whether
+    the record describes a rewrite anything here produced.
+
+    The refresh's own rebase is asked of the stages that refresh DRIVES rather
+    than of a set spelled here, since what its evidence names is whichever of
+    them the issue was on when the base moved.
+
+    False for a kind this build does not authorize, which is the same answer
+    the kind's own check gives: there is no stage that makes a rewrite nothing
+    here knows how to make.
+    """
+    if kind == LateRewriteKind.AUTO_CLEAN_REBASE:
+        return rebased_by_the_base_refresh(stage)
+    return stage in _ENTERED_FROM.get(kind, frozenset())
 
 
 class LateRewriteProof(StrEnum):
@@ -480,10 +546,12 @@ def _bounded_terms(state: PinnedState) -> dict | None:
     or does not, and a record short of any of them is not one to act on.
 
     The stage is asked what it IS rather than merely whether it is a label,
-    and by the same predicate the entry the rewrite was made under was frozen
-    against: only the five states that push onto a pull request the remote
-    already carries. A record naming any other describes a publication this
-    workflow never enters one on.
+    and asked AGAINST THE KIND beside it: the two are one claim about which
+    rewrite this workflow made and where, so a record whose stage does not
+    make its kind is one nothing here produced however well each field types
+    on its own. That is narrower than the predicate the entry was frozen
+    against and admits nothing it would not, so a record this reads whole
+    still describes a publication the remote already carries.
     """
     kind = _payloads.as_member(LateRewriteKind, state.get(LATE_REWRITE_KIND))
     phase = _payloads.as_member(
@@ -498,7 +566,7 @@ def _bounded_terms(state: PinnedState) -> dict | None:
         return None
     if written != FINGERPRINT_FORMAT:
         return None
-    if not publishes_onto_a_pull_request(stage):
+    if not entered_from(kind, stage):
         return None
     return {
         "kind": kind,
@@ -588,10 +656,10 @@ def _unusable_terms(rewrite: LateRewrite, fingerprint: str) -> str:
             "a rewritten publication is not an identity "
             f"({type(rewrite.pr_number).__name__})"
         )
-    if not publishes_onto_a_pull_request(rewrite.source_stage):
+    if not entered_from(rewrite.kind, rewrite.source_stage):
         return (
-            "a rewrite source stage is not one a publication is entered from "
-            f"({type(rewrite.source_stage).__name__})"
+            f"a {rewrite.kind} rewrite is not one "
+            f"`{rewrite.source_stage}` makes"
         )
     named = (
         (rewrite.from_sha, _formats.COMMIT_LENGTHS),

@@ -20,6 +20,8 @@ from tests.workflow.patch_models import _agent
 from tests.workflow.patch_runner import _PatchedWorkflowMixin
 from tests.workflow.repo_values import (
     BACKEND_CLAUDE,
+    CONTRIBUTION_DIGEST,
+    FORK_POINT_SHA,
     MEASURED_CANDIDATE_SHA,
     STATE_OPEN,
 )
@@ -100,6 +102,16 @@ class _ConflictRunContext:
     # and zero, which is what an in-sync branch answers, so a case about a
     # probe that established nothing says so here.
     branch_divergence_readable: bool = True
+    # What the two contributions a replay sits between fingerprint to. One
+    # value answers both alike, which is the history-only rebase a transfer
+    # is granted for; a mapping keyed on the commit seeds them apart, which
+    # is what a replay that moved a byte reads as.
+    contribution_digest: Any = CONTRIBUTION_DIGEST
+    # Where each revision's branch forked from the base, which is the end each
+    # side of a rewrite record is read over. A mapping tells the pre-replay
+    # head's fork point from the replayed one's, and "" is the reading that
+    # did not happen.
+    fork_points: Any = FORK_POINT_SHA
 
 
 @dataclass(frozen=True)
@@ -181,6 +193,8 @@ def _run_conflict_merge(owner, github, issue, context):
             branch_divergence_readable=context.branch_divergence_readable,
             candidate_commit=context.candidate_commit,
             authed_fetch_result=context.authed_fetch_result,
+            contribution_digest=context.contribution_digest,
+            fork_points=context.fork_points,
         )
     return workflow_mocks, mocks.merge, mocks.git
 

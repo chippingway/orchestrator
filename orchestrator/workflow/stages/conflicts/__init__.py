@@ -21,7 +21,13 @@ a head the orchestrator itself recorded) is what `guards` proves and
 `divergence` leases the force-push against. `rebase` runs the rebase and emits
 the `merge_attempt` that records it; `publication` disposes of a clean one and
 hands real content conflicts to the dev; `resume` owns the three dev-resume
-entry points and `outcomes` what a finished run left behind.
+entry points and `outcomes` what a finished run left behind. `evidence` is what
+a clean rebase tells the size gate about the commit it replaced, so an
+adjudicated change is recognized in the object the replay produced rather than
+adjudicated a second time. Only that one publication reaches it: every other
+push here carries a commit somebody else made -- an agent's resolution, a
+rerouted fix, whatever an earlier tick left for the recovery -- and nothing
+readable off the branch tells those from a replay.
 
 `transitions` is separate because every exit that changes the issue's state
 shares one shape. A park is `_park_awaiting_human` plus the pinned-state write

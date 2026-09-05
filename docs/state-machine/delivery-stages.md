@@ -1543,7 +1543,9 @@ such pushes and no others:
 - the conflict resolution `conflicts/outcomes._finalize_conflict_resolution`;
 - the recovered-commit publication `conflicts/divergence._push_recovered_commits`, which ships a resolution an
   earlier tick committed and never pushed;
-- the clean-rebase publication `conflicts/publication._publish_clean_rebase` — those three, plus the body-edit resume
+- the clean-rebase publication `conflicts/publication._publish_clean_rebase` — the last of these is also the only
+  seam outside the squash that hands the gate a rewrite's before-state, since it is the only one that ran the
+  replay it is publishing — those three, plus the body-edit resume
   through the shared dev-fix seam, are what
   [`workflow:resolving_conflict`'s content updates](#content-updates-onto-the-pull-request-this-stage-already-has)
   are made of;
@@ -1590,6 +1592,42 @@ nothing else, while past the receipt the pull request carries the rewritten comm
 back. The squash is not the only rewrite decided on those terms: the per-tick base refresh publishes a clean rebase
 of the same branch once this stage has handed the issue on, and it hands the same gate the same evidence
 ([`labels-and-state.md#base-refresh`](labels-and-state.md#base-refresh)).
+
+The conflict stage's clean rebase is the third rewrite an exemption may ride, and it reaches it from the other end.
+That refresh does not drive `workflow:resolving_conflict`, so the replay a branch which has stopped merging cleanly
+needs is this stage's own — and so is the account of what it replaced. So
+`conflicts/publication._publish_clean_rebase` reads the pre-rebase head and the fork point that head's contribution
+was read over BEFORE the replay destroys both, and hands them to the gate through `conflicts/evidence`, which builds
+the record and decides nothing. That head is also the head the force-push is leased against, which is where this
+differs from the squash: there the collapsed head and the lease are two facts. The two contributions are read over
+two DIFFERENT fork points, because moving the base is the whole of what a rebase does, and `late_transfer` grants
+the permit only over everything above — including that the two fingerprint alike.
+
+The replay also writes itself DOWN, because the tick that runs one is not always the tick that publishes it. The
+head it is about to replace, that head's fork point, and the pull request it is being made against go onto the
+pinned comment before the rebase runs — the `conflict_replay_*` group in
+[`labels-and-state.md`](labels-and-state.md#pinned-state) — and the commit it produced is stamped on before the size
+gate is entered. That record is what a crash between the replay and the gate leaves behind, and the tick that finds
+it reads it twice. A replay moves the branch off the head it replayed, so the checkout comes back ahead of the pull
+request AND behind it — the shape `_guard_diverged_worktree` parks, since a stale branch carrying somebody else's
+commit reads the same. The record naming that head, that commit and that pull request is what lets it past, leasing
+the force-push to the pre-rebase head; then `conflicts/divergence._push_recovered_commits` reads it again for the
+evidence it hands the gate. It is read only where it is about the publication and the commit in hand: the pull
+request it names has to be the one the issue still records, the head it names has to be the head that push is leased
+against, and the commit it names has to be the one the checkout is standing on. The publication is on the record
+rather than read live because `pr_number` can be repointed in between, and a replay offered as a rewrite of some
+other open pull request standing on the same head would satisfy every check the permit makes.
+
+Nothing else this stage publishes presents evidence, and the reason is that nothing else can say what it is
+publishing. Every other push here carries a commit somebody ELSE made — a resolution an agent authored over
+conflicted files, the unpushed FIX commits the `fixing` dead-lock reroute sends over, a commit made on top of a
+replay — and no reading off the branch tells those from a replay. Being on base tells them apart least of all: that
+reroute fires on an on-base unpushed commit as readily as on a stale-base one, which is exactly why the record
+rather than a probe is what the recovery turns on. Past the grant the permission takes over: `late_transfer` falls
+back to it when a caller presents nothing and re-asks the whole permit over it. The dev-fix publications, the
+reviewer's fix loop, and the documentation pass are the same rule one stage over. All of them go through the
+ordinary cumulative gate — and a replay that changed a single covered byte joins them, since it fingerprints to a
+different contribution and earns the fresh late adjudication any oversized candidate is owed.
 
 A candidate whose count never came back keeps the rewrite too, and for the same reason read one step earlier: the
 freeze is durable and the diff is not, so a reading that fails leaves a live generation naming the **squash** with no
@@ -2514,16 +2552,19 @@ can fire.
 ### Content updates onto the pull request this stage already has
 
 Every commit this stage publishes joins a pull request the remote already carries, so all four of its changed-head
-publications pass the
-[size gate on a published pull request](#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr) before
-anything reaches the remote — `conflicts/publication._publish_clean_rebase` for a rebase that produced a new head,
+publications pass the [size gate on a published pull
+request](#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr) before anything reaches the remote —
+`conflicts/publication._publish_clean_rebase` for a rebase that produced a new head,
 `conflicts/outcomes._finalize_conflict_resolution` for a resolution an agent wrote (both the fresh conflict and the
 awaiting-human resume behind it), `conflicts/divergence._push_recovered_commits` for commits a crashed tick never
-pushed, and the body-edit resume in `conflicts/resume.py` through the shared dev-fix publication. What the gate counts
-is what the pull request would **come to** — three-dot from the base the *remote* names to the candidate — so the
-ceiling is cumulative and a two-line resolution onto an already-large branch is held exactly as a large one is.
-Growing a branch past `MAX_ADDED_LINES` one small conflict round at a time is the outcome that measurement exists to
-prevent.
+pushed, and the body-edit resume in `conflicts/resume.py` through the shared dev-fix publication. One of the four
+also hands the gate what it REPLACED, built by `conflicts/evidence`: the rebase is history this stage replayed
+itself, so an adjudicated change may be recognized in the object that replaced it rather than measured past the same
+ceiling twice. The other three hand in nothing, because none of them can say what the commit it is publishing is.
+What the gate counts is what the pull request would **come to** — three-dot from the base the *remote* names to the
+candidate — so the ceiling is cumulative and a two-line resolution onto an already-large branch is held exactly as a
+large one is. Growing a branch past `MAX_ADDED_LINES` one small conflict round at a time is the outcome that
+measurement exists to prevent.
 
 - **The lease stays this stage's.** Each of the four reads a head for itself and pins its force-push to it — the
   pre-rebase head for the fresh rebase and the resolution behind it, the tip the pull request was fetched at for the
