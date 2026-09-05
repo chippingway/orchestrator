@@ -536,16 +536,21 @@ deliberately no second `late_verdict`, which would read as a second adjudication
 twice.
 
 The base-refresh rewrite has one window a squash does not, and its own recovery closes it. The refresh pins a
-recovery anchor before git runs and the head the replay produced as soon as git has made it, so a process lost
-between the rebase and the grant comes back to a checkout it can prove is its own work, carrying a replay with *no*
-permission on the comment at all — nothing for the re-ask above to be asked over. That recovery
+recovery anchor before git runs and, as soon as git has made one, the replay it produced together with the pull
+request and stage it was produced for — so a process lost between the rebase and the grant comes back to a checkout
+it can prove is its own work, carrying a replay with *no* permission on the comment at all and nothing for the
+re-ask above to be asked over. That recovery
 re-derives the same evidence the dead tick would have assembled, from the record's own accepted pair, the head the
-checkout stands on, the base the remote names, and the pinned anchor as the lease, and hands it to the permit;
-without it, the replay of a change a human already ruled on is measured afresh and routed back into adjudication
-with the pull request open over the work. The recovery also owns the settlement where the push landed and only its
-receipt was lost, rather than relabelling and leaving it: the permit is scoped to the stage the rewrite was entered
-from, and the refresh's own route moves the issue to `workflow:validating`, so a settlement one tick later is
-refused on the stage alone. Every state neither of those covers — a permission this build cannot read, one naming
+checkout stands on, the base the remote names, the pinned anchor as the lease, and the publication that tick
+recorded — the last of those because terms taken from the issue as it reads now would compare today with today, and
+a relabel or a repoint made while the process was down would be adopted as the dead tick's own. Without any of it
+the replay of a change a human already ruled on is measured afresh and routed back into adjudication with the pull
+request open over the work. The recovery also owns the settlement where the push landed and only its receipt was
+lost, rather than relabelling and leaving it: the permit is scoped to the stage the rewrite was entered from, and
+the refresh's own route moves the issue to `workflow:validating`, so a settlement one tick later is refused on the
+stage alone. That settlement is taken on the permit ALONE — a refusal parks rather than falling through to the
+ordinary reading, which would either report a landed publication with the verdict unmoved or adjudicate the change
+a second time. Every state neither of those covers — a permission this build cannot read, one naming
 some other commit, a receipt nobody wrote, a debt nothing paid, a tree carrying uncommitted changes, a remote
 somebody moved — settles nothing and parks fail-closed rather than finishing the route, because the route clears
 the recovery anchor and the anchor is the only thing that brings the tick back to a verdict that may not have moved

@@ -17,6 +17,7 @@ from tests.git.base_sync.refresh_test_support import (
     REBASED_SHA,
     _diverged,
     _git_result,
+    _pending_attempt,
     _RemoteHeadGit,
     _SyncWorktreeWithBaseFixture,
 )
@@ -81,7 +82,7 @@ class CrashRecoverySuccessUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCa
 
     def test_crash_recovery_finishes_landed_push(self) -> None:
         self._seed_pr_issue(
-            pending_auto_base_rebase_push_sha=BEFORE_SHA,
+            **_pending_attempt(REBASED_SHA),
             review_round=3,
         )
         self._add_pr()

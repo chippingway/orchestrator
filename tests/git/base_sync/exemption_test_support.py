@@ -38,6 +38,7 @@ from orchestrator.git.measurement import (
 from orchestrator.git.measurement.models import (
     ContributionFingerprint,
     FrozenCommit,
+    MeasurementFailure,
 )
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
@@ -116,13 +117,19 @@ class Readings:
             BEFORE_SHA: BEFORE_SHA,
         }
         self.base = FrozenCommit(sha=REPLAYED_BASE_SHA)
+        # The commits this host turns out not to hold. A revision only ever
+        # resolves to itself here, so a case about an object the store lost
+        # says which one rather than removing an answer.
+        self.unheld: set = set()
         self.digests = {
             (ACCEPTED_BASE_SHA, BEFORE_SHA): ACCEPTED_DIGEST,
             (REPLAYED_BASE_SHA, AFTER_SHA): ACCEPTED_DIGEST,
         }
 
     def prove(self, _worktree, revision: str) -> FrozenCommit:
-        """The commit one revision names."""
+        """The commit one revision names, or the object this host has not."""
+        if revision in self.unheld:
+            return FrozenCommit(failure=MeasurementFailure.CANDIDATE_ABSENT)
         return FrozenCommit(sha=self.proved.get(revision, revision))
 
     def freeze(self, _spec, _worktree) -> FrozenCommit:

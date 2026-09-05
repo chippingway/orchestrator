@@ -41,6 +41,7 @@ from orchestrator.git.base_sync import (
 from orchestrator.git.base_sync.models import (
     _AutoRebaseRecoveryContext,
     _AutoRebaseRecoverySnapshot,
+    _PendingRewrite,
 )
 from orchestrator.git.base_sync.state import _PR_REFRESH_DETOUR_LABELS
 from orchestrator.git.verification import probes as verification_probes
@@ -51,6 +52,24 @@ from orchestrator.git.verification import probes as verification_probes
 _LOOSE_TREE = (
     "the worktree carries {count} uncommitted change(s), so the contribution "
     "the transfer would be settled over is not the one the pull request has"
+)
+
+_UNPROVEN_LANDING = (
+    "the pull request and the checkout agree on `{published}` and nothing "
+    "this attempt recorded names it, so the publication in front of this tick "
+    "is not one it can show it made"
+)
+
+_REFUSED_PERMIT = (
+    "the permit that would license the settlement refused this tick -- the "
+    "pull request, the stage, the checkout, the lease, or the two "
+    "contributions no longer agree with the permission on the comment, and "
+    "the orchestrator log names which"
+)
+
+_UNROTATED = (
+    "the push went out and the verdict did not move with it, so the "
+    "permission granted for `{published}` is still outstanding"
 )
 
 _REFUSED_NO_OP = (
@@ -72,9 +91,9 @@ _RECOVERY_SIGNATURE = inspect.Signature((
         inspect.Parameter.KEYWORD_ONLY,
     ),
     inspect.Parameter(
-        "pending_rewrite_sha",
+        "pending_rewrite",
         inspect.Parameter.KEYWORD_ONLY,
-        default="",
+        default=_PendingRewrite(),
     ),
     inspect.Parameter("behind", inspect.Parameter.KEYWORD_ONLY, default=0),
     inspect.Parameter(
@@ -182,8 +201,15 @@ def _finish_published_recovery(
     buys is the receipt, the paid debt, and the rotation riding one durable
     write -- proved at the remote rather than read off a local note.
 
-    Every other handoff is asked whether the pinned comment ACCOUNTS for the
-    rewrite the pull request carries, and only an accounted one is finished.
+    Both roads are asked one thing first: whether the commit the pull request
+    and the checkout agree on is the replay this attempt recorded making. They
+    agreeing proves only that they agree -- somebody who moved the branch and
+    the remote together leaves exactly this shape -- and finishing there drops
+    the anchor that is the only thing bringing this recovery back.
+
+    Every other handoff is then asked whether the pinned comment ACCOUNTS for
+    the rewrite the pull request carries, and only an accounted one is
+    finished.
     An issue carrying no verdict always is, which is the ordinary interrupted
     rebase and the whole of what this road used to be. One whose transfer
     settled, or whose replay the ordinary cumulative gate published, is
@@ -193,11 +219,16 @@ def _finish_published_recovery(
     one thing that brings this recovery back and leave the next tick to
     measure an adjudicated change as a fresh candidate.
     """
+    landed = recovery_snapshot.local_head or ""
+    if not context.pending_rewrite.names(landed):
+        return outcomes._park_unfinished_recovery(
+            context, recovery_snapshot,
+            _UNPROVEN_LANDING.format(published=landed or "an unreadable head"),
+        )
     if carried == transfers._Handoff.OUTSTANDING:
         return _settles_the_landed_rewrite(context, recovery_snapshot)
     unaccounted = transfers._unaccounted_publication(
-        context.state, recovery_snapshot.local_head or "",
-        context.pending_pre_rebase_sha, carried,
+        context.state, landed, context.pending_pre_rebase_sha, carried,
     )
     if unaccounted:
         return outcomes._park_unfinished_recovery(
@@ -249,6 +280,23 @@ def _settle_published_recovery(
     outstanding -- this issue's own push having landed, with only the receipt
     behind it lost.
 
+    Asked of the PERMIT before the gate, and refused rather than measured.
+    The gate's own fallback for a permit that declines is the ordinary
+    cumulative reading -- which is the right answer for a rebase deciding
+    whether to publish, and the wrong one here twice over. A count under the
+    ceiling would report this call as a landed publication and let the route
+    finish with the permission still outstanding and the verdict still on the
+    commit a human ruled on; a count over it would route an adjudicated change
+    into a second adjudication with the pull request already carrying the
+    work. There is nothing to measure on this road at all: the remote has the
+    commit, and the only question is whether the permission may be spent.
+
+    Asked again on the far side, because a permit that granted before the
+    gate is not proof the settlement happened: the terms are re-read inside,
+    and anything that moved in between leaves the push landed and the verdict
+    where it was. The rotation itself is the answer, so it is read off the
+    record rather than assumed.
+
     A refused push is the one thing that can still go wrong, and it is a
     remote that moved between this tick's fetch and the request. Nothing is
     reset for it: the checkout is standing on the commit the pull request was
@@ -256,6 +304,11 @@ def _settle_published_recovery(
     branch off work the remote has. The anchor stays pinned, the issue parks,
     and the next recovery classifies the remote afresh.
     """
+    landed = recovery_snapshot.local_head or ""
+    if not transfers._permits_the_settlement(context, landed):
+        return outcomes._park_unfinished_recovery(
+            context, recovery_snapshot, _REFUSED_PERMIT,
+        )
     records = publication._gate_records()
     published = publication._gated_publication()._publishes(
         records._gate(
@@ -265,7 +318,7 @@ def _settle_published_recovery(
         recovery_snapshot.branch,
         records._Entered(
             head=context.pending_pre_rebase_sha or "", reconciling=True,
-            candidate=recovery_snapshot.local_head or "",
+            candidate=landed,
         ),
     )
     if published.held:
@@ -274,6 +327,10 @@ def _settle_published_recovery(
     if not published.landed:
         return outcomes._park_unfinished_recovery(
             context, recovery_snapshot, _REFUSED_NO_OP,
+        )
+    if not transfers._rotated_onto(context.state, landed):
+        return outcomes._park_unfinished_recovery(
+            context, recovery_snapshot, _UNROTATED.format(published=landed),
         )
     return outcomes._finalize_already_published_recovery(
         context, recovery_snapshot,
@@ -330,6 +387,14 @@ def _route_recovery_snapshot(
     itself recorded: the anchor the remote must still be standing on, and the
     replay the checkout must still be.
 
+    A remote the RECORD says has already carried this replay is refused
+    before anything is pushed at it. The receipt behind a landed push, and the
+    settled transfer that rides the same write, are both claims that the pull
+    request had this commit -- so a pull request that no longer does was rolled
+    back by somebody, and the anchor the retry would lease against is exactly
+    the head they rolled it back to. The lease would be satisfied and the
+    rollback overwritten, which is the one thing a lease exists to stop.
+
     A record nobody can vouch for is refused before either road that would
     publish anything. Left to the ordinary gate, a damaged transfer group over
     an adjudicated commit is measured afresh, sent past the same ceiling, and
@@ -349,6 +414,31 @@ def _route_recovery_snapshot(
     carried = transfers._carried_by(context.state, completed.local_head)
     if completed.local_head and completed.local_head == completed.remote_head:
         return _finish_published_recovery(context, completed, carried)
+    return _route_an_unpublished_head(context, completed, carried)
+
+
+def _route_an_unpublished_head(
+    context: _AutoRebaseRecoveryContext,
+    completed: _AutoRebaseRecoverySnapshot,
+    carried: transfers._Handoff,
+) -> bool:
+    """Route a checkout the pull request is not standing on.
+
+    Three refusals before the one road that pushes, in the order the evidence
+    for them costs nothing to read. A remote the record says already carried
+    this replay has been rolled back by somebody, and the anchor a retry would
+    lease against is the head they rolled it back to. A record nobody can
+    vouch for would reach the ordinary cumulative gate and send an adjudicated
+    change into a second adjudication. And a checkout this attempt cannot show
+    it produced is not one to force-push under a lease every rebuilt worktree
+    and every operator reset satisfies just as well.
+
+    What is left is the retry the anchor exists for, and -- for a remote
+    neither pinned head accounts for -- the counts, which answer the question
+    they were always about.
+    """
+    if transfers._rolled_back_publication(context, completed, carried):
+        return outcomes._park_rolled_back_recovery(context, completed)
     if carried == transfers._Handoff.UNVOUCHED:
         return outcomes._park_unvouched_recovery(context, completed)
     if _is_this_attempts_rewrite(context, completed):
@@ -379,8 +469,7 @@ def _is_this_attempts_rewrite(
     """
     if completed.remote_head != context.pending_pre_rebase_sha:
         return False
-    recorded = context.pending_rewrite_sha
-    return bool(recorded) and recorded == completed.local_head
+    return context.pending_rewrite.names(completed.local_head)
 
 
 def _route_a_moved_remote(

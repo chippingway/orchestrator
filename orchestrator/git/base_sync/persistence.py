@@ -26,7 +26,9 @@ from orchestrator.git.base_sync.state import (
     _AWAITING_HUMAN,
     _PARK_REASON,
     _PENDING_PUSH_SHA,
+    _PENDING_REWRITE_PR,
     _PENDING_REWRITE_SHA,
+    _PENDING_REWRITE_STAGE,
     _REVIEW_ROUND,
     log,
 )
@@ -34,21 +36,32 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.state import WorkflowLabel, stage_name
 
+# Everything one auto-rebase attempt puts on the pinned comment, so the step
+# that ends it drops the whole record rather than the field it happens to
+# name.
+_ATTEMPT_KEYS = (
+    _PENDING_PUSH_SHA,
+    _PENDING_REWRITE_SHA,
+    _PENDING_REWRITE_PR,
+    _PENDING_REWRITE_STAGE,
+)
+
 
 def _clears_the_attempt(state: PinnedState) -> None:
     """Drop the whole record of one auto-rebase attempt.
 
-    The anchor and the head the replay produced are one record and are
-    dropped as one: the anchor alone would bring a later tick back to an
-    attempt it cannot prove the checkout belongs to, and the head alone names
-    a commit nothing is leased to publish. Every step that ends an attempt --
-    the reset that puts the branch back, the no-op that moved nothing, the
-    relabel that takes the issue out of the refresh's reach, and the finalize
-    that publishes -- goes through here rather than spelling one field, so a
-    road that forgets the second cannot exist.
+    The anchor, the head the replay produced, and the publication it was
+    produced for are one record and are dropped as one: the anchor alone would
+    bring a later tick back to an attempt it cannot prove the checkout belongs
+    to, and the rest names a commit and a pull request nothing is leased to
+    publish onto. Every step that ends an attempt -- the reset that puts the
+    branch back, the no-op that moved nothing, the relabel that takes the issue
+    out of the refresh's reach, and the finalize that publishes -- goes through
+    here rather than spelling one field, so a road that forgets a member cannot
+    exist.
     """
-    state.set(_PENDING_PUSH_SHA, None)
-    state.set(_PENDING_REWRITE_SHA, None)
+    for key in _ATTEMPT_KEYS:
+        state.set(key, None)
 
 
 def _park_auto_rebase_failure(

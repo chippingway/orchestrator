@@ -25,12 +25,14 @@ reset they always had.
 """
 from __future__ import annotations
 
+import itertools
 import unittest
 
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     rewrites as _rewrites,
 )
+from orchestrator.workflow.state import WorkflowLabel
 from tests.git.base_sync.exemption_test_support import (
     EVENT_MEASUREMENT,
     EVENT_TRANSFER,
@@ -56,6 +58,8 @@ from tests.git.base_sync.refresh_test_support import (
     PARK_FAILED,
     PARK_PUSH_FAILED,
     RESET_COMMAND,
+    FakePRRef,
+    _patched,
 )
 from tests.workflow.fixtures import LABEL_DECOMPOSING
 
@@ -81,9 +85,15 @@ HARDENED_PATCH = "hardened"
 KEY_PUBLISHED_SHA = "implementing_published_sha"
 KEY_PUBLISHED_LEASE = "implementing_published_lease"
 
-# The head the attempt recorded as its own replay, dropped by the same write
-# that drops the anchor beside it.
+# What the attempt recorded about its own replay, dropped by the same write
+# that drops the anchor beside it: the head it produced, and the publication
+# it produced it for.
 KEY_PENDING_REWRITE_SHA = "pending_auto_base_rebase_rewrite_sha"
+KEY_PENDING_REWRITE_PR = "pending_auto_base_rebase_rewrite_pr"
+
+# A second open pull request on the same branch, for the case where the issue
+# is repointed at one the interrupted rewrite was never made against.
+REPOINTED_PR_NUMBER = 43
 
 # The field a hand edit takes out of the identity group, leaving an exemption
 # whose contribution nothing can name.
@@ -92,6 +102,32 @@ DAMAGED_IDENTITY_FIELD = "late_exempt_fingerprint"
 # A lease no reader can hold to a commit, and one naming a head this attempt
 # was never pinned to.
 MALFORMED_LEASE = "not-a-commit"
+
+# The pinned field an issue's own publication is recorded under, and what a
+# client that cannot answer for the issue raises.
+KEY_PR_NUMBER = "pr_number"
+GET_ISSUE = "get_issue"
+UNREADABLE_ISSUE = "the issue could not be read again"
+
+
+class _ReadableOnce:
+    """A client that answers for the issue once and refuses after that.
+
+    The refresh reads the issue to find the worktree it is about, and the
+    permit re-reads it before it will carry a human's verdict anywhere. Only
+    the second read is what a case about an unconfirmable owner is seeding, so
+    the first is left alone rather than the whole client being taken away.
+    """
+
+    def __init__(self, readable) -> None:
+        self._readable = readable
+        self._reads = itertools.count()
+
+    def __call__(self, number: int):
+        """Answer the tick's own read, and refuse every one behind it."""
+        if next(self._reads):
+            raise RuntimeError(UNREADABLE_ISSUE)
+        return self._readable(number)
 
 
 class _ResumedRebaseCase(_CleanRebaseCase):
@@ -103,7 +139,7 @@ class _ResumedRebaseCase(_CleanRebaseCase):
 
     def _assert_finished_the_route(self, method: str) -> None:
         """The anchor is gone, the round is reset, and review has the head."""
-        pinned = self.gh.pinned_data(ISSUE)
+        pinned = self._pinned()
         self.assertIsNone(pinned[KEY_PENDING_PUSH_SHA])
         self.assertEqual(pinned[KEY_REVIEW_ROUND], 0)
         self.assertIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
@@ -119,6 +155,17 @@ class _ResumedRebaseCase(_CleanRebaseCase):
             _rewrites.LateRewritePhase.PUBLISHED,
         )
         self.assertEqual(len(self._events_of(EVENT_TRANSFER)), 1)
+
+    def _pinned(self) -> dict:
+        """The pinned comment as the fake client stores it."""
+        return self.gh.pinned_data(ISSUE)
+
+    def _resets_of(self, resumed) -> list:
+        """Every hard reset the hardened git seam was asked for this tick."""
+        return [
+            recorded for recorded in resumed[HARDENED_PATCH].call_args_list
+            if recorded.args[:2] == (RESET_COMMAND, HARD_RESET_FLAG)
+        ]
 
     def _assert_nothing_readjudicated(self) -> None:
         """No agent, no reading, and no second question for a human."""
@@ -257,7 +304,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
         self.assertFalse(_rewrites.carries_rewrite_authorization(durable))
         self.assertEqual(
-            self.gh.pinned_data(ISSUE)[KEY_PARK_REASON], PARK_PUSH_FAILED,
+            self._pinned()[KEY_PARK_REASON], PARK_PUSH_FAILED,
         )
 
     def test_an_unreadable_permission_holds_the_route(self) -> None:
@@ -298,7 +345,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
 
         resumed = self._resumes(remote_head=AFTER_SHA, push=False)
 
-        pinned = self.gh.pinned_data(ISSUE)
+        pinned = self._pinned()
         self.assertEqual(pinned[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
         self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
         self.assertEqual(self._resets_of(resumed), [])
@@ -387,13 +434,6 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         # push made from some other attempt.
         self._assert_undatable_receipt_holds(FOREIGN_SHA)
 
-    def _resets_of(self, resumed) -> list:
-        """Every hard reset the hardened git seam was asked for this tick."""
-        return [
-            recorded for recorded in resumed[HARDENED_PATCH].call_args_list
-            if recorded.args[:2] == (RESET_COMMAND, HARD_RESET_FLAG)
-        ]
-
     def _damages_the_permission(self) -> None:
         """Take one field out of the group the grant left on the comment."""
         issue = self.gh._issues[ISSUE]
@@ -435,7 +475,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(len(self._resets_of(resumed)), 1)
         self._assert_nothing_readjudicated()
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
-        pinned = self.gh.pinned_data(ISSUE)
+        pinned = self._pinned()
         self.assertIsNone(pinned[KEY_PENDING_PUSH_SHA])
         self.assertIsNone(pinned[KEY_PENDING_REWRITE_SHA])
         self.assertEqual(pinned[KEY_PARK_REASON], PARK_FAILED)
@@ -465,7 +505,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         self._assert_nothing_readjudicated()
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
         self.assertEqual(self._resets_of(resumed), [])
-        pinned = self.gh.pinned_data(ISSUE)
+        pinned = self._pinned()
         self.assertEqual(pinned[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
         self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
         self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
@@ -473,3 +513,182 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RolledBackRemoteTest(_ResumedRebaseCase, unittest.TestCase):
+    """The remote somebody put back after this attempt's push had landed."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._crashes_before_the_route()
+        # The pull request is back on the head the rebase found it on, which
+        # is the very commit a reissued push would lease itself against.
+        self.resumed = self._resumes(remote_head=BEFORE_SHA, diverged=(1, 1))
+
+    def test_nothing_is_pushed_over_the_rollback(self) -> None:
+        self.resumed[PUSH_PATCH].assert_not_called()
+        self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
+
+    def test_the_branch_goes_back_where_the_remote_is(self) -> None:
+        # The externally moved remote's own answer: HEAD onto the anchor the
+        # pull request is standing on, the anchor dropped with it, and a human
+        # asked which of the two heads the branch is supposed to be on.
+        self.assertEqual(len(self._resets_of(self.resumed)), 1)
+        pinned = self._pinned()
+        self.assertIsNone(pinned[KEY_PENDING_PUSH_SHA])
+        self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
+
+    def test_the_settled_verdict_is_left_alone(self) -> None:
+        # The transfer is over: the write that receipted it moved the
+        # exemption, and a rollback nobody here made is not this recovery's
+        # to undo.
+        durable = self._durable()
+        self.assertTrue(_exemption.is_exempt(durable, AFTER_SHA))
+        self.assertEqual(
+            _rewrites.read_rewrite_authorization(durable).phase,
+            _rewrites.LateRewritePhase.PUBLISHED,
+        )
+        self.assertEqual(len(self._events_of(EVENT_TRANSFER)), 1)
+
+
+class UnprovenLandingTest(_ResumedRebaseCase, unittest.TestCase):
+    """A remote and a checkout that agree on a commit nothing recorded."""
+
+    def test_a_mismatched_record_holds_the_route(self) -> None:
+        # Both refs moved together while the pending record still names the
+        # replay this attempt made. They agreeing proves only that they agree.
+        self._crashes_before_the_route()
+        self._repoints_the_rewrite(FOREIGN_SHA)
+
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        resumed[PUSH_PATCH].assert_not_called()
+        self._assert_held_for_a_human(resumed)
+
+    def test_a_malformed_record_holds_the_route(self) -> None:
+        # A pull request number no reader can hold to an identity leaves the
+        # record unreadable as a whole, and an unreadable record vouches for
+        # no publication at all.
+        self._crashes_before_the_route()
+        self._edited(lambda state: state.set(KEY_PENDING_REWRITE_PR, "forty"))
+
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        resumed[PUSH_PATCH].assert_not_called()
+        self._assert_held_for_a_human(resumed)
+
+    def _repoints_the_rewrite(self, sha: str) -> None:
+        """Leave the pending record naming a replay this attempt never made."""
+        self._edited(lambda state: state.set(KEY_PENDING_REWRITE_SHA, sha))
+
+    def _edited(self, edit) -> None:
+        """Apply one hand edit to the pinned comment, durably."""
+        issue = self.gh._issues[ISSUE]
+        state = self.gh.read_pinned_state(issue)
+        edit(state)
+        self.gh.write_pinned_state(issue, state)
+
+    def _assert_held_for_a_human(self, resumed) -> None:
+        """The anchor stands, HEAD is where it was, and the route is unfinished."""
+        self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        pinned = self._pinned()
+        self.assertEqual(pinned[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
+        self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
+        self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
+
+
+class RefusedSettlementTest(_ResumedRebaseCase, unittest.TestCase):
+    """The permit is the whole of what may settle a landed rewrite."""
+
+    def test_a_relabelled_issue_refuses(self) -> None:
+        # The rewrite was entered from the stage the record names, and a
+        # publication made under one stage may not be settled under another.
+        self._crashes_before_the_push()
+        self.gh.set_workflow_label(
+            self.gh._issues[ISSUE], WorkflowLabel.DOCUMENTING,
+        )
+
+        self._assert_refuses()
+
+    def test_a_repointed_publication_refuses(self) -> None:
+        # The issue now records some other pull request, so the permission on
+        # the comment describes a publication this call is not entered on.
+        self._crashes_before_the_push()
+        self._repoints_the_pull_request()
+
+        self._assert_refuses()
+
+    def test_an_unreadable_owner_refuses(self) -> None:
+        # A transfer carries a human's verdict forward without re-asking a
+        # human anything, so the issue is re-read for it -- and a read that
+        # established nothing settles nothing.
+        self._crashes_before_the_push()
+        self._unreadable_after_the_tick_opens()
+
+        self._assert_refuses()
+
+    def test_an_unheld_lease_refuses(self) -> None:
+        # The head the push was leased against is the one end nothing else
+        # here reads as an object, and an id this host cannot peel is evidence
+        # nobody can check.
+        self._crashes_before_the_push()
+        self.reading.unheld.add(BEFORE_SHA)
+
+        self._assert_refuses()
+
+    def _repoints_the_pull_request(self) -> None:
+        """Record a different open pull request on the same branch."""
+        self._add_pr(
+            pr_number=REPOINTED_PR_NUMBER,
+            head=FakePRRef(sha=AFTER_SHA),
+        )
+        issue = self.gh._issues[ISSUE]
+        state = self.gh.read_pinned_state(issue)
+        state.set(KEY_PR_NUMBER, REPOINTED_PR_NUMBER)
+        self.gh.write_pinned_state(issue, state)
+
+    def _unreadable_after_the_tick_opens(self) -> None:
+        """Let the refresh find the issue and refuse every read behind it."""
+        _patched(self, self.gh, GET_ISSUE, _ReadableOnce(self.gh.get_issue))
+
+    def _assert_refuses(self) -> None:
+        """Nothing is pushed, nothing rotates, and the route is unfinished."""
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        resumed[PUSH_PATCH].assert_not_called()
+        durable = self._durable()
+        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
+        self.assertEqual(
+            _rewrites.read_rewrite_authorization(durable).phase,
+            _rewrites.LateRewritePhase.AUTHORIZED,
+        )
+        self.assertEqual(self._events_of(EVENT_TRANSFER), [])
+        self._assert_nothing_readjudicated()
+        self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        self.assertEqual(
+            self._pinned()[KEY_PENDING_PUSH_SHA], BEFORE_SHA,
+        )
+
+
+class RecordedProvenanceTest(_ResumedRebaseCase, unittest.TestCase):
+    """The terms a re-derived rewrite is decided on are the dead tick's own."""
+
+    def test_a_relabel_is_not_the_dead_ticks_stage(self) -> None:
+        # The crash came before the grant, so the recovery re-derives the
+        # evidence -- and the stage it names is the one the attempt recorded
+        # rather than the one the issue happens to carry now. Read the other
+        # way the permit would compare today with today and wave through a
+        # publication the rewrite was never entered on.
+        self._crashes_before_the_grant()
+        self.gh.set_workflow_label(
+            self.gh._issues[ISSUE], WorkflowLabel.DOCUMENTING,
+        )
+
+        self._resumes()
+
+        self.assertEqual(len(self._events_of(EVENT_MEASUREMENT)), 1)
+        self.assertEqual(self._events_of(EVENT_TRANSFER), [])
+        durable = self._durable()
+        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
+        self.assertFalse(_rewrites.carries_rewrite_authorization(durable))

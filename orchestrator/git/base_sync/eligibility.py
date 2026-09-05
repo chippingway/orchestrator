@@ -23,32 +23,17 @@ from orchestrator.git.base_sync import persistence, recovery
 from orchestrator.git.base_sync.models import (
     _AutoRebaseContext,
     _AutoRebaseDecision,
+    _pending_rewrite,
 )
 from orchestrator.git.base_sync.state import (
     _AUTO_REBASE_PARK_REASONS,
     _AWAITING_HUMAN,
     _PARK_REASON,
-    _PENDING_REWRITE_SHA,
     _PR_REFRESH_DETOUR_LABELS,
     log,
 )
 from orchestrator.git.verification import probes as verification_probes
 from orchestrator.github.comments import filter_trusted
-
-
-def _pending_rewrite(context: _AutoRebaseContext) -> str:
-    """The head the interrupted attempt recorded as its own replay, or "".
-
-    Read here rather than derived on the recovery context, because this is the
-    compatibility boundary the flat argument list is spelled at and the
-    recovery is entered from both of the gates below. Empty is the answer for
-    an attempt that died between git returning and the write that records it,
-    which is the one window with no provenance to check -- and for a value a
-    hand edit left in some other shape, which proves nothing about a commit
-    and is compared against one.
-    """
-    recorded = context.state.get(_PENDING_REWRITE_SHA)
-    return recorded if isinstance(recorded, str) else ""
 
 
 def _auto_rebase_label_is_eligible(context: _AutoRebaseContext) -> bool:
@@ -65,7 +50,7 @@ def _auto_rebase_label_is_eligible(context: _AutoRebaseContext) -> bool:
             pr_number=context.pr_number,
             label=context.label,
             pending_pre_rebase_sha=str(context.pending_pre_rebase_sha),
-            pending_rewrite_sha=_pending_rewrite(context),
+            pending_rewrite=_pending_rewrite(context.state),
         )
     log.debug(
         "issue=#%d behind %s/%s by %d but label=%r; not auto-rebasing",
@@ -183,7 +168,7 @@ def _auto_rebase_recovery_decision(
         pr_number=context.pr_number,
         label=context.label,
         pending_pre_rebase_sha=str(context.pending_pre_rebase_sha),
-        pending_rewrite_sha=_pending_rewrite(context),
+        pending_rewrite=_pending_rewrite(context.state),
         behind=context.behind,
         unparking_consumed_max=consumed_comment_id,
     ):

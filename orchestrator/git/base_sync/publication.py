@@ -34,7 +34,9 @@ from __future__ import annotations
 from orchestrator.git.base_sync import guards, persistence, transfers
 from orchestrator.git.base_sync.models import _AutoRebaseContext
 from orchestrator.git.base_sync.state import (
+    _PENDING_REWRITE_PR,
     _PENDING_REWRITE_SHA,
+    _PENDING_REWRITE_STAGE,
     _REVIEW_ROUND,
     log,
 )
@@ -91,12 +93,22 @@ def _record_the_rewrite(
     falls back to what it always did: a strictly-ahead branch is a
     fast-forward the anchor lease loses nothing to, and a divergent one parks.
 
+    The publication goes down with it, and for a reason the head alone does
+    not cover. The permit re-asked on the tick after a crash checks the pull
+    request and the stage the rewrite was made against; evidence re-derived
+    from whatever the issue says THEN would compare today with today, and a
+    relabel or a repoint made while the process was down would be adopted as
+    the dead tick's own terms. Recorded here, the disagreement is visible and
+    the permit refuses it.
+
     Written beside the anchor rather than in place of it, because the two
     answer different questions -- which head the push is leased against, and
-    which head it publishes -- and they are dropped together by the one step
-    that ends the attempt.
+    what it publishes onto which publication -- and they are dropped together
+    by the one step that ends the attempt.
     """
     context.state.set(_PENDING_REWRITE_SHA, after_sha)
+    context.state.set(_PENDING_REWRITE_PR, context.pr_number)
+    context.state.set(_PENDING_REWRITE_STAGE, str(context.label))
     context.gh.write_pinned_state(context.issue, context.state)
 
 

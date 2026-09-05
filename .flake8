@@ -20,10 +20,12 @@ per-file-ignores =
     orchestrator/observability/usage/__init__.py:WPS412,WPS410
     orchestrator/observability/analytics/recording/__init__.py:WPS412,WPS410
     orchestrator/runtime/exclusion.py:WPS202
+    orchestrator/git/base_sync/models.py:WPS202
     orchestrator/git/base_sync/outcomes.py:WPS202
     orchestrator/git/base_sync/persistence.py:WPS202
     orchestrator/git/base_sync/recovery.py:WPS202
     orchestrator/git/base_sync/refresh.py:WPS202
+    orchestrator/git/base_sync/transfers.py:WPS201,WPS202
     orchestrator/git/snapshots/refs.py:WPS202
     orchestrator/workflow/state.py:WPS202
     orchestrator/workflow/late_split/exemption.py:WPS202
@@ -115,10 +117,10 @@ per-file-ignores =
     tests/git/test_ref_transport.py:WPS202
     tests/git/base_sync/exemption_test_support.py:WPS214
     tests/git/base_sync/journey_git_support.py:WPS201,WPS214
-    tests/git/base_sync/recovery_git_support.py:WPS214
+    tests/git/base_sync/recovery_git_support.py:WPS201,WPS214
     tests/git/base_sync/test_real_git_journey.py:WPS214
     tests/git/base_sync/test_recovery_real_git.py:WPS214
-    tests/git/base_sync/test_recovery_exemption.py:WPS214
+    tests/git/base_sync/test_recovery_exemption.py:WPS202,WPS214
     tests/git/publication/squash_recovery_support.py:WPS202
     tests/git/worktrees/artifact_test_support.py:WPS214
     tests/git/worktrees/candidate_host_test_support.py:WPS202,WPS214

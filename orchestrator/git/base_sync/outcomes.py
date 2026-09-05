@@ -5,9 +5,9 @@
 One interrupted auto-rebase resolves into exactly one of these: the rewrite
 was already published, the comparison is unclassifiable, the remote moved
 out of band, the worktree is dirty, the reissued push failed, the pinned
-comment claims an exemption or a transfer nobody can read whole, or a rewrite
-the pull request already carries is one this tick cannot finish the route
-behind.
+comment claims an exemption or a transfer nobody can read whole, the remote
+was rolled back off a replay the record says it carried, or a rewrite the pull
+request already carries is one this tick cannot finish the route behind.
 Each one either finalizes through ``persistence`` or parks, so keeping them
 in one owner is what makes the set enumerable -- an outcome that neither
 routed nor parked would leave the issue holding an anchor no later tick can
@@ -312,5 +312,53 @@ def _park_unvouched_recovery(
             "retry."
         ),
         reason=_REASON_AUTO_BASE_REBASE_FAILED,
+    )
+    return True
+
+
+def _park_rolled_back_recovery(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Restore the anchor when the remote was rolled back off this replay.
+
+    The record says the pull request carried the commit on this checkout --
+    a receipt naming it, or a transfer that settled on the write behind one --
+    and the remote is not standing on it now. Somebody moved the branch back,
+    and where they moved it to is very often the pre-rebase anchor itself,
+    which is the head a reissued force-push would be leased against. That
+    lease would be satisfied, the push would land, and the rollback would be
+    gone -- the one outcome a lease exists to prevent, reached by a recovery
+    mistaking somebody's undo for its own unfinished work.
+
+    So it is the externally moved remote it is: HEAD goes back onto the anchor
+    so the checkout matches what the pull request has, the anchor is dropped
+    with it, and the issue parks for a human to say which of the two heads the
+    branch is supposed to be on.
+    """
+    local_short = (recovery_snapshot.local_head or "")[:8]
+    remote_short = (recovery_snapshot.remote_head or "")[:8]
+    log.warning(
+        "issue=#%d auto-rebase recovery: the pinned comment records %s as "
+        "published and PR #%d stands on %s; treating the branch as rolled "
+        "back out of band rather than force-pushing over it",
+        context.issue.number, local_short, context.pr_number, remote_short,
+    )
+    persistence._reset_clear_and_park(
+        context,
+        context.pending_pre_rebase_sha,
+        message=(
+            f"{config.HITL_MENTIONS} crash recovery for PR "
+            f"#{context.pr_number}: this issue's pinned comment records "
+            f"`{local_short}` as already pushed, and the pull request is "
+            f"standing on `{remote_short}` instead -- the branch was rolled "
+            "back or moved out of band while the orchestrator was down. "
+            "Reissuing the interrupted push would be leased against the very "
+            "head it was rolled back to and would overwrite it, so nothing "
+            "was pushed and HEAD has been reset to the pre-rebase SHA. "
+            "Investigate the remote branch and reply on this issue with "
+            "anything once it is reconciled."
+        ),
+        reason=_REASON_AUTO_BASE_REBASE_PUSH_FAILED,
     )
     return True

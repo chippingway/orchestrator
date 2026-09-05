@@ -33,15 +33,27 @@ _CONFLICT_ROUND = "conflict_round"
 
 _PENDING_PUSH_SHA = "pending_auto_base_rebase_push_sha"
 
-# The head the replay left, recorded once git has produced it and before the
-# gate is entered. The anchor beside it says which head the push is leased
-# against and brings an interrupted attempt back; this says which local commit
-# that attempt made, which is the one thing the anchor cannot prove. A rebase
-# REPLAYS the branch, so the checkout diverges from the head the pull request
-# carries -- and a recovery that read the divergence alone as its own work
-# would force-push whatever the checkout had become over the candidate on the
-# remote, under a lease the anchor satisfies.
+# What the attempt produced and what it produced it against, recorded once git
+# has made the replay and before the gate is entered. The anchor beside them
+# says which head the push is leased against and brings an interrupted attempt
+# back; these say which local commit that attempt made and which publication
+# it made it for, and neither is a thing the anchor can prove.
+#
+# The head is what stops a checkout nothing here made being force-pushed over
+# the candidate: a rebase REPLAYS the branch, so the divergence a replay
+# leaves is the same shape a rebuilt worktree, an operator's reset, and a
+# branch pointed at other work leave, and all of them satisfy the same lease.
+#
+# The publication is what keeps the permit's own checks honest on the tick
+# after a crash. Re-derived evidence that took the pull request and the stage
+# from whatever the issue says NOW would compare today against today, and a
+# relabel or a repoint made while the process was down would be adopted as
+# though the dead tick had made its rewrite under it.
 _PENDING_REWRITE_SHA = "pending_auto_base_rebase_rewrite_sha"
+
+_PENDING_REWRITE_PR = "pending_auto_base_rebase_rewrite_pr"
+
+_PENDING_REWRITE_STAGE = "pending_auto_base_rebase_rewrite_stage"
 
 _REASON_AUTO_BASE_REBASE_FAILED = "auto_base_rebase_failed"
 

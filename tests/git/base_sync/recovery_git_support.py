@@ -22,6 +22,7 @@ from unittest import mock
 from orchestrator import config
 from orchestrator.git import branch_transport
 from orchestrator.git.base_sync import recovery
+from orchestrator.git.base_sync.models import _pending_rewrite
 from tests.git.base_sync.gate_reads_support import _gate_base_reads
 from tests.support.fakes import (
     FakeGitHubClient,
@@ -85,6 +86,10 @@ KEY_PARK_REASON = "park_reason"
 KEY_PENDING_PUSH_SHA = "pending_auto_base_rebase_push_sha"
 
 KEY_PENDING_REWRITE_SHA = "pending_auto_base_rebase_rewrite_sha"
+
+KEY_PENDING_REWRITE_PR = "pending_auto_base_rebase_rewrite_pr"
+
+KEY_PENDING_REWRITE_STAGE = "pending_auto_base_rebase_rewrite_stage"
 
 EVENT_FIELD = "event"
 
@@ -246,16 +251,19 @@ class _RecoveryRepositoryBuilder:
         fixture.gh = FakeGitHubClient()
         fixture.issue = make_issue(ISSUE, label=LABEL)
         fixture.gh.add_issue(fixture.issue)
-        # Both halves of the record an interrupted attempt leaves: the head
-        # its force-push is leased against, and the replay it produced. The
-        # second is what proves the divergent checkout in front of the
-        # recovery is that attempt's own work.
+        # The whole record an interrupted attempt leaves: the head its
+        # force-push is leased against, the replay it produced, and the
+        # publication it produced that replay for. The last two are what
+        # prove the divergent checkout in front of the recovery is that
+        # attempt's own work, made against the pull request it still names.
         fixture.gh.seed_state(
             ISSUE,
             pr_number=PR_NUMBER,
             branch=BRANCH,
             pending_auto_base_rebase_push_sha=fixture.anchor,
             pending_auto_base_rebase_rewrite_sha=fixture.recovered,
+            pending_auto_base_rebase_rewrite_pr=PR_NUMBER,
+            pending_auto_base_rebase_rewrite_stage=LABEL,
         )
         # Standing on the head this recovery leases its push against, which
         # is the commit the interrupted rebase left the remote on: the size
@@ -305,7 +313,9 @@ class RecoveryGitFixtureMixin:
             pr_number=PR_NUMBER,
             label=LABEL,
             pending_pre_rebase_sha=self.anchor,
-            pending_rewrite_sha=self._pending_rewrite(),
+            pending_rewrite=_pending_rewrite(
+                self.gh.read_pinned_state(self.issue),
+            ),
         )
 
     def publish_recovered_head(self) -> None:
@@ -391,11 +401,6 @@ class RecoveryGitFixtureMixin:
             for event in self.gh.recorded_events
             if event.get(EVENT_FIELD) == REBASED_EVENT
         ]
-
-    def _pending_rewrite(self) -> str:
-        """What the pinned comment says this attempt's replay produced."""
-        recorded = self.gh.pinned_data(ISSUE).get(KEY_PENDING_REWRITE_SHA)
-        return recorded if isinstance(recorded, str) else ""
 
     def _rewind_tracking_ref(self) -> None:
         """Point the tracking ref back at the anchor the crash pinned.

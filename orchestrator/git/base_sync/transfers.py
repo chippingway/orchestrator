@@ -44,20 +44,28 @@ it, so a recovery that assembled a claim of its own over a group already
 standing would repair a record nobody checked, under the authority of the very
 transfer it is in the middle of deciding.
 
-The last question here is the one a road with nothing left to publish has to
-ask: whether the rewrite the pull request already carries is one this comment
-can ACCOUNT for. Finishing that road clears the recovery anchor, and the
-anchor is the only thing that brings the tick back -- so an exemption still on
-the old commit, a debt nothing paid, or a receipt nobody wrote may not be
-walked past, however right the remote looks.
+The last questions here are the ones the roads that publish nothing new have
+to ask. Whether the rewrite the pull request already carries is one this
+comment can ACCOUNT for -- finishing that road clears the recovery anchor, and
+the anchor is the only thing that brings the tick back, so an exemption still
+on the old commit, a debt nothing paid, or a receipt nobody wrote may not be
+walked past however right the remote looks. Whether the record says a replay
+reached a remote that no longer has it, which is somebody's rollback and not
+this attempt's unfinished push -- and the head they rolled back to is the very
+head a retry would lease itself against. And whether the permit still LICENSES
+a settlement, asked before the gated publication rather than through it,
+because the gate's answer to a declining permit is the ordinary cumulative
+reading and there is nothing on that road to measure.
 """
 from __future__ import annotations
 
+from dataclasses import replace as _replace
 from enum import StrEnum
 
 from orchestrator.git.base_sync.models import (
     _AutoRebaseContext,
     _AutoRebaseRecoveryContext,
+    _PendingRewrite,
 )
 from orchestrator.git.base_sync.state import log
 from orchestrator.git.measurement import commits as measurement_commits
@@ -106,6 +114,7 @@ def _rewritten_by_the_rebase(
     context: _AutoRebaseContext | _AutoRebaseRecoveryContext,
     before_sha: str,
     after_sha: str,
+    publication: _PendingRewrite | None = None,
 ):
     """What this rebase replaced, as the evidence a transfer is granted on.
 
@@ -143,6 +152,16 @@ def _rewritten_by_the_rebase(
     hold even after a fetch, is no commit to read a contribution over. In both
     the rebase is measured exactly as it always was.
 
+    The PUBLICATION is the caller's where it hands one in, and that is the
+    difference between the tick that makes the rewrite and the tick that comes
+    back to it. The publisher is making the rewrite now, so the pull request
+    and the stage it is entered on are the ones it is looking at. A recovery
+    is not: taking them from the issue as it reads on the tick AFTER a crash
+    would compare today with today, and a relabel or a repoint made while the
+    process was down would pass as the terms the dead tick made its rewrite
+    under -- which is exactly what the permit's publication checks exist to
+    catch.
+
     The pre-rebase anchor goes down as the LEASE rather than as the commit
     that was replaced, and the two are deliberately kept apart. It is the head
     the pull request is standing on and the head the force-push behind this is
@@ -165,14 +184,17 @@ def _rewritten_by_the_rebase(
     )
     if not replayed_onto.is_frozen:
         return None
+    made_against = publication or _PendingRewrite(
+        sha=after_sha, pr_number=context.pr_number, stage=context.label,
+    )
     return _rewrites.LateRewrite(
         kind=_rewrites.LateRewriteKind.AUTO_CLEAN_REBASE,
         from_sha=identity.candidate_sha,
         from_base_sha=identity.base_sha,
         to_sha=after_sha,
         to_base_sha=replayed_onto.sha,
-        pr_number=context.pr_number,
-        source_stage=context.label,
+        pr_number=made_against.pr_number,
+        source_stage=made_against.stage,
         lease=before_sha,
     )
 
@@ -266,10 +288,17 @@ def _reconstructed(
 
     Assembled from exactly the readings the interrupted tick would have taken:
     the pair the adjudication recorded, the head the checkout is standing on,
-    the base the REMOTE names, and the pinned anchor as the lease. Nothing is
-    inherited from the dead tick, because nothing of it survived -- and
-    nothing has to be, since every term is re-asked by the permit against the
-    publication the gate freezes for itself.
+    the base the REMOTE names, the pinned anchor as the lease, and the pull
+    request and stage that tick recorded making its rewrite against. Those
+    last two are the dead tick's own rather than this one's, and they have to
+    be: the permit checks them against the publication it freezes for itself,
+    so terms taken from the issue as it reads now would compare today with
+    today and adopt a relabel or a repoint made while the process was down.
+
+    Nothing at all is assembled where that record is absent or names some
+    other commit. The window between git returning and the write that records
+    it leaves a replay this tick cannot show the terms of, and evidence made
+    up to fill the gap is the one thing this owner may not offer the permit.
 
     None for every other handoff, each for its own reason: a permission still
     outstanding IS the evidence and is re-asked over the terms the grant was
@@ -279,8 +308,11 @@ def _reconstructed(
     """
     if carried != _Handoff.UNRECORDED:
         return None
+    if not context.pending_rewrite.names(local_head):
+        return None
     rewrite = _rewritten_by_the_rebase(
         context, context.pending_pre_rebase_sha, local_head,
+        publication=context.pending_rewrite,
     )
     if rewrite is not None:
         log.info(
@@ -341,3 +373,128 @@ def _unaccounted_publication(
         return _UNRECEIPTED.format(published=local_head, anchor=anchor)
     owed = late_parks._approved_commit(state)
     return _UNPAID.format(owed=owed) if owed else ""
+
+
+def _rolled_back_publication(
+    context: _AutoRebaseRecoveryContext,
+    completed,
+    carried: _Handoff,
+) -> bool:
+    """Whether the record says this replay reached a remote no longer on it.
+
+    Asked once the pull request has been proved to be standing somewhere other
+    than the commit the checkout carries, and it is the difference between a
+    push that never went out and one somebody undid. Two records say the
+    replay was there: a transfer that SETTLED, whose write says the exemption
+    moved onto a commit the pull request really had, and the whole receipt
+    beside it, which says the same thing for a replay no permit ever licensed.
+
+    Either way the pull request has since been rolled back, and the head it
+    was rolled back to is the very anchor a retry would lease its force-push
+    against. That lease would be satisfied, the push would land, and the
+    rollback would be gone -- which is the one outcome a lease exists to
+    prevent. So it parks as the externally moved remote it is.
+
+    Silent for every attempt whose push simply never went out, which is the
+    ordinary interrupted rebase: nothing records a landing, so nothing here
+    claims one.
+    """
+    # Lazy for the reason every upward reach in this package is: the receipt
+    # sits in the workflow layer above it.
+    from orchestrator.workflow.stages.implementing import late_parks
+    landed = completed.local_head or ""
+    if carried == _Handoff.SETTLED:
+        return True
+    receipted = late_parks._publication_from(
+        context.state, context.pending_pre_rebase_sha,
+    )
+    return bool(landed) and receipted == landed
+
+
+def _rotated_onto(state: PinnedState, local_head: str) -> bool:
+    """Whether the record now says the verdict is on this commit.
+
+    The one answer a settlement cannot take on trust from the call that made
+    it. A permit granted before the gate is re-asked inside it, so anything
+    that moved in between leaves the push landed and the verdict where it was
+    -- and a landed push with no rotation behind it is a route this recovery
+    may not finish, since finishing drops the anchor that would bring it back.
+
+    Read as the whole record rather than as the phase alone, like every other
+    reader of this group: a permission announcing itself published over fields
+    nothing here understands has not been shown to have moved anything.
+    """
+    # Lazy for the reason every upward reach in this package is: the record
+    # sits in the workflow layer above it.
+    from orchestrator.workflow.late_split import (
+        exemption as _exemption,
+        rewrites as _rewrites,
+    )
+    authorization = _rewrites.read_rewrite_authorization(state)
+    if authorization is None:
+        return False
+    if authorization.phase != _rewrites.LateRewritePhase.PUBLISHED:
+        return False
+    if authorization.rewrite.to_sha != local_head:
+        return False
+    return _exemption.is_exempt(state, local_head)
+
+
+def _permits_the_settlement(
+    context: _AutoRebaseRecoveryContext, local_head: str,
+) -> bool:
+    """Whether the permit still licenses the landed rewrite to be settled.
+
+    Asked BEFORE the gated publication rather than through it, and that is the
+    whole of what makes this road safe. The gate's answer to a permit that
+    declines is the ordinary cumulative reading, which is right for a rebase
+    deciding whether to publish and wrong here twice over: a count under the
+    ceiling reports a landed publication and lets the route finish with the
+    permission outstanding and the verdict still on the commit a human ruled
+    on, and a count over it routes an adjudicated change into a second
+    adjudication with the pull request already carrying the work. There is
+    nothing on this road to measure -- the remote has the commit -- so the
+    only question is whether the permission may be spent, and a refusal is a
+    refusal.
+
+    Asked over the record the grant left, which is what `late_transfer` reads
+    when a caller hands in no rewrite of its own. Every term is re-derived
+    there: the publication this call freezes, the one the issue records, the
+    checkout, the lease as an object this host holds, the issue read afresh,
+    and both contributions fingerprinted from the objects themselves. A grant
+    re-writes nothing, since the payload it would stage is the one already on
+    the comment.
+
+    The entry is frozen here for the same reason the permit needs one at all:
+    it is the pull request read this tick, before any effect, and the terms
+    the record claims are checked against it rather than against themselves.
+    """
+    # Lazy for the reason every upward reach in this package is: the permit
+    # and the entry it is asked over sit in the workflow layer above it.
+    from orchestrator.workflow.stages.implementing import (
+        late_overflow as _overflow,
+        late_records as _records,
+        late_transfer as _transfer,
+    )
+    gate = _records._gate(
+        context.gh, context.spec, context.issue, context.state,
+        context.worktree,
+    )
+    entered = _records._Entered(
+        head=context.pending_pre_rebase_sha or "",
+        reconciling=True,
+        candidate=local_head,
+    )
+    entry = _overflow._frozen_entry(gate, entered)
+    if not entry.is_frozen:
+        log.warning(
+            "issue=#%d auto-rebase recovery cannot enter the publication its "
+            "landed rewrite was made against (%s); the transfer it owes is "
+            "left standing",
+            context.issue.number, entry.refusal,
+        )
+        return False
+    gate = _replace(
+        gate, entry=entry, candidate=local_head, reconciling=True,
+    )
+    return bool(_transfer._carried_over(gate, local_head))
