@@ -89,7 +89,6 @@ HUMAN_COMMENT_BODY = "branch reconciled, please retry"
 # records -- so a case says only what it moves.
 _RECORDED_REWRITE = models._PendingRewrite(
     sha=RECOVERED_SHA, pr_number=PR_NUMBER, stage=WorkflowLabel.IN_REVIEW,
-    claimed=True,
 )
 
 

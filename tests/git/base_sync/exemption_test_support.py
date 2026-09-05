@@ -30,7 +30,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from orchestrator.git.base_sync import publication as _base_publication
+from orchestrator.git.base_sync import (
+    publication as _base_publication,
+    startup as _base_startup,
+)
 from orchestrator.git.measurement import (
     commits as _measurement_commits,
     fingerprint as _measurement_fingerprint,
@@ -255,6 +258,21 @@ class _CleanRebaseCase(_SyncWorktreeWithBaseFixture):
         """
         with patch.object(
             _measurement_commits, "_freeze_base_commit",
+            MagicMock(side_effect=RuntimeError(DIED)),
+        ):
+            self._dies_mid_tick()
+
+    def _crashes_before_the_record(self) -> None:
+        """Rebase for real, and die on the statement that names what it made.
+
+        The narrowest window one attempt has: `git rebase` has replayed the
+        branch and the write that says which commit that produced never
+        happened, so what the next tick comes back to is a divergent checkout
+        and a comment carrying the anchor and the terms the attempt was
+        entered under.
+        """
+        with patch.object(
+            _base_startup, "_record_the_rewrite",
             MagicMock(side_effect=RuntimeError(DIED)),
         ):
             self._dies_mid_tick()

@@ -20,15 +20,18 @@ notice, an audit event, and the anchor dropped -- so the publication the
 attempt recorded making its rewrite for is reconciled against the one this
 issue holds now before any of them is taken, with this route's own last
 relabel -- the one label it writes, and no other -- recognized rather than
-refused. An issue moved off the refresh-driven set is answered by what the
-attempt left rather than by the label alone: an anchor standing on its own is
-dropped, and a recorded replay or an unspent permission parks with every
-record intact, since no road runs here and a clear would leave the three
-asymmetrically stranded. And the counts are a fallback for one state only: an
-attempt that recorded nothing. Everything it DID record either vouches for the
-checkout in front of this tick or parks it. ``transfers`` answers the other
-half off the pinned comment -- how far the transfer's own writes got -- and
-the two roads that still publish something are handed it. A rewrite the grant never reached
+refused. The counts are a fallback for one state alone -- a comment carrying
+no record of a replay at all -- and the window between git returning and the
+write that names one has a road of its own, where the head is proved by what
+it contributes rather than by an id nobody wrote down. An issue moved off the
+refresh-driven set is answered by what the attempt left rather than by the
+label alone: an anchor standing on its own is dropped, and a recorded replay
+or an unspent permission parks with every record intact, since no road runs
+here and a clear would leave the three asymmetrically stranded. Everything an
+attempt DID record either vouches for the checkout in front of this tick or
+parks it. ``transfers`` answers the other half off the pinned comment -- how
+far the transfer's own writes got -- and the roads that still publish
+something are handed it. A rewrite the grant never reached
 is given re-derived evidence, so the replay is decided on the transfer the
 dead tick would have asked for rather than measured past the same ceiling; a
 push that landed with its receipt lost is settled here, on the stage the
@@ -128,6 +131,8 @@ def _retry_recovery_push(
     context: _AutoRebaseRecoveryContext,
     recovery_snapshot: _AutoRebaseRecoverySnapshot,
     carried: transfers._Handoff = transfers._Handoff.NOTHING,
+    *,
+    permit_alone: bool = False,
 ) -> bool:
     """Publish a verified ahead-only recovery head and finalize its state.
 
@@ -153,6 +158,13 @@ def _retry_recovery_push(
     verdict still on the commit a human ruled on. The rotation is read back
     afterwards for the same reason, since a permit that stopped holding
     between the two asks leaves the push landed and the verdict where it was.
+
+    `permit_alone` says the caller holds no id vouching for this checkout at
+    all -- the attempt was still in flight when the process died -- so the
+    evidence is the only thing that can. Evidence that will not assemble parks
+    there rather than falling through, because the fall-through is the
+    ordinary cumulative reading and measuring a commit is not a way of
+    establishing whose it is.
     """
     dirty_files = verification_probes._worktree_dirty_files(context.worktree)
     if dirty_files:
@@ -163,6 +175,10 @@ def _retry_recovery_push(
         context, recovery_snapshot.head, carried,
     )
     licensed = rewrite is not None or carried == transfers._Handoff.OUTSTANDING
+    if permit_alone and not licensed:
+        return outcomes._park_unproven_replay_recovery(
+            context, recovery_snapshot,
+        )
     if licensed and not transfers._permits_the_publication(
         context, recovery_snapshot.head, rewrite,
     ):
@@ -534,7 +550,7 @@ def _answers_an_ineligible_label(
     So the two are separated by what the comment carries rather than by the
     label, and the second parks with everything intact.
     """
-    if context.pending_rewrite.claimed:
+    if context.pending_rewrite.left_a_replay:
         return outcomes._park_stranded_recovery(context)
     if transfers._left_mid_transfer(context.state):
         return outcomes._park_stranded_recovery(context)
@@ -600,7 +616,7 @@ def _unstarted_attempt(
     Costs no git and no request, which is what lets the ordinary unstarted
     attempt -- the whole reason this shortcut exists -- pay nothing for it.
     """
-    if context.pending_rewrite.claimed:
+    if context.pending_rewrite.left_a_replay:
         return False
     carried = transfers._carried_by(context, recovery_snapshot.local_head)
     return carried not in _UNSPENT_TRANSFERS
@@ -704,7 +720,7 @@ def _made_for_another_publication(
     step of this route repoints one.
     """
     recorded = context.pending_rewrite
-    if not recorded.is_recorded:
+    if not recorded.is_declared:
         return False
     if recorded.pr_number != context.pr_number:
         return True
@@ -747,9 +763,48 @@ def _route_an_unpublished_head(
         return outcomes._park_unvouched_recovery(context, completed)
     if _unclaimed_checkout(context, completed):
         return outcomes._park_unrecorded_recovery(context, completed)
-    if _is_this_attempts_rewrite(context, completed):
-        return _retry_recovery_push(context, completed, carried)
+    in_flight = _is_an_attempt_in_flight(context, completed, carried)
+    if in_flight or _is_this_attempts_rewrite(context, completed):
+        return _retry_recovery_push(
+            context, completed, carried, permit_alone=in_flight,
+        )
     return _route_a_moved_remote(context, completed, carried)
+
+
+def _is_an_attempt_in_flight(
+    context: _AutoRebaseRecoveryContext,
+    completed: _AutoRebaseRecoverySnapshot,
+    carried: transfers._Handoff,
+) -> bool:
+    """Whether this is the window between `git rebase` and its own record.
+
+    The narrowest window the attempt has and the only one no id can close: the
+    rebase produced a commit, the write naming it never happened, and what the
+    comment still carries is the terms the attempt was entered under and the
+    anchor the remote is standing on. Every id-based road refuses this
+    checkout, rightly -- nothing wrote the head down, so nothing can say it is
+    this attempt's work.
+
+    Something else can. An issue whose exemption names the commit the pull
+    request carries has a pair a human ruled on recorded on it, and the permit
+    re-fingerprints the checkout's contribution against that pair before it
+    licenses anything: a replay of the accepted change proves out, and a
+    commit somebody else left does not. So the road is opened only where there
+    IS such a verdict to prove against, and the push behind it is permitted or
+    it does not happen.
+
+    Both other halves are still required, and for the reasons they always
+    were. The remote has to be standing exactly on the anchor, which is what
+    says no push of this attempt's ever landed and what the force-with-lease
+    is pinned to. And the terms have to read back whole, since the permit's
+    publication checks are asked against them.
+    """
+    if carried != transfers._Handoff.UNRECORDED:
+        return False
+    if completed.remote_head != context.pending_pre_rebase_sha:
+        return False
+    recorded = context.pending_rewrite
+    return recorded.is_declared and not recorded.sha
 
 
 def _unclaimed_checkout(
@@ -759,22 +814,31 @@ def _unclaimed_checkout(
     """Whether a record was written and does not vouch for this checkout.
 
     The counts behind this refusal are a fallback for one state and one only:
-    an attempt that reached no record at all, which is the window between git
-    returning and the write that makes one. There they are all a recovery has,
-    and a strictly-ahead branch is a fast-forward the anchor lease loses
-    nothing to.
+    an attempt that reached no record of a REPLAY, which is either a comment
+    from before this record existed or the window between git returning and
+    the write that names what it produced. There they are all a recovery has
+    on its own, and a strictly-ahead branch is a fast-forward the anchor lease
+    loses nothing to.
 
     Every other absence is a claim. A group something took a member out of,
     and a whole group naming some OTHER commit, both leave a checkout the
     attempt does not vouch for -- and read as the window they resemble, the
     counts would measure it and force-push it under a lease a rebuilt
     worktree, an operator's reset, and a branch pointed at other work all
-    satisfy. So the record having been written at all is what decides which
-    road is available, and only a comment carrying none of it reaches the
-    counts.
+    satisfy. So a record of the replay having been written at all is what
+    decides which road is available, and a comment carrying none is the only
+    one that reaches the counts.
+
+    The TERMS on their own are not that claim. They go down with the anchor,
+    before git can move the branch, so a comment carrying them and no head
+    says an attempt was in flight rather than anything about the checkout --
+    and the road that answers for that window vouches for the head by what it
+    contributes instead.
     """
     recorded = context.pending_rewrite
-    return recorded.claimed and not recorded.names(completed.local_head)
+    return recorded.left_a_replay and not recorded.names(
+        completed.local_head,
+    )
 
 
 def _is_this_attempts_rewrite(
@@ -793,10 +857,14 @@ def _is_this_attempts_rewrite(
     somewhere else -- every one of which satisfies the same lease and would
     take the candidate off the pull request.
 
-    Empty provenance answers no. That is the window between git returning and
-    the write that records the replay, and there the recovery falls back to
-    the counts it always used: a strictly-ahead branch is a fast-forward the
-    anchor lease loses nothing to, and a divergent one parks.
+    Empty provenance answers no, and what happens then depends on which
+    emptiness it is. A comment carrying the attempt's terms and no head is the
+    window between git returning and the write that records the replay, and
+    the road beside this one answers for it on the evidence rather than on an
+    id. A comment carrying nothing at all is an attempt from before this
+    record existed, and there the recovery falls back to the counts it always
+    used: a strictly-ahead branch is a fast-forward the anchor lease loses
+    nothing to, and a divergent one parks.
     """
     if completed.remote_head != context.pending_pre_rebase_sha:
         return False

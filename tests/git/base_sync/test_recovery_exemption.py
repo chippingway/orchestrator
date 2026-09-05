@@ -43,6 +43,7 @@ from tests.git.base_sync.exemption_test_support import (
     LEASE,
     RECOVERY_PUSHED,
     RECOVERY_RELABELLED,
+    REPLAYED_BASE_SHA,
     REVISION,
     _CleanRebaseCase,
     adjudicated,
@@ -116,6 +117,15 @@ REPOINTED_PR_NUMBER = 43
 # whose contribution nothing can name.
 DAMAGED_IDENTITY_FIELD = "late_exempt_fingerprint"
 
+# The whole of that group: what a case seeding the legacy shape -- an
+# exemption with nothing beside it naming what it contributes -- takes off.
+IDENTITY_KEYS = (
+    DAMAGED_IDENTITY_FIELD,
+    "late_exempt_fingerprint_format",
+    "late_exempt_base_sha",
+    "late_exempt_candidate_sha",
+)
+
 # A lease no reader can hold to a commit, and one naming a head this attempt
 # was never pinned to.
 MALFORMED_LEASE = "not-a-commit"
@@ -154,6 +164,10 @@ REBASE_PATCH = "rebase"
 # stage a hand moves an issue to while the process is down.
 KEY_REWRITE_PHASE = "late_rewrite_phase"
 PHASE_AUTHORIZED = "authorized"
+
+# What a real replay looks like to the divergence probe: one commit of
+# its own, and the pull request's head on no local history at all.
+REBASED_COUNTS = (1, 2)
 
 
 class _ReadableOnce:
@@ -233,6 +247,10 @@ class _ResumedRebaseCase(_CleanRebaseCase):
     def _pinned(self) -> dict:
         """The pinned comment as the fake client stores it."""
         return self.gh.pinned_data(ISSUE)
+
+    def _assert_reset_once(self, resumed) -> None:
+        """The branch was put back onto the anchor exactly once."""
+        self.assertEqual(len(self._resets_of(resumed)), 1)
 
     def _resets_of(self, resumed) -> list:
         """Every hard reset the hardened git seam was asked for this tick."""
@@ -534,7 +552,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
 
     def _assert_reset_and_parked(self, resumed) -> None:
         """The branch is back on the anchor and a human owns the record."""
-        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self._assert_reset_once(resumed)
         self._assert_nothing_readjudicated()
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
         self._assert_anchor(None)
@@ -844,7 +862,7 @@ class RefusedRetryTest(_ResumedRebaseCase, unittest.TestCase):
         resumed = self._resumes()
 
         self._assert_nothing_left(resumed)
-        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self._assert_reset_once(resumed)
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
         self._assert_nothing_readjudicated()
         self._assert_anchor(None)
@@ -946,7 +964,7 @@ class UndoneAttemptTest(_ResumedRebaseCase, unittest.TestCase):
         resumed = self._resumes(local_head=BEFORE_SHA)
 
         self._assert_nothing_left(resumed)
-        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self._assert_reset_once(resumed)
         self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
         self._assert_routed(False)
         self._assert_anchor(None)
@@ -971,12 +989,19 @@ class UndoneAttemptTest(_ResumedRebaseCase, unittest.TestCase):
 class DamagedAttemptRecordTest(_ResumedRebaseCase, unittest.TestCase):
     """A record of the attempt that claims more than it can show."""
 
-    def test_a_partial_record_resets_the_replay(self) -> None:
-        # The remote is on the anchor and the checkout is ahead of it, which
-        # is the shape the ahead-only fallback publishes. Read as the absence
-        # it resembles, a group something took a member out of would send the
-        # replay to the ordinary gate and force-push whatever came back.
-        self._assert_resets_the_replay(None)
+    def test_lost_terms_reset_the_replay(self) -> None:
+        # The head stands and the publication it was made for is gone, which
+        # is an order no write here produces. Read as the in-flight window it
+        # half resembles, the permit would be asked over terms this tick made
+        # up out of whatever the issue says now.
+        self._crashes_before_the_grant()
+        self._edited(
+            lambda state: state.set(KEY_PENDING_REWRITE_PR, None),
+        )
+
+        resumed = self._resumes()
+
+        self._assert_reset_and_parked(resumed)
 
     def test_a_malformed_head_resets_the_replay(self) -> None:
         # A value that is not a whole git object id is not a commit this tick
@@ -997,7 +1022,7 @@ class DamagedAttemptRecordTest(_ResumedRebaseCase, unittest.TestCase):
         recorded = transfers._pending_rewrite(self._durable())
 
         self.assertFalse(recorded.is_recorded)
-        self.assertTrue(recorded.is_damaged)
+        self.assertTrue(recorded.damaged)
 
     def test_another_commit_resets_the_replay(self) -> None:
         # The record is whole and vouches for some other head, which is the
@@ -1012,10 +1037,12 @@ class DamagedAttemptRecordTest(_ResumedRebaseCase, unittest.TestCase):
             lambda state: state.set(KEY_PENDING_REWRITE_SHA, recorded),
         )
 
-        resumed = self._resumes()
+        self._assert_reset_and_parked(self._resumes())
 
+    def _assert_reset_and_parked(self, resumed) -> None:
+        """Nothing published, the branch back on the anchor, a human asked."""
         self._assert_nothing_left(resumed)
-        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self._assert_reset_once(resumed)
         self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
         self._assert_nothing_readjudicated()
         self._assert_anchor(None)
@@ -1083,7 +1110,7 @@ class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
         resumed = self._resumes()
 
         self._assert_nothing_left(resumed)
-        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self._assert_reset_once(resumed)
         self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
         self._assert_nothing_readjudicated()
@@ -1102,7 +1129,7 @@ class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
         resumed = self._resumes()
 
         self._assert_nothing_left(resumed)
-        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self._assert_reset_once(resumed)
         self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
         self._assert_nothing_readjudicated()
@@ -1118,7 +1145,7 @@ class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
         resumed = self._resumes()
 
         self._assert_nothing_left(resumed)
-        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self._assert_reset_once(resumed)
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
         self._assert_parked(PARK_FAILED)
 
@@ -1318,3 +1345,133 @@ def _drops_the_attempt_records(state) -> None:
     _rewrites.clear_rewrite_authorization(state)
     for key in ATTEMPT_RECORD_KEYS:
         state.set(key, None)
+
+
+class InFlightRewriteRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
+    """The rebase that reached the branch before any record reached disk.
+
+    The one window no id can close. `git rebase` has replayed the branch, the
+    write naming what it produced never happened, and the checkout diverges
+    from the head the pull request still carries -- which is the same shape a
+    worktree somebody rebuilt leaves. Nothing on the comment names that
+    commit, so what it is decided on instead is what it CONTRIBUTES: the
+    permit re-fingerprints it against the pair a human ruled on, and the terms
+    the anchor carries say which publication to ask that over.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._crashes_before_the_record()
+        self.crashed = dict(self._pinned())
+        self.resumed = self._resumes(diverged=REBASED_COUNTS)
+
+    def test_the_crash_left_the_terms_and_no_head(self) -> None:
+        # The premise: the attempt is on the comment as one still in flight --
+        # the anchor it pinned and the publication it was entered under -- and
+        # the replay it made is named nowhere.
+        self.assertEqual(self.crashed[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
+        self.assertEqual(self.crashed[KEY_PENDING_REWRITE_PR], PR_NUMBER)
+        self.assertEqual(self.crashed[KEY_PENDING_REWRITE_STAGE], LABEL)
+        self.assertNotIn(KEY_PENDING_REWRITE_SHA, self.crashed)
+
+    def test_the_replay_is_published_on_the_permit(self) -> None:
+        # Read by the divergence counts -- the only thing left when no record
+        # names the head -- this is a branch that parks: a real rebase is
+        # ahead of the anchor and behind it at once.
+        pushed = self.resumed[PUSH_PATCH].call_args.kwargs
+        self.assertEqual(pushed[REVISION], AFTER_SHA)
+        self.assertEqual(pushed[LEASE], BEFORE_SHA)
+        self._assert_settled_once()
+
+    def test_nothing_is_measured_or_rebased_again(self) -> None:
+        self._assert_nothing_readjudicated()
+        self._assert_finished_the_route(RECOVERY_PUSHED)
+
+
+class UnprovenInFlightTest(_ResumedRebaseCase, unittest.TestCase):
+    """What the in-flight window costs where nothing can prove the head.
+
+    The road is opened by the evidence and by nothing else. Every state that
+    cannot produce it keeps the reset and the park it always had, because the
+    only thing behind this road is the cumulative reading -- and a count says
+    how big a change is, never whose it is.
+    """
+
+    def test_a_changed_contribution_refuses(self) -> None:
+        # The permit is asked and says no: what the checkout adds to the base
+        # is not what the adjudication accepted, so this is not a replay of
+        # that change however the branch got here.
+        self._crashes_before_the_record()
+        self.reading.digests.pop((REPLAYED_BASE_SHA, AFTER_SHA))
+
+        resumed = self._resumes(diverged=REBASED_COUNTS)
+
+        self._assert_reset_and_parked(resumed)
+
+    def test_an_unprovable_verdict_parks(self) -> None:
+        # A legacy exemption names the commit and nothing says what it
+        # contributes, so there is no pair to re-fingerprint the checkout
+        # against. Fallen through to the counts, a divergent head nothing
+        # vouches for would be measured and force-pushed.
+        self._legacy_verdict()
+        self._crashes_before_the_record()
+
+        resumed = self._resumes(diverged=REBASED_COUNTS)
+
+        self._assert_reset_and_parked(resumed)
+
+    def test_an_issue_with_no_verdict_still_parks(self) -> None:
+        # Nothing to prove anything against at all: the road is not opened,
+        # and the divergent checkout gets the answer it always got.
+        self._forgets_the_verdict()
+        self._crashes_before_the_record()
+
+        resumed = self._resumes(diverged=REBASED_COUNTS)
+
+        self._assert_nothing_left(resumed)
+        self._assert_reset_once(resumed)
+        self._assert_anchor(None)
+        self._assert_parked(PARK_PUSH_FAILED)
+
+    def test_a_relabel_in_the_window_parks(self) -> None:
+        # The terms go down before git runs precisely so this is visible: the
+        # permit's publication checks are asked against the stage the attempt
+        # was entered from, and an issue moved while the process was down is
+        # one the attempt was never made for.
+        self._crashes_before_the_record()
+        self.gh.set_workflow_label(self._issue(), WorkflowLabel.DOCUMENTING)
+
+        resumed = self._resumes(diverged=REBASED_COUNTS)
+
+        self._assert_nothing_left(resumed)
+        self.assertEqual(self._resets_of(resumed), [])
+        self._assert_anchor(BEFORE_SHA)
+        self._assert_parked(PARK_FAILED)
+
+    def _assert_reset_and_parked(self, resumed) -> None:
+        """Nothing published, the branch back on the anchor, a human asked."""
+        self._assert_nothing_left(resumed)
+        self._assert_reset_once(resumed)
+        self._assert_nothing_readjudicated()
+        self._assert_anchor(None)
+        self._assert_parked(PARK_FAILED)
+        self.assertTrue(_exemption.is_exempt(self._durable(), BEFORE_SHA))
+
+    def _legacy_verdict(self) -> None:
+        """Re-record this issue's verdict in the shape that names no pair."""
+        self._edited(_drops_the_semantic_identity)
+
+    def _forgets_the_verdict(self) -> None:
+        """Take the adjudication off the issue entirely."""
+        self._edited(_drops_the_exemption)
+
+
+def _drops_the_semantic_identity(state) -> None:
+    """Leave the exempt commit named and nothing saying what it contributes."""
+    for key in IDENTITY_KEYS:
+        state.data.pop(key, None)
+
+
+def _drops_the_exemption(state) -> None:
+    """Leave an issue no adjudication ever ruled on."""
+    _exemption.clear_exemption(state)

@@ -25,8 +25,10 @@ The crashes are the second half of the same journey, and nothing about them
 is seeded either. Each one runs this same road up to one of the five moments
 an auto rebase makes durable -- the anchor, the replay, the permission, the
 push, the receipt -- lets the process die there, and runs the next real
-refresh over whatever that left on disk and on the comment. Every one of them
-has to come back to the same finish.
+refresh over whatever that left on disk and on the comment. The window
+BETWEEN the first two is one of them: `git rebase` has moved the branch and
+nothing has written which commit that produced, which is the one state no id
+can answer for. Every one of them has to come back to the same finish.
 
 Only three things are stood in for, and none of them is a decision: the two
 agents' replies, the authenticated push, and the remote-side base freeze this
@@ -45,6 +47,7 @@ from tests.git.base_sync.journey_git_support import (
     OversizedJourneyRealGitFixture,
     _LandsThenDies,
 )
+from tests.git.base_sync.real_git_test_support import PR_NUMBER
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_DOCUMENTING,
@@ -200,6 +203,19 @@ class CrashedJourneyRealGitTest(
         self._accepted_as_single()
         self._advance_base(conflicting=False)
 
+    def test_a_crash_before_the_record_is_recovered(self) -> None:
+        # `git rebase` has replayed the branch and the write naming what it
+        # produced never happened, so the checkout diverges from the head the
+        # pull request carries and no id on the comment names it. Read by the
+        # divergence alone that is a branch this recovery resets -- and the
+        # replay of a change a human already ruled on is thrown away.
+        self._crashes(self._dies_before_the_record())
+        self._assert_left_a_replay_nothing_names()
+
+        pusher = self._refreshes()
+
+        self._assert_finished(pusher, RECOVERY_PUSHED)
+
     def test_a_crash_after_the_rewrite_is_recovered(self) -> None:
         # The narrowest window: git has replayed the branch and the attempt
         # has recorded what it produced, and nothing else has run. Without
@@ -310,6 +326,15 @@ class CrashedJourneyRealGitTest(
     def _dies_before_the_push_returns(self):
         """The request reaches the remote and its answer never comes back."""
         return _LandsThenDies(self._gh)
+
+    def _assert_left_a_replay_nothing_names(self) -> None:
+        """The premise of the window between `git rebase` and its record."""
+        durable = self._durable()
+        self.assertNotEqual(self._wt_head(), self.accepted)
+        published = self._gh.pulls[PR_NUMBER].head
+        self.assertEqual(published.sha, self.accepted)
+        self.assertEqual(durable.get(KEY_PENDING_PUSH_SHA), self.accepted)
+        self.assertIsNone(durable.get(KEY_PENDING_REWRITE_SHA))
 
     def _assert_finished(self, pusher, method: str) -> None:
         """The verdict is on the replay and the reviewer has been sent to it."""

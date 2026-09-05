@@ -436,10 +436,20 @@ def _reconstructed(
     so terms taken from the issue as it reads now would compare today with
     today and adopt a relabel or a repoint made while the process was down.
 
-    Nothing at all is assembled where that record is absent or names some
-    other commit. The window between git returning and the write that records
-    it leaves a replay this tick cannot show the terms of, and evidence made
-    up to fill the gap is the one thing this owner may not offer the permit.
+    Nothing at all is assembled where the record names some OTHER commit, or
+    where the terms it was made under cannot be read back: evidence made up to
+    fill either gap is the one thing this owner may not offer the permit, and
+    a publication taken from the issue as it reads on the tick after a crash
+    is exactly that.
+
+    A record carrying the terms and no head is assembled for, and it is the
+    one place the head in hand is not the record's own claim. That is the
+    window between git returning and the write that names what it produced:
+    the terms went down with the anchor, so which publication the attempt was
+    for is known, and the head is offered to the permit to be proved by what
+    it contributes against the pair a human ruled on. The permit refusing is
+    what that road is held by -- nothing here asserts the checkout is the
+    replay, it hands over the claim for checking.
 
     None for every other handoff, each for its own reason: a permission still
     outstanding IS the evidence and is re-asked over the terms the grant was
@@ -449,7 +459,7 @@ def _reconstructed(
     """
     if carried != _Handoff.UNRECORDED:
         return None
-    if not context.pending_rewrite.names(local_head):
+    if not _vouches_for_the_checkout(context.pending_rewrite, local_head):
         return None
     rewrite = _rewritten_by_the_rebase(
         context, context.pending_pre_rebase_sha, local_head,
@@ -463,6 +473,27 @@ def _reconstructed(
             context.issue.number, local_head[:8], rewrite.from_sha[:8],
         )
     return rewrite
+
+
+def _vouches_for_the_checkout(
+    recorded: _PendingRewrite, local_head: str,
+) -> bool:
+    """Whether this record may be the terms the head in hand is decided on.
+
+    Two records may, and they are the two ends of one write. A record naming
+    this exact commit is the ordinary one: the attempt got past `git rebase`
+    and said what it produced. A record carrying the terms and no head at all
+    is the window before that write, where nothing on the comment names any
+    commit -- and the terms are still the dead tick's own, which is the whole
+    of what the permit needs them for.
+
+    Nothing else does. A record naming another commit says out loud that this
+    checkout is not its work, and one whose terms cannot be read cannot say
+    which publication anything was for.
+    """
+    if recorded.sha:
+        return recorded.names(local_head)
+    return recorded.is_declared
 
 
 def _unaccounted_publication(
@@ -650,36 +681,52 @@ def _pending_rewrite(state: PinnedState) -> _PendingRewrite:
     """The record one interrupted attempt left of the replay it made.
 
     Read whole or not at all, like every other record this domain acts on: a
-    group short of a member, a head that is not a whole git object id, a pull
-    request that is not an identity, and a stage no publication is entered
-    from each answer as no record, which every caller reads as "cannot say"
-    rather than as a fact about the world. The head is held to the same shape
-    every other recorded commit here is, and for the same reason -- it is
-    compared against one this tick read off a checkout, and a value that
-    cannot be a commit would either never match or match something nothing
-    ever wrote.
+    pull request that is not an identity, a stage no publication is entered
+    from, and a head that is not a whole git object id each answer as a record
+    nobody may act on, which every caller reads as "cannot say" rather than as
+    a fact about the world. The head is held to the same shape every other
+    recorded commit here is, and for the same reason -- it is compared against
+    one this tick read off a checkout, and a value that cannot be a commit
+    would either never match or match something nothing ever wrote.
 
-    What separates that from a comment carrying no group at all is the
-    presence of any member, which travels back on the answer. A caller acting
-    on the absence needs to know which absence it has: one nothing ever wrote,
-    or one something took apart.
+    Whole means something different for the TERMS and for the head, because
+    they are written a `git rebase` apart. The terms go down with the anchor
+    before the branch can move, so a comment carrying them and no head is not
+    a group short of a member: it is an attempt this reader can date to the
+    window between git returning and the write that records what it produced.
+    A comment carrying a head with the terms missing is the other way round --
+    nothing writes that order -- so it is damage.
+
+    Which of the three absences a caller has is what travels back on the
+    answer: one nobody ever wrote, one still in flight, or one something took
+    apart.
     """
     # Lazy for the reason every upward reach in this package is: the shape a
     # recorded commit is held to is the late domain's own, and spelling it
     # twice is how a comment comes to accept what every other reader refuses.
     from orchestrator.workflow.late_split import formats as _formats
-    claimed = any(
-        state.get(key) is not None for key in _PENDING_REWRITE_KEYS
-    )
     recorded = state.get(_PENDING_REWRITE_SHA)
     number = state.get(_PENDING_REWRITE_PR)
     stage = _recorded_stage(state.get(_PENDING_REWRITE_STAGE))
-    if not _formats.is_hex_of(recorded, _formats.COMMIT_LENGTHS):
-        return _PendingRewrite(claimed=claimed)
     if not _formats.whole_number(number) or number <= 0 or stage is None:
-        return _PendingRewrite(claimed=claimed)
-    return _PendingRewrite(
-        sha=recorded, pr_number=number, stage=stage, claimed=True,
+        return _PendingRewrite(damaged=_claims_a_record(state))
+    if recorded is None:
+        return _PendingRewrite(pr_number=number, stage=stage)
+    if not _formats.is_hex_of(recorded, _formats.COMMIT_LENGTHS):
+        return _PendingRewrite(damaged=True)
+    return _PendingRewrite(sha=recorded, pr_number=number, stage=stage)
+
+
+def _claims_a_record(state: PinnedState) -> bool:
+    """Whether a comment with unreadable terms claims an attempt anyway.
+
+    Read by VALUE rather than by the key being there, because the write that
+    ends an attempt blanks these fields rather than removing them: a group of
+    nulls is the record nobody wrote, and a member carrying something beside
+    one that does not is the record something took apart.
+    """
+    return any(
+        state.get(key) is not None for key in _PENDING_REWRITE_KEYS
     )
 
 

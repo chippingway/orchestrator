@@ -28,6 +28,7 @@ from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.base_sync import (
     persistence as _persistence,
     publication as _base_publication,
+    startup as _base_startup,
 )
 from orchestrator.git.measurement import additions as _additions, commits as _measurement_commits
 from orchestrator.workflow.stages.decomposition import (
@@ -308,13 +309,27 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
             _stops_the_tick(),
         )
 
+    def _dies_before_the_record(self):
+        """`git rebase` replays the branch and nothing writes what it made.
+
+        The narrowest window this journey has, and the only one no id can
+        close. The branch carries a replay that diverges from the head the
+        pull request still has, the comment carries the anchor and the terms
+        the attempt was entered under, and no field anywhere names the commit
+        in the checkout -- so what has to vouch for it is what it contributes.
+        """
+        return patch.object(
+            _base_startup, "_record_the_rewrite",
+            _stops_the_tick(),
+        )
+
     def _dies_after_the_rewrite(self):
         """The rebase lands and is recorded; nothing after it runs.
 
-        The narrowest window this journey has, and the one the record after
-        `git rebase` exists for: the branch carries a replay that diverges
-        from the head the pull request still has, and the only thing saying
-        so is the record the attempt wrote as git handed it back.
+        One statement past the window above, and the one the record after
+        `git rebase` exists for: the divergence in the checkout is the same,
+        and the id the attempt wrote as git handed it back is what says it is
+        that attempt's own work.
         """
         return patch.object(
             _base_publication, "_publish_auto_rebase",

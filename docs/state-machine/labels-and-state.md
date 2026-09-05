@@ -373,6 +373,17 @@ of them satisfies. Remote-new is proved by the same record: refs that agree prov
 somebody who moved the branch and the remote together leaves exactly that shape, so a landing the attempt cannot
 show it made parks rather than finishing the route.
 
+One window has no id to be proved by at all, and it is the narrowest: `git rebase` returned and the write naming
+what it produced did not. What stands on the comment there is the anchor and the TERMS the attempt was entered
+under, and what stands in the checkout is a replay nothing names. The head is offered to the permit instead of
+asserted — the transfer evidence is assembled over the dead tick's own publication, and the permit re-fingerprints
+what the checkout contributes against the pair the adjudication recorded before it licenses anything. A replay of
+the accepted change proves out; a worktree somebody rebuilt does not, and neither does a partly-applied rebase. The
+push behind that road is permitted or it does not happen: a refusal parks rather than falling through to the
+cumulative reading, because a count says how big a change is and never whose it is. Where no verdict on the issue
+can be re-fingerprinted at all, the branch is reset onto the anchor and the issue parks with the replay left in
+`git reflog` — the rebase costs one tick to make again, and publishing an unprovable head costs the pull request.
+
 The pull request and the stage are reconciled ahead of every road, because finishing one is never silent: the
 notice goes to the pull request this tick holds, the audit event is filed under the stage this tick reads, and the
 anchor that is the only thing bringing the tick back is dropped. An attempt recorded against a publication the
@@ -894,24 +905,30 @@ The keys that matter for the state machine fall into a few groups:
   before the post-push write, and `_recover_pending_auto_base_rebase` keys off it to either no-op, push the recovered
   head, or park as `auto_base_rebase_push_failed`. It is also what tells the approval that interrupted attempt wrote
   from a stage's, so the refresh is not frozen out of finishing its own route (see [Base refresh](#base-refresh)).
-  `pending_auto_base_rebase_rewrite_sha` + `pending_auto_base_rebase_rewrite_pr` +
-  `pending_auto_base_rebase_rewrite_stage` — the other half of the same record, written together once git has
-  produced the replay and before the size gate is entered, read whole or not at all, and dropped by the same write
-  that drops the anchor, and typed against the same shapes every other late field is — an abbreviation or a value
-  that is not a whole git object id is no head. Absent and CLAIMED are two answers rather than one: a comment
-  carrying none of the three is the window between git returning and this write, and only there do the ahead/behind
-  counts get to answer. A comment carrying the group and not vouching for the checkout — a member taken out, a head
-  that is not a commit, or a whole record naming some other commit — resets onto the anchor and parks, because read
-  as the window it resembles a strictly-ahead checkout would be measured and force-pushed on the strength of a
-  claim nothing could check.
-  The pull request and the stage are also what the recovery reconciles against the issue's own before it finishes
-  any road, since finishing posts a notice, files an event, and drops the anchor — and a record that does not name
-  the checkout at all is what keeps the divergence counts to the one state they answer for, an attempt that
-  recorded nothing.
-  The three are written on the statement after `git rebase` returns, before the head is read for anything else, so
-  the window with no provenance is as narrow as one in this domain gets — a real replay diverges from the head the
-  pull request still carries, and without the record a recovery cannot tell that divergence from a worktree
-  somebody rebuilt.
+  `pending_auto_base_rebase_rewrite_pr` + `pending_auto_base_rebase_rewrite_stage` — the TERMS of the same attempt,
+  written in the anchor's own statement, before `git rebase` is allowed to touch the branch. They are what the
+  permit's publication checks are asked against on the tick after a crash: read off the issue then they would
+  compare today with today, and a relabel or a repoint made while the process was down would pass as the dead tick's
+  own. They are also what the recovery reconciles against the issue's before it finishes any road, since finishing
+  posts a notice, files an event, and drops the anchor.
+  `pending_auto_base_rebase_rewrite_sha` — what that rebase produced, written on the statement after git hands it
+  back, before the head is read for anything else and before the size gate is entered. It is the only thing that can
+  say the divergent checkout a recovery finds is that attempt's own work: a rebase REPLAYS the branch, so a worktree
+  somebody rebuilt, an operator's reset, and a branch pointed at other work all present the same shape and all
+  satisfy the same lease.
+  The group is read whole or not at all and typed against the same shapes every other late field is — an
+  abbreviation or a value that is not a whole git object id is no head — and dropped by the same write that drops
+  the anchor. Absent, IN FLIGHT, and DAMAGED are three answers rather than one. A comment carrying none of the three
+  is an attempt from before this record existed, and only there do the ahead/behind counts get to answer. A comment
+  carrying the terms and no head is the window between git returning and that second write: nothing names the
+  commit in the checkout, so the recovery offers it to the permit to be proved by what it CONTRIBUTES against the
+  pair the adjudication recorded — a replay of the accepted change proves out, and a checkout nothing here made
+  does not. Where the issue carries no such pair — a legacy exemption, a base the remote would not name, an issue
+  that never earned a verdict — there is nothing to prove it by, and the branch is reset onto the anchor and parked
+  rather than force-pushed on a count. And a comment carrying a head that does not vouch for the checkout — a term
+  taken out, a head that is not a commit, terms missing under a head that is there, or a whole record naming some
+  other commit — resets onto the anchor and parks too, because read as either window it resembles, a strictly-ahead
+  checkout would be measured and force-pushed on the strength of a claim nothing could check.
   `pending_auto_base_rebase_announced_sha` is the last member and covers the last window a finish has: everything a
   finish announces goes out before the relabel and the write that clears this record goes out after it, so the head
   it has already said it published is recorded in between, while the anchor still stands. A tick lost there comes

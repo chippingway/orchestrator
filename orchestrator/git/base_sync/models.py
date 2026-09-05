@@ -26,47 +26,72 @@ from orchestrator.workflow.state import WorkflowLabel
 class _PendingRewrite:
     """What one interrupted attempt recorded about the replay it made.
 
-    Three facts, written in one statement and read as one, because a caller
-    holding any of them apart would be free to fill the others in from the
-    world it woke up in. The head is what says the checkout in front of a
-    recovery is that attempt's own work. The pull request and the stage are
-    what the permit's publication checks are asked AGAINST -- taken from the
-    issue as it reads now they would compare today with today, and a relabel
-    or a repoint made while the process was down would pass as the dead tick's
-    own terms.
+    Three facts, read as one, and written in the two moments they can each
+    first be known. The pull request and the stage are the TERMS of the
+    attempt, and they go down beside the anchor before git is allowed to touch
+    the branch: they are what the permit's publication checks are asked
+    AGAINST, and taken from the issue as it reads now they would compare today
+    with today, so a relabel or a repoint made while the process was down
+    would pass as the dead tick's own terms. The head is what the rebase
+    produced, so it cannot exist until git hands it back -- and it is what
+    says the checkout in front of a recovery is that attempt's own work.
 
-    Absent and DAMAGED are two answers rather than one, and keeping them apart
-    is the whole reason `claimed` is here beside the three. Absent is the
-    window between `git rebase` returning and the write that records this: no
-    key on the comment, nothing to reconcile against, and the recovery falls
-    back to the readings it can still take for itself. Damaged is a comment
-    that claims the record and cannot show it -- a member missing, a pull
-    request that is not an identity, a stage no publication is entered from --
-    and reading that as absent would let exactly the state nobody can vouch
-    for take the road reserved for the state nobody ever wrote.
+    That split is what makes the window between them recoverable. A comment
+    carrying the terms and no head is an attempt that was IN FLIGHT: the
+    branch may be standing on the replay it made and nothing on the record can
+    name that commit, so the head has to be vouched for by something else --
+    the transfer evidence, whose permit proves what the checkout contributes
+    against the pair a human ruled on. Which is why the terms are still worth
+    having there: the permit is asked over the dead tick's own publication
+    rather than over whatever the issue says on the tick that finds it.
+
+    Absent, DECLARED, and DAMAGED are three answers rather than one. Absent is
+    a comment carrying no member at all -- an attempt from before this record
+    existed, or one whose anchor is all that was ever pinned -- and the
+    recovery falls back to the readings it can still take for itself. Declared
+    is the in-flight window above. Damaged is a comment that claims the record
+    and cannot show it -- a member taken out, a head that is not a whole git
+    object id, a pull request that is not an identity, a stage no publication
+    is entered from -- and reading that as either of the other two would let
+    exactly the state nobody can vouch for take a road reserved for one that
+    can.
     """
 
     sha: str = ""
     pr_number: int = 0
     stage: WorkflowLabel | None = None
-    # Whether the pinned comment carries any member of this group. Presence
-    # rather than shape, like every other claim in this domain: a record
-    # something edited claims an attempt just as loudly as a whole one. Read
-    # by VALUE rather than by the key being there, because the write that ends
-    # an attempt blanks these fields rather than removing them -- so a group
-    # of nulls is the record nobody wrote, and a member carrying something
-    # beside one that does not is the record something took apart.
-    claimed: bool = False
+    # Whether the pinned comment claims this group and cannot show it. Set by
+    # the reader rather than derived here, because only the reader can see the
+    # difference between a member that is absent and one carrying something it
+    # could not make sense of -- and the write that ends an attempt blanks
+    # these fields rather than removing them, so a group of nulls is the
+    # record nobody wrote and a member beside a null is the one something took
+    # apart.
+    damaged: bool = False
+
+    @property
+    def is_declared(self) -> bool:
+        """Whether the terms this attempt was made under read back whole."""
+        if self.damaged or self.stage is None:
+            return False
+        return self.pr_number > 0
 
     @property
     def is_recorded(self) -> bool:
         """Whether all three facts came back in the shape they claim."""
-        return bool(self.sha) and self.pr_number > 0 and self.stage is not None
+        return self.is_declared and bool(self.sha)
 
     @property
-    def is_damaged(self) -> bool:
-        """Whether this comment claims a record it cannot show whole."""
-        return self.claimed and not self.is_recorded
+    def left_a_replay(self) -> bool:
+        """Whether this record says the attempt got past `git rebase`.
+
+        The terms alone do not: they go down before git runs, so an attempt
+        that pinned them and stopped there left the branch exactly where the
+        pull request has it. What says otherwise is a head -- or a claim to
+        one this reader could not make sense of, which is a record something
+        edited after a rebase rather than one nobody ever wrote.
+        """
+        return bool(self.sha) or self.damaged
 
     def names(self, local_head: str) -> bool:
         """Whether this record vouches for the commit a checkout stands on."""

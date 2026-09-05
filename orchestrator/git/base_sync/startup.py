@@ -64,12 +64,32 @@ def _record_auto_rebase_attempt(
     before_sha: str,
     consumed_comment_id: int | None,
 ) -> None:
-    """Persist the recovery anchor and any retry unpark before git runs."""
+    """Persist the anchor, the attempt's terms, and any retry unpark.
+
+    All of it before git runs, because every field here is something the
+    branch moving would make unanswerable. The anchor is the head the pull
+    request is standing on and the head the force-push behind this rebase is
+    leased against. The TERMS beside it -- the pull request this attempt
+    publishes onto and the stage it was entered from -- are what the permit's
+    publication checks are asked against on the tick after a crash: read off
+    the issue then they would compare today with today, and a relabel or a
+    repoint made while the process was down would pass as this tick's own.
+
+    They go down here rather than with the head the rebase produces, and that
+    is what makes the window between `git rebase` returning and the write
+    recording its output recoverable at all. A crash there leaves a checkout
+    on a replay nothing names -- but the terms on the comment still say which
+    publication the attempt in flight was for, so the recovery can assemble
+    the transfer evidence over the dead tick's own publication and let the
+    permit prove the head by what it contributes.
+    """
     if consumed_comment_id is not None:
         context.state.set("last_action_comment_id", consumed_comment_id)
         context.state.set(_AWAITING_HUMAN, False)
         context.state.set(_PARK_REASON, None)
     context.state.set(_PENDING_PUSH_SHA, before_sha)
+    context.state.set(_PENDING_REWRITE_PR, context.pr_number)
+    context.state.set(_PENDING_REWRITE_STAGE, str(context.label))
     context.gh.write_pinned_state(context.issue, context.state)
 
 
@@ -144,34 +164,24 @@ def _record_the_rewrite(context: _AutoRebaseContext) -> str:
     on the statement after `git rebase` returns, before the head is read for
     anything else and before any guard that could refuse. Every window a crash
     can be lost in from this point on is behind it, and the one it cannot
-    cover -- between git returning and this write -- is as narrow as a window
-    in this domain gets. There the recovery has no provenance and falls back
-    to what it always did: a strictly-ahead branch is a fast-forward the
-    anchor lease loses nothing to, and a divergent one resets and parks.
+    cover -- between git returning and this write -- is answered by the terms
+    the anchor already carries: the attempt reads as one still IN FLIGHT, and
+    the head it left has to be vouched for by what it contributes rather than
+    by an id nobody wrote down. Where nothing can vouch for it, the recovery
+    falls back to what it always did: a strictly-ahead branch is a
+    fast-forward the anchor lease loses nothing to, and a divergent one resets
+    and parks.
 
     Nothing is recorded for a rebase that moved nothing or left a head this
     host cannot read. The first is the no-op the guard behind this finishes by
-    dropping the attempt, and the second names no commit to record.
-
-    The publication goes down with it, and for a reason the head alone does
-    not cover. The permit re-asked on the tick after a crash checks the pull
-    request and the stage the rewrite was made against; evidence re-derived
-    from whatever the issue says THEN would compare today with today, and a
-    relabel or a repoint made while the process was down would be adopted as
-    the dead tick's own terms. Recorded here, the disagreement is visible and
-    the permit refuses it.
-
-    Written beside the anchor rather than in place of it, because the two
-    answer different questions -- which head the push is leased against, and
-    what it publishes onto which publication -- and they are dropped together
-    by the one step that ends the attempt.
+    dropping the attempt, and the second names no commit to record. Both leave
+    the terms standing, which is right: the attempt is not over until the step
+    that ends it drops the whole group.
     """
     after_sha = probes._head_sha(context.worktree) or ""
     if not after_sha or after_sha == context.state.get(_PENDING_PUSH_SHA):
         return after_sha
     context.state.set(_PENDING_REWRITE_SHA, after_sha)
-    context.state.set(_PENDING_REWRITE_PR, context.pr_number)
-    context.state.set(_PENDING_REWRITE_STAGE, str(context.label))
     context.gh.write_pinned_state(context.issue, context.state)
     return after_sha
 

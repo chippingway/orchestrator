@@ -11,8 +11,9 @@ longer records, no permit licenses the replay to publish at all, the branch was
 put back on the anchor with the attempt's own records still standing, the
 remote was rolled back off a replay the record says it carried, a rewrite
 the pull request already carries is one this tick cannot finish the route
-behind, or the issue was relabelled off the refresh-driven set with the
-attempt's own records still standing.
+behind, the issue was relabelled off the refresh-driven set with the
+attempt's own records still standing, or an attempt still in flight left a
+replay no record names and no verdict can prove.
 Each one either finalizes through ``persistence`` or parks, so keeping them
 in one owner is what makes the set enumerable -- an outcome that neither
 routed nor parked would leave the issue holding an anchor no later tick can
@@ -513,6 +514,64 @@ def _park_refused_permit_recovery(
             f"adjudication, so HEAD has been reset to `{pre_rebase_short}` "
             "and nothing was pushed. Reconcile the pinned comment and reply "
             "on this issue with anything to retry."
+        ),
+        reason=_REASON_AUTO_BASE_REBASE_FAILED,
+    )
+    return True
+
+
+def _park_unproven_replay_recovery(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Restore the anchor where nothing can vouch for a replay in flight.
+
+    The attempt died between `git rebase` and the write that names what it
+    produced, so the terms are on the comment, the anchor is on the remote,
+    and no id anywhere names the commit the checkout is standing on. The one
+    thing that can still say whose work it is, is the verdict this issue
+    carries: the permit re-fingerprints the contribution in front of it
+    against the pair a human ruled on, and a replay of that change proves out
+    where a checkout somebody rebuilt does not.
+
+    Reached where that evidence will not assemble at all -- a semantic record
+    this issue never earned or nothing can read, a base the remote would not
+    name, an object this host does not hold. There is nothing left to prove
+    the head by, and the road behind this one is the ordinary cumulative
+    reading, which answers a different question: a count says how big a
+    change is, never whose it is. Measured and pushed on that, a worktree
+    rebuilt from elsewhere lands on the pull request under a lease the anchor
+    satisfies.
+
+    So the branch goes back onto the anchor the remote is still carrying and
+    the issue parks. Nothing is lost that the reflog does not have, and the
+    rebase this branch is still owed is one the next tick makes for itself
+    once a human has said the checkout is where they want it.
+    """
+    local_short = (recovery_snapshot.local_head or "")[:8]
+    pre_rebase_short = context.pending_pre_rebase_sha[:8]
+    log.warning(
+        "issue=#%d auto-rebase recovery: the attempt died before recording "
+        "the replay it made and nothing on this issue can vouch for %s; "
+        "resetting onto the anchor rather than publishing a head no record "
+        "and no verdict names",
+        context.issue.number, local_short,
+    )
+    persistence._reset_clear_and_park(
+        context,
+        context.pending_pre_rebase_sha,
+        message=(
+            f"{config.HITL_MENTIONS} crash recovery for PR "
+            f"#{context.pr_number}: an earlier tick rebased this branch and "
+            "died before it could record which commit that produced, so "
+            f"nothing on this issue vouches for `{local_short}` -- and this "
+            "issue carries no adjudication verdict the contribution could be "
+            "proved against instead. Publishing it would force-push a head "
+            "no record names over the pull request, so HEAD has been reset "
+            f"to `{pre_rebase_short}` (the head the pull request carries) "
+            "and nothing was pushed; the replay is still in `git reflog`. "
+            "Check the worktree and reply on this issue with anything to "
+            "have the rebase made again."
         ),
         reason=_REASON_AUTO_BASE_REBASE_FAILED,
     )
