@@ -10,6 +10,11 @@ base. A scenario about the rewrite therefore has to give it one to be entered
 on, and a scenario about the refusals moves or closes the pull request it
 seeds here.
 
+`_InterruptsTheRewrite` is how a case puts one of those refusals in the one
+window that is not seeded: the step between the two entry readings, where the
+first has already answered over an intact branch and the second has still to
+be taken over the commit the squash just made.
+
 `SquashRun` is the other end: what the squash decided, beside the push seam
 that recorded whether anything went out and under what name.
 """
@@ -21,7 +26,7 @@ from unittest import mock
 
 from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.git.measurement.models import FrozenCommit
-from orchestrator.git.publication import models
+from orchestrator.git.publication import models, rewrite as _rewrite
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
@@ -54,6 +59,18 @@ PROVE_CANDIDATE_HELPER = "_prove_candidate_commit"
 CLOSED = "closed"
 
 MERGED = "merged"
+
+# A head somebody else pushed while the rewrite was running. Closing a pull
+# request does not move its branch and moving one does not close it, so the
+# second entry read is the only thing that catches either.
+MOVED_HEAD = "cafe1234" * 5
+
+# A file the topic branch the repository fixture seeds already tracks, and
+# what somebody writes into it while the rewrite is running: a `--hard` reset
+# would take that edit with it.
+TRACKED_FILE = "f1.txt"
+
+TRACKED_EDIT = "kept across the restore\n"
 
 
 @dataclass(frozen=True)
@@ -104,6 +121,39 @@ class PublicationSeed:
     # both, and a subject the runner builds for itself is one the case has no
     # way to reach.
     gate: Any = None
+
+
+class _InterruptsTheRewrite:
+    """What arrives between the squash commit and the gate's own reading.
+
+    Hung on the squash commit rather than on a call count, because that is
+    exactly the step between the two entry readings: the first answered while
+    the branch was intact, and the second is taken once this has run. The
+    pull request can be settled or moved in it, and the WORKTREE can be
+    written to -- a tracked edit is the gate's first refusal, and the only
+    one whose repair a `--hard` reset would throw away.
+    """
+
+    def __init__(
+        self, pull_request, *, state=None, head=None, writes=None,
+    ) -> None:
+        self._pull_request = pull_request
+        self._state = state
+        self._head = head
+        self._writes = writes
+        # Bound before the seam is replaced, so making the commit does not
+        # re-enter the double standing in for it.
+        self._commits = _rewrite._create_squash_commit
+
+    def __call__(self, worktree, message):
+        made = self._commits(worktree, message)
+        if self._state is not None:
+            self._pull_request.state = self._state
+        if self._head is not None:
+            self._pull_request.head.sha = self._head
+        if self._writes is not None:
+            (worktree / TRACKED_FILE).write_text(self._writes)
+        return made
 
 
 def _gate_base_read(fixture) -> None:

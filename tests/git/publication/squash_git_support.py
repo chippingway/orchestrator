@@ -17,11 +17,13 @@ from unittest import mock
 
 from orchestrator import config
 from orchestrator.git import branch_transport
-from orchestrator.git.publication import squash
+from orchestrator.git.publication import rewrite as _rewrite, squash
 from tests.git.publication.squash_gate_support import (
+    SQUASH_PR_NUMBER,
     PublicationSeed,
     SquashRun,
     _driven_reads,
+    _InterruptsTheRewrite,
     _squash_gate,
 )
 from tests.support.fakes import make_issue
@@ -46,6 +48,10 @@ REMOTE_BASE_REF = "origin/main"
 GIT_REV_PARSE = "rev-parse"
 HEAD_REF = "HEAD"
 
+# The seam `_InterruptsTheRewrite` is hung on, which is the step between the
+# two entry readings: the first answered while the branch was intact, and
+# the second is taken once this has run.
+_SQUASH_COMMIT_HELPER = "_create_squash_commit"
 
 
 def run_git(*args: str, cwd: Path, env_extra: dict | None = None) -> str:
@@ -259,6 +265,22 @@ class _SquashScenarioMixin:
             self.branch,
         )
         return SquashRun(outcome=raw_result, push_mock=push_mock)
+
+    def _interrupted(self, squashed, **settlement):
+        """One squash whose publication or worktree moves as it commits.
+
+        The window only, so the ceiling and the gate stay the case's own:
+        `_squashes` is what each fixture binds those with, and what a case
+        about this window varies is what arrives in it.
+        """
+        with mock.patch.object(
+            _rewrite,
+            _SQUASH_COMMIT_HELPER,
+            _InterruptsTheRewrite(
+                squashed.gh.get_pr(SQUASH_PR_NUMBER), **settlement,
+            ),
+        ):
+            return self._squashes(squashed)
 
 
 class SquashGitFixtureMixin(
