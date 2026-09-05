@@ -22,9 +22,15 @@ from tests.workflow.late_split.generation_test_support import (
     DIGEST_LENGTH,
     PUBLISHED_PR_NUMBER,
     SHA_LENGTH,
-    SOURCE_STAGE,
     measured_generation,
 )
+
+# The stage a squash record names, which is the stage that makes one: the
+# approval handoff runs the rewrite before it relabels. Spelled here rather
+# than borrowed from the generation fixtures beside it, because a record is
+# held to the stage its own KIND is entered from and the two vocabularies only
+# happen to overlap.
+SQUASH_STAGE = WorkflowLabel.VALIDATING
 
 # The pair one squash turns into another: the commit a human adjudicated, and
 # the object the rewrite replaced it with over the same merge base.
@@ -74,7 +80,13 @@ _UNUSABLE_RECORDS = MappingProxyType({
     "no pull request": {_PR_NUMBER: None},
     "no source stage": {_STAGE: None},
     "no lease": {_LEASE: None},
-    "a kind this build does not authorize": {_KIND: "rebase"},
+    "a kind this build does not authorize": {_KIND: "amend"},
+    "a kind the recorded stage does not make": {
+        _KIND: str(_rewrites.LateRewriteKind.CONFLICT_REBASE),
+    },
+    "a stage that makes the other kind": {
+        _STAGE: str(WorkflowLabel.RESOLVING_CONFLICT),
+    },
     "a phase this build does not write": {_PHASE: "reverted"},
     "an abbreviated accepted commit": {_FROM: CANDIDATE_SHA[:7]},
     "a truncated fingerprint": {_FINGERPRINT: CONTRIBUTION_DIGEST[:_HALF_A_DIGEST]},
@@ -88,7 +100,13 @@ _UNUSABLE_RECORDS = MappingProxyType({
 
 # What a caller can hand the write that is not the shape the field takes.
 _REFUSED_WRITES = MappingProxyType({
-    "a kind this build does not authorize": {"kind": "rebase"},
+    "a kind this build does not authorize": {"kind": "amend"},
+    "a kind this stage does not make": {
+        "kind": _rewrites.LateRewriteKind.CONFLICT_REBASE,
+    },
+    "a stage that makes the other kind": {
+        "source_stage": WorkflowLabel.RESOLVING_CONFLICT,
+    },
     "a pull request that is not an identity": {"pr_number": 0},
     "a stage no publication is entered from": {
         "source_stage": WorkflowLabel.READY,
@@ -108,7 +126,7 @@ def granted_rewrite(**overrides) -> _rewrites.LateRewrite:
         "to_sha": REWRITTEN_SHA,
         "to_base_sha": MERGE_BASE_SHA,
         "pr_number": PUBLISHED_PR_NUMBER,
-        "source_stage": SOURCE_STAGE,
+        "source_stage": SQUASH_STAGE,
         "lease": LEASE_SHA,
         **overrides,
     })

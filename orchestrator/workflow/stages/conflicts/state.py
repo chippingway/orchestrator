@@ -17,6 +17,10 @@ what a later tick cannot re-derive: the settlement publishes the commit, so the
 resumed tick reads a branch that already carries its base and would call the
 round a no-op flip.
 
+The replay group is the same idea one seam further still: a record a tick
+writes for a LATER tick to read, because what it says is destroyed by the very
+step it describes.
+
 One slot, one round. A resume that commits while a receipt is still outstanding
 would write its own over it -- pushed, the owed round is cleared without ever
 being counted; held, the gate writes over it -- so every road that starts one
@@ -55,6 +59,38 @@ _TRANSIENT_PARKS = frozenset((
     _REASON_UNREADABLE_WORKTREE,
     _REASON_UNPINNABLE_RECOVERY,
 ))
+
+# The account one replay leaves of itself: the head it was about to replace,
+# the fork point that head's contribution was read over, the commit the
+# replay produced, and the pull request it was all made against. Written in
+# two steps around the rebase, because the tick that runs a replay and the
+# tick that publishes it are not always the same one -- a crash between the
+# rebase and the size gate leaves the replayed commit on the branch and
+# unpushed, and nothing readable off the branch afterwards tells it from a
+# resolution an agent wrote or a fix commit a reroute sent over. The commit
+# it PRODUCED is what makes a stale record inert: a later tick acts on this
+# only where the branch is standing on exactly that object.
+_REPLAY_FROM_SHA = "conflict_replay_from_sha"
+
+_REPLAY_FROM_BASE_SHA = "conflict_replay_from_base_sha"
+
+_REPLAY_TO_SHA = "conflict_replay_to_sha"
+
+# The pull request the replay was made against, recorded beside the commits
+# for the reason the commits are recorded at all: `pr_number` is a field a
+# later tick can find pointing somewhere else, and a rewrite is evidence about
+# ONE publication. Read off the comment at recovery time instead, a replay of
+# this branch would be offered as a rewrite of whatever pull request the issue
+# had come to record -- and another open one standing on the same head would
+# pass every check the permit makes.
+_REPLAY_PR_NUMBER = "conflict_replay_pr_number"
+
+_REPLAY_KEYS = (
+    _REPLAY_FROM_SHA,
+    _REPLAY_FROM_BASE_SHA,
+    _REPLAY_TO_SHA,
+    _REPLAY_PR_NUMBER,
+)
 
 _SETTLED_OUTCOME = "conflict_settled_outcome"
 

@@ -298,13 +298,20 @@ orchestrator/
                         and the pre-squash head pinned beside them -- the rollback target, the head the entry takes
                         its lease from, and the commit the gate is told this rewrite collapsed, none of which a
                         reading taken past the reset could recover
-      probes.py         the subject vocabulary and predicates, one divergence reading -- the fetched ref resolved
+      probes.py         the subject vocabulary and predicates, the two branch-geometry reads, and the
+                        first-commit and recent-base subject reads. One is the divergence reading -- the fetched ref
+                        resolved
                         ONCE and HEAD counted against that immutable commit, since the counts are a claim about the
                         tip and a ref something moves between two readings would leave a branch proved against one
-                        head and its push pinned to another -- and the first-commit and recent-base subject reads.
+                        head and its push pinned to another.
                         A reading that did not happen says so (`readable`) rather than answering `(0, 0)`, which is
                         what an in-sync branch answers and what every caller acting on it would rebase, spawn over,
-                        and force-push on
+                        and force-push on. The other is the FORK POINT one revision left the base at, which is the
+                        commit a three-dot contribution resolves to and therefore the base a fingerprint is taken
+                        over: a rebase reads it at both ends, since the pre-replay one is off the branch the moment
+                        the replay lands. An unfetched base, a revision this host does not hold, and two histories
+                        with no ancestor between them each answer "" -- evidence the caller cannot produce, never a
+                        base to fingerprint over
       rewrite.py        the soft reset, the orchestrator-identity commit, the gated publication of the commit it
                         just made -- measured, then named against it and pinned to the head the entry froze, with
                         the plan's pre-squash head and merge base handed over beside it, since a rewrite of the

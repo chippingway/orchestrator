@@ -43,6 +43,7 @@ per-file-ignores =
     orchestrator/workflow/engine/tick.py:WPS201,WPS202
     orchestrator/workflow/engine/usage.py:WPS201,WPS202
     orchestrator/workflow/stages/conflicts/divergence.py:WPS202
+    orchestrator/workflow/stages/conflicts/evidence.py:WPS202
     orchestrator/workflow/stages/conflicts/transitions.py:WPS202
     orchestrator/workflow/stages/decomposition/run.py:WPS201
     orchestrator/workflow/stages/decomposition/late_coordinator.py:WPS201,WPS202
@@ -90,6 +91,7 @@ per-file-ignores =
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/commands.py:WPS202
+    orchestrator/git/publication/probes.py:WPS202
     orchestrator/git/ref_transport.py:WPS202
     orchestrator/git/verification/probes.py:WPS202
     orchestrator/git/worktrees/attribution.py:WPS202
@@ -127,6 +129,7 @@ per-file-ignores =
     tests/workflow/patch_models.py:WPS202
     tests/workflow/stages/implementing/test_late_transfer.py:WPS202
     tests/workflow/stages/implementing/late_transfer_test_support.py:WPS202
+    tests/workflow/stages/conflicts/test_replay_real_git.py:WPS201
     tests/workflow/stages/conflicts/test_settled_round.py:WPS202
     tests/workflow/stages/decomposition/test_late_cleanup_publication.py:WPS201
     tests/workflow/stages/implementing/test_late_gate_retry.py:WPS202

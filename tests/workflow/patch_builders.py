@@ -13,6 +13,7 @@ from tests.workflow.patch_models import (
     _as_mock,
     _default_infer_subject_prefix,
     _fetched,
+    _ForkPoints,
     _HeadReadings,
     _published_branch,
     _RemoteTipAnswers,
@@ -152,6 +153,9 @@ def _conflict_mocks(context: _WorkflowRunContext) -> dict[str, object]:
                 readable=context.branch_divergence_readable,
             ),
         ),
+        # Where one revision's branch left the base, which is what the two
+        # ends of a rebase's own rewrite record are read over.
+        "_fork_point": MagicMock(side_effect=_ForkPoints(context)),
     }
 
 

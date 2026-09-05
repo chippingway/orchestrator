@@ -23,6 +23,7 @@ _HANDLER_OWNER = "handler"
 
 _OWNERS = (
     "divergence",
+    "evidence",
     "guards",
     _HANDLER_OWNER,
     "models",

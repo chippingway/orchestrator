@@ -1,6 +1,10 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Branch inspection: divergence from a remote tip, and commit-subject reads.
+"""Branch inspection: distance from a remote tip, fork points, and subjects.
+
+The two geometry reads sit together because they answer the same question
+from either end: where a checkout stands against the branch it is published
+onto, and where it stands against the base it is measured over.
 
 The conventional-subject vocabulary lives here because every subject
 predicate is built from it: the Conventional type list, the regex that
@@ -131,6 +135,32 @@ def _branch_divergence(
     owner and the record above keeps the reasoning.
     """
     return _BranchDivergence.taken(spec, worktree, branch)
+
+
+def _fork_point(spec: config.RepoSpec, worktree: Path, revision: str) -> str:
+    """The commit `<remote>/<base>` and one revision last had in common, or "".
+
+    The base a contribution is read over. A three-dot range against the base
+    branch resolves to exactly this commit, so naming it names what the diff a
+    reviewer would be handed is taken from -- and a rewrite that moves a
+    branch onto a base which has advanced needs both of them: the fork point
+    the replaced commit was read over, and the fork point the commit replacing
+    it is. Only the first can still be read while the branch stands where it
+    did, which is why it is read there rather than derived afterwards.
+
+    Empty is a reading that did not HAPPEN: a base ref nothing fetched, a
+    revision this host does not hold, two histories with no ancestor between
+    them. Every caller treats it as evidence it cannot produce rather than as
+    a base, because a base nobody established would fingerprint a contribution
+    over a range that means nothing.
+    """
+    read = commands._git_hardened(
+        "merge-base", f"{spec.remote_name}/{spec.base_branch}", revision,
+        cwd=worktree,
+    )
+    if read.returncode != 0:
+        return ""
+    return (read.stdout or "").strip()
 
 
 def _first_commit_subject(spec: config.RepoSpec, worktree: Path) -> str:

@@ -3,6 +3,7 @@
 """Typed inputs and basic mock builders for workflow test runs."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from unittest.mock import MagicMock
@@ -14,6 +15,7 @@ from tests.support.fakes import DEFAULT_PR_HEAD_SHA
 from tests.workflow.repo_values import (
     BASE_TIP_SHA,
     CONTRIBUTION_DIGEST,
+    FORK_POINT_SHA,
     HEAD_AFTER_RUN,
     HEAD_BEFORE_RUN,
 )
@@ -106,6 +108,11 @@ class _WorkflowRunContext:
     # digest, or a `FingerprintFailure` for a reading that never happened and
     # therefore has no id at all.
     contribution_digest: Any = CONTRIBUTION_DIGEST
+    # Where each revision's branch forked from the base. One value answers
+    # every revision alike, which is the world of a tick that replayed
+    # nothing; a mapping seeds the two ends a rebase tells apart, and "" is
+    # the reading that did not happen.
+    fork_points: Any = FORK_POINT_SHA
 
 
 def _agent(**agent_fields) -> AgentResult:
@@ -166,6 +173,25 @@ class _TreeReadings:
         reading = min(self._reads, len(self._readings) - 1)
         self._reads += 1
         return self._readings[reading]
+
+
+class _ForkPoints:
+    """The commit one revision's contribution is read over, this reading.
+
+    A mapping answers per revision, which is what a rebase needs: the head it
+    replayed and the head it produced fork from different commits, and that
+    difference is the whole of what the two ends of one rewrite record say.
+    Anything else answers every revision alike, so a case about a fork point
+    nothing could read seeds "" once rather than per commit.
+    """
+
+    def __init__(self, context: _WorkflowRunContext) -> None:
+        self._seeded = context.fork_points
+
+    def __call__(self, spec, worktree, revision: str):
+        if isinstance(self._seeded, Mapping):
+            return self._seeded.get(revision, "")
+        return self._seeded
 
 
 class _AnchorAnswers:

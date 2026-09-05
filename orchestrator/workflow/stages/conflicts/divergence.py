@@ -15,6 +15,22 @@ obvious -- the `fixing` dead-lock reroute also lands unpushed FIX commits here,
 which are not a rebase, so the branch is still behind base afterwards. That is
 why the push probes rather than assuming, and falls through to the rebase path
 when it finds it, letting one round cover both.
+
+Nothing READ off this branch is evidence of a rewrite, and it may not be.
+Every commit that reaches here is one an earlier tick made and never
+published, and no probe run now tells which kind it is: a rebase that tick
+replayed, a resolution its agent authored over conflicted files, or the
+unpushed FIX commits the `fixing` drift reroute sends here whether the branch
+is behind base or standing on it. Being on base tells them apart no better --
+that reroute fires precisely on a branch that already carries its base.
+
+What tells them apart is the RECORD the replay wrote about itself: the head it
+replaced and the fork point behind it, put down before the rebase ran, and the
+commit it produced, stamped on before the size gate was entered. This push
+hands the gate that record and only where it is about the commit in hand --
+the head it names is the one this push is leased against, and the commit it
+names is the one the checkout is standing on. Everything else presents
+nothing and is measured, which is what a change nobody adjudicated is owed.
 """
 from __future__ import annotations
 
@@ -25,6 +41,7 @@ from orchestrator import config
 from orchestrator.git import commands as _git_commands
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.workflow.stages.conflicts import (
+    evidence as _evidence,
     guards as _guards,
     models as _models,
     state as _state,
@@ -62,11 +79,19 @@ def _guard_diverged_worktree(
     """Decide the fate of a worktree behind the remote PR head.
 
     When `behind > 0` the worktree is normally stale or diverged and we refuse
-    the force-push, park, and return a parked decision. The one exception --
-    an already-rebased worktree ahead of a stale orchestrator-produced PR head
-    -- yields a lease pinned to the validated head so the recovered-push router
-    can force-publish it. Every other case (including `behind == 0`) returns an
-    unparked decision with no lease.
+    the force-push, park, and return a parked decision. Two exceptions yield a
+    lease pinned to the validated head instead, so the recovered-push router
+    can force-publish: a worktree already rebased onto base and ahead of a
+    stale orchestrator-produced PR head, and one whose divergence this stage's
+    own replay record accounts for. Every other case (including `behind == 0`)
+    returns an unparked decision with no lease.
+
+    A REPLAY is why the second exists. A rebase moves the branch off the head
+    it replayed, so the pull request stops being an ancestor and the checkout
+    comes back ahead of it AND behind it -- the very shape this guard parks. A
+    tick that rebased and died before its push therefore reaches here looking
+    exactly like a stale checkout, and without an exception the recovery that
+    finishes it could never run.
     """
     if sync.behind <= 0:
         return _models._DivergeDecision(parked=False)
@@ -99,6 +124,26 @@ def _guard_diverged_worktree(
         # the push below, the new SHA would become the lease and the force-push
         # would silently overwrite it. Leasing against the validated SHA
         # refuses any such concurrent update.
+        return _models._DivergeDecision(parked=False, publish_lease=pr.head.sha)
+
+    # The second exception, and the one a rebase of an adjudicated commit
+    # takes. The record this stage wrote before it replayed names the head it
+    # was about to replace, the commit it produced, and the pull request it was
+    # made against -- so a remote still standing on that head is one nobody has
+    # pushed to since, and the commits this force-push drops are exactly the
+    # ones the replay superseded. It proves more than the head recognition
+    # above does, which is why it needs no base reading beside it: what makes
+    # the overwrite safe is knowing whose commits are being dropped, not where
+    # the branch has got to.
+    if _evidence._replays_the_publication(ctx, sync.worktree, pr):
+        log.info(
+            "issue=#%d resolving_conflict: worktree carries the replay this "
+            "stage recorded over PR head `%s`; force-publishing instead of "
+            "parking",
+            ctx.issue.number, pr.head.sha[:8],
+        )
+        # The pre-rebase head, which is the head the record names and the head
+        # the pull request is standing on -- one commit, proved to be both.
         return _models._DivergeDecision(parked=False, publish_lease=pr.head.sha)
 
     _park_diverged_worktree(ctx, pr, sync)
@@ -157,6 +202,16 @@ def _push_recovered_commits(
     validated as orchestrator-produced, which is a stronger claim about the
     same fact -- and where neither names a head this refuses rather than
     publishing under a lease git would take for itself.
+
+    The rewrite it hands the gate is READ rather than taken: the commits it
+    finds are whatever an earlier tick left, and no probe run here says which
+    -- a replay that tick made, a resolution its agent authored, or unpushed
+    fix commits the `fixing` drift reroute sent over, on base as readily as
+    behind it, since that is one of the two shapes that reroute fires on. So
+    what is handed over is the account a replay wrote about ITSELF, and only
+    where it is about this commit and this lease. Everything else presents
+    nothing and is measured, the ordinary cumulative gate being what a change
+    nobody adjudicated is owed.
 
     Returns True when the tick is fully handled (caller returns): a dirty
     tree, an unpinnable push, or a failed push parks, and a recovered push
@@ -222,6 +277,12 @@ def _push_recovered_commits(
             # and a moved checkout refuses instead. Only what the push OWES
             # turns on the behind-base reading beside it.
             candidate=recovered_sha,
+            # The replay this push is finishing, where a record says that is
+            # what it is. Read rather than probed, since nothing about the
+            # branch tells a replay from work somebody wrote.
+            rewrite=_evidence._recovered(
+                ctx, wt, lease, recovered_sha, pr_number,
+            ),
         ),
     )
     if not published.landed:
@@ -235,7 +296,10 @@ def _push_recovered_commits(
         )
         return False
     # Pushed branch diff -> hand straight back to validating; the single docs
-    # pass runs after final reviewer approval.
+    # pass runs after final reviewer approval. A replay record goes with it:
+    # the commit it explains is on the remote, and this tail's own write
+    # carries the drop.
+    _evidence._forgets_the_replay(ctx.state)
     _transitions._hand_resolved_round_to_validating(
         ctx, conflict_round, pr_number,
         outcome=_RECOVERED_PUSH, sha=recovered_sha,

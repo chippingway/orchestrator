@@ -21,9 +21,9 @@ refusal the moment one does not:
   the semantic record beside it is whole -- the frozen pair the adjudication
   was taken between, the digest of what lay between them, and the scheme it
   was taken under;
-* the evidence names a rewrite kind this build authorizes, and names every end
-  of both contributions, the pull request, the stage, and the lease at the
-  shape each of those takes;
+* the evidence names a rewrite kind this build authorizes, from a stage that
+  really makes that kind, and names every end of both contributions, the pull
+  request, and the lease at the shape each of those takes;
 * that publication is the one this call was entered on and the one this issue
   still records -- same pull request, same stage, and a remote standing on a
   head this permit accounts for: the lease it was granted against, or, while
@@ -136,10 +136,7 @@ from orchestrator.workflow.stages.implementing import (
     late_verdict as _verdict_owner,
     state as _state,
 )
-from orchestrator.workflow.state import (
-    WorkflowLabel,
-    publishes_onto_a_pull_request,
-)
+from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -167,11 +164,12 @@ _REWRITTEN = "rewritten"
 # failed.
 _UNKNOWN_KIND = "`{kind}` is not a rewrite kind this build authorizes"
 
+_FOREIGN_STAGE = "a `{kind}` rewrite is not one `{stage}` makes"
+
 _UNNAMEABLE_REWRITE = "it cannot name both ends of both contributions"
 
 _UNNAMEABLE_PUBLICATION = (
-    "it names no pull request, no stage a publication is entered from, or no "
-    "head to lease a push against"
+    "it names no pull request or no head to lease a push against"
 )
 
 _UNENTERED_PUBLICATION = (
@@ -497,13 +495,23 @@ def _unusable_evidence(
     The kind is bounded because what a member licenses is a commit the
     orchestrator produced itself, out of commits it can name both ends of; a
     spelling this build does not authorize describes a rewrite nothing here
-    made. Every other field is held to the shape it claims for the reason each
-    pinned end is: an abbreviation is not a commit and a value that cannot
-    name a pull request is not one, so a permit granted over either would rest
-    on evidence no later reader could check.
+    made. The STAGE beside it is held to that kind rather than merely to being
+    a stage a publication is entered from: the two are one claim about which
+    rewrite this workflow made and where, so a `conflict_rebase` offered from
+    `validating` or a `squash` from `resolving_conflict` describes a rewrite
+    that stage does not make -- and checked a field at a time each half passes
+    while the pair is evidence nothing here produced. Every other field is
+    held to the shape it claims for the reason each pinned end is: an
+    abbreviation is not a commit and a value that cannot name a pull request
+    is not one, so a permit granted over either would rest on evidence no
+    later reader could check.
     """
     if rewrite.kind not in _rewrites.LateRewriteKind:
         return _UNKNOWN_KIND.format(kind=rewrite.kind)
+    if not _rewrites.entered_from(rewrite.kind, rewrite.source_stage):
+        return _FOREIGN_STAGE.format(
+            kind=rewrite.kind, stage=rewrite.source_stage,
+        )
     named = (
         rewrite.from_sha, rewrite.from_base_sha,
         rewrite.to_sha, rewrite.to_base_sha,
@@ -514,7 +522,6 @@ def _unusable_evidence(
         return _UNNAMEABLE_REWRITE
     pinned = (
         _formats.whole_number(rewrite.pr_number) and rewrite.pr_number > 0
-        and publishes_onto_a_pull_request(rewrite.source_stage)
         and _formats.is_hex_of(rewrite.lease, _formats.COMMIT_LENGTHS)
     )
     return "" if pinned else _UNNAMEABLE_PUBLICATION

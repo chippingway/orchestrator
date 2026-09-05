@@ -417,6 +417,19 @@ def publishes_onto_a_pull_request(label: WorkflowLabel | None) -> bool:
     return label in _ENTER_ADJUDICATION_PUBLISHED
 
 
+def rebased_by_the_base_refresh(label: WorkflowLabel | None) -> bool:
+    """Whether the per-tick base refresh drives this stage's own rebase.
+
+    The four states that detour to `workflow:resolving_conflict` when that
+    rebase leaves conflicted files, named off the same set those edges are
+    built from so the two cannot drift. It is the five above minus
+    `workflow:resolving_conflict` itself, which owns its rebase rather than
+    being driven through one -- and telling them apart is what says which
+    rewrite kind a record naming a rebase may have come from.
+    """
+    return label in _DETOUR_TO_RESOLVING
+
+
 def guard_transition(
     current: WorkflowLabel | None,
     new: WorkflowLabel,

@@ -51,6 +51,7 @@ _DEFINED = MappingProxyType({
         "_BranchDivergence",
         _DIVERGENCE,
         "_first_commit_subject",
+        "_fork_point",
         "_is_conventional_subject",
         "_is_prefixed_subject",
         "_recent_base_subjects",

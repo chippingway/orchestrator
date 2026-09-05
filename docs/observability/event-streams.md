@@ -761,27 +761,28 @@ that runs ahead of a publication — asked before that write and again on the wi
 arriving as the record stops naming its cycle is reported rather than lost. It is the same family and the same
 shape the adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended.
 
-The seam writes one family more still, and it is the only one on this page that reports a decision MOVING
-rather than being taken: `late_transfer`, one record per exemption carried onto the commit a workflow rewrite
-replaced the accepted one with
-([`../workflow/roles.md`](../workflow/roles.md#the-size-gate-a-committed-candidate-passes)). It rides the write that
-receipts the landed push, so it is written only where the pull request really carries the rewritten commit, and it is
-filed under the stage the rewrite was entered from rather than under `implementing`. The record names both ends of
-both contributions — `source_sha` / `base_sha` for the pair the verdict moved ONTO, `transferred_from_sha` /
-`transferred_from_base_sha` for the pair it moved off — the pull request it happened on, `rewrite_kind` for which
-rewrite this workflow made (`squash` for the collapse an approval earns, `auto_clean_rebase` for the replay the base
-refresh publishes), and `transfer_proof` for which reading proved the push landed: `pushed` where the leased
-force-push moved the publication off the head the permit was granted against, and `already_published` where a tick
-that pushed and died before its receipt came back to a pull request standing there already and the leased no-op found
-it so. There is no third value — a remote anywhere else is a permit that was refused, which settles nothing and
-reports nothing. No `late_verdict` joins it: the transfer carries a decision a human already made onto the object
-that replaced the one they made it about, and a second `single` here would read as a second adjudication of work
-nobody was asked about twice. Two roads leave the permission unspent and are silent here for the same reason —
-nothing moved. A publication the permit went PAST — some other commit reached the pull request — drops it. And a
-permission this tick's permit did not VOUCH for is left exactly where it stands: a refusal on the re-ask is not a
-hold, so the rewritten commit falls through to the ordinary cumulative gate and a count under the ceiling publishes
-it anyway. So a pull request carrying the rewritten commit with no `late_transfer` beside it is the ordinary reading
-having published it, and the `late_measurement` that reading wrote is what says so.
+The seam writes one family more still, and it is the only one on this page that reports a decision MOVING rather
+than being taken: `late_transfer`, one record per exemption carried onto the commit a workflow rewrite replaced the
+accepted one with ([`../workflow/roles.md`](../workflow/roles.md#the-size-gate-a-committed-candidate-passes)). It
+rides the write that receipts the landed push, so it is written only where the pull request really carries the
+rewritten commit, and it is filed under the stage the rewrite was entered from rather than under `implementing`. The
+record names both ends of both contributions — `source_sha` / `base_sha` for the pair the verdict moved ONTO,
+`transferred_from_sha` / `transferred_from_base_sha` for the pair it moved off — the pull request it happened on,
+`rewrite_kind` for which rewrite this workflow made (`squash` for the collapse an approval earns,
+`auto_clean_rebase` for the replay the base refresh publishes, and `conflict_rebase` for the one
+`workflow:resolving_conflict` runs when a branch has stopped merging cleanly), and `transfer_proof` for which
+reading proved the push landed: `pushed` where the leased force-push moved the publication off the head the permit
+was granted against, and `already_published` where a tick that pushed and died before its receipt came back to a
+pull request standing there already and the leased no-op found it so. There is no third value — a remote anywhere
+else is a permit that was refused, which settles nothing and reports nothing. No `late_verdict` joins it: the
+transfer carries a decision a human already made onto the object that replaced the one they made it about, and a
+second `single` here would read as a second adjudication of work nobody was asked about twice. Two roads leave the
+permission unspent and are silent here for the same reason — nothing moved. A publication the permit went PAST —
+some other commit reached the pull request — drops it. And a permission this tick's permit did not VOUCH for is left
+exactly where it stands: a refusal on the re-ask is not a hold, so the rewritten commit falls through to the
+ordinary cumulative gate and a count under the ceiling publishes it anyway. So a pull request carrying the rewritten
+commit with no `late_transfer` beside it is the ordinary reading having published it, and the `late_measurement`
+that reading wrote is what says so.
 
 The remaining three arrive once an oversized candidate is under adjudication. The second is the late adjudication under
 `workflow:decomposing`
