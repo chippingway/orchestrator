@@ -59,7 +59,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
   state.py                  the `WorkflowLabel` / `ControlLabel` vocabularies, strict label coercion, the declared
                             transition graph and the guard over it -- including the one edge OUT of a terminal,
                             `done` to `rejected`, which the umbrella cancelled between its label write and its
-                            close is corrected over -- and the `workflow:` namespace boundary
+                            close is corrected over -- the two predicates that read the graph's own stage sets
+                            back, one for the states a candidate the remote already carries may be published from
+                            and one for the states the per-tick base refresh drives, which is what the rewrite
+                            record holds a kind and its stage to together -- and the `workflow:` namespace
+                            boundary
   engine/                   what every stage is driven by
     comments.py             the orchestrator marker, the capped id ledger both posters write, and the trusted-author
                             thread read every prompt quotes
@@ -419,15 +423,21 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             commit somebody else made. So the replay also WRITES ITSELF DOWN, in the two steps its
                             shape forces -- the head, its fork point, and the pull request it is being made
                             against before the rebase destroys the first two, then the commit it produced before
-                            the gate is entered -- and the recovery is answered from that group rather than from a
-                            probe. The pull request is on it because `pr_number` is a field a later tick can find
-                            repointed, and a replay read against whichever one the issue records THEN is a rewrite
-                            offered about a publication it was never made against. The stamped commit is what
-                            makes a stale group inert: one naming a commit the checkout is not on describes a
-                            replay that is not in hand. Both writes are spent only for a branch standing on the
-                            commit this issue exempts. It grants nothing: a replay that moved a byte fingerprints
-                            to another contribution and is measured like any other candidate. An end nothing could
-                            name presents no evidence at all rather than a claim with a hole in it
+                            the gate is entered -- and the group is read twice on the tick that finds the replayed
+                            commit unpushed. The divergence guard asks it first, since a replay leaves the branch
+                            ahead of its publication AND behind it -- the shape a stale checkout carrying somebody
+                            else's commit also has, which this stage parks -- so a record naming that head, that
+                            commit and that pull request is what tells the two apart and leases the force-push to
+                            the pre-rebase head; the recovery then reads it again for the evidence it hands the
+                            gate, rather than probing the branch. The pull request is on it because `pr_number` is
+                            a field a later tick can find repointed, and a replay read against whichever one the
+                            issue records THEN is a rewrite offered about a publication it was never made against.
+                            The stamped commit is what makes a stale group inert: one naming a commit the checkout
+                            is not on describes a replay that is not in hand. Both writes are spent only for a
+                            branch standing on the commit this issue exempts. It grants nothing: a replay that
+                            moved a byte fingerprints to another contribution and is measured like any other
+                            candidate. An end nothing could name presents no evidence at all rather than a claim
+                            with a hole in it
       resume.py             the three dev-resume entry points, the shared run, and the `/orchestrator continue`
                             classification. Each of the three can end in a commit this stage publishes onto a
                             pull request the remote already carries, so each passes the size gate -- the fresh
