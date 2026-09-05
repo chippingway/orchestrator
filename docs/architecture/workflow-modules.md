@@ -904,7 +904,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             outlives neither the children still to be released nor the branch still to be
                             deleted
       late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
-                            lineage, and the three outcomes with the bounds they are judged against
+                            lineage, and the three outcomes with the bounds they are judged against and the one
+                            field name they are answered under, read off the parser that reads the reply
       late_reply.py         the late reply's own fence, its three structured decisions, and the envelope and split rules
                             it borrows from the initial mode
       late_content.py       WHICH content the two late-local fingerprints are taken over -- the title and body, and
