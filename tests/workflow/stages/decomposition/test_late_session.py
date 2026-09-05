@@ -26,6 +26,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     LATE_SPEC,
     OTHER_SHA,
     ROLE_DECOMPOSER,
+    SPLIT_BLOCKER,
     late_generation,
 )
 
@@ -63,6 +64,7 @@ def _completed_run(**overrides) -> _models._LateRun:
             source_sha=CANDIDATE_SHA,
             generation=GENERATION_NUMBER,
             verdict=LateVerdict.SINGLE,
+            split_blocker=SPLIT_BLOCKER,
         ),
         **overrides,
     )
@@ -89,11 +91,14 @@ class LateRunRecordTest(unittest.TestCase):
             KEYS.session_id: "older-sess",
             KEYS.verdict: str(LateVerdict.SINGLE),
             KEYS.category: str(LateVerdictCategory.UNSAFE_SPLIT),
+            KEYS.split_blocker: SPLIT_BLOCKER,
         })
 
         _session._record_late_spawn(state, _completed_run())
 
-        for dropped in (KEYS.session_id, KEYS.verdict, KEYS.category):
+        for dropped in (
+            KEYS.session_id, KEYS.verdict, KEYS.category, KEYS.split_blocker,
+        ):
             with self.subTest(key=dropped):
                 self.assertNotIn(dropped, state.data)
 
@@ -119,7 +124,9 @@ class LateRunRecordTest(unittest.TestCase):
         state = PinnedState()
         _session._record_late_spawn(state, _completed_run())
         _session._record_late_result(
-            state, _models._LateAdjudication(verdict=LateVerdict.SINGLE),
+            state, _models._LateAdjudication(
+                verdict=LateVerdict.SINGLE, split_blocker=SPLIT_BLOCKER,
+            ),
         )
 
         self.assertEqual(_session._read_late_run(state), _completed_run())
@@ -159,19 +166,48 @@ class LateResultRecordTest(unittest.TestCase):
 
         self.assertEqual(state.get(KEYS.children), [recorded_child()])
 
-    def test_an_outcome_past_the_budget_is_refused(self) -> None:
-        # Shortening it would record a question nobody asked; the caller is
-        # told it did not fit rather than handed half an outcome.
+    def test_a_single_records_what_stopped_a_split(self) -> None:
+        # The one thing a human deciding about an oversized candidate cannot
+        # get from anywhere else once the run is over.
         state = PinnedState()
 
-        kept = _session._record_late_result(state, _models._LateAdjudication(
-            verdict=LateVerdict.QUESTION,
-            category=LateVerdictCategory.UNKNOWN,
-            question="q" * _session.MAX_RECORDED_BODY,
+        _session._record_late_result(state, _models._LateAdjudication(
+            verdict=LateVerdict.SINGLE,
+            rationale="one coherent change",
+            split_blocker=SPLIT_BLOCKER,
         ))
 
-        self.assertFalse(kept)
-        self.assertEqual(state.data, {})
+        self.assertEqual(
+            state.data,
+            {
+                KEYS.verdict: str(LateVerdict.SINGLE),
+                KEYS.split_blocker: SPLIT_BLOCKER,
+            },
+        )
+
+    def test_an_outcome_past_the_budget_is_refused(self) -> None:
+        # Shortening it would record a question nobody asked or an
+        # explanation nobody wrote; the caller is told it did not fit rather
+        # than handed half an outcome.
+        oversized = "x" * _session.MAX_RECORDED_BODY
+        cases = (
+            _models._LateAdjudication(
+                verdict=LateVerdict.QUESTION,
+                category=LateVerdictCategory.UNKNOWN,
+                question=oversized,
+            ),
+            _models._LateAdjudication(
+                verdict=LateVerdict.SINGLE, split_blocker=oversized,
+            ),
+        )
+        for adjudication in cases:
+            with self.subTest(verdict=adjudication.verdict):
+                state = PinnedState()
+
+                kept = _session._record_late_result(state, adjudication)
+
+                self.assertFalse(kept)
+                self.assertEqual(state.data, {})
 
     def test_what_the_comment_already_holds_counts(self) -> None:
         # A result small on its own can still be the one that pushes the
@@ -206,6 +242,33 @@ class LateResultRecordTest(unittest.TestCase):
             [FIRST_TITLE, SECOND_TITLE],
         )
         self.assertEqual(recovered.children[1][DEPENDS_ON], [0])
+
+    def test_a_recovered_single_reports_a_reason(self) -> None:
+        # A result recorded before this domain kept an explanation is still
+        # this candidate's answer, and reports the stand-in: re-running the
+        # adjudicator to recover prose would pay for a second run that is
+        # free to decide something else.
+        cases = (
+            ("recorded", {KEYS.split_blocker: SPLIT_BLOCKER}, SPLIT_BLOCKER),
+            ("legacy", {}, _models.UNRECORDED_SPLIT_BLOCKER),
+        )
+        for name, recorded, expected in cases:
+            with self.subTest(case=name):
+                run = _session._read_late_run(PinnedState(data={
+                    KEYS.run_cycle_id: CYCLE_ID,
+                    KEYS.source_sha: CANDIDATE_SHA,
+                    KEYS.run_generation: GENERATION_NUMBER,
+                    KEYS.verdict: str(LateVerdict.SINGLE),
+                    **recorded,
+                }))
+
+                self.assertTrue(run.answers(late_generation()))
+                self.assertEqual(
+                    _session._recovered_adjudication(
+                        run,
+                    ).split_blocker_explanation,
+                    expected,
+                )
 
 class LateSessionLockTest(unittest.TestCase):
     """Which backend a later run lands on, and what it falls back to."""

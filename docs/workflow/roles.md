@@ -553,13 +553,19 @@ Three dots, not two: that is the prospective pull-request range the measurement 
 (`git/measurement/additions.py`), and on a diverged history the two-dot range would put the agent on changes nobody
 measured — deciding a split over work this candidate does not add. The child cap, the lineage bound, and the category
 vocabulary are read back off the owners that enforce them, so a bound the agent is told cannot drift from the bound it
-is judged against.
+is judged against, and the one field name the prompt states — the explanation a `single` owes — is read off the parser
+that reads the reply, so a key nothing reads is not one the agent can be asked for.
 
 The reply ends in exactly one fenced `orchestrator-late-manifest` block — a different fence from the initial
 `orchestrator-manifest`, read by `late_reply.py` — declaring one of three outcomes:
 
 - `single` — the committed work is one coherent change despite its size. A diff dominated by legitimate generated or
-  data artifacts is the named false positive and gets this verdict with `"category": "generated_artifacts"`.
+  data artifacts is the named false positive and gets this verdict with `"category": "generated_artifacts"`. The
+  `"split_blocker"` beside it says what made splitting unsafe or unavailable, and it is the one part of a `single`
+  reply's prose the pinned comment keeps — the `"rationale"` is dropped, which is why the two are separate fields
+  rather than one. The prompt asks for it; the parser does not refuse a reply that left it out, since that would buy
+  a second agent run to recover prose — so a `single` with none still decides, and everything reading the verdict
+  afterwards is told no reason was recorded rather than shown nothing.
 - `split` — a child manifest that partitions the declared scope completely, held to the same rules the initial mode
   uses: the child cap, each child's shape, and the acyclicity of the graph they declare.
 - `question` — a categorized question for a human, which is also where artifacts that look like they should NOT have
@@ -573,9 +579,11 @@ the categorized question the workflow actually owes a human (`lineage_bound`) ra
 asks the human instead of paying for the same forbidden split again.
 
 A completed run is recorded whole so a crashed tick does not pay for a second one — a second run is not free, and it
-is free to decide differently. What "whole" means is per verdict: a `single` needs nothing beside itself, a `question`
-carries its category and the sentence it asked, and a `split` carries the ordered child manifest that *is* its
-decision. Whether it fits is measured on the whole comment the write would produce — the preserved held-PR body and
+is free to decide differently. What "whole" means is per verdict: a `single` carries the explanation of what stopped a
+split, a `question` carries its category and the sentence it asked, and a `split` carries the ordered child manifest
+that *is* its decision. The explanation is the one of the three a record may lack and still be an answer, since
+results predating the key are on live issues and the reply contract does not refuse an outcome that omitted it.
+Whether it fits is measured on the whole comment the write would produce — the preserved held-PR body and
 every other stage's keys included — because a result small on its own can still be the one that pushes the comment
 past what GitHub accepts, and learning that from the failed write means the agent has already been paid for. An
 outcome past that budget is refused entire rather than shortened, and the issue parks for a human; an incomplete one

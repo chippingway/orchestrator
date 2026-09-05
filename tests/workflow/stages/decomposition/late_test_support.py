@@ -110,6 +110,7 @@ class _StateKeys:
     verdict: str = "late_result_verdict"
     category: str = "late_result_category"
     question: str = "late_result_question"
+    split_blocker: str = "late_result_split_blocker"
     children: str = "late_result_children"
     plan_pr_number: str = "late_plan_pr_number"
     plan_pr_head: str = "late_plan_pr_head"
@@ -172,8 +173,14 @@ def late_block(payload: str) -> str:
     return f"```{LATE_FENCE}\n{payload}\n```"
 
 
+# What a `single` says stopped a split, as the reply carries it and the
+# pinned comment keeps it. One sentence spelled once, so the parser, the
+# record, and the recovery over them are all read against the same words.
+SPLIT_BLOCKER = "the generated client cannot land without its schema"
+
 SINGLE_REPLY = late_block(
     '{"decision": "single", "rationale": "one coherent change",'
+    f' "split_blocker": "{SPLIT_BLOCKER}",'
     ' "category": "generated_artifacts"}'
 )
 
