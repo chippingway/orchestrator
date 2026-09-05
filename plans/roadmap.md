@@ -1,8 +1,9 @@
-# Agent Orchestrator — Roadmap
+# chipping-orchestrator — Roadmap
 
-## Status as of 2026-08-19
+## Status as of 2026-09-05
 
-The fixed delivery lifecycle is wired end-to-end: pickup →
+The current tree declares version 0.11.1. The fixed delivery lifecycle is
+wired end-to-end: pickup →
 `workflow:decomposing` → `workflow:ready` / `workflow:blocked` /
 `workflow:umbrella` → `workflow:implementing` → `workflow:validating` →
 `workflow:documenting` (final-docs handoff) → `in_review` → terminal
@@ -12,16 +13,25 @@ The fixed delivery lifecycle is wired end-to-end: pickup →
 labels provide read-only Q&A and design-conversation side branches; a
 confirmed discussion publishes a plan PR. The `backlog` and `paused`
 control labels hold fresh or in-flight work without changing the workflow
-state.
+state. With the default `DECOMPOSE=on`, every new committed candidate is
+measured against `MAX_ADDED_LINES` before its first publication and again,
+cumulatively, before every later push onto its PR. Oversized work returns
+to `workflow:decomposing` for a resumable single-or-split adjudication that
+preserves and reuses the committed candidate rather than throwing it away;
+turning decomposition off does not bypass a generation already recorded.
 
-The orchestrator runs as a single long-lived Python process
-(`python -m orchestrator`, wrapped by `run.sh` for self-restart),
-polls one or more configured repos, and delegates coding to `codex` /
+The orchestrator runs as a single long-lived Python process through
+`chipping-orchestrator` or `python -m orchestrator`, with `run.sh` wrapping
+it for self-restart. It polls one or more configured repos and delegates
+coding to `codex` /
 `claude` CLI subprocesses in per-issue git worktrees. State lives in
 GitHub Issues themselves (one workflow label plus one pinned JSON
 comment), so the loop stays stateless and progress is observable on
 github.com. Per-repo ticks fan out concurrently; per-issue handlers
-within each repo run in parallel up to configurable caps.
+within each repo run in parallel up to configurable caps. A durable
+per-issue circuit limits lifetime agent-process starts, and a host-wide
+maintenance pass reclaims proven-safe terminal worktrees and branches on a
+daily interval or on demand.
 
 The observability stack is also in place: audit events, analytics JSONL
 with Postgres rollups, repo skill catalogs, session-aware skill adoption
@@ -29,7 +39,9 @@ with confirmed / inferred / incidental evidence, the Streamlit analytics
 dashboard, and an opt-in file-backed trajectory sink and viewer for
 redacted agent run timelines. Agent token / cost usage is captured both
 as run-level analytics and as per-issue pinned counters that produce a
-terminal receipt comment.
+terminal receipt comment. Both event streams also carry the late-size and
+agent-run-budget transitions; terminal artifact cleanup contributes one
+bounded analytics record per candidate it decides about.
 
 For the authoritative behavior, see:
 
@@ -55,15 +67,23 @@ The orchestrator is feature-complete against its original scope. Each
 shipped area below is a one-line pointer; behavior details live in the
 linked docs.
 
-- **Bootstrap and process model.** Canonical `agent-orchestrator` and
+- **Bootstrap and process model.** Canonical `chipping-orchestrator` and
   `python -m orchestrator` launch forms, polling loop with `--once` and
-  signal-clean shutdown, ancestry-aware self-update detection, and the
-  `run.sh` self-restart wrapper. See
+  `--cleanup-terminal-artifacts`, signal-clean shutdown,
+  ancestry-aware self-update detection, and the `run.sh` self-restart
+  wrapper. See
   [`docs/architecture.md#process-model`](../docs/architecture.md#process-model).
 - **Agent invocation.** `agents.run_agent` dispatches to `codex` /
   `claude`; `DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT` specs are
   pinned per issue and re-parsed on every resume. See
   [`docs/workflow.md`](../docs/workflow.md).
+- **Lifetime agent-run circuit.** Every agent-process start is charged
+  durably before invocation against `MAX_AGENT_RUNS_PER_ISSUE`; the
+  dispatcher holds an exhausted issue on `agent_run_limit`, and a trusted
+  `/orchestrator add-agent-runs N` can extend that issue's allowance.
+  Reservation, start, exhaustion, and extension transitions reach both
+  observability sinks. See
+  [`docs/security.md#bounded-agent-spend-per-issue-max_agent_runs_per_issue`][agent-run-circuit].
 - **Security hardening.** Agent and verify-command env strip GitHub
   tokens and secret-shaped vars; provider keys are exact-name
   allowlisted for agent subprocesses only; authenticated git operations
@@ -81,6 +101,18 @@ linked docs.
   parked developer paths, and the read-only `question` side branch all
   live under `orchestrator/workflow/stages/`. See
   [`docs/state-machine.md#stage-handlers`](../docs/state-machine.md#stage-handlers).
+- **Candidate size gate and automatic late splitting.** With the default
+  `DECOMPOSE=on`, `MAX_ADDED_LINES` measures the exact committed candidate
+  before first publication and the cumulative PR before every later push;
+  switching decomposition off retains unmeasured publication only for new
+  work. Oversized work is frozen and adjudicated under
+  `workflow:decomposing`: a `single` verdict publishes it under a recorded
+  exemption, while a `split` verdict preserves it on immutable refs and
+  creates children that reuse the contribution. Equivalent squash and
+  clean-rebase rewrites transfer the exemption instead of forcing another
+  verdict; durable generation records recover interrupted publication and
+  closed-owner cancellation. See
+  [`docs/workflow/roles.md#the-size-gate-a-committed-candidate-passes`][size-gate].
 - **Control labels.** `backlog` keeps not-yet work out of dispatch;
   `paused` freezes in-flight work across dispatch, base sync, and fresh
   post-agent checks without discarding durable state; and, when
@@ -118,6 +150,14 @@ linked docs.
   cap-exempt on a dedicated pool. See
   [`docs/architecture.md#per-tick-flow-workflowtick`](../docs/architecture.md#per-tick-flow-workflowtick)
   and [`orchestrator/scheduler/service.py`](../orchestrator/scheduler/service.py).
+- **Terminal artifact reclamation.** A daily or on-demand maintenance
+  pass discovers current, legacy, local, and remote-only per-issue
+  worktrees and branches, then removes only artifacts whose terminal
+  ownership, commit survival, clean checkout, quiet period, and lack of
+  active PRs are all proved. Scheduler admission barriers, a host lock,
+  tip rechecks, and leased ref deletion make ambiguous evidence retain the
+  candidate. See
+  [`docs/configuration/operations.md#reclaiming-a-finished-issues-artifacts`][artifact-reclamation].
 - **Responsibility-owned package layout.** The former flat production and
   test trees are split into domain packages with narrow explicit APIs,
   responsibility-named owners, mirrored tests, and repository checks for
@@ -130,15 +170,18 @@ linked docs.
   stays in the in-memory fakes under `tests/support/github/`, reached
   through `tests/support/fakes.py`. See
   [`CLAUDE.md`](../CLAUDE.md).
-- **Project CI.** GitHub Actions runs Ruff, WPS-focused Flake8, and
-  pytest on PRs under read-only token scope; the 120-column repository
-  line-length limit is enforced by Ruff E501 for Python and
-  `tests/repository/test_line_length.py` for tracked Markdown / text;
-  Dependabot opens weekly updates with a 30-day cooldown;
-  `dependency-review` blocks vulnerable PRs.
+- **Project CI and supply-chain checks.** Read-only CI runs Ruff,
+  WPS-focused Flake8, pytest with coverage, an sdist / wheel build, and an
+  isolated installed-console smoke test on Python 3.12 and 3.13. Workflow
+  actions are SHA-pinned; dependency review, CodeQL, OpenSSF Scorecard,
+  and a weekly whole-lockfile vulnerability scan complement Dependabot's
+  cooled update PRs. See
+  [`docs/configuration/operations.md#continuous-integration`][continuous-integration]
+  and [`SECURITY.md`](../SECURITY.md).
 - **Audit event log.** Optional opt-in JSONL sink at `EVENT_LOG_PATH`,
-  one record per workflow event, including opt-in `skill_triggered`
-  events when `TRACK_SKILL_TRIGGERS` is enabled. See
+  one record per workflow event, including the late-size and agent-run
+  budget families plus opt-in `skill_triggered` events when
+  `TRACK_SKILL_TRIGGERS` is enabled. See
   [`docs/observability.md#audit-event-log-event_log_path`](../docs/observability.md#audit-event-log-event_log_path).
 - **Analytics sink, database, and dashboard.** JSONL sink at
   `ANALYTICS_LOG_PATH` plus an operator-deployed Postgres aggregation
@@ -147,8 +190,9 @@ linked docs.
   model under `orchestrator/observability/analytics/query/`, and the
   `orchestrator/apps/analytics_dashboard.py` Streamlit app. Records
   include stage evaluations, agent exits, repo skill catalogs, opt-in
-  skill-observation fields, logical-session adoption, and invocation-level
-  trigger diagnostics. See
+  skill-observation fields, logical-session adoption, invocation-level
+  trigger diagnostics, late-size and agent-run budget transitions, and
+  terminal-artifact cleanup outcomes. See
   [`docs/observability.md`](../docs/observability.md).
 - **Trajectory sink and viewer.** Opt-in `TRAJECTORY_LOG_PATH` records
   redacted, head/tail-truncated `agent_trajectory` JSONL records for
@@ -175,9 +219,10 @@ linked docs.
 
 ## Future work
 
-Open as of 2026-08-19. None of these entries has an implementation or a
-public configuration surface yet. Expand one into a design document only
-when it is picked up.
+Open as of 2026-09-05. The first five entries have no implementation or
+public configuration surface yet; expand one into a design document only
+when it is picked up. The final item is an existing compatibility cleanup
+whose dated removal note has elapsed.
 
 - **Spec-first split.** Insert a `specifying` stage between `ready` and
   `implementing` so a separate spec agent writes failing tests first
@@ -205,6 +250,11 @@ when it is picked up.
   `after_run`) under `<target_root>/.agent-orchestrator/hooks/`. Both
   opt-in; absent = identical behavior. Full review in
   [`plans/symphony-spec-review.md`](symphony-spec-review.md).
+- **Retire the pre-PR rebase compatibility alias.** Confirm that no
+  out-of-repo patch still imports `_merge_base_into_worktree`, then remove
+  that forwarding function and its compatibility test. The source TODO in
+  [`orchestrator/git/base_sync/pre_pr.py`](../orchestrator/git/base_sync/pre_pr.py)
+  named 2026-08-24 as the removal point.
 
 ## Risks
 
@@ -220,7 +270,9 @@ when it is picked up.
 - **R3 — Runaway agent loops / token cost.** Wall-clock timeouts
   (`AGENT_TIMEOUT`, `REVIEW_TIMEOUT`), per-issue retry budget
   (`MAX_RETRIES_PER_DAY`), review / fix cap (`MAX_REVIEW_ROUNDS`),
-  conflict-resolution cap (`MAX_CONFLICT_ROUNDS`).
+  conflict-resolution cap (`MAX_CONFLICT_ROUNDS`), and the durable lifetime
+  circuit (`MAX_AGENT_RUNS_PER_ISSUE`) bound the separate ways an issue can
+  keep spawning agents.
 - **R4 — GitHub rate limits.** Idle per-repo polls and closed-issue
   sweeps can exhaust a PAT's 5000 requests/hour at the default cadence
   once enough repos are tracked. Label caching and
@@ -230,6 +282,16 @@ when it is picked up.
   comment filters, per-surface watermarks, content hashes, and fresh
   post-agent label reads keep late comments from being silently consumed
   and keep agent output from being published after a mid-run pause.
+- **R6 — Destructive terminal cleanup.** Artifact reclamation is bounded
+  to derived orchestrator names and fails closed on every ambiguous read;
+  it also drains scheduler work, takes the host maintenance lock, rechecks
+  tips, and uses non-forced / leased deletes. Those are application guards,
+  not an OS isolation boundary: arbitrary processes running as the same
+  user remain outside the lock's protection.
 
 [typed-states]: ../docs/state-machine.md#typed-states-and-the-transition-guard
 [trajectory-sink]: ../docs/observability.md#trajectory-sink-trajectory_log_path
+[agent-run-circuit]: ../docs/security.md#bounded-agent-spend-per-issue-max_agent_runs_per_issue
+[size-gate]: ../docs/workflow/roles.md#the-size-gate-a-committed-candidate-passes
+[artifact-reclamation]: ../docs/configuration/operations.md#reclaiming-a-finished-issues-artifacts
+[continuous-integration]: ../docs/configuration/operations.md#continuous-integration
