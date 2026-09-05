@@ -23,6 +23,7 @@ _HANDLER_OWNER = "handler"
 
 _OWNERS = (
     "approval",
+    "collapse",
     "awaiting",
     "awaiting_resume",
     "dev_fix",

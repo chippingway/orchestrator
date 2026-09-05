@@ -321,6 +321,28 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             that label itself; and the `auto_clean_rebase` to the four the base refresh drives,
                             since what its evidence names is whichever of them the issue was on when the base
                             moved
+    collapses.py            the three terms a squash says it is about to collapse, written before the reset that
+                            destroys them and deliberately outside the group a cleared generation drops: the head
+                            being collapsed -- the rollback target, and the head the force-push behind it is leased
+                            against -- the base it is collapsed over, and how many commits go in, which is the one
+                            fact no reading past the rewrite could recover and what the handoff's notice is worded
+                            from. Read whole or not at all, so a missing member, an end that is not a whole object
+                            id, and a count no squash collapses each read back as no pending collapse -- while
+                            CARRYING one of those is a separate question the recovery has to ask, since a comment
+                            claiming a collapse it cannot produce describes a branch that reads as having nothing
+                            to squash. What the write that ends one leaves in its place is the fourth key here,
+                            `late_collapse_handoff_sha`: the commit the relabel behind that write is owed over,
+                            since the relabel is a second call and an issue left on `validating` with the record
+                            simply dropped is one the next tick runs a second reviewer on. It is deliberately not
+                            a member of the group -- nothing about the rewrite is outstanding by then, so it
+                            freezes nothing and refuses nothing -- and it is read for a usable value rather than
+                            for presence -- a whole object id at its exact length, since what it is spent on is a
+                            comparison against the head the pull request stands on and an issue with no pull
+                            request to read has nothing else between a value no commit could equal and a label
+                            moved past the reviewer; the worst an unreadable one costs is that saved round.
+                            One the relabel LANDED over is ended by `documenting`, which is the only owner that
+                            can: having the issue is the proof that move happened, and the label history cannot
+                            tell a move that never did from one a drift unwind later reversed
     restart.py              the two-phase restart marker: the closed pair of labels it may apply, the cycle it
                             mints, the whole-marker check that decides whether the one a crash left may still be
                             believed, the settled-ledger precondition retirement refuses without, and the fresh
@@ -1147,8 +1169,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             switch asked ahead of both: a squash is NEW work by the switch's own definition -- the
                             commit it publishes is one it makes itself -- so `DECOMPOSE=off` reads no pull request
                             and parks over none, and what such an install does is squash and push under the lease
-                            this stage read for itself -- the gate's own switch question, asked here because it reaches
-                            it twice and the first of the two is the pull-request read the switch is meant to save.
+                            this stage read for itself, which is the second answer that makes the skipped reading
+                            safe: a remote somebody moved rejects it. The road with NO push behind it is given its
+                            own entry point here for exactly that reason, and the switch does not reach that one --
+                            a recovery that drops a record and hands the branch back has no lease to answer with,
+                            so the reading it skipped would be the last thing before `documenting` had the issue.
+                            The gate's own switch question is asked here because the seam reaches it twice and the
+                            first of the two is the pull-request read the switch is meant to save.
                             With the
                             switch on: entered on
                             that pull request before the reset destroys anything locally, so a closed or unreadable
@@ -1180,7 +1207,28 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             since the entry admits a remote tip a durable record says this issue's own push put
                             there and only the plan says which commit was collapsed -- is handed into the gate
                             beside the publication it was entered on as the evidence `late_transfer` grants a
-                            transfer on
+                            transfer on.
+                            That same before-state is what this owner makes DURABLE before the reset, and what a
+                            tick coming back to a half-finished rotation is answered from: the three terms go onto
+                            the pinned comment ahead of anything destructive (`_records_the_collapse`, refusing the
+                            rewrite outright where GitHub will not take the write), the record is read back and
+                            dropped here, and `_resumed_entry` is the entry a resume freezes -- over the head the
+                            record names, or over the rewritten commit itself where a receipt dates that tip to
+                            this attempt, and NAMING the commit, which a fresh squash cannot do and which is what
+                            lets a pull request already standing on the rewrite be admitted as this issue's own
+                            push having landed. The drop rides the write of whichever owner ends the claim: the
+                            rollback where a reset put the branch back, the reset that never ran, and the approval
+                            handoff's own write -- taken ahead of its relabel -- where a push landed. While it
+                            stands it also holds the branch out of the pre-tick base refresh, since a rebase
+                            replaces the collapse with a commit carrying the base advance and the recovery's own
+                            tree proof stops answering. `_already_published` is the receipt and the head it
+                            replaced asked as one question, and it is what both ends of the resumed window turn
+                            on: the entry is frozen over the rewritten commit where it answers yes, and a push
+                            that then does not go out may not put the branch back, since the remote has the
+                            commit and the count the handoff owes a notice would go with the record. The ENTRY's
+                            own frozen tip answers the second of those beside it and covers more: a crash
+                            between a push and its receipt leaves no receipt to date, and what says the pull
+                            request carries the commit there is the reading this tick took of it
       late_transfer.py      whether a rewrite may carry an adjudication's exemption onto the object it produced,
                             rather than have the same change measured past the same ceiling and adjudicated a
                             second time with a pull request already open over the work. A permit is granted only
@@ -1463,10 +1511,35 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       models.py             the tick record, the locked session, and the outcome
       state.py              the park reasons and pinned-state keys they share
     validating/             `workflow:validating`
-      handler.py            the order one review tick asks its questions in, and the terminals it opens with
+      handler.py            the order one review tick asks its questions in, the terminals it opens with, and the
+                            recorded-collapse route it asks behind only those, ahead of every route that could
+                            point an agent at the branch
       reviewer.py           the round cap, the tracked reviewer spawn and its two refusals, and the verdict fan-out
-      approval.py           the verify gate, the approval comment, the optional squash, and the in_review watermark
-                            seed before the `workflow:documenting` relabel
+      collapse.py           whether a squash this issue began and did not finish is answered before anything else
+                            runs an agent, over the same tail the approval road runs -- what the branch is owed
+                            does not depend on which reading sent the tick. Asked only from that road it would be
+                            asked on no tick whose reviewer times out, crashes, or votes CHANGES_REQUESTED: an
+                            already-landed collapse would never get its notice, its watermarks, or its relabel, a
+                            record nothing can read would reach `fixing` without the park it owes, and a body edit
+                            would resume the dev on a branch standing on a commit nobody accounted for. Presence
+                            on the pinned comment is the whole test, so an issue with nothing recorded costs one
+                            lookup; ABOVE the drift resume and the awaiting-human branch both, which is what makes
+                            the park its own to answer -- its own refusals park under a durable `squash_failed`
+                            and are retried every tick without a second mention, while a park the size gate worded
+                            is held until the human replies and that reply is then spent on the recovery rather
+                            than on the dev; and the checkout is READ where it is there and rebuilt only where
+                            it is not, which is the one thing this route may not borrow from the reviewer road:
+                            ensuring a worktree force-removes a checkout carrying no commits over its base, and
+                            that is exactly what a collapse rewound and not yet recommitted looks like, with
+                            every change it was about in the index. The settled handoff is answered beside it and needs no checkout at all: the label
+                            a finished squash never got to move is moved here, but only while the pull request is
+                            still standing on the commit that handoff named
+      approval.py           the verify gate, the approval comment, and the squash-and-hand-off tail both roads
+                            run: the optional squash, the notice its count is worded from, the in_review watermark
+                            seed, the end of the collapse record, and the `workflow:documenting` relabel that
+                            lands behind that write rather than ahead of it -- with the commit the move is owed
+                            over left on the comment across that boundary, so a relabel that does not land is the
+                            next tick's to retry rather than the next reviewer's to re-review
       verify.py             how a non-ok verify result reads and the park it earns
       watermarks.py         the seed walk past leading orchestrator comments and the ratchet that never regresses one
       requested_changes.py  the PR feedback and `workflow:fixing`-labeled dev fix, plus the no-VERDICT park and

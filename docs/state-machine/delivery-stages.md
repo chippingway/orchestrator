@@ -1398,16 +1398,23 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - **Input**: pinned `pr_number`, `branch`, `dev_agent` / `dev_session_id` (the docs pass reuses the locked dev spec —
   there is no separate `documenting_agent`), plus `docs_checked_sha` / `docs_verdict` / `silent_park_count`.
 - **Internal flow**:
-  0. **External-merge / closed-issue short-circuit** (identical to `_handle_implementing`).
-  1. **`pr_number` missing → park** with `missing_pr_number`. Documenting only runs against an existing PR worktree.
-  2. **`/orchestrator continue` refusal** (`_refuse_parked_continue_command`, run BEFORE the drift block). A bare
+  0. **A settled handoff record is ended** (`_ends_the_validating_handoff`), before anything else and in a write of
+     its own. `late_collapse_handoff_sha` is what the approval that moved the label here leaves in the place of a
+     collapse claim, dropped in a write BEHIND that move — so a record still on the comment when this stage runs is
+     that move having landed and that write having failed. This stage is the only owner that can end one: having the
+     issue is the proof the move happened, and the label history cannot tell a move that never happened from one
+     step 4's drift unwind later reversed. Left standing, the unwind's re-review is answered in `validating` by
+     relabelling the unchanged head straight back here. An ordinary tick carries no such record and writes nothing.
+  1. **External-merge / closed-issue short-circuit** (identical to `_handle_implementing`).
+  2. **`pr_number` missing → park** with `missing_pr_number`. Documenting only runs against an existing PR worktree.
+  3. **`/orchestrator continue` refusal** (`_refuse_parked_continue_command`, run BEFORE the drift block). A bare
      continue on a park needing a real answer consumes the command and posts a refusal (`_refuse_parked_continue`) once,
      then stays parked. A retryable session-failure park (`agent_silent` / `agent_timeout`) and a command carrying
      genuine guidance both fall through: because a bare continue no longer shifts `user_content_hash`, the drift block
      below stays silent (no spurious `routing back to validating`) and the retry reruns the FULL docs pass through the
-     awaiting-human resume (step 9). The parser + classifier are shared with `_handle_implementing` / `_handle_fixing`;
+     awaiting-human resume (step 10). The parser + classifier are shared with `_handle_implementing` / `_handle_fixing`;
      documenting has no preserved feedback batch, so only the refusal needs interception here.
-  3. **User-content drift → relabel back to `workflow:validating`** without spawning the docs agent. A title/body edit
+  4. **User-content drift → relabel back to `workflow:validating`** without spawning the docs agent. A title/body edit
      (or fresh human comment) during the final-docs hop invalidates the prior approval, so the reviewer must
      re-evaluate before any docs work can land. Housekeeping: post a `:pencil2: routing back to validating` notice,
      advance `last_action_comment_id`, refresh `user_content_hash`, clear park flags, reset `review_round=0`.
@@ -1416,11 +1423,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      survives. `docs_drift_unwind_pending` is set while the cleanup is in progress and cleared only on the relabel
      back to `workflow:validating`, so an operator unpark on a parked cleanup re-enters the drift block instead of
      falling through to a docs spawn.
-  4. Awaiting-human + no new comment → early return BEFORE the fetch so a transient `fetch_failed` / `diverged_branch`
+  5. Awaiting-human + no new comment → early return BEFORE the fetch so a transient `fetch_failed` / `diverged_branch`
      doesn't re-post its park every tick.
-  5. Ensure the PR worktree (`_ensure_pr_worktree`, restored from `<remote>/<branch>` so the dev's commits are intact)
+  6. Ensure the PR worktree (`_ensure_pr_worktree`, restored from `<remote>/<branch>` so the dev's commits are intact)
      and refresh via `_authed_fetch`. Failure parks with `fetch_failed`.
-  6. Divergence reading vs. the just-fetched `<remote>/<branch>`. The ref is resolved once and HEAD is counted
+  7. Divergence reading vs. the just-fetched `<remote>/<branch>`. The ref is resolved once and HEAD is counted
      against that immutable commit, so the counts and the head they were taken against name the same tip — read
      twice, a ref something moves in between leaves the branch proved against one head and the push pinned to
      another, and where the pull request has moved to the second that lease is satisfied and the force-push lands on
@@ -1434,9 +1441,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        the recovered docs commit, pinned to the tip this count was taken against rather than to whatever the pull
        request is standing on by then.
      - `(0, 0)` → fall through.
-  7. **A pass whose commit the pull request already carries** (`_finished_settled_docs`), asked between the reading
+  8. **A pass whose commit the pull request already carries** (`_finished_settled_docs`), asked between the reading
      above and the run below. A `docs_settled_sha` receipt is left by any tick that published and did not finish. The
-     size gate in step 11 **held** an oversized docs commit off the pull request and handed the issue to the late
+     size gate in step 12 **held** an oversized docs commit off the pull request and handed the issue to the late
      coordinator, and a settled `single` verdict publishes that commit from there and hands the label back here with
      only the handoff owed. Or the gate **allowed** the push, it landed, and the tick died before this stage could
      record it — the receipt rides the gate's own write either way, which is ahead of everything this stage does with
@@ -1450,17 +1457,17 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      that is not a whole object id, or a head this host cannot peel, likewise leaves it for a tick that can prove it —
      in sync is not the same claim as CARRYING it, since a replacement host rebuilt from a pull request that has moved
      on reads level with its remote too.
-  8. Whichever shape runs below, the `docs_verdict` an EARLIER pass left is dropped as this one begins. Every shape
+  9. Whichever shape runs below, the `docs_verdict` an EARLIER pass left is dropped as this one begins. Every shape
      re-anchors `docs_checked_sha` to the head it is about — the resumed dev that adds nothing to a commit already
      waiting anchors on that very head — so a stale verdict beside it would say a pass has FINISHED for the head this
      one is only starting on — which the in_review merge gate reads as a head this orchestrator has documented, and
      pings as ready for a human to merge, from the moment this pass spawns until it finishes.
-  9. Awaiting-human resume: rebuild the FULL docs prompt via `_build_documentation_prompt` (this may be the first time
+  10. Awaiting-human resume: rebuild the FULL docs prompt via `_build_documentation_prompt` (this may be the first time
      the session sees the docs-stage instructions), persist `docs_checked_sha=before_sha` BEFORE the spawn, then
      `_resume_dev_with_text`.
-  10. Fresh spawn: snapshot `before_sha`, persist `docs_checked_sha=before_sha` and `dev_agent` BEFORE invoking the
+  11. Fresh spawn: snapshot `before_sha`, persist `docs_checked_sha=before_sha` and `dev_agent` BEFORE invoking the
       agent, build the prompt (issue body + recent comments + `DOCS: NO_CHANGE` marker contract), then run.
-  11. Branch on result. Every success exit routes to `in_review` via `_advance_after_docs_push` /
+  12. Branch on result. Every success exit routes to `in_review` via `_advance_after_docs_push` /
       `_advance_after_docs_no_change`, which ratchets `pr_last_comment_id` past any issue-thread reply the resume
       consumed so in_review does not bounce over already-addressed feedback. Both end the same way and the order is
       the crash contract: **stamp, announce, persist, relabel** — one durable write, and the relabel behind it. The
@@ -1474,7 +1481,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
       relabel it outlives the handoff whenever the write that would drop it does not land — leaving a record a later
       `validating` approval at the same head consumes, skipping the docs pass that approval just bought. Two windows
       are left and both fail toward doing the work again: a tick that posted its notice and died over the write
-      comes back with nothing on the record saying so, and step 7 announces it a second time; a tick whose relabel
+      comes back with nothing on the record saying so, and step 8 announces it a second time; a tick whose relabel
       did not land leaves the record a same-head re-entry leaves, so the next tick runs the pass rather than handing
       off on evidence that could belong to either. Branches:
       - `interrupted` (shutdown sweep killed the run mid-flight) → ignore the partial result and return WITHOUT writing
@@ -1492,13 +1499,13 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
         (`implementing/late_push._publishes`, reached from `documenting/publication._push_docs_and_advance`). What it
         counts is what the pull request comes to WITH the docs commit in it, against `MAX_ADDED_LINES`; the push it
         licenses is named to the commit this pass made and pinned to the head the pass was entered on — the tip the
-        step 6 fetch read — so a pull request somebody pushed to while the agent was out refuses the push instead of
+        step 7 fetch read — so a pull request somebody pushed to while the agent was out refuses the push instead of
         being adopted as its lease. What comes back is `held`, `landed`, or neither, and `held` is **not** one
         outcome — it means only "this tick is finished, publish nothing and hand the issue on to nothing", and the
         three ways to earn it differ in everything else:
         - **oversized** → the adjudication hold. Nothing is pushed, no docs verdict is stamped, no `in_review`
           handoff is made, the issue is relabelled `workflow:decomposing`, and the head the pass produced goes down
-          as `docs_settled_sha` inside the gate's own routed write, ahead of that relabel (step 7 reads it back).
+          as `docs_settled_sha` inside the gate's own routed write, ahead of that relabel (step 8 reads it back).
         - **a reading the gate could not take** → a park, not a relabel. A tree that is not provably clean, a pull
           request nothing could read or one that is closed or merged, a caller-named head that is no whole object id
           or that disagrees with the head the gate reads, a head that moved off what a live record froze, a count
@@ -1681,6 +1688,130 @@ can merge. Asked before the reset that rewrites the branch locally, a closed, me
 dirty tree, or a head that moved costs a refusal with the reviewer-approved commits exactly where they were — and
 the approval handoff parks and stays in `validating`, which is what it already does for every other squash
 failure.
+
+A rebase may not happen inside that window either. `late_collapse_*` freezes the branch out of the pre-tick base
+refresh on the same terms the size gate's own records do, and on the strictest reading of the three — the key being
+on the comment at all, `null` included — because that is exactly what the squash's own reader counts as a claim it
+must refuse. A rebase there replaces the collapse with a commit carrying the base advance too, so the tree proof
+below stops answering and the pull request is left on the history the record says was collapsed with the rebase
+already force-pushed over it. The freeze ends when the record does.
+
+A squash says what it is about to do before it does it, and that is what closes the window neither reading covers:
+the process itself dying. The head being collapsed, the base it is collapsed over, and how many commits go in are
+written to the pinned comment between the entry and the reset (`late_collapse_head`, `late_collapse_base_sha`,
+`late_collapse_count` — see
+[`labels-and-state.md`](labels-and-state.md)), because past the reset none of the three can be read
+back off anything: the head is off the branch, the base is not derivable from the object that replaced it, and the
+count is gone with the commits it counted. That count is **walked** rather than taken from the commit subjects
+beside it: `git commit --allow-empty-message` makes a commit that contributes no subject and one commit, so a count
+derived from the subjects is short by however many of those a branch carries — which would record three commits as
+two and have the recovery refuse a collapse it really made as miscounted, and read a branch of two as the single
+commit that takes the nothing-to-squash road. A write GitHub refuses stops the squash rather than running it
+unrecorded — the approved commits stay where they are and the next tick tries again.
+
+That write is a **request**, so the head and the tree are proved once more when it comes back. The worktree is
+writable for the whole of it, and the reset behind it is `--soft`: the commit that follows takes the INDEX, so a
+change staged in that window would be collapsed into the squash and force-pushed onto the pull request as work a
+reviewer approved. Both halves refuse, the record of a rewrite that never happened goes with the refusal, and the
+notice says which of the two moved — a tree that went dirty leaves the approved commits exactly where a human will
+look for them, a head that moved has not been shown to.
+
+The tick that comes back reads that record before it reads the commit count, and the order is the whole point: a
+collapsed branch and a branch with nothing to collapse both carry one commit. It also proves the record before it
+compares it to anything, the road that DROPS the record included — a head edited onto the commit a finished
+collapse left reads as a reset that never landed, so a shortcut taken for one would drop the record and hand on a
+branch of one commit, which is the nothing-to-squash road reporting success over a remote still carrying the history
+the record names. Past that proof, exactly one branch may be dropped over: the one the record still describes
+exactly, standing on the head it names over the commits it counted, which is the tick that died before the reset
+ever ran. That drop is safe because the branch is the one the record was written over — the ordinary squash
+collapses exactly the commits an approval was given for, and it cannot report success without pushing them, since it
+goes through the entry, the rewrite, and the push and refuses if any of them will not have it.
+
+Every other shape refuses. A head that matches over a different number of commits is a branch something rewrote
+while the record went on naming its old tip. A branch carrying **nothing** over its base is the shape the ordinary
+squash could not be trusted with: there is no collapse left to finish and no history left to squash, while the
+remote still carries every commit the record names. And a branch that MOVED off the recorded head is refused
+whichever way it went, because nothing here can say who moved it — this recovery owns the tick from the moment a
+record goes down, ahead of every route that could resume a developer, so work on top of the recorded head is work
+nobody in this workflow made and squashing afresh would force-push it onto the pull request as history a reviewer
+approved. The two ways it moved are still told apart in the notice, since what an operator does next differs: a
+recorded head still reachable from the branch has the approved commits under whatever was committed over them, and
+one the branch replaced has them only in the reflog.
+
+The rest are **resumed** through the same leased publication the squash itself would have made — entered on the head
+the record names, handed the pair the record holds as the transfer evidence no plan is left to supply, and finished
+with the count only the record still has. A collapse that landed locally is measured and pushed; one the gate
+already approved publishes on that approval; one an outstanding transfer permission licensed is re-asked in full and
+publishes unmeasured; one a receipt says this issue's own push already put on the pull request is entered on the
+*rewritten* commit instead, so it is the leased no-op that settles the receipt, the debt, and the exemption rather
+than a second reading of work a human already ruled on; and a settled receipt whose handoff never finished is that
+same state one step on, finished with the notice and the relabel it was owed.
+
+No road above is taken over a tree this host cannot **prove** clean, the one that hands the branch back to the
+ordinary squash included. The planning probes refuse on what git *named*, so a status that established nothing reads
+to them as a clean tree; an install with `DECOMPOSE=off` reads no pull request, so the entry behind the rewrite
+proves no tree either. Between those two there is nothing else standing between an unreadable worktree and a
+force-push, which is why the proof is owed before anything is classified rather than only before the road that
+publishes.
+
+None of it runs on the record's **shape** either, and neither does any road above it. A whole-looking record is one
+somebody could have written, not one this repository ever produced, so four things it claims are proved against the
+objects before any of them are compared to the branch: both recorded ends peel
+to commits this host really holds, the recorded base really is a commit the recorded head was built on — a walk
+between two histories that never met reports a number like any other, so the count is no ancestry proof — the history
+between them really is the number of commits the record counts, and the commit on the branch carries both the tree
+the recorded head left *and* that base as its one parent, which is what a squash produces exactly and by
+construction. The parent is not decoration: the same tree re-parented onto a base that has since advanced is a commit
+that *reverts* whatever that base added, and a tree comparison alone would push it onto the pull request under an
+exemption a human granted a different change. A record that fails any of them
+leaves the branch untouched and refuses, because every other refusal here knows what the branch is standing on and
+can put it back while this one is the answer to not knowing. Anything else refuses on the terms every squash refuses
+on — a pull request a human closed, a remote somebody moved off both heads the collapse accounts for, a tree that
+stopped being provably clean — and the branch goes back only where nothing durable names what is on it. A record
+this build cannot read **whole** refuses outright rather than being waved past, since the branch behind such a claim
+is exactly the one commit that reads as nothing to squash.
+
+A resumed publication that does not go out is rolled back like any other, with one exception: where the pull request
+already carries the commit, that push sends nothing, so a request that fails is a transport failure over work the
+remote has. Reset there, the checkout would come off a commit the pull request carries, the count the notice is still
+owed would go with the record, and the next tick would find a remote that moved for reasons nothing on the comment
+explains. Two readings say the remote is there and the **entry** is the stronger, since it is a reading of that pull
+request taken this tick: a tip it froze equal to the commit about to be pushed, which it admits only where a durable
+record accounts for it — so it covers the crash between a push and its receipt, where the receipt is precisely what
+is missing. The receipt dated to this attempt is asked beside it for the road that read no remote at all. Neither can
+fire on a fresh squash, whose entry was frozen before the commit existed; and the approval the gate writes before a
+push, and the permission a transfer holds, are records a reset is *supposed* to drop, so neither is asked.
+
+The record outlives the push, and the **handoff** is what ends it. The count on it is what the
+`:package: squashed N commits to 1` notice is worded from and nothing else on the issue has one, so a notice that
+was owed and did not post leaves the record standing and the label where it is — the next tick republishes the
+commit the remote already carries as the leased no-op it is and words the notice again. The write that ends it
+lands **before** the relabel, because past the label the issue belongs to `documenting`, a stage that never runs
+this recovery: a tick dying between the two would strand a claim nothing there could answer and lose the watermarks
+the same write carries.
+
+That write does not leave the boundary empty, though, because the relabel is a second call and can fail on its own.
+What it ends is the **claim**; what it leaves in its place is `late_collapse_handoff_sha`, the commit the move is
+owed over. An issue left on `validating` with nothing on the comment is one the next tick runs a second reviewer on,
+over a branch already approved, squashed, and published — so the recovery route reads that record ahead of the
+reviewer and moves the label instead, then drops it in a write of its own behind the label. It is spent only while
+the pull request is still standing on the commit it names: anything that moved the publication on — a docs pass that
+pushed, a fix round, a rebase — has moved the work past the round the record was about, so it is dropped and the
+tick goes to the reviewer rather than sending unread work to `documenting`. Being no claim of an outstanding
+rewrite, it freezes nothing and refuses nothing — and it is held to the shape every other recorded end is, a whole
+object id, because what it is spent on is a comparison against the head the pull request stands on and an issue
+with no pull request to read has nothing else between such a value and a label moved past the reviewer.
+
+A squash failure names which of **four** places it left the branch, so the park notice does not send an operator
+looking at HEAD for approved commits that are only in the reflog — or to a reflog entry for commits that never left
+the branch. The reading is exact rather than a default: an outstanding record read whole whose head is the head the
+checkout is on is the rewrite that did not happen, and the approved commits are where a human squashing by hand
+will look. A branch that moved off a recorded head this host really holds is two shapes, and the *ancestry* tells
+them apart — a recorded head still reachable from HEAD is BURIED, with nothing rewritten and the approved commits
+under whatever was committed on top of them, and one the branch replaced is the collapse, whose reflog entry the
+notice names. Anything else — a record this build cannot read whole, a recorded head no object here answers to, a
+checkout that would not report its own head, or the record-write race, which drops the record as it refuses — is
+UNKNOWN, and the notice says so rather than claiming any place at all.
 
 What the gate measures is what the pull request would **come to**: the count is
 three-dot from the base the *remote* names to the candidate commit, exactly as it is before the first publication, so
@@ -2110,7 +2241,24 @@ approval the reconciliation ahead of the next handler pays as a leased no-op and
 - **Internal flow**:
   0. **External-merge / closed-issue short-circuit** (same chain as implementing / documenting). The reviewer is not
      spawned on either short-circuit.
-  1. Awaiting-human path: resume on the dev's locked spec; on a successful pushed fix, bump `review_round` and stay on
+  1. A squash this issue began and did not finish (`late_collapse_*` on the pinned comment) is answered here,
+     ahead of every route that could point an agent at the branch — the drift resume, the awaiting-human path, and
+     the reviewer spawn (`_recovers_a_recorded_collapse`) — over the same tail the approval road runs. Asked only
+     from that road it would be asked on no tick whose reviewer times out, crashes, or votes `CHANGES_REQUESTED`:
+     an already-landed collapse would never get its notice, its watermarks, or its relabel, a record nothing can
+     read would reach `workflow:fixing` without the park it owes, and a body edit would resume the dev on a branch
+     standing on a commit nobody accounted for. It owns the park it takes, too. Its own refusals park under a
+     durable `park_reason="squash_failed"`, and it retries them on every tick without saying anything again: what
+     the notice asks for — the branch reconciled, or the pinned comment repaired — is proved by the recovery
+     getting further, and the park's own writer stays quiet while that reason stands. A park the **size gate**
+     worded behind it is held rather than re-entered, since the gate posts a fresh notice for every reading it
+     cannot take; the human's reply then clears that park and is spent on the recovery rather than on a dev resumed
+     over a branch mid-rewrite. A recovery that finishes clears the park it found, so nothing carries an
+     `awaiting_human` into `documenting`. An issue with nothing recorded costs one lookup on the pinned comment;
+     one carrying only the `late_collapse_handoff_sha` a finished handoff left moves the label that handoff never
+     got to move (and drops the record behind it), or drops it unspent where the pull request has since moved off
+     the commit it names.
+  2. Awaiting-human path: resume on the dev's locked spec; on a successful pushed fix, bump `review_round` and stay on
      `workflow:validating`. A transient park (`_VALIDATING_TRANSIENT_PARK_REASONS`) with NO new comment goes to
      `_try_recover_validating_transient_park` instead, which retries silently and, on `cleared` / `pushed`, posts the
      **Recovery follow-up** described below before clearing the park. Its two git-touching retries — the deferred push
@@ -2132,14 +2280,14 @@ approval the reconciliation ahead of the next handler pays as a leased no-op and
      refuses (`_refuse_parked_continue`) and stays parked. A command carrying real guidance, or a normal reply,
      resumes the dev on that text as before. (Shared with `implementing` / `documenting` / `resolving_conflict`; see
      the drift-detection section for the bare-continue hash exclusion.)
-  2. If `review_round >= MAX_REVIEW_ROUNDS` (default 3), park (`review_cap`). The park comment surfaces the
+  3. If `review_round >= MAX_REVIEW_ROUNDS` (default 3), park (`review_cap`). The park comment surfaces the
      `/orchestrator add-review-rounds N` escape hatch.
-  3. Otherwise persist `config.REVIEW_AGENT_SPEC` to `review_agent` (traceability only — the reviewer is spawned fresh
+  4. Otherwise persist `config.REVIEW_AGENT_SPEC` to `review_agent` (traceability only — the reviewer is spawned fresh
      each round with no resume), then run the reviewer with the read-only prompt (must end with `VERDICT: APPROVED` or
      `VERDICT: CHANGES_REQUESTED`). A mid-run `paused` / `backlog` re-check (`_paused_during_agent_run`) right after the
      reviewer returns short-circuits BEFORE the usage fold, session record, verdict parse, verify gate, squash, or
      relabel, so the next tick re-spawns a fresh reviewer from durable state.
-  4. Parse the last `VERDICT:` marker (`_parse_review_verdict`):
+  5. Parse the last `VERDICT:` marker (`_parse_review_verdict`):
      - **approved** → in order: (1) run the local verify gate (`_run_verify_commands(wt, config.VERIFY_COMMANDS,
        config.VERIFY_TIMEOUT)`); a non-ok result parks via `_park_verify_failure` with a typed `park_reason`
        (`verify_failed` / `verify_timeout` / `verify_dirty` / `verify_head_changed`) and the approval / squash /
@@ -2149,11 +2297,33 @@ approval the reconciliation ahead of the next handler pays as a leased no-op and
        `_squash_and_force_push` (subject reuses the first commit when it carries a reusable `<prefix>:` form —
        Conventional **or** repo-local such as `event:`/`career:` — otherwise `<inferred-prefix>: <issue title>`, where
        the prefix is inferred from recent base-branch history via `_infer_subject_prefix` and falls back to
-       `fix:`/`feat:` only when no repo-local prefix dominates; pushed with `--force-with-lease`). On squash /
-       force-push failure, park awaiting human and stay on `workflow:validating` so the original commits remain for
-       manual triage. (4) On success, if `squashed_count > 1` post `:package: squashed N commits to 1`, seed the
-       in_review watermarks (inside the `gh.get_pr()` try so a snapshot failure leaves them untouched), then relabel
-       to `workflow:documenting`.
+       `fix:`/`feat:` only when no repo-local prefix dominates; pushed with `--force-with-lease`). That call answers
+       a squash an earlier tick did not finish first, from the record that squash wrote before it ran, so a
+       collapsed-but-unpublished branch is resumed rather than reported as having nothing to squash — and it does
+       so whatever `SQUASH_ON_APPROVAL` says, since the switch decides whether a NEW collapse is made and one
+       already on the branch has to be finished either way. A branch the recovery hands BACK after dropping a
+       record is entered on the publication before it is handed on, since no rewrite follows that drop to read the
+       pull request — and that reading is taken whatever `DECOMPOSE` says too, because with no push behind it
+       there is no lease to answer a remote somebody moved. The checkout is proved again once the reading comes
+       back, since the read is a request and a commit landing in that window is work no reviewer saw on a branch
+       this road reports as standing where it planned. On squash / force-push failure, park awaiting human
+       under a durable
+       `park_reason="squash_failed"` and stay on `workflow:validating`. The notice names which of four places
+       that left the branch: the approved
+       commits are still on it — the ordinary failure, which aborted before anything destructive or restored what it
+       rewound, including a record whose reset never ran — or a collapse this tick could not finish is standing
+       there instead, with the approved history reachable only from the head the record names, or the branch grew
+       PAST that head and the approved commits are under the work on top of them, or none of it has been shown.
+       The record, the checkout's own head, the recorded head as an OBJECT, and the ancestry between the two are
+       all read, since an outstanding record is not proof the rewrite happened, a recorded head this host does not
+       hold is a reflog entry nobody could look in, and one still reachable from HEAD was never rewritten at all.
+       (4) On success,
+       if `squashed_count > 1` post `:package: squashed N commits to 1`, seed the in_review watermarks (inside the
+       `gh.get_pr()` try so a snapshot failure leaves them untouched), then end the collapse record and persist —
+       leaving `late_collapse_handoff_sha` in its place — and only then relabel to `workflow:documenting`, dropping
+       that record in a write of its own behind the label. A relabel that does not land is not raised past the
+       handoff: everything it owed is durable, and step 1 moves the label on the next tick instead of a second
+       reviewer being run over a branch already published.
      - **unknown** (no marker) → park, split by whose failure it was
        (`_reviewer_no_verdict_park`). An empty last message with a non-zero exit (a crash), or a message opening with
        a transient provider refusal (`is_transient_provider_failure` — `API Error: 529 Overloaded` and its 5xx

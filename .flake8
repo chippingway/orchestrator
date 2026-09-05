@@ -27,6 +27,7 @@ per-file-ignores =
     orchestrator/workflow/late_split/models.py:WPS214
     orchestrator/workflow/late_split/rewrites.py:WPS202
     orchestrator/workflow/late_split/lineage.py:WPS202
+    orchestrator/workflow/late_split/collapses.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
     orchestrator/workflow/engine/observations.py:WPS202
     orchestrator/workflow/engine/dispatch.py:WPS201,WPS202
@@ -80,7 +81,7 @@ per-file-ignores =
     orchestrator/workflow/stages/implementing/models.py:WPS202
     orchestrator/workflow/stages/implementing/parks.py:WPS202
     orchestrator/workflow/stages/implementing/publication.py:WPS201,WPS202
-    orchestrator/workflow/stages/validating/approval.py:WPS201
+    orchestrator/workflow/stages/validating/approval.py:WPS201,WPS202
     orchestrator/workflow/stages/validating/dev_fix.py:WPS201
     orchestrator/workflow/stages/validating/drift.py:WPS201
     orchestrator/observability/analytics/config.py:WPS202
@@ -92,6 +93,7 @@ per-file-ignores =
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/commands.py:WPS202
     orchestrator/git/publication/probes.py:WPS202
+    orchestrator/git/publication/squash.py:WPS202
     orchestrator/git/ref_transport.py:WPS202
     orchestrator/git/verification/probes.py:WPS202
     orchestrator/git/worktrees/attribution.py:WPS202
@@ -108,6 +110,7 @@ per-file-ignores =
     orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
     tests/git/test_ref_transport.py:WPS202
+    tests/git/publication/squash_recovery_support.py:WPS202
     tests/git/worktrees/artifact_test_support.py:WPS214
     tests/git/worktrees/candidate_host_test_support.py:WPS202,WPS214
     tests/git/worktrees/discovery_test_support.py:WPS214

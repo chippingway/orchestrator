@@ -121,6 +121,7 @@ class PrepareSquashTest(unittest.TestCase):
         self.assertEqual(plan.base_sha, BASE_SHA)
         self.assertEqual(plan.original_head, ORIGINAL_HEAD)
         self.assertEqual(plan.subjects, (PREFIXED_SUBJECT, PLAIN_SUBJECT))
+        self.assertEqual(plan.count, 2)
         self.assertEqual(plan.message, f"{PREFIXED_SUBJECT}\n")
 
     def test_single_commit_plan_carries_no_message(self) -> None:
@@ -128,6 +129,7 @@ class PrepareSquashTest(unittest.TestCase):
         # subject count and returns the untouched head.
         plan = self._prepare(self._git_reading(PREFIXED_SUBJECT))
         self.assertEqual(plan.subjects, (PREFIXED_SUBJECT,))
+        self.assertEqual(plan.count, 1)
         self.assertEqual(plan.message, "")
 
     def test_unreadable_head_aborts_before_log_read(self) -> None:
@@ -149,14 +151,21 @@ class PrepareSquashTest(unittest.TestCase):
         git = self._git_reading(PREFIXED_SUBJECT, PLAIN_SUBJECT)
         with self.assertRaisesRegex(PREPARATION_ERROR, expected_detail):
             self._prepare(git, **guard_overrides)
-        # Only the merge-base read happened: both guards sit ahead of the log.
+        # Only the merge-base read happened: both guards sit ahead of the
+        # count and the log alike.
         self.assertEqual(git.call_count, 1)
 
     def _git_reading(self, *subjects: str) -> MagicMock:
-        """Serve the merge-base read, then the topic-commit log."""
+        """Serve the merge-base read, the commit count, then the log.
+
+        The count is walked in its own reading rather than derived from the
+        log below it, because a commit written with no message contributes no
+        subject and still contributes one commit.
+        """
         return MagicMock(
             side_effect=[
                 _git_result(stdout=f"{BASE_SHA}\n"),
+                _git_result(stdout=f"{len(subjects)}\n"),
                 _git_result(
                     stdout="".join(
                         f"{subject}\n" for subject in subjects

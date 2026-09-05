@@ -247,13 +247,18 @@ orchestrator/
                         in -- including the label scope on the two freezes no write ever ends -- and the
                         per-worktree route
       frozen.py         which records hold a checkout still and what ends each freeze: the ones that freeze a
-                        branch by their presence -- the late reading and the approval among them, each read as
-                        the whole GROUP its write puts down rather than as its commit alone, since a record
-                        carrying part of one is what the dispatcher parks on a tick LATER and a hold keyed to
-                        the commit would rebase and push it first; with one exception, an approval leased to an
-                        auto-rebase anchor still pinned here, which is this refresh's own interrupted work and
-                        may not freeze the branch out of the recovery that anchor exists for -- the two parks
-                        that freeze one with no record behind them at all
+                        branch by their presence -- the late reading, the approval, and the terms of a squash
+                        mid-rewrite among them, each read as the whole GROUP its write puts down rather than as
+                        its commit alone, since a record carrying part of one is what the dispatcher parks on a
+                        tick LATER and a hold keyed to the commit would rebase and push it first; with one
+                        exception, an approval leased to an auto-rebase anchor still pinned here, which is this
+                        refresh's own interrupted work and may not freeze the branch out of the recovery that
+                        anchor exists for. The collapse group is read one step stricter still -- the key being on
+                        the comment AT ALL, `null` included -- because that is what the squash's own reader counts
+                        as a claim it must refuse to resume, and what a rebase there destroys is the tree
+                        relationship the recovery proves the collapse by; nothing sets that group aside, since it
+                        is another owner's work rather than this refresh's own -- the two parks that freeze one
+                        with no record behind them at all
                         (a size reading nobody could take, and an implementer timeout whose watermark names a
                         commit not yet made), and the two no write ever ends (the accepted commit and the
                         published one), which freeze only while the checkout still stands on the commit they
@@ -293,8 +298,18 @@ orchestrator/
       state.py          the pinned-state keys, park reasons, refresh detour labels, and the shared logger
     publication/        what a branch becomes before review reads it
       models.py         the record a squash hands back, in the three shapes it can end in -- published, refused, or
-                        held by the size gate for the adjudication
-      planning.py       the merge-base, HEAD, dirty, and subject preconditions plus the squash message they select,
+                        held by the size gate for the adjudication -- with a refusal NAMING which of four places
+                        it left the branch: the approved commits at HEAD, off the tip and reachable only from the
+                        head a record names, still in the branch's own history under work committed on top of a
+                        recorded head it grew PAST, or none of them shown. The last is not a hedge but the honest
+                        answer to a record this build cannot read whole, a recorded head no object here answers
+                        to, or a checkout that would not report its own head -- and an operator sent by any of the
+                        others would be looking for commits that are not where the notice says
+      planning.py       the merge-base, HEAD, dirty, commit-count, and subject preconditions plus the squash
+                        message they select -- the count WALKED rather than taken from the subjects beside it,
+                        since a commit written with no message contributes no subject and still contributes one
+                        commit, and a count short by those decides both whether there is anything to collapse at
+                        all and what a human is told their history was collapsed from --
                         and the pre-squash head pinned beside them -- the rollback target, the head the entry takes
                         its lease from, and the commit the gate is told this rewrite collapsed, none of which a
                         reading taken past the reset could recover
@@ -323,7 +338,19 @@ orchestrator/
                         approval it abandons, and the permission a granted transfer will never spend, only once the
                         reset has actually landed -- a reset that failed may
                         leave the branch still standing on the approved commit, and the approval is the only record
-                        naming the one commit this issue may publish. A HELD candidate is spared that rollback only
+                        naming the one commit this issue may publish. A push that did not go out is rolled back
+                        with ONE exception, and it is the resumed collapse the pull request already carries: that
+                        push sends nothing, so a request that fails there is a transport failure over work the
+                        remote has, and a reset would take the checkout off it, the count the handoff still owes
+                        a notice with it, and leave the next tick a remote that moved for reasons nothing on the
+                        comment explains. Two readings say so and the ENTRY is the stronger, since it is a
+                        reading of the pull request taken this tick -- a tip it froze equal to the commit about
+                        to be pushed, which it admits only where a durable record accounts for it, so it covers
+                        the crash between a push and its receipt where the receipt is exactly what is missing;
+                        the receipt dated to this attempt is asked beside it for the road that read no remote at
+                        all. Neither can fire on a fresh squash, whose entry was frozen before the commit
+                        existed. The approval the gate wrote before the push, and the permission a transfer
+                        held, are records a reset is SUPPOSED to drop, so neither is asked there. A HELD candidate is spared that rollback only
                         where the squash is somebody's: a
                         live record naming it -- oversized, or a pair still owed its count -- already on the remote,
                         named by the approval as a push this issue still owes -- a reset there leaves the
@@ -335,8 +362,64 @@ orchestrator/
                         commit sit in -- and the branch goes back there, since a squash nobody measured, published,
                         or recorded is the one commit a retry finds, and one commit is the nothing-to-squash road
                         reporting success
-      squash.py         the plan-then-enter-then-rewrite entry point a stage handler calls, over the gate subject
-                        that handler builds
+      resume.py         the squash an earlier tick did not finish, told apart from a branch with nothing to
+                        squash by the record that squash wrote before it ran. Nothing is decided by comparing
+                        that record to the branch until the record has proved itself, the road that DROPS it
+                        included: a head edited onto the commit a finished collapse left reads as a rewrite that
+                        never happened, so a shortcut for one would drop the record and hand on a branch of ONE
+                        commit -- the nothing-to-squash road reporting success over a remote still carrying the
+                        history the record names. Proved first, exactly ONE branch drops it and lets the ordinary
+                        squash run: the one the record still describes exactly, standing on the head it names
+                        over the commits it counted, which is safe to hand on because that road cannot report
+                        success without pushing the very commits an approval was given for. A branch carrying
+                        NOTHING over its base refuses, since that is the shape the nothing-to-squash road would
+                        call success over a remote still holding the history the record names -- and so does one
+                        that MOVED off the recorded head, whichever way it went: this recovery owns the tick from
+                        the moment a record goes down, ahead of every route that could resume a developer, so
+                        work committed over the collapse is work nobody here made and squashing afresh would
+                        force-push it onto the pull request as history a reviewer approved. The two are still
+                        told apart in the notice, since a recorded head still REACHABLE has the approved commits
+                        under the stray work and one the branch REPLACED has them only in the reflog. A collapse that landed locally, one the
+                        gate authorized, one the remote already carries, and one whose handoff never finished are
+                        all finished through the same leased publication -- entered on the head the record names,
+                        or on the rewritten commit itself where a receipt dates that tip to this attempt, so an
+                        already-landed collapse is a leased no-op rather than a fresh reading. Nothing is resumed
+                        on the record's SHAPE, and none of the roads above is either: the tree is proved clean,
+                        both recorded ends are peeled as objects
+                        this host really holds, the base has to be one the head was really built on -- a walk
+                        between two histories that never met reports a number like any other, so the count is no
+                        ancestry proof -- the history between them is walked against the recorded count, and the
+                        commit on the branch has to carry both the TREE the recorded head left and that base as
+                        its ONE parent, which is what a squash produces by construction: the same tree re-parented
+                        onto a base that has since advanced is a commit that REVERTS whatever that base added, and
+                        a tree comparison alone would publish it. A record failing any of those leaves the branch
+                        untouched and refuses, since a reset would be a guess taken with a destructive step; and
+                        one this build cannot read WHOLE refuses rather than being waved past, since the branch
+                        behind it is exactly the one commit that reads as nothing to squash
+      squash.py         the plan-then-resume-then-enter-then-record-then-rewrite entry point a stage handler
+                        calls, over the gate subject that handler builds, and the owner of `SQUASH_ON_APPROVAL`:
+                        the switch decides whether a NEW collapse is made, and one an earlier tick already made
+                        is finished either way, since the commits are off the branch and the remote either has
+                        the object that replaced them or does not. An issue with nothing recorded costs an
+                        install with the switch off no probe, no reading, and no write -- but one that CLAIMED a
+                        collapse still owes the entry the rewrite would have taken, since the recovery may drop
+                        that record on the way past and with the switch off there is no rewrite behind the drop
+                        to read the pull request: a tick that engaged the recovery, found the reset never ran,
+                        threw the only evidence away, and reported success would hand `documenting` a branch
+                        whose remote had moved out from under it. That reading is taken whatever `DECOMPOSE` says,
+                        which is the one place the size gate's switch does not reach: everywhere else a push
+                        follows and the lease answers a moved remote, and here nothing does. The checkout is then
+                        proved AGAIN once the reading comes back, because the read is a REQUEST and the worktree
+                        is writable for the whole of it -- a commit landing there is work no reviewer saw, and
+                        this road reports the head it planned over. The resume is asked
+                        before the commit count is read as a verdict, since a collapsed branch and a branch with
+                        nothing to collapse carry the same one commit; the record goes down between the entry and
+                        the reset, so no write is spent on a publication the entry refuses and none is owed once
+                        the evidence is gone -- and a write GitHub refuses stops the squash rather than leaving a
+                        rewrite nothing could account for. Every failure is stamped with WHERE it left the
+                        branch, read off the record AND the checkout: the terms go down before the reset, so an
+                        outstanding record whose head is the head the checkout stands on is a rewrite that did
+                        not happen and the approved commits are exactly where a human will look for them
       titles.py         subject-prefix inference and PR-title selection
     measurement/        how large a committed candidate is, which contribution it is, and why either is
                         sometimes unknown
@@ -574,8 +657,9 @@ The six subpackages bind their collaborators directly, so the dependency directi
 off a facade:
 
 - `publication/` — `probes` calls `commands`; `titles` calls `probes`; `planning` calls `commands`, both siblings,
-  and the verification probes; `rewrite` calls `commands`, `branch_transport`, and those probes; `squash` calls
-  `planning` and `rewrite`.
+  and the verification probes; `rewrite` calls `commands`, `branch_transport`, and those probes; `resume` calls
+  `rewrite` and reaches the gate through the one hop that owner spells; `squash` calls `planning`, `resume`, and
+  `rewrite`.
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
 - `measurement/` — `models` carries only data. `commits` calls `commands`, `branch_transport`, and the verification
   probes for the two object reads, and `commands` once more for the one line it keeps off a fetch that brought

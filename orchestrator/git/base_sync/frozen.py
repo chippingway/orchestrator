@@ -10,8 +10,10 @@ the rule each one ends by -- because a freeze with no end is a branch that
 never sees its base again.
 
 Most of them end by being SPENT: the step that consumes the record drops it,
-so the freeze lasts exactly as long as the question it belongs to. Three do
-not, and they are the reason this is an owner rather than a tuple. An
+so the freeze lasts exactly as long as the question it belongs to -- the terms
+a squash records before it rewrites the branch among them, dropped by whatever
+finishes or undoes that collapse. Three do not, and they are the reason this
+is an owner rather than a tuple. An
 exemption and a publication record are invalidated by the head moving off them
 rather than by any write, so what answers for those is the checkout itself --
 and, since neither is ever dropped, how long the STAGE that reads them keeps
@@ -31,8 +33,8 @@ from orchestrator.github import pinned_state as _pinned_state
 
 # Every record that freezes a branch on its own, whatever the labels and flags
 # beside it say: the tip a read-only relabel handed over and has not spent, the
-# two a discussion tick leaves while it is mid-flight, and the two groups the
-# late size gate is deciding by. They are spelled here the way every pinned
+# two a discussion tick leaves while it is mid-flight, the two groups the late
+# size gate is deciding by, and the terms of a squash it is mid-way through. They are spelled here the way every pinned
 # key this package reads is -- what this gate pins down is how the refresh
 # reads state written by stages it never calls into, so a shared constant would
 # let a rename pass unnoticed on the side that has to keep understanding it.
@@ -123,6 +125,36 @@ _FROZEN_BY_KEYS: tuple[str, ...] = (
 # that has already moved.
 _LATE_CLAIM_KEYS: tuple[str, ...] = (
     _LATE_READING_KEYS + _LATE_APPROVAL_KEYS
+)
+
+
+# The terms a squash-on-approval records before it destroys the evidence of
+# itself: the head it is collapsing, the base it is collapsing over, and how
+# many commits go in. They are the sharpest freeze here, because what they
+# describe is a branch mid-rewrite -- and the recovery that finishes one
+# proves the commit on the branch carries the tree the recorded head left,
+# which is what a squash produces and what a rebase destroys. Rebased inside
+# that window the collapse is gone, the record describes objects the branch no
+# longer relates to, and the tick that would have finished it refuses instead
+# -- with the pull request still standing on the history the record says was
+# collapsed, and the rebase already force-pushed over it.
+#
+# The freeze ends by being SPENT, like the reading and the approval above:
+# whatever ends the collapse drops the record in the same breath -- the reset
+# a rollback made, the reset that never ran, and the approval handoff's own
+# write past a landed push.
+#
+# It is read for the key being PRESENT rather than for the value under it, and
+# that is a stricter test than the group above uses. A pinned comment is JSON,
+# so a member can be there and `null` -- a hand edit, or an older binary -- and
+# the squash's own reader counts exactly that as a claim it must refuse rather
+# than resume. The two have to agree: read for a value, this refresh would
+# rebase a branch the squash then declines to touch, and the collapse would be
+# stranded on a checkout something rewrote underneath it.
+_LATE_COLLAPSE_KEYS: tuple[str, ...] = (
+    "late_collapse_head",
+    "late_collapse_base_sha",
+    "late_collapse_count",
 )
 
 # The two records the list above cannot cover, because no write is guaranteed
@@ -237,10 +269,21 @@ def _held_records(state: _pinned_state.PinnedState) -> tuple[str, ...]:
     there AT ALL, which is how the guard that refuses a partial one reads
     them: the two agree, so nothing this refresh rebases is something that
     guard would go on to park.
+
+    The collapse group is read one step stricter still -- the key being on the
+    comment at all, `null` included -- because the squash's own reader counts
+    a member spelled that way as a claim it refuses to resume. Anything this
+    refresh rebased there would be a branch that owner then declines to touch.
+    It is also the one group nothing sets aside: the carve-out below is for an
+    approval that is this refresh's OWN interrupted work, and a collapse is
+    another owner's -- a rebase under one is exactly what it exists to stop.
     """
     held = tuple(key for key in _FROZEN_BY_KEYS if state.get(key))
-    return held + tuple(
+    held += tuple(
         key for key in _claimed_by(state) if state.get(key) is not None
+    )
+    return held + tuple(
+        key for key in _LATE_COLLAPSE_KEYS if key in state.data
     )
 
 
