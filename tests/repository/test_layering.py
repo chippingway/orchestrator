@@ -76,6 +76,15 @@ _LATE_RECORDS = f"{PACKAGE}.workflow.stages.implementing.late_records"
 
 _LATE_REWRITE = f"{PACKAGE}.workflow.stages.implementing.late_rewrite"
 
+_LATE_TRANSFER = f"{PACKAGE}.workflow.stages.implementing.late_transfer"
+
+# The exemption a verdict left and the record that authorizes it to move: the
+# two halves of the evidence a base sync assembles for the rewrite it is about
+# to publish.
+_EXEMPTION = f"{PACKAGE}.workflow.late_split.exemption"
+
+_REWRITES = f"{PACKAGE}.workflow.late_split.rewrites"
+
 _PUBLICATION = f"{PACKAGE}.git.publication"
 
 # Every upward reach made inside a call, declared per module. A base sync runs
@@ -90,14 +99,23 @@ _PUBLICATION = f"{PACKAGE}.git.publication"
 # rewrites anything and pushes through the gate's own call. All of them sit
 # above this layer, so the import waits for the call that needs it -- at
 # module scope it would be a cycle, since the workflow imports base sync back.
+#
+# The rebase is also a rewrite of whatever the branch stood on, so the same two
+# owners reach the transfer seam: the publisher reads the exemption a verdict
+# left and assembles the record that would authorize it to move, and the
+# reset-and-park tail drops the permission its rollback will never spend.
 _CALL_TIME_HOPS = MappingProxyType({
     f"{_BASE_SYNC}.conflicts": (_COMMENTS,),
     f"{_BASE_SYNC}.persistence": (
         _COMMENTS,
         f"{PACKAGE}.workflow.engine.guards",
         f"{PACKAGE}.workflow.stages.implementing.late_parks",
+        _LATE_RECORDS,
+        _LATE_TRANSFER,
     ),
-    f"{_BASE_SYNC}.publication": (_COMMENTS, _LATE_PUSH, _LATE_RECORDS),
+    f"{_BASE_SYNC}.publication": (
+        _COMMENTS, _EXEMPTION, _LATE_PUSH, _LATE_RECORDS, _REWRITES,
+    ),
     f"{_PUBLICATION}.rewrite": (_LATE_REWRITE,),
 })
 

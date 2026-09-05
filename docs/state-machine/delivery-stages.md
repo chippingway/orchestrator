@@ -1587,7 +1587,9 @@ carried on would write its own answer over evidence nobody checked. Refused, not
 measured exactly as above. And the permission is droppable in exactly one window — a force-push the remote refuses
 resets the branch back onto the commit the exemption never left, so the rollback takes the permission back and
 nothing else, while past the receipt the pull request carries the rewritten commit and there is nothing to take
-back.
+back. The squash is not the only rewrite decided on those terms: the per-tick base refresh publishes a clean rebase
+of the same branch once this stage has handed the issue on, and it hands the same gate the same evidence
+([`labels-and-state.md#base-refresh`](labels-and-state.md#base-refresh)).
 
 A candidate whose count never came back keeps the rewrite too, and for the same reason read one step earlier: the
 freeze is durable and the diff is not, so a reading that fails leaves a live generation naming the **squash** with no

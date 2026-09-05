@@ -747,8 +747,9 @@ about, each named exactly and only by its own record: the one an adjudication ac
 the gate itself approved and has still to push (`late_approved_sha`, brought back by a crash between the write that
 approves a candidate and the push it licenses), and the one this stage already pushed
 (`implementing_published_sha`, brought back by a relabel to `workflow:validating` that did not land). The fourth is
-a NEW candidate while `DECOMPOSE=off`, and the fifth is a squash on approval that EARNED the exemption of the
-commit it replaced (`late_rewrite_*`, granted only over two recomputed fingerprints that agree). So a reading that
+a NEW candidate while `DECOMPOSE=off`, and the fifth is a workflow rewrite that EARNED the exemption of the commit
+it replaced — a squash on approval, or the clean base rebase the per-tick refresh publishes (`late_rewrite_*`,
+granted only over two recomputed fingerprints that agree). So a reading that
 never happened is not always a reading that failed: an issue whose branch is published, or whose commit a verdict
 settled, reaches the seam again and leaves no `late_measurement` behind, which is the shape a threshold study sees
 for a candidate that was counted once and acted on twice. The switch is not silence either — a candidate this issue
@@ -768,7 +769,8 @@ receipts the landed push, so it is written only where the pull request really ca
 filed under the stage the rewrite was entered from rather than under `implementing`. The record names both ends of
 both contributions — `source_sha` / `base_sha` for the pair the verdict moved ONTO, `transferred_from_sha` /
 `transferred_from_base_sha` for the pair it moved off — the pull request it happened on, `rewrite_kind` for which
-rewrite this workflow made, and `transfer_proof` for which reading proved the push landed: `pushed` where the leased
+rewrite this workflow made (`squash` for the collapse an approval earns, `auto_clean_rebase` for the replay the base
+refresh publishes), and `transfer_proof` for which reading proved the push landed: `pushed` where the leased
 force-push moved the publication off the head the permit was granted against, and `already_published` where a tick
 that pushed and died before its receipt came back to a pull request standing there already and the leased no-op found
 it so. There is no third value — a remote anywhere else is a permit that was refused, which settles nothing and

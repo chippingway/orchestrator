@@ -100,6 +100,9 @@ onto it, so a long-lived worktree does not stay anchored to whatever base looked
 worktree rebases locally; a PR-having one in `workflow:validating` / `workflow:documenting` / `in_review` /
 `workflow:fixing` pushes the clean rebase with a pinned `--force-with-lease`, resets `review_round`, and relabels to
 `workflow:validating`, reaching `workflow:resolving_conflict` only when the rebase actually leaves conflicted files.
+That push goes through the size gate, and where the branch was standing on the commit an adjudication accepted the
+refresh hands the gate the same rewrite evidence a squash does, so a replay that contributes what a human already
+ruled on carries the exemption over instead of being adjudicated again.
 The `question` and `discussion` labels — and the parks and in-flight discussion records that outlive them — skip both
 paths. The failure modes, their durable `park_reason` tokens, and the refresh-owned retry are in
 [`state-machine/labels-and-state.md#base-refresh`](state-machine/labels-and-state.md#base-refresh).

@@ -1115,8 +1115,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             rollback abandons is dropped there, durably, since the reconciliation ahead of every
                             handler would otherwise stop the tick for a publication that is never coming -- with the
                             permission an authorized transfer holds dropped on the same write, since the commit it
-                            was granted for is on no branch any more and the exemption never left the one the reset
-                            restored. The before-state the rewrite destroyed -- the head it replaced and the
+                            was granted for is on no branch any more and the reset landed on a head the record
+                            itself names as the one the rewrite found -- the accepted end for a squash, the lease
+                            for a rebase. The before-state the rewrite destroyed -- the head it replaced and the
                             merge base both sides are read over, taken from the PLAN rather than from the entry,
                             since the entry admits a remote tip a durable record says this issue's own push put
                             there and only the plan says which commit was collapsed -- is handed into the gate
@@ -1124,7 +1125,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             transfer on
       late_transfer.py      whether a rewrite may carry an adjudication's exemption onto the object it produced,
                             rather than have the same change measured past the same ceiling and adjudicated a second
-                            time on the last push before the merge button. A permit is granted only over a whole
+                            time with a pull request already open over the work. A permit is granted only over a whole
                             semantic record whose exempt commit IS the one the rewrite came from, evidence naming a
                             bounded kind and every end of both contributions, no authorization this build cannot read
                             already standing for that exemption -- a grant REPLACES that group rather than adding to
