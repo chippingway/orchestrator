@@ -535,6 +535,20 @@ record — the issue, the pull request, both pairs, the rewrite kind, and which 
 deliberately no second `late_verdict`, which would read as a second adjudication of work nobody was asked about
 twice.
 
+The base-refresh rewrite has one window a squash does not, and its own recovery closes it. The refresh pins a
+recovery anchor before git runs, so a process lost between the rebase and the grant comes back to a replay on the
+branch with *no* permission on the comment at all — nothing for the re-ask above to be asked over. That recovery
+re-derives the same evidence the dead tick would have assembled, from the record's own accepted pair, the head the
+checkout stands on, the base the remote names, and the pinned anchor as the lease, and hands it to the permit;
+without it, the replay of a change a human already ruled on is measured afresh and routed back into adjudication
+with the pull request open over the work. The recovery also owns the settlement where the push landed and only its
+receipt was lost, rather than relabelling and leaving it: the permit is scoped to the stage the rewrite was entered
+from, and the refresh's own route moves the issue to `workflow:validating`, so a settlement one tick later is
+refused on the stage alone. Every state neither of those covers — a permission this build cannot read, one naming
+some other commit, a tree carrying uncommitted changes, a remote somebody moved — settles nothing and keeps the
+fail-closed park or reset the refresh always had
+([`../state-machine/labels-and-state.md#base-refresh`](../state-machine/labels-and-state.md#base-refresh)).
+
 The approval holds the switch back for the commit it *names* and no other, which is why the switch is asked twice —
 once at the door, cheaply, and once past the proof. An approval is a claim about one object id, and nothing can say
 whether the head is that id until the head is proved; past that proof and not it, the approval describes work this

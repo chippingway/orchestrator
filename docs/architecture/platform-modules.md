@@ -21,14 +21,17 @@ last is held by the loader itself rather than by a check.
 - **At module scope, one exception.** The only name a lower layer may bind above itself is `workflow/state.py`, for
   the label vocabulary it is typed by, and only `github/` and `git/` may bind it — matched on the module boundary in
   the same check, so a sibling of the state owner cannot inherit the exemption by wearing the same prefix.
-- **Over every scope, six more, each declared per module.** A base sync runs in the git layer but reports to the
+- **Over every scope, nine more, each declared per module.** A base sync runs in the git layer but reports to the
   issue it was started for: `base_sync/conflicts.py`, `base_sync/persistence.py`, and `base_sync/publication.py`
-  reach `workflow/engine/comments.py`; `persistence` also `workflow/engine/guards.py` and
-  `workflow/stages/implementing/late_parks.py`, to drop the debt the size gate recorded when a refused push sends
-  the branch back to where it started; and `publication` also
-  `workflow/stages/implementing/late_push.py` and `late_records.py` — the gated push the rebase it is about to
-  force-push goes through, since a base that moved changes what the branch adds to it and a pull request may not be
-  grown past the ceiling by a refresh either. `publication/rewrite.py` reaches `late_rewrite.py` for the same reason
+  reach `workflow/engine/comments.py`; `persistence` also `workflow/engine/guards.py`,
+  `workflow/stages/implementing/late_parks.py`, `late_records.py`, and `late_transfer.py`, to drop the debt the size
+  gate recorded and the permission a transfer granted when a refused push sends the branch back to where it started;
+  and `publication` also `workflow/stages/implementing/late_push.py` and `late_records.py` — the gated push the
+  rebase it is about to force-push goes through, since a base that moved changes what the branch adds to it and a
+  pull request may not be grown past the ceiling by a refresh either. `base_sync/transfers.py` reaches
+  `workflow/late_split/exemption.py` and `rewrites.py` for the evidence that push is decided on, and it is a
+  separate owner because the tick that makes the rewrite and the tick that comes back to it are decided on the same
+  claim. `publication/rewrite.py` reaches `late_rewrite.py` for the same reason
   one seam over: a squash-on-approval force-pushes onto a pull request the remote already carries, so it is entered
   on that publication before it rewrites anything and pushes through the gate's own call. Each waits for the call
   that needs it. The same check declares them per module: an undeclared hop fails wherever it is written, and one of
@@ -272,24 +275,35 @@ orchestrator/
                         against the head this owner read, so a checkout something moved between that read and the
                         gate's own refuses rather than publishing one commit while the notice, the event, and the
                         `validating` route name another -- the lease-pinned force-push, and what an accepted push
-                        writes; and the rewrite evidence handed to that gate beside the candidate, since a clean
-                        replay of a commit an adjudication accepted may carry the exemption over: the pair the
-                        pinned record already holds, the pair the replay produced -- over a base frozen from what
-                        the REMOTE says the branch is at, never off the local ref the rebase named, which any
-                        worktree sharing the store can repoint after this tick's fetch -- and the pull request,
-                        stage, and pre-rebase anchor the push is made against, empty where either half cannot be
-                        shown
+                        writes; the rewrite evidence it hands that gate beside the candidate comes from
+                        `transfers.py`
+      transfers.py      what a rebase REPLACED, as the evidence a transfer is decided on -- the pair the pinned
+                        record already holds, the pair the replay produced, over a base frozen from what the
+                        REMOTE says the branch is at, never off the local ref the rebase named, which any worktree
+                        sharing the store can repoint after this tick's fetch, and the pull request, stage, and
+                        pre-rebase anchor the push is made against, empty where either half cannot be shown -- and
+                        beside it the five states an interrupted rebase's transfer can be found in: none, a
+                        rewrite no permission was ever written for, a permission still owed a receipt, one already
+                        spent, and one nobody can vouch for. Only the second is handed re-derived evidence, since
+                        a grant REPLACES the whole group and a recovery may not repair a record under the
+                        authority of the transfer it is deciding
       conflicts.py      the counter, notice, event, and relabel a genuinely conflicted rebase is handed to its stage
                         with
       guards.py         the no-op completion and the unreadable-HEAD, dirty-tree, and failed-push refusals
       snapshot.py       the branch fetch, the local / remote head reads and divergence counts, and the abort an
                         unreadable one takes
-      recovery.py       the order a crash recovery asks its questions in, and the dirty-guarded reissued push,
-                        measured by the same gate and named against the head this recovery verified against the
-                        remote: one an earlier tick rebased and never pushed is a head nothing has read against
-                        the base it now sits on, and one something moved since is not the head the finalize
-                        behind the push records
-      outcomes.py       the already-published, unknown-comparison, diverged, dirty, and failed-push answers
+      recovery.py       the order a crash recovery asks its questions in, over both classifications -- where the
+                        remote stands, and how far the transfer's own writes got -- and the two roads that still
+                        publish something. The dirty-guarded reissued push is measured by the same gate and named
+                        against the head this recovery verified against the remote: one an earlier tick rebased
+                        and never pushed is a head nothing has read against the base it now sits on, and one
+                        something moved since is not the head the finalize behind the push records. The
+                        settlement beside it is the leased no-op onto a pull request already standing on the
+                        rewrite, taken here rather than a stage later so the permit is re-asked under the stage it
+                        was granted from
+      outcomes.py       the already-published, unknown-comparison, diverged, dirty, failed-push, and refused-no-op
+                        answers -- the last parking with HEAD and the anchor left alone, since the remote carries
+                        the rewrite there and a reset would take the checkout off it
       persistence.py    the parks, the reset-and-park tail -- which drops the debt it abandons, and the permission
                         a transfer granted for the same commit, only once the reset has actually landed, since a
                         refused one may leave the branch still standing on the approved commit -- and the state /
@@ -693,6 +707,8 @@ off a facade:
   and — through `runtime/exclusion.py` — where the host is claimed against the processes no hold can see.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
-  side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,
+  side `recovery` calls `snapshot`, `outcomes`, and `persistence`. `transfers` is called from both, and calls
+  nothing in this package: what it answers is a claim about the rewrite, which the publisher and the recovery each
+  hand to the same gate. The three keyword-call adapters — the PR sync,
   the conflict route, and the crash recovery — still take the argument lists their callers spell and normalize each
   into the typed context entry point beside it.

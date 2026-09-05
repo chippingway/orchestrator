@@ -349,6 +349,32 @@ the pull request and pre-rebase anchor the push is made against — and the tran
 the replay. A base advance that CHANGED what the branch adds to it fingerprints differently, so the permit refuses
 and the ordinary cumulative gate measures the replay exactly as it always did.
 
+That rebase is six durable moments in a row — the anchor, the rewrite, the permission, the push, the receipt, and
+the route — so the crash recovery behind `pending_auto_base_rebase_push_sha` classifies TWO things rather than one.
+Where the remote stands says which effect the dead tick reached: still on the anchor and the push never went out, on
+the rewritten commit and it did, anywhere else and somebody moved the branch out of band. What the pinned comment
+carries says how far the transfer's own writes got, and there are five answers. No exemption in flight is the
+ordinary interrupted rebase. A rewrite with no `late_rewrite_*` group behind it is a grant the crash came before, so
+the recovery re-derives the same evidence the dead tick would have assembled and the permit rules on it — without
+that, the replay of a change a human already ruled on is measured past the same ceiling and routed back into
+adjudication with a pull request open over the work. A group still at `authorized` for the head in hand IS the
+evidence, re-asked in full. One already `published` means the receipt landed and only the notice, the audit event,
+the cleared anchor, and the reviewer's route are outstanding. And a group this build cannot read whole, or one
+naming some other commit, settles nothing and assembles nothing: the ordinary cumulative gate measures the replay,
+which is the answer a permission nobody can check has to get.
+
+The permission still outstanding over a remote that already carries the rewrite is the one that owes a WRITE, and
+the recovery takes it rather than leaving it for the stage it is about to relabel to: the permit is scoped to the
+stage the rewrite was entered from, so a settlement one tick later is refused on the stage alone. It is taken
+through the same gated publication every other push in this domain goes through, which over a pull request already
+standing on the commit is the leased no-op that proves it — nothing sent, no agent, no measurement, no second
+adjudication comment, and the receipt, the paid debt, and the rotation riding one durable write under
+`transfer_proof=already_published`. A no-op the remote refuses parks with HEAD and the anchor left exactly as they
+are: the checkout is standing on the commit the pull request carries, so a reset would take it off work the remote
+has, and the next tick classifies the remote afresh. A checkout carrying uncommitted changes settles nothing and
+finishes the route unchanged, since a contribution fingerprinted beside work nobody committed is not the one that
+was published.
+
 Refresh-only failure modes — push rejected (`auto_base_rebase_push_failed`), rebase failed without conflicted files
 (`auto_base_rebase_failed`), dirty-after-clean-rebase (`auto_base_rebase_dirty`) — reset HEAD back to the pre-rebase
 SHA and park awaiting human with a durable `park_reason`. Recovery is refresh-only and gated on a fresh human

@@ -20,6 +20,7 @@ per-file-ignores =
     orchestrator/observability/usage/__init__.py:WPS412,WPS410
     orchestrator/observability/analytics/recording/__init__.py:WPS412,WPS410
     orchestrator/runtime/exclusion.py:WPS202
+    orchestrator/git/base_sync/outcomes.py:WPS202
     orchestrator/git/base_sync/persistence.py:WPS202
     orchestrator/git/base_sync/refresh.py:WPS202
     orchestrator/git/snapshots/refs.py:WPS202
@@ -110,6 +111,8 @@ per-file-ignores =
     orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
     tests/git/test_ref_transport.py:WPS202
+    tests/git/base_sync/exemption_test_support.py:WPS214
+    tests/git/base_sync/journey_git_support.py:WPS201
     tests/git/publication/squash_recovery_support.py:WPS202
     tests/git/worktrees/artifact_test_support.py:WPS214
     tests/git/worktrees/candidate_host_test_support.py:WPS202,WPS214
