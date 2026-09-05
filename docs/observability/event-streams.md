@@ -675,8 +675,12 @@ that pushed and died before its receipt came back to a pull request standing the
 it so. There is no third value — a remote anywhere else is a permit that was refused, which settles nothing and
 reports nothing. No `late_verdict` joins it: the transfer carries a decision a human already made onto the object
 that replaced the one they made it about, and a second `single` here would read as a second adjudication of work
-nobody was asked about twice. A permission a publication went PAST is dropped rather than spent, and that is silent
-for the same reason — nothing moved.
+nobody was asked about twice. Two roads leave the permission unspent and are silent here for the same reason —
+nothing moved. A publication the permit went PAST — some other commit reached the pull request — drops it. And a
+permission this tick's permit did not VOUCH for is left exactly where it stands: a refusal on the re-ask is not a
+hold, so the rewritten commit falls through to the ordinary cumulative gate and a count under the ceiling publishes
+it anyway. So a pull request carrying the rewritten commit with no `late_transfer` beside it is the ordinary reading
+having published it, and the `late_measurement` that reading wrote is what says so.
 
 The remaining three arrive once an oversized candidate is under adjudication. The second is the late adjudication under
 `workflow:decomposing`
