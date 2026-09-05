@@ -29,9 +29,10 @@ last is held by the loader itself rather than by a check.
   and `publication` also `workflow/stages/implementing/late_push.py` and `late_records.py` — the gated push the
   rebase it is about to force-push goes through, since a base that moved changes what the branch adds to it and a
   pull request may not be grown past the ceiling by a refresh either. `base_sync/transfers.py` reaches
-  `workflow/late_split/exemption.py` and `rewrites.py` for the evidence that push is decided on, and it is a
-  separate owner because the tick that makes the rewrite and the tick that comes back to it are decided on the same
-  claim. `publication/rewrite.py` reaches `late_rewrite.py` for the same reason
+  `workflow/late_split/exemption.py` and `rewrites.py` for the evidence that push is decided on, plus
+  `late_parks.py` for the receipt and the debt that say a rewrite the pull request already carries is one the pinned
+  comment can account for; it is a separate owner because the tick that makes the rewrite and the tick that comes
+  back to it are decided on the same claim. `publication/rewrite.py` reaches `late_rewrite.py` for the same reason
   one seam over: a squash-on-approval force-pushes onto a pull request the remote already carries, so it is entered
   on that publication before it rewrites anything and pushes through the gate's own call. Each waits for the call
   that needs it. The same check declares them per module: an undeclared hop fails wherever it is written, and one of
@@ -281,12 +282,16 @@ orchestrator/
                         record already holds, the pair the replay produced, over a base frozen from what the
                         REMOTE says the branch is at, never off the local ref the rebase named, which any worktree
                         sharing the store can repoint after this tick's fetch, and the pull request, stage, and
-                        pre-rebase anchor the push is made against, empty where either half cannot be shown -- and
+                        pre-rebase anchor the push is made against, empty where either half cannot be shown --
                         beside it the five states an interrupted rebase's transfer can be found in: none, a
                         rewrite no permission was ever written for, a permission still owed a receipt, one already
                         spent, and one nobody can vouch for. Only the second is handed re-derived evidence, since
                         a grant REPLACES the whole group and a recovery may not repair a record under the
-                        authority of the transfer it is deciding
+                        authority of the transfer it is deciding. And the last question: whether a rewrite the
+                        pull request already carries is one the comment ACCOUNTS for -- an issue carrying no
+                        verdict always is, a settled transfer and an unpermitted replay both are by the receipt
+                        their write left, and a record nobody can read, a receipt nobody wrote, or a debt nothing
+                        paid is not
       conflicts.py      the counter, notice, event, and relabel a genuinely conflicted rebase is handed to its stage
                         with
       guards.py         the no-op completion and the unreadable-HEAD, dirty-tree, and failed-push refusals
@@ -294,16 +299,22 @@ orchestrator/
                         unreadable one takes
       recovery.py       the order a crash recovery asks its questions in, over both classifications -- where the
                         remote stands, and how far the transfer's own writes got -- and the two roads that still
-                        publish something. The dirty-guarded reissued push is measured by the same gate and named
-                        against the head this recovery verified against the remote: one an earlier tick rebased
-                        and never pushed is a head nothing has read against the base it now sits on, and one
-                        something moved since is not the head the finalize behind the push records. The
+                        publish something. The remote is classified by exact SHA against the rewrite and against
+                        the pinned anchor before the divergence counts are read at all, because a rebase REPLAYS
+                        the branch: the commit the pull request still carries is on no local history afterwards,
+                        so the canonical pre-push recovery counts as behind its own publication and the counts
+                        alone would park it. The dirty-guarded reissued push is measured by the same gate and
+                        named against the head this recovery verified against the remote: one an earlier tick
+                        rebased and never pushed is a head nothing has read against the base it now sits on, and
+                        one something moved since is not the head the finalize behind the push records. The
                         settlement beside it is the leased no-op onto a pull request already standing on the
                         rewrite, taken here rather than a stage later so the permit is re-asked under the stage it
                         was granted from
-      outcomes.py       the already-published, unknown-comparison, diverged, dirty, failed-push, and refused-no-op
-                        answers -- the last parking with HEAD and the anchor left alone, since the remote carries
-                        the rewrite there and a reset would take the checkout off it
+      outcomes.py       the already-published, unknown-comparison, diverged, dirty, failed-push, and
+                        unfinished-route answers -- the last parking with HEAD and the anchor left alone, since
+                        the remote carries the rewrite there and a reset would take the checkout off it, and the
+                        anchor is the only thing that brings the recovery back to a transfer it could not account
+                        for
       persistence.py    the parks, the reset-and-park tail -- which drops the debt it abandons, and the permission
                         a transfer granted for the same commit, only once the reset has actually landed, since a
                         refused one may leave the branch still standing on the approved commit -- and the state /

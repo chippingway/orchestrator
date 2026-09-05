@@ -74,6 +74,10 @@ LOOSE_EDITS = ("scratch.txt",)
 # a reset that never happened is read back off.
 HARDENED_PATCH = "hardened"
 
+# The receipt a landed publication leaves, which is what says a rewrite the
+# pull request carries is one this comment can account for.
+KEY_PUBLISHED_SHA = "implementing_published_sha"
+
 
 class _ResumedRebaseCase(_CleanRebaseCase):
     """One adjudicated rebase stopped mid-tick and resumed on the next one."""
@@ -241,30 +245,33 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
             self.gh.pinned_data(ISSUE)[KEY_PARK_REASON], PARK_PUSH_FAILED,
         )
 
-    def test_an_unreadable_permission_settles_nothing(self) -> None:
+    def test_an_unreadable_permission_holds_the_route(self) -> None:
         # A group this build cannot read back whole is the only account there
-        # is of how the exemption came to name what it names, so the recovery
-        # finishes the route and leaves the record exactly as it stands rather
-        # than settling a transfer nobody can check.
+        # is of how the exemption came to name what it names. Finishing the
+        # route over it would clear the one anchor that brings this recovery
+        # back, leaving the replay to be measured afresh, so the tick parks
+        # with the record exactly as it stands.
         self._crashes_before_the_push()
         self._damages_the_permission()
 
         resumed = self._resumes(remote_head=AFTER_SHA)
 
         resumed[PUSH_PATCH].assert_not_called()
-        self._assert_untouched_transfer()
+        self._assert_standing_permission()
+        self._assert_held_for_a_human(resumed)
 
-    def test_a_loose_checkout_settles_nothing(self) -> None:
-        # The pull request carries the replay and is right either way, so
-        # there is nothing to reset and nothing to park over -- but a
-        # contribution fingerprinted beside changes nobody committed is not
-        # the one that was published, so the permission is left standing.
+    def test_a_loose_checkout_holds_the_route(self) -> None:
+        # A contribution fingerprinted beside changes nobody committed is not
+        # the one the pull request carries, so the settlement may not be
+        # taken -- and the route may not be finished either, since the
+        # exemption is still on the commit the adjudication accepted.
         self._crashes_before_the_push()
 
         resumed = self._resumes(remote_head=AFTER_SHA, dirty=LOOSE_EDITS)
 
         resumed[PUSH_PATCH].assert_not_called()
-        self._assert_untouched_transfer()
+        self._assert_standing_permission()
+        self._assert_held_for_a_human(resumed)
 
     def test_a_refused_no_op_parks_in_place(self) -> None:
         # The pull request was standing on the replay when this tick read it
@@ -282,6 +289,35 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(self._resets_of(resumed), [])
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
 
+    def test_a_landed_rewrite_nothing_explains_holds(self) -> None:
+        # The replay is on the pull request and the comment says nothing at
+        # all about it -- no permission, no receipt. Finishing the route would
+        # clear the anchor over an exemption still naming the commit the
+        # adjudication accepted, so the next tick would measure the replay as
+        # a fresh candidate.
+        self._crashes_before_the_grant()
+
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        resumed[PUSH_PATCH].assert_not_called()
+        durable = self._durable()
+        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
+        self.assertFalse(_rewrites.carries_rewrite_authorization(durable))
+        self.assertEqual(self._events_of(EVENT_TRANSFER), [])
+        self._assert_held_for_a_human(resumed)
+
+    def test_a_settled_transfer_with_no_receipt_holds(self) -> None:
+        # The rotation and the receipt go down in one write, so a comment
+        # claiming the first without the second is one that did not land
+        # whole -- and this tick may not decide which half is true.
+        self._crashes_before_the_route()
+        self._forgets_the_receipt()
+
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        resumed[PUSH_PATCH].assert_not_called()
+        self._assert_held_for_a_human(resumed)
+
     def _resets_of(self, resumed) -> list:
         """Every hard reset the hardened git seam was asked for this tick."""
         return [
@@ -296,14 +332,34 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         state.data.pop(DAMAGED_FIELD)
         self.gh.write_pinned_state(issue, state)
 
-    def _assert_untouched_transfer(self) -> None:
-        """The verdict is where the adjudication put it and nothing reported."""
+    def _assert_standing_permission(self) -> None:
+        """The verdict is where the adjudication put it, and the claim stands."""
         durable = self._durable()
         self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
         self.assertTrue(_rewrites.carries_rewrite_authorization(durable))
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
+
+    def _forgets_the_receipt(self) -> None:
+        """Take the record of what reached the remote off the comment."""
+        issue = self.gh._issues[ISSUE]
+        state = self.gh.read_pinned_state(issue)
+        state.set(KEY_PUBLISHED_SHA, None)
+        self.gh.write_pinned_state(issue, state)
+
+    def _assert_held_for_a_human(self, resumed) -> None:
+        """The anchor stands, HEAD is where it was, and nothing was reported.
+
+        The remote carries the replay, so nothing is reset off it -- the park
+        is what a route this tick could not finish owes, and the anchor left
+        pinned is what lets the next one classify the remote afresh.
+        """
         self._assert_nothing_readjudicated()
-        self._assert_finished_the_route(RECOVERY_RELABELLED)
+        self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        self.assertEqual(self._resets_of(resumed), [])
+        pinned = self.gh.pinned_data(ISSUE)
+        self.assertEqual(pinned[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
+        self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
+        self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
 
 
 if __name__ == "__main__":

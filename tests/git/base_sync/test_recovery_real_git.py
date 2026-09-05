@@ -14,10 +14,19 @@ class RecoveryRealGitTest(RecoveryGitFixtureMixin, unittest.TestCase):
     """The comparison the routing runs on is the one git itself computed."""
 
     def test_unpushed_rebase_is_leased_onto_remote(self) -> None:
+        # A rebase replays the branch, so the commit the pull request still
+        # carries is on no local history: git counts this branch as behind its
+        # own publication as well as ahead of it. What says the push never
+        # went out is the remote standing EXACTLY on the anchor the rebase
+        # pinned before git ran, and the counts would say the opposite.
+        ahead, behind = self.divergence_from_remote()
+        self.assertGreater(behind, 0)
+        self.assertGreater(ahead, 0)
+
         recovered = self.recover()
 
-        # Ahead-only against the freshly fetched remote head, so the recovery
-        # reissues the push the crash interrupted rather than rebasing again.
+        # So the recovery reissues the push the crash interrupted rather than
+        # parking the branch as one somebody else moved.
         self.assertTrue(recovered)
         self.assertEqual(self.push.leases, [self.anchor])
         self.assertEqual(self._remote_head(), self.recovered)

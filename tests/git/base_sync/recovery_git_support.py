@@ -62,6 +62,10 @@ PUSH_BRANCH = "_push_branch"
 
 FEATURE_FILE = "feature.py"
 
+# The path the base advance the branch is replayed over writes, chosen so
+# the replay is clean and the contribution it leaves is unchanged.
+SIBLING_FILE = "sibling.py"
+
 SCRATCH_FILE = "scratch.txt"
 
 PARK_PUSH_FAILED = "auto_base_rebase_push_failed"
@@ -198,14 +202,31 @@ class _RecoveryRepositoryBuilder:
         run_git(PUSH, REMOTE_NAME, BRANCH, cwd=fixture.work)
 
     def _rewrite_head(self) -> None:
-        """Leave HEAD where an interrupted rebase would have left it."""
+        """Leave HEAD where an interrupted rebase really left it.
+
+        A real `git rebase`, because the shape it produces is the one the
+        routing has to classify and no shorthand has it: replaying the branch
+        onto the advanced base makes the commit the remote still carries an
+        object no local history contains, so git counts this branch as BEHIND
+        its own pull request as well as ahead of it. A fixture that merely
+        committed on top of the anchor would leave the remote an ancestor and
+        never exercise that.
+        """
         fixture = self._fixture
-        fixture.recovered = commit(
-            fixture.work,
-            FEATURE_FILE,
-            "feature rebased\n",
-            "feat: rebased onto the advanced base",
+        self._advance_base()
+        run_git(
+            "rebase", f"{REMOTE_NAME}/{BASE_BRANCH}",
+            cwd=fixture.work, authored=True,
         )
+        fixture.recovered = head_sha(fixture.work)
+
+    def _advance_base(self) -> None:
+        """Land a commit on the base branch, the way a sibling PR merge does."""
+        fixture = self._fixture
+        run_git("checkout", BASE_BRANCH, cwd=fixture.work)
+        commit(fixture.work, SIBLING_FILE, "sibling\n", "feat: sibling landed")
+        run_git(PUSH, REMOTE_NAME, BASE_BRANCH, cwd=fixture.work)
+        run_git("checkout", BRANCH, cwd=fixture.work)
 
     def _seed_issue(self) -> None:
         fixture = self._fixture
@@ -274,9 +295,15 @@ class RecoveryGitFixtureMixin:
         )
 
     def publish_recovered_head(self) -> None:
-        """Land the rewritten head the way the interrupted push would have."""
+        """Land the rewritten head the way the interrupted push would have.
+
+        Forced, because that is what the push it stands in for is: a replay is
+        not a fast-forward of the commit it replaced, so the branch the rebase
+        rewrote can only reach the remote over the top of it.
+        """
         run_git(
-            PUSH, REMOTE_NAME, f"{HEAD_REF}:{BRANCH_REF}", cwd=self.work,
+            PUSH, "--force", REMOTE_NAME, f"{HEAD_REF}:{BRANCH_REF}",
+            cwd=self.work,
         )
         self._rewind_tracking_ref()
 
@@ -292,6 +319,21 @@ class RecoveryGitFixtureMixin:
         run_git(PUSH, REMOTE_NAME, BRANCH, cwd=other)
         self._rewind_tracking_ref()
         return pushed
+
+    def divergence_from_remote(self) -> tuple[int, int]:
+        """Ahead and behind as git counts this branch against the tracking ref.
+
+        Read before the recovery runs, since the tracking ref still names the
+        commit the crash left the remote on. What a case uses it for is to say
+        out loud that a replayed branch is behind its own publication -- the
+        fact the SHA comparison exists to see past.
+        """
+        counted = run_git(
+            "rev-list", "--left-right", "--count",
+            f"refs/remotes/{REMOTE_NAME}/{BRANCH}...{HEAD_REF}",
+            cwd=self.work,
+        ).split()
+        return int(counted[1]), int(counted[0])
 
     def is_clean(self) -> bool:
         """Whether git sees no modified or untracked paths in the worktree."""

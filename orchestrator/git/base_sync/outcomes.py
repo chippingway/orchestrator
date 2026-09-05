@@ -4,8 +4,8 @@
 
 One interrupted auto-rebase resolves into exactly one of these: the rewrite
 was already published, the comparison is unclassifiable, the remote moved
-out of band, the worktree is dirty, the reissued push failed, or the leased
-no-op that would have receipted an already-published rewrite was refused.
+out of band, the worktree is dirty, the reissued push failed, or a rewrite the
+pull request already carries is one this tick cannot finish the route behind.
 Each one either finalizes through ``persistence`` or parks, so keeping them
 in one owner is what makes the set enumerable -- an outcome that neither
 routed nor parked would leave the issue holding an anchor no later tick can
@@ -13,10 +13,10 @@ act on.
 
 Four of the five parks reset HEAD onto the pre-rebase anchor first, because
 that anchor is the head the remote PR still carries and the reviewer is still
-voting on. The refused no-op is the one that must not: the remote is standing
-on the REWRITE there, so putting the branch back on the anchor would take the
-checkout off work the pull request has. It parks with the anchor left pinned
-instead, and the next tick classifies the remote afresh.
+voting on. The unfinished-route park is the one that must not: the remote is
+standing on the REWRITE there, so putting the branch back on the anchor would
+take the checkout off work the pull request has. It parks with the anchor left
+pinned instead, and the next tick classifies the remote afresh.
 """
 from __future__ import annotations
 
@@ -204,18 +204,18 @@ def _park_failed_recovery_push(
     return True
 
 
-def _park_unsettled_recovery(
+def _park_unfinished_recovery(
     context: _AutoRebaseRecoveryContext,
     recovery_snapshot: _AutoRebaseRecoverySnapshot,
+    detail: str,
 ) -> bool:
-    """Park, without a reset, when the receipting no-op is refused.
+    """Park, without a reset, a landed rewrite this tick may not finish.
 
-    The pull request is standing on the rewritten commit and the checkout is
-    standing on it too, so this recovery had nothing to send: the push was the
-    leased proof that the remote is still where the interrupted tick left it.
-    Refused, that proof failed -- somebody moved the branch between this
-    tick's fetch and the request -- and what the tick may not do is act on
-    either reading.
+    The pull request is standing on the rewritten commit and so is the
+    checkout, so there was never anything to send here: what the tick owed was
+    a receipt, a settlement, or nothing at all -- and it could not establish
+    which. `detail` is the reason it could not, and it is the operator's whole
+    starting point.
 
     HEAD is deliberately left alone. Every other park here resets onto the
     pre-rebase anchor because that is the head the remote still carries; here
@@ -223,16 +223,21 @@ def _park_unsettled_recovery(
     off work the pull request has and hand the next reader a branch behind its
     own publication.
 
-    The anchor stays pinned with it, which is what makes the park recoverable
-    rather than terminal: a human's reply re-enters this route, the remote is
-    read again, and whatever it turns out to be is classified from scratch.
+    The anchor stays pinned with it, and that is what makes the park
+    recoverable rather than terminal. It is also the whole reason this park
+    exists rather than the ordinary relabel: the anchor is the only thing that
+    brings this recovery back, so clearing it over a verdict that may not have
+    moved leaves the next tick to measure a rewrite a human already ruled on
+    and route it into adjudication a second time. A human's reply re-enters
+    this route, the remote is read again, and whatever it turns out to be is
+    classified from scratch.
     """
     local_short = (recovery_snapshot.local_head or "")[:8]
     log.warning(
-        "issue=#%d auto-rebase recovery: the leased no-op that would have "
-        "receipted the already-published %s was refused; leaving HEAD and the "
+        "issue=#%d auto-rebase recovery: PR #%d already carries %s and this "
+        "tick cannot finish the route behind it (%s); leaving HEAD and the "
         "recovery anchor exactly as they are and parking awaiting human",
-        context.issue.number, local_short,
+        context.issue.number, context.pr_number, local_short, detail,
     )
     persistence._park_auto_rebase_failure(
         context.gh,
@@ -242,12 +247,11 @@ def _park_unsettled_recovery(
             f"{config.HITL_MENTIONS} crash recovery for PR "
             f"#{context.pr_number}: the branch was rebased and pushed before "
             f"an earlier tick died, so PR #{context.pr_number} already "
-            f"carries `{local_short}` -- but the `--force-with-lease` no-op "
-            "that would have recorded it (leased against that same commit) "
-            "was refused, which means the remote branch moved after this "
-            "tick read it. HEAD has NOT been reset: the worktree is standing "
-            "on the commit the PR was carrying. Investigate the remote branch "
-            "and reply on this issue with anything once it is reconciled."
+            f"carries `{local_short}` -- but the route behind that push "
+            f"cannot be finished safely because {detail}. HEAD has NOT been "
+            "reset: the worktree is standing on the commit the PR carries. "
+            "Investigate the pinned comment and the remote branch, then reply "
+            "on this issue with anything once they are reconciled."
         ),
         reason=_REASON_AUTO_BASE_REBASE_PUSH_FAILED,
     )

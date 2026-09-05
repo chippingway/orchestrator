@@ -351,9 +351,15 @@ and the ordinary cumulative gate measures the replay exactly as it always did.
 
 That rebase is six durable moments in a row — the anchor, the rewrite, the permission, the push, the receipt, and
 the route — so the crash recovery behind `pending_auto_base_rebase_push_sha` classifies TWO things rather than one.
-Where the remote stands says which effect the dead tick reached: still on the anchor and the push never went out, on
-the rewritten commit and it did, anywhere else and somebody moved the branch out of band. What the pinned comment
-carries says how far the transfer's own writes got, and there are five answers. No exemption in flight is the
+Where the remote stands says which effect the dead tick reached, and it is read as an exact SHA: still on the pinned
+anchor and the push never went out, on the rewritten commit and it did, anywhere else and somebody moved the branch
+out of band. The ahead/behind counts answer only that third case. A rebase REPLAYS the branch, so the commit the
+pull request still carries is an object no local history contains afterwards — git reports the branch as behind its
+own publication as well as ahead of it — and a recovery reading those counts first would park the canonical
+pre-push case as a remote somebody else moved. The anchor the rebase pinned before git ran is the same fact the
+`--force-with-lease` behind the retry is pinned to, so a remote standing on it is exactly the branch the push was
+leased against. What the pinned comment carries says how far the transfer's own writes got, and there are five
+answers. No exemption in flight is the
 ordinary interrupted rebase. A rewrite with no `late_rewrite_*` group behind it is a grant the crash came before, so
 the recovery re-derives the same evidence the dead tick would have assembled and the permit rules on it — without
 that, the replay of a change a human already ruled on is measured past the same ceiling and routed back into
@@ -369,11 +375,18 @@ stage the rewrite was entered from, so a settlement one tick later is refused on
 through the same gated publication every other push in this domain goes through, which over a pull request already
 standing on the commit is the leased no-op that proves it — nothing sent, no agent, no measurement, no second
 adjudication comment, and the receipt, the paid debt, and the rotation riding one durable write under
-`transfer_proof=already_published`. A no-op the remote refuses parks with HEAD and the anchor left exactly as they
-are: the checkout is standing on the commit the pull request carries, so a reset would take it off work the remote
-has, and the next tick classifies the remote afresh. A checkout carrying uncommitted changes settles nothing and
-finishes the route unchanged, since a contribution fingerprinted beside work nobody committed is not the one that
-was published.
+`transfer_proof=already_published`.
+
+Every other landed rewrite is asked whether the comment ACCOUNTS for it before the route is finished, because
+finishing clears the anchor and the anchor is the only thing that brings this recovery back. An issue carrying no
+verdict always is, which is the ordinary interrupted rebase and the whole of what this road used to be. A transfer
+that settled, and a replay the ordinary cumulative gate published, are accounted for by the receipt their write
+left, and the debt beside it is asked too — the two go down together, so an approval still standing over a
+receipted commit is a write that did not land whole. Anything else parks with HEAD and the anchor left exactly as
+they are: a `late_rewrite_*` group nobody can read, a receipt nobody wrote, a debt nothing paid, a checkout
+carrying uncommitted changes the settlement may not be fingerprinted beside, and a leased no-op the remote refused.
+Nothing is reset on any of them — the checkout is standing on the commit the pull request carries, so a reset would
+take it off work the remote has — and the next tick classifies the remote afresh once a human has answered.
 
 Refresh-only failure modes — push rejected (`auto_base_rebase_push_failed`), rebase failed without conflicted files
 (`auto_base_rebase_failed`), dirty-after-clean-rebase (`auto_base_rebase_dirty`) — reset HEAD back to the pre-rebase

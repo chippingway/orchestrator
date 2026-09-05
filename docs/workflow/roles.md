@@ -545,8 +545,9 @@ with the pull request open over the work. The recovery also owns the settlement 
 receipt was lost, rather than relabelling and leaving it: the permit is scoped to the stage the rewrite was entered
 from, and the refresh's own route moves the issue to `workflow:validating`, so a settlement one tick later is
 refused on the stage alone. Every state neither of those covers — a permission this build cannot read, one naming
-some other commit, a tree carrying uncommitted changes, a remote somebody moved — settles nothing and keeps the
-fail-closed park or reset the refresh always had
+some other commit, a receipt nobody wrote, a debt nothing paid, a tree carrying uncommitted changes, a remote
+somebody moved — settles nothing and parks fail-closed rather than finishing the route, because the route clears
+the recovery anchor and the anchor is the only thing that brings the tick back to a verdict that may not have moved
 ([`../state-machine/labels-and-state.md#base-refresh`](../state-machine/labels-and-state.md#base-refresh)).
 
 The approval holds the switch back for the commit it *names* and no other, which is why the switch is asked twice —

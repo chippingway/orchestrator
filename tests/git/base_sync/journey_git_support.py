@@ -32,6 +32,7 @@ from orchestrator.workflow.stages.implementing import (
     late_push as _late_push,
     late_records as _late_records,
 )
+from orchestrator.workflow.stages.validating import handler as _validating
 from orchestrator.workflow.state import WorkflowLabel
 from tests.git.base_sync.exemption_git_support import (
     ISSUE,
@@ -48,11 +49,19 @@ from tests.git.base_sync.real_git_test_support import (
 )
 from tests.git.base_sync.refresh_test_support import _patched
 from tests.support.fakes import FakePRRef
-from tests.workflow.fixtures import LABEL_VALIDATING, _agent
+from tests.workflow.fixtures import (
+    LABEL_VALIDATING,
+    REVIEW_APPROVED_MESSAGE,
+    _agent,
+)
 
 # The ceiling the journey's candidate is oversized against, and the file that
 # puts it there. Both are small enough to keep the real diff cheap and large
 # enough that the real counter really crosses the ceiling on the real objects.
+# The seam a push goes out through, named once because three legs of this
+# journey hold it and the alias is what a mock lands on.
+PUSH_BRANCH = "_push_branch"
+
 JOURNEY_CEILING = 20
 JOURNEY_FILE = "oversized.py"
 JOURNEY_LINES = 200
@@ -130,17 +139,19 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
         self._open_pull_request(label=LABEL_VALIDATING)
         return self._wt_head()
 
-    def _publishes_as_review(self, candidate: str):
-        """Take the publication one `workflow:validating` round makes.
+    def _publishes_the_candidate(self, candidate: str):
+        """Take the publication a `workflow:validating` round makes.
 
-        The same call the reviewer's own route makes, so what decides the
-        candidate is the gate rather than anything this fixture arranges: the
-        first round is held and routed to the adjudication, and the round
-        after the rebase publishes a change the exemption already covers.
+        The gate call itself rather than the reviewer around it, because what
+        opens this journey is a PUSH: the stage's own publication seams -- the
+        dev-fix bounce and the validating recovery -- each reach the gate with
+        exactly these terms, and it is the gate that holds the candidate and
+        hands the issue to the adjudication. The reviewer is a different tick
+        and is driven as itself below.
         """
         issue = self._gh._issues[ISSUE]
         with patch.object(
-            _branch_transport, "_push_branch",
+            _branch_transport, PUSH_BRANCH,
             _PublishesToThePullRequest(self._gh),
         ):
             return _late_push._publishes(
@@ -166,7 +177,7 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
         issue = self._gh._issues[ISSUE]
         spawn = MagicMock(return_value=_agent(last_message=SINGLE_MANIFEST))
         with patch.object(_agent_runner, "run_agent", spawn), patch.object(
-            _branch_transport, "_push_branch",
+            _branch_transport, PUSH_BRANCH,
             _PublishesToThePullRequest(self._gh),
         ):
             return _coordinator._adjudicate_late_generation(
@@ -177,10 +188,35 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
     def _refreshes(self) -> _LocalBranchPusher:
         """Run one refresh over the advanced base and report the push it made."""
         pusher = _PublishesToThePullRequest(self._gh)
-        with patch.object(_branch_transport, "_push_branch", pusher):
+        with patch.object(_branch_transport, PUSH_BRANCH, pusher):
             self._refresh()
         return pusher
 
     def _durable(self):
         """The pinned comment as a process starting now would read it."""
         return self._gh.read_pinned_state(self._gh._issues[ISSUE])
+
+    def _reviews(self, verdict: str = REVIEW_APPROVED_MESSAGE):
+        """Run one real `workflow:validating` tick and report its spawn.
+
+        The handler itself, with only the reviewer agent stood in for: the
+        terminals, the drift read, the round cap, the worktree reuse, the
+        prompt, the verdict parse, and everything an approval earns are the
+        production ones, over the checkout the base refresh just rewrote.
+        """
+        spawn = MagicMock(return_value=_agent(last_message=verdict))
+        with patch.object(_agent_runner, "run_agent", spawn), patch.object(
+            _branch_transport, PUSH_BRANCH,
+            _PublishesToThePullRequest(self._gh),
+        ):
+            _validating._handle_validating(
+                self._gh, self._spec, self._gh._issues[ISSUE],
+            )
+        return spawn
+
+    def _issue_comments(self) -> list[str]:
+        """Every comment this journey posted on the issue thread."""
+        return [
+            body for number, body in self._gh.posted_comments
+            if number == ISSUE
+        ]

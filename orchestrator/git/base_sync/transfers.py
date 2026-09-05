@@ -43,6 +43,13 @@ rule. A grant REPLACES the whole authorization group rather than adding beside
 it, so a recovery that assembled a claim of its own over a group already
 standing would repair a record nobody checked, under the authority of the very
 transfer it is in the middle of deciding.
+
+The last question here is the one a road with nothing left to publish has to
+ask: whether the rewrite the pull request already carries is one this comment
+can ACCOUNT for. Finishing that road clears the recovery anchor, and the
+anchor is the only thing that brings the tick back -- so an exemption still on
+the old commit, a debt nothing paid, or a receipt nobody wrote may not be
+walked past, however right the remote looks.
 """
 from __future__ import annotations
 
@@ -65,6 +72,33 @@ class _Handoff(StrEnum):
     OUTSTANDING = "outstanding"
     SETTLED = "settled"
     UNVOUCHED = "unvouched"
+
+
+# The two handoffs a landed rewrite can be ACCOUNTED for under: the transfer
+# finished, or none was ever granted and the ordinary gate published it. Both
+# leave a receipt naming the commit, which is what the accounting is read off.
+_ACCOUNTABLE = frozenset((_Handoff.SETTLED, _Handoff.UNRECORDED))
+
+
+# Why a rewrite the pull request already carries is one the pinned comment
+# cannot account for. Each is worded for the operator who has to reconcile it,
+# because what they all end in is a park nobody but a human clears.
+_UNREADABLE_CLAIM = (
+    "a transfer record this build cannot read whole is standing over the "
+    "commit this issue exempts"
+)
+
+_UNSETTLED_CLAIM = "the transfer standing here is `{handoff}` rather than over"
+
+_UNRECEIPTED = (
+    "nothing on the pinned comment records `{published}` as published, so "
+    "whether the verdict this rebase was carrying ever moved cannot be said"
+)
+
+_UNPAID = (
+    "a push is still recorded as owed for `{owed}`, so the write that should "
+    "have settled this publication did not land whole"
+)
 
 
 def _rewritten_by_the_rebase(
@@ -244,3 +278,50 @@ def _reconstructed(
             context.issue.number, local_head[:8], rewrite.from_sha[:8],
         )
     return rewrite
+
+
+def _unaccounted_publication(
+    state: PinnedState, local_head: str, carried: _Handoff,
+) -> str:
+    """Why a rewrite the pull request already carries is unexplained, or "".
+
+    Asked of the road that has nothing left to publish and only a route to
+    finish, and it is what decides whether finishing is safe. That route
+    clears the recovery anchor, resets the review round, and hands the issue
+    to the reviewer -- which on an issue carrying no verdict is exactly right
+    and costs nothing, since there is no transfer for a missing record to
+    strand.
+
+    On an issue that WAS carrying one it is the opposite. The anchor is the
+    only thing that brings this recovery back, so clearing it over an
+    exemption still on the old commit, a debt nothing paid, or a receipt
+    nobody wrote leaves the next tick to measure the rewrite as a fresh
+    candidate -- past the same ceiling, and back into adjudication with the
+    pull request already carrying the work. So those states park with the
+    anchor left pinned instead, and a human settles what is on the comment.
+
+    Two handoffs can be accounted for, and both by the same record: a transfer
+    that FINISHED wrote the receipt in the same statement as the rotation, and
+    a rewrite no permit ever licensed was published by the ordinary cumulative
+    gate, which wrote one too. So the receipt naming this commit is what says
+    the publication is explained, and the debt beside it is asked as well --
+    the two go down together, so an approval still standing over a receipted
+    commit is a write that did not land whole.
+
+    A group nobody can read is refused outright: it is the only account there
+    is of how the exemption came to name what it names, and a route finished
+    over it would be acting on evidence nothing checked.
+    """
+    if carried == _Handoff.NOTHING:
+        return ""
+    if carried not in _ACCOUNTABLE:
+        if carried == _Handoff.UNVOUCHED:
+            return _UNREADABLE_CLAIM
+        return _UNSETTLED_CLAIM.format(handoff=carried)
+    # Lazy for the reason every upward reach in this package is: the receipt
+    # and the debt sit in the workflow layer above it.
+    from orchestrator.workflow.stages.implementing import late_parks
+    if late_parks._published_commit(state) != local_head:
+        return _UNRECEIPTED.format(published=local_head)
+    owed = late_parks._approved_commit(state)
+    return _UNPAID.format(owed=owed) if owed else ""

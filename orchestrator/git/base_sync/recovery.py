@@ -42,8 +42,22 @@ from orchestrator.git.base_sync.models import (
     _AutoRebaseRecoveryContext,
     _AutoRebaseRecoverySnapshot,
 )
-from orchestrator.git.base_sync.state import _PR_REFRESH_DETOUR_LABELS, log
+from orchestrator.git.base_sync.state import _PR_REFRESH_DETOUR_LABELS
 from orchestrator.git.verification import probes as verification_probes
+
+# Why a landed rewrite's route could not be finished, in the operator's own
+# terms. Spelled at the two seams that answer for them rather than beside the
+# park, which takes whatever reason its caller established.
+_LOOSE_TREE = (
+    "the worktree carries {count} uncommitted change(s), so the contribution "
+    "the transfer would be settled over is not the one the pull request has"
+)
+
+_REFUSED_NO_OP = (
+    "the `--force-with-lease` no-op that would have recorded it, leased "
+    "against that same commit, was refused -- the remote branch moved after "
+    "this tick read it"
+)
 
 _RECOVERY_SIGNATURE = inspect.Signature((
     inspect.Parameter("gh", inspect.Parameter.POSITIONAL_OR_KEYWORD),
@@ -163,29 +177,57 @@ def _finish_published_recovery(
     buys is the receipt, the paid debt, and the rotation riding one durable
     write -- proved at the remote rather than read off a local note.
 
-    A checkout carrying uncommitted changes takes the ordinary road instead.
-    The remote has the rewrite and the pull request is right, so there is
-    nothing here to reset and nothing to park over; what a loose tree costs is
-    the settlement, because a contribution fingerprinted beside changes nobody
-    committed is not the one the pull request carries.
+    Every other handoff is asked whether the pinned comment ACCOUNTS for the
+    rewrite the pull request carries, and only an accounted one is finished.
+    An issue carrying no verdict always is, which is the ordinary interrupted
+    rebase and the whole of what this road used to be. One whose transfer
+    settled, or whose replay the ordinary cumulative gate published, is
+    accounted for by the receipt that write left. Anything else -- a record
+    this build cannot read, a receipt nobody wrote, a debt nothing paid --
+    parks with the anchor still pinned, because finishing there would drop the
+    one thing that brings this recovery back and leave the next tick to
+    measure an adjudicated change as a fresh candidate.
     """
-    if carried != transfers._Handoff.OUTSTANDING:
-        return outcomes._finalize_already_published_recovery(
-            context, recovery_snapshot,
+    if carried == transfers._Handoff.OUTSTANDING:
+        return _settles_the_landed_rewrite(context, recovery_snapshot)
+    unaccounted = transfers._unaccounted_publication(
+        context.state, recovery_snapshot.local_head or "", carried,
+    )
+    if unaccounted:
+        return outcomes._park_unfinished_recovery(
+            context, recovery_snapshot, unaccounted,
         )
-    if verification_probes._worktree_dirty_files(context.worktree):
-        log.warning(
-            "issue=#%d auto-rebase recovery: pull request #%d already carries "
-            "%s and the worktree is not provably clean, so the transfer "
-            "granted for it is left standing rather than settled over a tree "
-            "nobody committed",
-            context.issue.number, context.pr_number,
-            (recovery_snapshot.local_head or "")[:8],
-        )
-        return outcomes._finalize_already_published_recovery(
-            context, recovery_snapshot,
-        )
-    return _settle_published_recovery(context, recovery_snapshot)
+    return outcomes._finalize_already_published_recovery(
+        context, recovery_snapshot,
+    )
+
+
+def _settles_the_landed_rewrite(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Take the settlement a landed push still owes, or park for the tree.
+
+    The permission is outstanding and the commit it names is the one the pull
+    request carries, so what is missing is the receipt -- and taking it is
+    what stops the permit being re-asked one stage later, against an issue the
+    rewrite was never entered from.
+
+    A checkout carrying uncommitted changes may not be settled over: the
+    contribution the permit is re-derived from is fingerprinted in that tree,
+    and one carrying work nobody committed is not the contribution the pull
+    request has. Nothing is reset for it -- the remote is right and so is the
+    branch -- but the route is not finished either, because clearing the
+    anchor over an exemption still on the old commit is what sends the replay
+    back into adjudication.
+    """
+    dirty_files = verification_probes._worktree_dirty_files(context.worktree)
+    if not dirty_files:
+        return _settle_published_recovery(context, recovery_snapshot)
+    return outcomes._park_unfinished_recovery(
+        context, recovery_snapshot,
+        _LOOSE_TREE.format(count=len(dirty_files)),
+    )
 
 
 def _settle_published_recovery(
@@ -224,7 +266,9 @@ def _settle_published_recovery(
         context.gh.write_pinned_state(context.issue, context.state)
         return True
     if not published.landed:
-        return outcomes._park_unsettled_recovery(context, recovery_snapshot)
+        return outcomes._park_unfinished_recovery(
+            context, recovery_snapshot, _REFUSED_NO_OP,
+        )
     return outcomes._finalize_already_published_recovery(
         context, recovery_snapshot,
     )
@@ -267,6 +311,24 @@ def _route_recovery_snapshot(
     The transfer is read once, before either road, because it costs nothing
     and because reading it twice would let the two roads disagree about the
     same comment.
+
+    Both halves of the remote question are answered by the exact SHA rather
+    than by the ahead/behind counts, and for the interrupted rebase that is
+    the whole difference between finishing and parking. A rebase REPLAYS the
+    branch: the commit the pull request still carries is on no local history
+    afterwards, so git counts the branch as behind its own publication --
+    ahead by the replay and the base it moved onto, behind by the object it
+    replaced. Read off those counts, the canonical pre-push recovery is
+    indistinguishable from a remote somebody else pushed to, and the tick that
+    only ever needed to reissue its push parks instead. The remote standing
+    EXACTLY on the anchor this rebase pinned before git ran is what says
+    nothing landed in between, and it is the same fact the force-with-lease
+    behind the retry is pinned to.
+
+    The counts still answer for every remote neither SHA accounts for, which
+    is the case they were always about: a publication that moved out of band
+    is behind as well as ahead, and a pair of zeros over two heads that
+    disagree is a reading that did not happen.
     """
     completed = snapshot._complete_recovery_snapshot(
         context, recovery_snapshot,
@@ -276,6 +338,28 @@ def _route_recovery_snapshot(
     carried = transfers._carried_by(context.state, completed.local_head)
     if completed.local_head and completed.local_head == completed.remote_head:
         return _finish_published_recovery(context, completed, carried)
+    if completed.remote_head == context.pending_pre_rebase_sha:
+        return _retry_recovery_push(context, completed, carried)
+    return _route_a_moved_remote(context, completed, carried)
+
+
+def _route_a_moved_remote(
+    context: _AutoRebaseRecoveryContext,
+    completed: _AutoRebaseRecoverySnapshot,
+    carried: transfers._Handoff,
+) -> bool:
+    """Route a remote neither SHA this recovery holds accounts for.
+
+    Reached once the pull request is proved to be standing on neither the
+    rewrite this branch carries nor the anchor the rebase pinned before git
+    ran, so whatever is on it arrived from somewhere else. The counts are what
+    is left to tell those apart, and they answer the question they were always
+    about: a pair of zeros over two heads that disagree is a reading that did
+    not happen, a remote with commits of its own is one a force-push would
+    drop, and a strictly-ahead branch is a lease this recovery may still try
+    -- the push is pinned to the anchor, so a remote that is not on it refuses
+    the request rather than being overwritten.
+    """
     if completed.ahead == 0 and completed.behind == 0:
         return outcomes._reject_unknown_recovery_comparison(context, completed)
     if completed.behind > 0:
