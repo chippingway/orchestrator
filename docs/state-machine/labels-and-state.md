@@ -569,7 +569,11 @@ The keys that matter for the state machine fall into a few groups:
   exhausted retry budget re-sets `retry_cap` for the same kind of reason — a park nothing can recognize is one the
   next tick re-decides from scratch (see [The retry budget](#the-retry-budget)), and the spent lifetime agent-run
   ledger re-sets `agent_run_limit` for the same reason again, since the dispatcher's hold over it reads that flag and
-  nothing else (see the **agent-run-limit park** bullet below). The late
+  nothing else (see the **agent-run-limit park** bullet below). A failed squash-on-approval re-sets `squash_failed`,
+  and what reads it back is the recovery that took it: that route retries on every tick and stays silent while its
+  own reason stands, so the reason is what tells a notice already on the thread from one to post afresh — and a park
+  worded by the size gate behind it, which says its own piece on every reading it cannot take, is held for a human
+  rather than re-entered. The late
   size gate re-sets its own reasons for the same kind of reason: `late_measurement_failed`,
   `late_candidate_moved`, `late_evidence_missing`, `late_plan_pr_hold_failed`,
   `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,

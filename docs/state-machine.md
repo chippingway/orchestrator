@@ -246,7 +246,10 @@ and the plan-PR question the merge terminal is reached past are in
 The single docs pass on the existing PR worktree, reached only via the final-docs handoff in `_handle_validating`'s
 approval branch. It reuses the locked dev session — there is no `documenting_agent` and no separate retry budget —
 and advances to `in_review` on either a pushed docs commit or an explicit `DOCS: NO_CHANGE` verdict. Drift during the
-hop unwinds the worktree and relabels back to `workflow:validating` without spawning. Full flow:
+hop unwinds the worktree and relabels back to `workflow:validating` without spawning. The tick opens by ending the
+handoff record that brought the issue here, if one is still standing: this stage having the issue is the only proof
+the relabel behind that handoff landed, and left standing the record would answer a drift unwind's re-review by
+sending the unchanged head straight back. Full flow:
 [`state-machine/delivery-stages.md`][documenting].
 
 ### `_handle_validating` (label `workflow:validating`)
@@ -254,7 +257,12 @@ hop unwinds the worktree and relabels back to `workflow:validating` without spaw
 Spawns a **fresh** reviewer every round (so a `REVIEW_AGENT` flip takes effect on the next tick) with a read-only
 prompt that must end in `VERDICT: APPROVED` or `VERDICT: CHANGES_REQUESTED`. An approval runs the local verify gate,
 then `SQUASH_ON_APPROVAL`, then hands off to `workflow:documenting`; `CHANGES_REQUESTED` flips to `workflow:fixing`
-**before** the dev spawn. `MAX_REVIEW_ROUNDS` parks with the `/orchestrator add-review-rounds N` escape hatch. Full
+**before** the dev spawn. `MAX_REVIEW_ROUNDS` parks with the `/orchestrator add-review-rounds N` escape hatch.
+
+A squash this issue began and did not finish is answered ahead of all of that, behind only the terminals and ahead of
+every route that could point an agent at the branch: a branch mid-rewrite is not one a reviewer or a body-edit resume
+may be run over, and a collapse the remote already carries would otherwise never get the notice, the watermarks, and
+the relabel its handoff owes. An issue with nothing recorded costs one lookup on the pinned comment. Full
 flow: [`state-machine/delivery-stages.md`][validating].
 
 ### The size gate on a published pull request (every push onto an open PR)

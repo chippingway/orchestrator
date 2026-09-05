@@ -1039,7 +1039,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             each failure earns
       handoff.py            the `pr_last_comment_id` ratchet that keeps in_review from replaying a consumed reply,
                             the write that carries it, and the relabel behind both -- taken ahead of that write, the
-                            relabel leaves `in_review` a pass it reads as unfinished and no stage goes back for it
+                            relabel leaves `in_review` a pass it reads as unfinished and no stage goes back for it.
+                            The handoff that brought the issue HERE is ended here too, at the top of the tick and in
+                            a write of its own: a `validating` approval settles a finished squash into
+                            `late_collapse_handoff_sha` and drops it behind the label it moves, so a record still
+                            standing is that move having landed and that write having failed -- and this stage
+                            having the issue is the only proof of it, since the label history cannot tell a move
+                            that never happened from one the drift unwind above later reversed
       parks.py              the shared awaiting-human park and the missing-PR, dirty-tree, and question parks
       models.py             the frozen records the owners hand each other
       state.py              the pinned-state keys they share
