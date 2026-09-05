@@ -36,7 +36,7 @@ refusal is reported under is `late_records`, the pair a count is taken over is
 the typed failure both sinks carry, is `late_parks`.
 
 A candidate the remote already carries is the same gate one seam further on,
-and nine more owners divide it the way the seam itself divides: what a call
+and ten more owners divide it the way the seam itself divides: what a call
 taken past publication has to freeze before it may measure at all -- the
 stage, the pull request, the head it stands on, and the five refusals that
 make freezing them fail closed -- is `late_overflow`; the switch, the record,
@@ -49,10 +49,12 @@ human's adjudication already accepted, taken with no measurement but over a
 checkout re-proved, is `late_accepted`; the push a squash-on-approval makes
 over the branch it just rewrote -- entered on that publication before anything
 destructive runs, then measuring the commit the squash MADE, since that is
-what would go onto the pull request -- is `late_rewrite`, and whether that
+what would go onto the pull request -- is `late_rewrite`, whether that
 rewrite may carry an adjudication's exemption onto the object it produced,
 rather than have the same change measured past the same ceiling a second time,
-is `late_transfer`; the reading the dispatcher
+is `late_transfer`, and what the receipt of the push that permission licensed
+does with it -- carry the exemption over on the same write, or drop a claim
+the publication went past -- is `late_rotation`; the reading the dispatcher
 takes ahead of every handler for a pair this issue froze and never counted is
 `late_reconcile`; the approval that same dispatcher pays ahead of it,
 where a crash past the write that granted one left no record to reconcile

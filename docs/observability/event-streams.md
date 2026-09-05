@@ -159,7 +159,8 @@ file is the durable record.
   [Agent-run budget records](#agent-run-budget-records-both-sinks). It sits beside `agent_run_limit` rather than
   inside it: that stream is about a notice and a command, this one about the runs an issue spent.
 - `late_measurement` / `late_verdict` / `late_failure` / `late_snapshot` / `late_cleanup` / `late_cancellation` /
-  `late_restart` — the late size gate's seven families, each emitted by `workflow/late_split/telemetry.py` together
+  `late_restart` / `late_transfer` — the late size gate's eight families, each emitted by
+  `workflow/late_split/telemetry.py` together
   with an identical analytics record; extras: the bounded correlation payload in
   [Late-split records](#late-split-records-both-sinks).
 
@@ -243,7 +244,8 @@ foundation layer for the Postgres aggregation step.
   [Agent-run budget records](#agent-run-budget-records-both-sinks). This is the one family here that is *not* one
   record per tracked run: an ordinary launch writes two (`reserved`, `started`) beside its `agent_exit`.
 - `late_measurement` / `late_verdict` / `late_failure` / `late_snapshot` / `late_cleanup` / `late_cancellation` /
-  `late_restart` — `workflow/late_split/telemetry.py`, one record per late event beside the audit event of the same
+  `late_restart` / `late_transfer` — `workflow/late_split/telemetry.py`, one record per late event beside the audit
+  event of the same
   kind; carries `stage` plus the same bounded payload — see
   [Late-split records](#late-split-records-both-sinks).
 
@@ -593,9 +595,10 @@ fields under their own envelopes.
 
 **Families.** `late_measurement` (a clean committed candidate was measured), `late_verdict` (an adjudication decided),
 `late_failure` (a typed step could not be completed), `late_snapshot` and `late_cleanup` (what happened to one
-external resource), `late_cancellation` (the owner was observed closed), and `late_restart` (a restart after a
-completed cancellation). The kind is the family; `stage` is the bare stage tag the issue sat in, spelled by the
-emitter like every other event on this page. Every one of the seven also says which side of publication its
+external resource), `late_cancellation` (the owner was observed closed), `late_restart` (a restart after a
+completed cancellation), and `late_transfer` (an adjudication's exemption was carried onto the commit a workflow
+rewrite replaced it with). The kind is the family; `stage` is the bare stage tag the issue sat in, spelled by the
+emitter like every other event on this page. Every one of the eight also says which side of publication its
 generation was entered on, because each of them means something different under each: a `late_cleanup` reconciling a
 snapshot cut for an initial publication and one reconciling a pull request the remote already carries are the same
 family describing two different steps. That answer is the `publication` field below, not a family of its own.
@@ -656,8 +659,26 @@ already in the gate. What it stops is records for work that never enters it. The
 rarely: a `late_cancellation` — under the same entry stage — where a close a poll latched reaches the retirement
 that runs ahead of a publication — asked before that write and again on the window it is held inside, so a close
 arriving as the record stops naming its cycle is reported rather than lost. It is the same family and the same
-shape the adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended. The remaining
-three arrive once an oversized candidate is under adjudication. The second is the late adjudication under
+shape the adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended.
+
+The seam writes one family more still, and it is the only one on this page that reports a decision MOVING
+rather than being taken: `late_transfer`, one record per exemption carried onto the commit a workflow rewrite
+replaced the accepted one with
+([`../workflow/roles.md`](../workflow/roles.md#the-size-gate-a-committed-candidate-passes)). It rides the write that
+receipts the landed push, so it is written only where the pull request really carries the rewritten commit, and it is
+filed under the stage the rewrite was entered from rather than under `implementing`. The record names both ends of
+both contributions — `source_sha` / `base_sha` for the pair the verdict moved ONTO, `transferred_from_sha` /
+`transferred_from_base_sha` for the pair it moved off — the pull request it happened on, `rewrite_kind` for which
+rewrite this workflow made, and `transfer_proof` for which reading proved the push landed: `pushed` where the leased
+force-push moved the publication off the head the permit was granted against, and `already_published` where a tick
+that pushed and died before its receipt came back to a pull request standing there already and the leased no-op found
+it so. There is no third value — a remote anywhere else is a permit that was refused, which settles nothing and
+reports nothing. No `late_verdict` joins it: the transfer carries a decision a human already made onto the object
+that replaced the one they made it about, and a second `single` here would read as a second adjudication of work
+nobody was asked about twice. A permission a publication went PAST is dropped rather than spent, and that is silent
+for the same reason — nothing moved.
+
+The remaining three arrive once an oversized candidate is under adjudication. The second is the late adjudication under
 `workflow:decomposing`
 ([`../workflow/roles.md`](../workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)): it writes
 one `late_verdict` per completed adjudication, one `late_measurement` per candidate a developer revision
@@ -737,6 +758,7 @@ it, or a cleanup with no resource cannot reach either sink at all:
 | `late_failure` | `failure` | `measurement_failure` with `failure: measurement_failed`, `detail` with a step |
 | `late_snapshot`, `late_cleanup` | `resource` | — |
 | `late_restart` | `restart_step` | — |
+| `late_transfer` | `rewrite_kind`, `transfer_proof`, `transferred_from_sha`, `transferred_from_base_sha` | — |
 
 A category is allowed on **every** verdict and required only of a `question`: a `single` verdict that explains itself
 as `generated_artifacts` is exactly the artifact-dominated signal this page promises, so the schema has to be able to
@@ -845,8 +867,11 @@ event — and every field that could otherwise smuggle text through is closed at
 **Self-contained by family.** Beyond the shared fields, `late_measurement` and `late_verdict` must carry
 `source_sha`, `base_sha`, `threshold`, `additions`, and `phase` — the commits that were frozen and the measurement
 taken against them. A record of either reporting only an identity would be a row no threshold study could use, so it
-is not written. The other five families describe reconciliation rather than size, and a restart's fresh cycle has
-deliberately let its commits go, so none of them is held to it.
+is not written. `late_transfer` is held to the two commits and to neither count, since what it records is precisely
+that a reading did not have to be taken; it is also the one family held to the **marker**, because a verdict moves
+only onto a commit a pull request the remote already carries has been pushed to, so a transfer that could not name
+that pull request is a move nothing could be attributed to. The other five families describe reconciliation rather
+than size, and a restart's fresh cycle has deliberately let its commits go, so none of them is held to any of it.
 
 **A refused record is a non-emission, not an exception.** `telemetry.emit_late_event` runs the build inside the same
 fail-open guard as the two writes: the refusal is logged on the `orchestrator.workflow` channel, the call returns an

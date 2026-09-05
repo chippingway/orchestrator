@@ -20,7 +20,9 @@ Four rules, and every one of them fails closed:
 - **A family gets what its own record is read for.** A measurement, and the
   verdict answering it, both have to carry the commits that were frozen and
   the measurement taken against them; a record of either that reported only an
-  identity would be a row no threshold study could use. The other five
+  identity would be a row no threshold study could use. A transfer is held to
+  the commits and to nothing else, since what it records is that a reading did
+  not have to be taken at all. The other five
   describe reconciliation rather than size, and a restart's fresh cycle has
   deliberately let its commits go, so none of them is held to it.
 - **Every other emitted field is checked for what it claims to be.** A commit
@@ -33,7 +35,10 @@ Four rules, and every one of them fails closed:
   it came from, the pull request the work already had, and the head that pull
   request stood on. A hand-edited comment that leaves the marker over any of
   the three gone would otherwise put a post-publication record with no
-  publication in it into both sinks.
+  publication in it into both sinks. One family is held to the marker as well
+  as to what it carries: a transfer happens only where a pull request the
+  remote already carries has been pushed to, so a record of one that could
+  not name that publication describes a move nothing could be attributed to.
 
 The refusal never quotes the value it refused. A field rejected for carrying
 prose would put that prose in the log line reporting it, which is the same
@@ -63,7 +68,12 @@ _IDENTITY_FLOORS = MappingProxyType({
     "current_issue": 1,
 })
 
-_SHA_FIELDS = ("candidate_sha", "base_sha", "plan_pr_head", "published_sha")
+# The pair every size-bearing record names: which commit, over which base.
+# Spelled once because three families are read by it and the shape check
+# below reads it too.
+_FROZEN_PAIR = ("candidate_sha", "base_sha")
+
+_SHA_FIELDS = (*_FROZEN_PAIR, "plan_pr_head", "published_sha")
 
 # What a family's own record is read without. A measurement and the verdict
 # answering it are the two an analysis joins on: which commits were frozen,
@@ -73,12 +83,24 @@ _SHA_FIELDS = ("candidate_sha", "base_sha", "plan_pr_head", "published_sha")
 # fresh cycle has deliberately let its commits go.
 _FAMILY_CONTEXT = MappingProxyType({
     _events.LateEventFamily.MEASUREMENT: (
-        "candidate_sha", "base_sha", "threshold", "additions", "phase",
+        *_FROZEN_PAIR, "threshold", "additions", "phase",
     ),
     _events.LateEventFamily.VERDICT: (
-        "candidate_sha", "base_sha", "threshold", "additions", "phase",
+        *_FROZEN_PAIR, "threshold", "additions", "phase",
     ),
+    # The pair a transfer moved a verdict ONTO. No threshold and no count:
+    # what a transfer records is precisely that a reading did not have to be
+    # taken, so holding it to one would refuse every record of the thing.
+    _events.LateEventFamily.TRANSFER: _FROZEN_PAIR,
 })
+
+# The families whose record is about a pull request the remote already
+# carries, and which may therefore not be written for a generation that
+# cannot name one. It is not the same rule as the context list above: those
+# fields are read off the generation whatever its marker says, while the
+# publication group only reaches a payload under the marker that claims it --
+# so a record that needs the group needs the marker with it.
+_PUBLISHED_FAMILIES = frozenset((_events.LateEventFamily.TRANSFER,))
 
 _COUNT_FIELDS = (
     "threshold",
@@ -112,10 +134,24 @@ def check_generation(generation: LateGeneration) -> None:
 
 
 def _check_family_context(family: Any, generation: LateGeneration) -> None:
-    """Require what one family's record has to be self-contained about."""
+    """Require what one family's record has to be self-contained about.
+
+    The fields first, and then the MARKER for the families that only ever
+    happen past a publication -- because the marker is what puts the group on
+    a payload at all. A generation carrying a pull request and a head with the
+    flag unset records neither, so a transfer that could not say which pull
+    request it moved a verdict onto is a move nothing could be attributed to.
+    """
     for name in _FAMILY_CONTEXT.get(family, ()):
         given = getattr(generation, name)
         _require(given is not None and given != "", name, given)
+    if family in _PUBLISHED_FAMILIES:
+        marked = generation.post_publication
+        _require(
+            bool(marked) and generation.has_publication_context,
+            "post_publication",
+            marked,
+        )
 
 
 def _check_identity(generation: LateGeneration) -> None:

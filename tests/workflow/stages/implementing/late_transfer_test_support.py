@@ -1,12 +1,18 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The one rewrite the transfer's tests grant or refuse a permit for.
+"""The one rewrite the transfer's tests grant, refuse, or settle a permit for.
 
 A squash-on-approval of the exact commit an adjudication accepted, described
 once: the pinned comment that records the verdict, the evidence the squash
 hands in, the publication the gate froze, and the world the two readings the
 permit spends -- the checkout and the two fingerprints -- answer in. A case
 about one refusal seeds exactly that one and leaves the rest ordinary.
+
+The far end of the same rewrite is seeded from here too, because it is the
+same world one write on: `granted` is the comment a permit's own write leaves
+-- the permission and the debt the push it licenses still owes -- and
+`open_pull_request` is the remote the push is made onto, standing either where
+the permit was granted or already on the commit it licensed.
 """
 from __future__ import annotations
 
@@ -15,10 +21,12 @@ from pathlib import Path
 
 from orchestrator import config
 from orchestrator.git.measurement.models import (
+    AdditionMeasurement,
     ContributionFingerprint,
     FingerprintFailure,
     FrozenCommit,
     MeasurementFailure,
+    _BaseObject,
 )
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.workflow.late_split import (
@@ -26,11 +34,18 @@ from orchestrator.workflow.late_split import (
     rewrites as _rewrites,
 )
 from orchestrator.workflow.stages.implementing import (
+    late_parks as _parks,
     late_records as _records,
     state as _state,
 )
 from orchestrator.workflow.state import WorkflowLabel
-from tests.support.fakes import FakeGitHubClient, FakeLabel, make_issue
+from tests.support.fakes import (
+    FakeGitHubClient,
+    FakeLabel,
+    FakePR,
+    FakePRRef,
+    make_issue,
+)
 from tests.workflow.git_owners import seam_patch
 
 ISSUE_NUMBER = 42
@@ -70,6 +85,21 @@ SPEC = config.RepoSpec(
     target_root=Path("/tmp/orchestrator-test-target-root"),
     base_branch="main",
 )
+
+# The branch a gated push names, and the seam that stands in for the request.
+BRANCH = "orchestrator/chippingway__orchestrator/issue-42"
+PUSH_BRANCH = "_push_branch"
+
+# The three seams the ordinary cumulative reading spends, which a case about
+# a REFUSED permit has to seed: falling through to that reading is what the
+# refusal costs, and what it publishes is what the settlement then sees.
+FREEZE_BASE = "_freeze_base_commit"
+BASE_PRESENT = "_base_object_present"
+COUNT_ADDED_LINES = "_count_added_lines"
+
+# A count the configured ceiling lets through, so the fallback reading ends in
+# a push rather than in the adjudication.
+UNDER_THE_CEILING = 3
 
 # The seams a permit spends, named on the owners that define them.
 PROVE_CANDIDATE = "_prove_candidate_commit"
@@ -159,29 +189,15 @@ def adjudicated(
 
 
 def spent(state) -> None:
-    """The comment a settled transfer leaves, written here by hand.
-
-    Nothing in this build spends a permission -- the receipt that would is
-    another owner's write -- so a `published` record reaches these readers
-    only the way a hand edit or some other build would put it there. Which is
-    the whole reason the phase is read at all: what a record binds to changes
-    with it, and a reader that ignored the phase would ask its question of the
-    wrong end of the rewrite.
+    """The comment a settled transfer leaves, through the write that makes it.
 
     Three fields, because that is what "spent" means on the comment: the
     exemption and the identity beside it describe the pair the rewrite
-    produced, and the phase says the move is done.
+    produced, and the phase says the move is done. Written through the record
+    owner rather than spelled here, so a case about what a reader does past
+    the receipt is seeded with exactly what the receipt leaves.
     """
-    _exemption.record_exemption(state, REWRITTEN_SHA)
-    _exemption.record_semantic_identity(
-        state,
-        base_sha=MERGE_BASE_SHA,
-        candidate_sha=REWRITTEN_SHA,
-        fingerprint=ACCEPTED_DIGEST,
-    )
-    state.set(
-        _rewrites.LATE_REWRITE_PHASE, str(_rewrites.LateRewritePhase.PUBLISHED),
-    )
+    _rewrites.record_rewrite_publication(state)
 
 
 def gate(github, issue, state, **overrides) -> _records._Gate:
@@ -297,3 +313,57 @@ def readings(fixture) -> Readings:
     fixture.enterContext(seam_patch(WORKTREE_STATUS, answers.status))
     fixture.enterContext(seam_patch(FINGERPRINT, answers.fingerprint))
     return answers
+
+
+def open_pull_request(github, standing: str = LEASED_SHA) -> None:
+    """Stand this issue's open pull request on one head.
+
+    `standing` is the whole of what a settlement case is about: the head the
+    permit was granted against is the ordinary remote, and the rewritten
+    commit is the one a tick that pushed and died before its receipt comes
+    back to.
+    """
+    github.add_pr(FakePR(
+        number=PR_NUMBER,
+        head_branch=BRANCH,
+        head=FakePRRef(sha=standing),
+    ))
+
+
+def granted(state, **overrides) -> _rewrites.LateRewrite:
+    """The comment a permit's own write leaves, and the rewrite it is for.
+
+    Both halves, because the grant writes both: the permission that says what
+    the push may carry over, and the debt that says the push is owed at all.
+    A case seeding one without the other would be seeding a comment no grant
+    ever produced.
+    """
+    permitted = rewrite(**overrides)
+    _rewrites.record_rewrite_authorization(state, permitted, ACCEPTED_DIGEST)
+    _parks._approve(state, permitted.to_sha, permitted.lease)
+    return permitted
+
+
+def measures(fixture, additions: int = UNDER_THE_CEILING) -> None:
+    """Let the ordinary cumulative reading run, and come back this size.
+
+    What a case about a REFUSED permit needs and no other case here does: the
+    refusal is not a hold, so the rewritten commit falls through to the
+    measurement, and only a count under the ceiling reaches the push whose
+    receipt the settlement rides.
+    """
+    fixture.enterContext(seam_patch(
+        FREEZE_BASE, lambda spec, worktree: FrozenCommit(sha=MERGE_BASE_SHA),
+    ))
+    fixture.enterContext(seam_patch(
+        BASE_PRESENT,
+        lambda spec, worktree, base_sha: _BaseObject(present=True),
+    ))
+    fixture.enterContext(seam_patch(
+        COUNT_ADDED_LINES,
+        lambda worktree, base_sha, candidate_sha: AdditionMeasurement(
+            base_sha=base_sha,
+            candidate_sha=candidate_sha,
+            additions=additions,
+        ),
+    ))

@@ -67,6 +67,15 @@ def _publishes_approved(gate: _records._Gate, branch: str) -> bool:
     both: the approval and its lease are still on the record, so the retry
     asks for the same commit against the same head once the checkout is back
     where the verdict left it.
+
+    The settlement rides the same call the gated tail makes, so a permission
+    a rewrite left standing is answered here too -- and it is answered with no
+    permit behind it, deliberately: nothing on this road asks `late_transfer`
+    anything, so what it may do is drop a permission this publication has gone
+    PAST and never carry a verdict over. A permit granted for some other
+    object is one the remote will never stand where it accounts for again;
+    one granted for the commit in hand is left where it stands for the tick
+    that re-asks it.
     """
     approved = _parks._approved_commit(gate.state)
     lease = _parks._approved_lease(gate.state)
@@ -80,7 +89,7 @@ def _publishes_approved(gate: _records._Gate, branch: str) -> bool:
     # No post-push proof is owed HERE: the settlement takes `_standing_on`
     # again on the far side of this push, and the retry that finds the
     # push already landed takes the same reading with no push of its own.
-    _push._publication_paid(gate, approved, False)
+    _push._publication_paid(gate, published, False)
     return True
 
 

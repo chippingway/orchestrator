@@ -59,7 +59,11 @@ A refusal is not a park and not a failure. It leaves the exemption exactly
 where it is and lets the ordinary cumulative size gate measure the rewritten
 commit like any other candidate for a pull request the remote already carries
 -- which is the behavior every install had before an exemption could move at
-all.
+all. That measurement may well PUBLISH the same commit, since a rewrite under
+the ceiling is the ordinary case, so the answer this owner gives is carried
+down the push tail beside the commit it was given for: a publication the
+settlement behind it rotates is one this owner vouched for on this tick, and
+a permission left readable on the comment vouches for nothing.
 
 A grant is durable BEFORE the push, and what it makes durable is the
 PERMISSION rather than the move. The exemption stays exactly on the commit a
@@ -67,8 +71,8 @@ human ruled on: the rewritten object is on no remote yet, so a verdict rotated
 onto it here would sit on something only this host has the moment a push fails
 or a process dies. The rotation belongs to the write that receipts the landed
 push, where the exemption, the identity it carries, and the account of what the
-remote holds would go down together or not at all -- and no owner in this build
-makes that write, so a granted permission stands until one does. What licenses
+remote holds go down together or not at all -- `late_rotation` inside the push
+tail is the owner of that write. What licenses
 THIS tick's publication is the permit handed back to the gate, so nothing has
 to move early for the push to be allowed.
 
@@ -371,13 +375,13 @@ def _licensed_by_a_permit(state: PinnedState) -> bool:
     as a standing claim would send every later approval this issue earns back
     through a measurement.
 
-    Nothing here spends one yet, so a permission granted on this issue stands
-    and the deferral outlives the push it licensed: a later approval this
-    issue earns is re-asked through the permit, which refuses it -- the
-    exemption no longer names what the record came from -- and the ordinary
-    cumulative gate measures the candidate instead of waving it through. That
-    is the conservative half of the same rule, and it costs a reading rather
-    than a decision.
+    What ends the deferral is the receipt of the push the permission was
+    granted for: that write carries the exemption over and moves the phase, so
+    the record standing afterwards is spent and every later approval this
+    issue earns is the ordinary one again. Until it lands the deferral holds,
+    which costs a reading rather than a decision -- and where the permit
+    refuses on the re-ask, the ordinary cumulative gate measures the rewrite
+    like any other candidate.
     """
     return _rewrites.outstanding_permission(state)
 
@@ -832,9 +836,9 @@ def _authorized(
     push that never lands would leave a verdict on an object only this host
     has, and every later tick would read the accepted work at HEAD as carrying
     none. The rotation belongs to the write that receipts the landed push,
-    where it would go down with the account of what the remote carries or not
-    at all -- and no owner here makes that write, so what this records is a
-    permission that stands until one does.
+    where it goes down with the account of what the remote carries or not at
+    all -- so what this records is a permission that stands until that write
+    spends it.
 
     What licenses THIS tick's publication is the permit itself, handed back to
     the gate -- so nothing has to be rotated early for the push to be allowed.

@@ -63,7 +63,7 @@ the Postgres column the sync loads it into. Four kinds are written today — `st
 this sink and the audit log alike, so the JSONL copy answers offline what the database answers: the per-issue
 lifetime ledger's
 [`agent_run_budget`](observability/event-streams.md#agent-run-budget-records-both-sinks) transitions, and the late
-size gate's seven [late-split families](observability/event-streams.md#late-split-records-both-sinks). That page
+size gate's eight [late-split families](observability/event-streams.md#late-split-records-both-sinks). That page
 carries each one's fields, the opt-in `TRACK_SKILL_TRIGGERS` skill evidence on `agent_exit`, the
 [session-aware adoption model](observability/event-streams.md#session-aware-skill-adoption) built over it, and the
 once-per-tick retention prune that bounds the file.

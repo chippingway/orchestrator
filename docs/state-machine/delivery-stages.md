@@ -1575,8 +1575,13 @@ and the issue still records, a provably clean checkout on the squash, an issue r
 stage the rewrite was entered from, and a rewritten
 contribution that fingerprints to the same digest. The PERMISSION is durable before the push, in ONE write that
 also records the debt that push is owed — split in two, a crash between them leaves a one-commit branch the next
-squash reports success on without pushing. The exemption does not move there, and nothing in this build moves it:
-that rotation belongs to the receipt of the landed push, so a verdict is never left on a commit no remote carries.
+squash reports success on without pushing. The exemption does not move there: that rotation belongs to the receipt
+of the landed push, which `late_rotation` stages into the push tail's own settlement, so a verdict is never left on
+a commit no remote carries — and only where the permit itself proved out on that tick, since a refusal sends the
+rewrite to the ordinary gate, which publishes it whenever the count is under the ceiling. What that receipt leaves
+on both observability streams is one bounded `late_transfer`
+record naming both pairs, the pull request, the rewrite kind, and which reading proved the publication — the leased
+force-push that moved it, or the leased no-op a recovery finds it already standing on.
 A digest the standing permission already recorded is held to the reading the permit just took, since a grant that
 carried on would write its own answer over evidence nobody checked. Refused, nothing changes and the squash is
 measured exactly as above. And the permission is droppable in exactly one window — a force-push the remote refuses

@@ -13,6 +13,12 @@ Every reading here is the real one: a real repository, a real squash, and the
 canonical fingerprint taken over the actual objects on both sides of the
 rewrite. Only the authenticated push is stood in for, and only the remote-side
 base freeze, which these fixtures have no token to reach.
+
+Both durable writes one transferring squash makes are read here, and they are
+read at the moment each lands rather than once the tick is over: the grant
+moves nothing and the receipt behind it is what carries the verdict over, so
+a case that only looked at the end could not tell the two apart -- nor tell
+either from a tick that lost one of them.
 """
 from __future__ import annotations
 
@@ -40,6 +46,9 @@ PAST_THE_CEILING = ADDED_LINES - 1
 LABEL_DECOMPOSING = "workflow:decomposing"
 
 KEY_CANDIDATE_SHA = "late_candidate_sha"
+# The receipt a landed gated push leaves, which is what the settlement that
+# carries the exemption over rides.
+KEY_PUBLISHED_SHA = "implementing_published_sha"
 # The debt the grant's own write carries beside the permission: the commit
 # still owed a push, and the head that push is leased against.
 KEY_APPROVED_SHA = "late_approved_sha"
@@ -192,21 +201,68 @@ class SquashedExemptionRealGitTest(
         )
 
     def test_the_permission_leaves_the_exemption_put(self) -> None:
-        # The grant records what licenses the push and moves nothing: the
-        # verdict stays on the commit a human ruled on until a receipt for a
-        # landed push spends the permission, so a push that never lands leaves
-        # no verdict on an object only this host has.
+        # The grant records what licenses the push and moves nothing, and the
+        # only moment that is readable is its own write: the verdict stays on
+        # the commit a human ruled on until a receipt for a landed push spends
+        # the permission, so a push that never lands leaves no verdict on an
+        # object only this host has.
         gate = self._adjudicated()
         accepted = self._head_sha()
+        writes = _RecordsEachWrite(gate)
+
+        with writes.held():
+            self._squashes(gate)
+
+        granted = writes.durable[0]
+        self.assertEqual(granted[_exemption.LATE_EXEMPT_SHA], accepted)
+        self.assertEqual(
+            granted[_rewrites.LATE_REWRITE_PHASE],
+            str(_rewrites.LateRewritePhase.AUTHORIZED),
+        )
+
+    def test_the_receipt_carries_the_exemption_over(self) -> None:
+        # The push landed, so the commit the verdict is about to name is one
+        # the pull request really carries -- which is the whole of what makes
+        # the move safe, and why it rides this write and no earlier one.
+        gate = self._adjudicated()
 
         self._squashes(gate)
 
-        pinned = self._pinned(gate)
+        squashed = self._head_sha()
+        self._assert_exempts(gate, squashed)
+        durable = gate.gh.read_pinned_state(gate.issue)
+        identity = _exemption.read_semantic_identity(durable)
+        self.assertEqual(identity.candidate_sha, squashed)
+        authorized = _rewrites.read_rewrite_authorization(durable)
+        self.assertEqual(
+            authorized.phase, _rewrites.LateRewritePhase.PUBLISHED,
+        )
+        self.assertEqual(
+            self._pinned(gate)[KEY_PUBLISHED_SHA], squashed,
+        )
+
+    def test_a_refused_receipt_leaves_the_verdict_put(self) -> None:
+        # The window the settlement closes, read from the side that can still
+        # be wrong: the branch is on the remote and the write that would say
+        # so was refused. Nothing may be durable there -- least of all a
+        # verdict, which would name a commit no receipt accounts for. The
+        # branch is left on the squash the remote now has, and the permission
+        # stands for the reconciliation that republishes it as a leased no-op.
+        gate = self._adjudicated()
+        accepted = self._head_sha()
+        refusing = _RefusesOneWrite(gate, ordinal=2)
+
+        with refusing.held(gate), self.assertRaises(RuntimeError):
+            self._squashes(gate)
+
+        self.assertNotEqual(self._head_sha(), accepted)
         self._assert_exempts(gate, accepted)
+        pinned = self._pinned(gate)
         self.assertEqual(
             pinned[_rewrites.LATE_REWRITE_PHASE],
             str(_rewrites.LateRewritePhase.AUTHORIZED),
         )
+        self.assertNotIn(KEY_PUBLISHED_SHA, pinned)
 
     def test_the_authorization_names_both_ends(self) -> None:
         gate = self._adjudicated()
