@@ -4,14 +4,16 @@
 
 One interrupted auto-rebase resolves into exactly one of these: the rewrite
 was already published, the comparison is unclassifiable, the remote moved
-out of band, the worktree is dirty, the reissued push failed, or a rewrite the
-pull request already carries is one this tick cannot finish the route behind.
+out of band, the worktree is dirty, the reissued push failed, the pinned
+comment claims an exemption or a transfer nobody can read whole, or a rewrite
+the pull request already carries is one this tick cannot finish the route
+behind.
 Each one either finalizes through ``persistence`` or parks, so keeping them
 in one owner is what makes the set enumerable -- an outcome that neither
 routed nor parked would leave the issue holding an anchor no later tick can
 act on.
 
-Four of the five parks reset HEAD onto the pre-rebase anchor first, because
+Every park but one resets HEAD onto the pre-rebase anchor first, because
 that anchor is the head the remote PR still carries and the reviewer is still
 voting on. The unfinished-route park is the one that must not: the remote is
 standing on the REWRITE there, so putting the branch back on the anchor would
@@ -27,6 +29,7 @@ from orchestrator.git.base_sync.models import (
     _AutoRebaseRecoverySnapshot,
 )
 from orchestrator.git.base_sync.state import (
+    _REASON_AUTO_BASE_REBASE_FAILED,
     _REASON_AUTO_BASE_REBASE_PUSH_FAILED,
     log,
 )
@@ -254,5 +257,60 @@ def _park_unfinished_recovery(
             "on this issue with anything once they are reconciled."
         ),
         reason=_REASON_AUTO_BASE_REBASE_PUSH_FAILED,
+    )
+    return True
+
+
+def _park_unvouched_recovery(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Restore the anchor rather than measure a record nobody can read.
+
+    The comment claims something about the commit this issue exempts -- a
+    transfer group short of a member, an exemption it cannot show whole, an
+    identity taken under a scheme this build does not compute -- and the
+    branch is standing on a replay of that commit with nothing on the remote
+    yet.
+
+    Every other road from here ends in the ordinary cumulative gate, and for
+    an adjudicated change that is the wrong answer twice over: the replay is
+    measured past the same ceiling and routed into a second adjudication, with
+    a pull request already open over the work, on the strength of a record
+    nothing checked. The permit refuses the same claim for the same reason, so
+    there is nothing this tick could do with it but ask.
+
+    So the branch goes back onto the anchor -- the head the remote still
+    carries, so nothing is lost that the reflog does not have -- and the issue
+    parks. The record itself is left exactly as it stands: a group this reader
+    cannot vouch for is the only account there is of how the exemption came to
+    name what it names, and the rollback drops only what it can read whole.
+    """
+    local_short = (recovery_snapshot.local_head or "")[:8]
+    pre_rebase_short = context.pending_pre_rebase_sha[:8]
+    log.warning(
+        "issue=#%d auto-rebase recovery: the pinned comment claims a transfer "
+        "for the commit this issue exempts and this build cannot read it back "
+        "whole; resetting %s onto the anchor and parking rather than measuring "
+        "an adjudicated change again",
+        context.issue.number, local_short,
+    )
+    persistence._reset_clear_and_park(
+        context,
+        context.pending_pre_rebase_sha,
+        message=(
+            f"{config.HITL_MENTIONS} crash recovery for PR "
+            f"#{context.pr_number}: this issue's pinned comment claims an "
+            "adjudication exemption -- or a transfer of one -- that the "
+            "orchestrator cannot read back whole, and the interrupted rebase "
+            f"left `{local_short}` on the branch. Publishing it would send a "
+            "change a human already ruled on back into adjudication on the "
+            "strength of a record nothing could check, so HEAD has been reset "
+            f"to the pre-rebase SHA `{pre_rebase_short}` and nothing was "
+            "pushed. Repair the `late_exempt_*` / `late_rewrite_*` fields on "
+            "the pinned comment, then reply on this issue with anything to "
+            "retry."
+        ),
+        reason=_REASON_AUTO_BASE_REBASE_FAILED,
     )
     return True

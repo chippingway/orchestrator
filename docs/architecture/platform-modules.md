@@ -276,8 +276,10 @@ orchestrator/
                         against the head this owner read, so a checkout something moved between that read and the
                         gate's own refuses rather than publishing one commit while the notice, the event, and the
                         `validating` route name another -- the lease-pinned force-push, and what an accepted push
-                        writes; the rewrite evidence it hands that gate beside the candidate comes from
-                        `transfers.py`
+                        writes; the head the replay produced goes down durably between the last refusal and the
+                        gate, since every window past that point is one a crash is lost in and the anchor alone
+                        cannot say which local commit the attempt made; the rewrite evidence it hands that gate
+                        beside the candidate comes from `transfers.py`
       transfers.py      what a rebase REPLACED, as the evidence a transfer is decided on -- the pair the pinned
                         record already holds, the pair the replay produced, over a base frozen from what the
                         REMOTE says the branch is at, never off the local ref the rebase named, which any worktree
@@ -310,17 +312,20 @@ orchestrator/
                         settlement beside it is the leased no-op onto a pull request already standing on the
                         rewrite, taken here rather than a stage later so the permit is re-asked under the stage it
                         was granted from
-      outcomes.py       the already-published, unknown-comparison, diverged, dirty, failed-push, and
-                        unfinished-route answers -- the last parking with HEAD and the anchor left alone, since
-                        the remote carries the rewrite there and a reset would take the checkout off it, and the
-                        anchor is the only thing that brings the recovery back to a transfer it could not account
-                        for
+      outcomes.py       the already-published, unknown-comparison, diverged, dirty, failed-push, unvouched-record,
+                        and unfinished-route answers -- the unvouched one resetting onto the anchor rather than
+                        letting the ordinary gate measure an adjudicated change again, and the last parking with
+                        HEAD and the anchor left alone, since the remote carries the rewrite there and a reset
+                        would take the checkout off it, and the anchor is the only thing that brings the recovery
+                        back to a transfer it could not account for
       persistence.py    the parks, the reset-and-park tail -- which drops the debt it abandons, and the permission
                         a transfer granted for the same commit, only once the reset has actually landed, since a
-                        refused one may leave the branch still standing on the approved commit -- and the state /
-                        notice / event writes a recovery ends in
+                        refused one may leave the branch still standing on the approved commit -- the paired clear
+                        every step that ends an attempt goes through, so no road drops the anchor and leaves the
+                        replay it names behind, and the state / notice / event writes a recovery ends in
       models.py         the frozen contexts, requests, snapshots, and decisions
-      state.py          the pinned-state keys, park reasons, refresh detour labels, and the shared logger
+      state.py          the pinned-state keys -- the anchor a push is leased against and the replay it publishes --
+                        plus the park reasons, refresh detour labels, and the shared logger
     publication/        what a branch becomes before review reads it
       models.py         the record a squash hands back, in the three shapes it can end in -- published, refused, or
                         held by the size gate for the adjudication -- with a refusal NAMING which of four places

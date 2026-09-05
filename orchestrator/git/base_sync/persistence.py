@@ -26,12 +26,29 @@ from orchestrator.git.base_sync.state import (
     _AWAITING_HUMAN,
     _PARK_REASON,
     _PENDING_PUSH_SHA,
+    _PENDING_REWRITE_SHA,
     _REVIEW_ROUND,
     log,
 )
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.state import WorkflowLabel, stage_name
+
+
+def _clears_the_attempt(state: PinnedState) -> None:
+    """Drop the whole record of one auto-rebase attempt.
+
+    The anchor and the head the replay produced are one record and are
+    dropped as one: the anchor alone would bring a later tick back to an
+    attempt it cannot prove the checkout belongs to, and the head alone names
+    a commit nothing is leased to publish. Every step that ends an attempt --
+    the reset that puts the branch back, the no-op that moved nothing, the
+    relabel that takes the issue out of the refresh's reach, and the finalize
+    that publishes -- goes through here rather than spelling one field, so a
+    road that forgets the second cannot exist.
+    """
+    state.set(_PENDING_PUSH_SHA, None)
+    state.set(_PENDING_REWRITE_SHA, None)
 
 
 def _park_auto_rebase_failure(
@@ -147,7 +164,7 @@ def _reset_clear_and_park(
                 "the reset failed: %s",
                 context.issue.number, (cleaned.stderr or "").strip(),
             )
-    context.state.set(_PENDING_PUSH_SHA, None)
+    _clears_the_attempt(context.state)
     if restored:
         _forgets_the_reset(context, reset_sha)
     _park_auto_rebase_failure(
@@ -201,7 +218,7 @@ def _prepare_recovered_rebase_state(
         )
         context.state.set(_AWAITING_HUMAN, False)
         context.state.set(_PARK_REASON, None)
-    context.state.set(_PENDING_PUSH_SHA, None)
+    _clears_the_attempt(context.state)
     context.state.set(_REVIEW_ROUND, 0)
 
 

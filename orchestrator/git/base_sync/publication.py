@@ -31,10 +31,10 @@ that changed the contribution has to get.
 """
 from __future__ import annotations
 
-from orchestrator.git.base_sync import guards, transfers
+from orchestrator.git.base_sync import guards, persistence, transfers
 from orchestrator.git.base_sync.models import _AutoRebaseContext
 from orchestrator.git.base_sync.state import (
-    _PENDING_PUSH_SHA,
+    _PENDING_REWRITE_SHA,
     _REVIEW_ROUND,
     log,
 )
@@ -66,6 +66,38 @@ def _gate_records():
     """
     from orchestrator.workflow.stages.implementing import late_records
     return late_records
+
+
+def _record_the_rewrite(
+    context: _AutoRebaseContext,
+    after_sha: str,
+) -> None:
+    """Say which commit this attempt produced, durably, before the gate.
+
+    The anchor pinned before git ran is what brings an interrupted attempt
+    back; it is not what says the checkout it comes back to is this attempt's
+    own work. A rebase REPLAYS the branch, so the commit the pull request
+    still carries is on no local history afterwards and the two look diverged
+    -- which is exactly what a checkout somebody else left, a worktree rebuilt
+    from elsewhere, and an operator's reset look like too. Told those apart by
+    the divergence alone, a recovery would force-push whatever it found over
+    the candidate on the remote, under a lease the anchor happily satisfies.
+
+    So the head goes down as a record of its own, and it goes down HERE:
+    after the three guards that can still refuse, and before the gate, the
+    push, the receipt, and the route -- every window a crash can be lost in
+    from this point on. The one window it cannot cover is the one between git
+    returning and this write, and there the recovery has no provenance and
+    falls back to what it always did: a strictly-ahead branch is a
+    fast-forward the anchor lease loses nothing to, and a divergent one parks.
+
+    Written beside the anchor rather than in place of it, because the two
+    answer different questions -- which head the push is leased against, and
+    which head it publishes -- and they are dropped together by the one step
+    that ends the attempt.
+    """
+    context.state.set(_PENDING_REWRITE_SHA, after_sha)
+    context.gh.write_pinned_state(context.issue, context.state)
 
 
 def _post_auto_rebase_notice(
@@ -122,7 +154,7 @@ def _finalize_auto_rebase(
 ) -> None:
     """Publish the notice, audit event, validating route, and pinned state."""
     _post_auto_rebase_notice(context, after_sha)
-    context.state.set(_PENDING_PUSH_SHA, None)
+    persistence._clears_the_attempt(context.state)
     context.state.set(_REVIEW_ROUND, 0)
     log.info(
         "issue=#%d auto base rebase pushed %s/%s -> %s; routing %r -> "
@@ -156,6 +188,7 @@ def _publish_auto_rebase(
         guards._park_dirty_auto_rebase(context, before_sha, dirty_files)
         return
 
+    _record_the_rewrite(context, after_sha)
     branch = paths._resolve_branch_name(
         context.state, context.spec, context.issue.number,
     )

@@ -71,6 +71,11 @@ _RECOVERY_SIGNATURE = inspect.Signature((
         "pending_pre_rebase_sha",
         inspect.Parameter.KEYWORD_ONLY,
     ),
+    inspect.Parameter(
+        "pending_rewrite_sha",
+        inspect.Parameter.KEYWORD_ONLY,
+        default="",
+    ),
     inspect.Parameter("behind", inspect.Parameter.KEYWORD_ONLY, default=0),
     inspect.Parameter(
         "unparking_consumed_max",
@@ -191,7 +196,8 @@ def _finish_published_recovery(
     if carried == transfers._Handoff.OUTSTANDING:
         return _settles_the_landed_rewrite(context, recovery_snapshot)
     unaccounted = transfers._unaccounted_publication(
-        context.state, recovery_snapshot.local_head or "", carried,
+        context.state, recovery_snapshot.local_head or "",
+        context.pending_pre_rebase_sha, carried,
     )
     if unaccounted:
         return outcomes._park_unfinished_recovery(
@@ -312,18 +318,23 @@ def _route_recovery_snapshot(
     and because reading it twice would let the two roads disagree about the
     same comment.
 
-    Both halves of the remote question are answered by the exact SHA rather
-    than by the ahead/behind counts, and for the interrupted rebase that is
-    the whole difference between finishing and parking. A rebase REPLAYS the
-    branch: the commit the pull request still carries is on no local history
-    afterwards, so git counts the branch as behind its own publication --
-    ahead by the replay and the base it moved onto, behind by the object it
-    replaced. Read off those counts, the canonical pre-push recovery is
-    indistinguishable from a remote somebody else pushed to, and the tick that
-    only ever needed to reissue its push parks instead. The remote standing
-    EXACTLY on the anchor this rebase pinned before git ran is what says
-    nothing landed in between, and it is the same fact the force-with-lease
-    behind the retry is pinned to.
+    Both are answered by exact SHAs rather than by the ahead/behind counts,
+    and for the interrupted rebase that is the whole difference between
+    finishing and parking. A rebase REPLAYS the branch: the commit the pull
+    request still carries is on no local history afterwards, so git counts the
+    branch as behind its own publication -- ahead by the replay and the base
+    it moved onto, behind by the object it replaced. Read off those counts,
+    the canonical pre-push recovery is indistinguishable from a remote
+    somebody else pushed to, and the tick that only ever needed to reissue its
+    push parks instead. What tells them apart is the pair of heads the attempt
+    itself recorded: the anchor the remote must still be standing on, and the
+    replay the checkout must still be.
+
+    A record nobody can vouch for is refused before either road that would
+    publish anything. Left to the ordinary gate, a damaged transfer group over
+    an adjudicated commit is measured afresh, sent past the same ceiling, and
+    routed into a second adjudication with a pull request already open over
+    the work -- so the branch goes back onto the anchor and a human is asked.
 
     The counts still answer for every remote neither SHA accounts for, which
     is the case they were always about: a publication that moved out of band
@@ -338,9 +349,38 @@ def _route_recovery_snapshot(
     carried = transfers._carried_by(context.state, completed.local_head)
     if completed.local_head and completed.local_head == completed.remote_head:
         return _finish_published_recovery(context, completed, carried)
-    if completed.remote_head == context.pending_pre_rebase_sha:
+    if carried == transfers._Handoff.UNVOUCHED:
+        return outcomes._park_unvouched_recovery(context, completed)
+    if _is_this_attempts_rewrite(context, completed):
         return _retry_recovery_push(context, completed, carried)
     return _route_a_moved_remote(context, completed, carried)
+
+
+def _is_this_attempts_rewrite(
+    context: _AutoRebaseRecoveryContext,
+    completed: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Whether the checkout is the replay this attempt made, over its anchor.
+
+    Both halves, and neither is enough alone. The REMOTE has to be standing
+    exactly on the anchor the rebase pinned before git ran, which is what says
+    no push of this attempt's landed and what the force-with-lease behind the
+    retry is pinned to. And the CHECKOUT has to be the head that attempt
+    recorded as its own replay, which is the only thing that says the
+    divergence in front of this tick is the rebase's work rather than a
+    worktree somebody rebuilt, an operator's reset, or a branch pointed
+    somewhere else -- every one of which satisfies the same lease and would
+    take the candidate off the pull request.
+
+    Empty provenance answers no. That is the window between git returning and
+    the write that records the replay, and there the recovery falls back to
+    the counts it always used: a strictly-ahead branch is a fast-forward the
+    anchor lease loses nothing to, and a divergent one parks.
+    """
+    if completed.remote_head != context.pending_pre_rebase_sha:
+        return False
+    recorded = context.pending_rewrite_sha
+    return bool(recorded) and recorded == completed.local_head
 
 
 def _route_a_moved_remote(

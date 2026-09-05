@@ -83,7 +83,7 @@ def _handle_failed_auto_rebase(
             context.issue.number,
             (abort.stderr or "").strip(),
         )
-    context.state.set(_PENDING_PUSH_SHA, None)
+    persistence._clears_the_attempt(context.state)
     if conflicted_files:
         conflicts._route_pr_worktree_to_resolving_conflict(
             context.gh,

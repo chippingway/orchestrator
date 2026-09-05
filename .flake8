@@ -26,6 +26,7 @@ per-file-ignores =
     orchestrator/git/base_sync/refresh.py:WPS202
     orchestrator/git/snapshots/refs.py:WPS202
     orchestrator/workflow/state.py:WPS202
+    orchestrator/workflow/late_split/exemption.py:WPS202
     orchestrator/workflow/late_split/models.py:WPS214
     orchestrator/workflow/late_split/rewrites.py:WPS202
     orchestrator/workflow/late_split/lineage.py:WPS202
@@ -116,6 +117,7 @@ per-file-ignores =
     tests/git/base_sync/journey_git_support.py:WPS201,WPS214
     tests/git/base_sync/recovery_git_support.py:WPS214
     tests/git/base_sync/test_real_git_journey.py:WPS214
+    tests/git/base_sync/test_recovery_real_git.py:WPS214
     tests/git/base_sync/test_recovery_exemption.py:WPS214
     tests/git/publication/squash_recovery_support.py:WPS202
     tests/git/worktrees/artifact_test_support.py:WPS214

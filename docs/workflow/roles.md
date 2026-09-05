@@ -536,8 +536,9 @@ deliberately no second `late_verdict`, which would read as a second adjudication
 twice.
 
 The base-refresh rewrite has one window a squash does not, and its own recovery closes it. The refresh pins a
-recovery anchor before git runs, so a process lost between the rebase and the grant comes back to a replay on the
-branch with *no* permission on the comment at all — nothing for the re-ask above to be asked over. That recovery
+recovery anchor before git runs and the head the replay produced as soon as git has made it, so a process lost
+between the rebase and the grant comes back to a checkout it can prove is its own work, carrying a replay with *no*
+permission on the comment at all — nothing for the re-ask above to be asked over. That recovery
 re-derives the same evidence the dead tick would have assembled, from the record's own accepted pair, the head the
 checkout stands on, the base the remote names, and the pinned anchor as the lease, and hands it to the permit;
 without it, the replay of a change a human already ruled on is measured afresh and routed back into adjudication

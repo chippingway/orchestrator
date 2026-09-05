@@ -50,6 +50,8 @@ GIT = "git"
 
 PUSH = "push"
 
+CHECKOUT = "checkout"
+
 REV_PARSE = "rev-parse"
 
 HEAD_REF = "HEAD"
@@ -68,6 +70,10 @@ SIBLING_FILE = "sibling.py"
 
 SCRATCH_FILE = "scratch.txt"
 
+# The path a commit nothing in this attempt made writes, so a case reads a
+# branch somebody else left by name rather than by counting.
+UNRELATED_FILE = "unrelated.py"
+
 PARK_PUSH_FAILED = "auto_base_rebase_push_failed"
 
 PARK_DIRTY = "auto_base_rebase_dirty"
@@ -77,6 +83,8 @@ KEY_AWAITING_HUMAN = "awaiting_human"
 KEY_PARK_REASON = "park_reason"
 
 KEY_PENDING_PUSH_SHA = "pending_auto_base_rebase_push_sha"
+
+KEY_PENDING_REWRITE_SHA = "pending_auto_base_rebase_rewrite_sha"
 
 EVENT_FIELD = "event"
 
@@ -195,7 +203,7 @@ class _RecoveryRepositoryBuilder:
         fixture = self._fixture
         commit(fixture.work, "README.md", "hello\n", "initial")
         run_git(PUSH, REMOTE_NAME, BASE_BRANCH, cwd=fixture.work)
-        run_git("checkout", "-b", BRANCH, cwd=fixture.work)
+        run_git(CHECKOUT, "-b", BRANCH, cwd=fixture.work)
         fixture.anchor = commit(
             fixture.work, FEATURE_FILE, "feature\n", "feat: add feature",
         )
@@ -223,10 +231,10 @@ class _RecoveryRepositoryBuilder:
     def _advance_base(self) -> None:
         """Land a commit on the base branch, the way a sibling PR merge does."""
         fixture = self._fixture
-        run_git("checkout", BASE_BRANCH, cwd=fixture.work)
+        run_git(CHECKOUT, BASE_BRANCH, cwd=fixture.work)
         commit(fixture.work, SIBLING_FILE, "sibling\n", "feat: sibling landed")
         run_git(PUSH, REMOTE_NAME, BASE_BRANCH, cwd=fixture.work)
-        run_git("checkout", BRANCH, cwd=fixture.work)
+        run_git(CHECKOUT, BRANCH, cwd=fixture.work)
 
     def _seed_issue(self) -> None:
         fixture = self._fixture
@@ -238,11 +246,16 @@ class _RecoveryRepositoryBuilder:
         fixture.gh = FakeGitHubClient()
         fixture.issue = make_issue(ISSUE, label=LABEL)
         fixture.gh.add_issue(fixture.issue)
+        # Both halves of the record an interrupted attempt leaves: the head
+        # its force-push is leased against, and the replay it produced. The
+        # second is what proves the divergent checkout in front of the
+        # recovery is that attempt's own work.
         fixture.gh.seed_state(
             ISSUE,
             pr_number=PR_NUMBER,
             branch=BRANCH,
             pending_auto_base_rebase_push_sha=fixture.anchor,
+            pending_auto_base_rebase_rewrite_sha=fixture.recovered,
         )
         # Standing on the head this recovery leases its push against, which
         # is the commit the interrupted rebase left the remote on: the size
@@ -292,6 +305,7 @@ class RecoveryGitFixtureMixin:
             pr_number=PR_NUMBER,
             label=LABEL,
             pending_pre_rebase_sha=self.anchor,
+            pending_rewrite_sha=self._pending_rewrite(),
         )
 
     def publish_recovered_head(self) -> None:
@@ -320,6 +334,37 @@ class RecoveryGitFixtureMixin:
         self._rewind_tracking_ref()
         return pushed
 
+    def strand_an_unrelated_head(self) -> str:
+        """Leave the branch on a divergent commit this attempt never made.
+
+        A worktree rebuilt from elsewhere, an operator's reset, a branch
+        pointed at somebody else's work: from the outside every one of them
+        looks exactly like a replay -- clean tree, remote still on the anchor,
+        histories diverged -- and the anchor lease they would be pushed under
+        is satisfied. Only the record of what the attempt produced tells them
+        apart, so this leaves the branch here and takes that record with it.
+        """
+        run_git(CHECKOUT, "--detach", f"{self.anchor}^", cwd=self.work)
+        stranded = commit(
+            self.work, UNRELATED_FILE, "unrelated\n", "feat: somebody else",
+        )
+        run_git(CHECKOUT, "-B", BRANCH, stranded, cwd=self.work)
+        self.forget_the_rewrite_record()
+        return stranded
+
+    def forget_the_rewrite_record(self) -> None:
+        """Drop what the attempt recorded as its own replay.
+
+        The window between `git rebase` returning and the write that names
+        what it produced, which is the one state a recovery has no provenance
+        for -- and the state every divergent checkout nothing here made looks
+        like.
+        """
+        issue = self.gh._issues[ISSUE]
+        state = self.gh.read_pinned_state(issue)
+        state.set(KEY_PENDING_REWRITE_SHA, None)
+        self.gh.write_pinned_state(issue, state)
+
     def divergence_from_remote(self) -> tuple[int, int]:
         """Ahead and behind as git counts this branch against the tracking ref.
 
@@ -346,6 +391,11 @@ class RecoveryGitFixtureMixin:
             for event in self.gh.recorded_events
             if event.get(EVENT_FIELD) == REBASED_EVENT
         ]
+
+    def _pending_rewrite(self) -> str:
+        """What the pinned comment says this attempt's replay produced."""
+        recorded = self.gh.pinned_data(ISSUE).get(KEY_PENDING_REWRITE_SHA)
+        return recorded if isinstance(recorded, str) else ""
 
     def _rewind_tracking_ref(self) -> None:
         """Point the tracking ref back at the anchor the crash pinned.

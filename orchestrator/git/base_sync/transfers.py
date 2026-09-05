@@ -91,8 +91,9 @@ _UNREADABLE_CLAIM = (
 _UNSETTLED_CLAIM = "the transfer standing here is `{handoff}` rather than over"
 
 _UNRECEIPTED = (
-    "nothing on the pinned comment records `{published}` as published, so "
-    "whether the verdict this rebase was carrying ever moved cannot be said"
+    "no whole receipt on the pinned comment records `{published}` as pushed "
+    "from `{anchor}`, so whether the verdict this rebase was carrying ever "
+    "moved cannot be said"
 )
 
 _UNPAID = (
@@ -191,6 +192,15 @@ def _carried_by(state: PinnedState, local_head: str) -> _Handoff:
     target somebody edited would otherwise be invisible here and the recovery
     would carry on as though no transfer had ever been in flight.
 
+    Asked by PRESENCE where the record has to be absent for the answer to be
+    `NOTHING`, which is the difference between an issue that never earned a
+    verdict and one whose record something damaged. The fail-closed readers
+    answer both with a bare None -- rightly, since the gate's only move is to
+    measure -- and a recovery that took that for "no verdict in flight" would
+    finish a route over an exemption still naming the commit a human ruled on.
+    So a comment claiming an exemption it cannot show whole is `UNVOUCHED`,
+    and only a comment claiming none at all is `NOTHING`.
+
     Costs no git and no request. Every answer is a field this issue already
     carries, which is what lets the ordinary recovery -- the overwhelming
     majority, on issues that never earned an exemption -- pay nothing for a
@@ -202,7 +212,9 @@ def _carried_by(state: PinnedState, local_head: str) -> _Handoff:
     standing = _standing_permission(state, local_head)
     if standing is not None:
         return standing
-    if _exemption.read_semantic_identity(state) is None:
+    if _exemption.unreadable_exemption(state):
+        return _Handoff.UNVOUCHED
+    if _exemption.read_exemption(state) is None:
         return _Handoff.NOTHING
     return _Handoff.UNRECORDED
 
@@ -281,7 +293,7 @@ def _reconstructed(
 
 
 def _unaccounted_publication(
-    state: PinnedState, local_head: str, carried: _Handoff,
+    state: PinnedState, local_head: str, anchor: str, carried: _Handoff,
 ) -> str:
     """Why a rewrite the pull request already carries is unexplained, or "".
 
@@ -303,10 +315,14 @@ def _unaccounted_publication(
     Two handoffs can be accounted for, and both by the same record: a transfer
     that FINISHED wrote the receipt in the same statement as the rotation, and
     a rewrite no permit ever licensed was published by the ordinary cumulative
-    gate, which wrote one too. So the receipt naming this commit is what says
-    the publication is explained, and the debt beside it is asked as well --
-    the two go down together, so an approval still standing over a receipted
-    commit is a write that did not land whole.
+    gate, which wrote one too. That receipt is read WHOLE -- the commit it
+    names and the head it was pinned to, held against this recovery's own
+    anchor -- because a receipt is never cleared and on its own goes on
+    naming a commit this stage pushed rounds ago, vouching for any pull
+    request somebody rewound onto it. The head is what dates it to THIS
+    attempt, and the attempt is exactly what has to be accounted for. The debt
+    beside it is asked as well: the two go down together, so an approval still
+    standing over a receipted commit is a write that did not land whole.
 
     A group nobody can read is refused outright: it is the only account there
     is of how the exemption came to name what it names, and a route finished
@@ -321,7 +337,7 @@ def _unaccounted_publication(
     # Lazy for the reason every upward reach in this package is: the receipt
     # and the debt sit in the workflow layer above it.
     from orchestrator.workflow.stages.implementing import late_parks
-    if late_parks._published_commit(state) != local_head:
-        return _UNRECEIPTED.format(published=local_head)
+    if late_parks._publication_from(state, anchor) != local_head:
+        return _UNRECEIPTED.format(published=local_head, anchor=anchor)
     owed = late_parks._approved_commit(state)
     return _UNPAID.format(owed=owed) if owed else ""

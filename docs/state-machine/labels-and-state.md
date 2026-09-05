@@ -356,9 +356,11 @@ anchor and the push never went out, on the rewritten commit and it did, anywhere
 out of band. The ahead/behind counts answer only that third case. A rebase REPLAYS the branch, so the commit the
 pull request still carries is an object no local history contains afterwards — git reports the branch as behind its
 own publication as well as ahead of it — and a recovery reading those counts first would park the canonical
-pre-push case as a remote somebody else moved. The anchor the rebase pinned before git ran is the same fact the
-`--force-with-lease` behind the retry is pinned to, so a remote standing on it is exactly the branch the push was
-leased against. What the pinned comment carries says how far the transfer's own writes got, and there are five
+pre-push case as a remote somebody else moved. Remote-old is therefore proved by BOTH pinned heads together: the
+remote standing exactly on the anchor the `--force-with-lease` is pinned to, and the checkout standing exactly on
+the replay `pending_auto_base_rebase_rewrite_sha` records. The anchor alone would let a worktree somebody rebuilt,
+an operator's reset, or a branch pointed at other work be force-pushed over the candidate under a lease every one
+of them satisfies. What the pinned comment carries says how far the transfer's own writes got, and there are five
 answers. No exemption in flight is the
 ordinary interrupted rebase. A rewrite with no `late_rewrite_*` group behind it is a grant the crash came before, so
 the recovery re-derives the same evidence the dead tick would have assembled and the permit rules on it — without
@@ -366,8 +368,18 @@ that, the replay of a change a human already ruled on is measured past the same 
 adjudication with a pull request open over the work. A group still at `authorized` for the head in hand IS the
 evidence, re-asked in full. One already `published` means the receipt landed and only the notice, the audit event,
 the cleared anchor, and the reviewer's route are outstanding. And a group this build cannot read whole, or one
-naming some other commit, settles nothing and assembles nothing: the ordinary cumulative gate measures the replay,
-which is the answer a permission nobody can check has to get.
+naming some other commit, is refused before either road that publishes anything: left to the ordinary cumulative
+gate the replay is measured past the same ceiling and routed into a second adjudication on the strength of a record
+nothing checked, so the branch goes back onto the anchor and the issue parks as `auto_base_rebase_failed` until a
+human repairs the comment.
+
+The exemption itself is read the same way, by PRESENCE rather than by truth. The fail-closed readers answer "no
+exemption" and "no identity" for a group something damaged exactly as they do for a comment that never carried one
+— rightly, since the gate's only move is to measure — and a recovery that took that for "no verdict in flight"
+would finish a route with the verdict still on the commit it was given for. So a comment claiming an exemption it
+cannot show whole, or an identity group short of a member, is that same refusal. The LEGACY shape is not: an
+exemption with no identity beside it is complete for what it says, costs a later tick the transfer rather than the
+verdict, and goes on being measured exactly as it always was.
 
 The permission still outstanding over a remote that already carries the rewrite is the one that owes a WRITE, and
 the recovery takes it rather than leaving it for the stage it is about to relabel to: the permit is scoped to the
@@ -381,8 +393,11 @@ Every other landed rewrite is asked whether the comment ACCOUNTS for it before t
 finishing clears the anchor and the anchor is the only thing that brings this recovery back. An issue carrying no
 verdict always is, which is the ordinary interrupted rebase and the whole of what this road used to be. A transfer
 that settled, and a replay the ordinary cumulative gate published, are accounted for by the receipt their write
-left, and the debt beside it is asked too — the two go down together, so an approval still standing over a
-receipted commit is a write that did not land whole. Anything else parks with HEAD and the anchor left exactly as
+left — read WHOLE, as `implementing_published_sha` together with the `implementing_published_lease` it was pushed
+from, held against this recovery's own anchor. A receipt is never cleared, so the commit alone goes on naming
+something this stage pushed rounds ago and vouches for any pull request somebody rewound onto it; the head is what
+dates it to THIS attempt. The debt beside it is asked too — the two go down together, so an approval still standing
+over a receipted commit is a write that did not land whole. Anything else parks with HEAD and the anchor left exactly as
 they are: a `late_rewrite_*` group nobody can read, a receipt nobody wrote, a debt nothing paid, a checkout
 carrying uncommitted changes the settlement may not be fingerprinted beside, and a leased no-op the remote refused.
 Nothing is reset on any of them — the checkout is standing on the commit the pull request carries, so a reset would
@@ -804,6 +819,14 @@ The keys that matter for the state machine fall into a few groups:
   before the post-push write, and `_recover_pending_auto_base_rebase` keys off it to either no-op, push the recovered
   head, or park as `auto_base_rebase_push_failed`. It is also what tells the approval that interrupted attempt wrote
   from a stage's, so the refresh is not frozen out of finishing its own route (see [Base refresh](#base-refresh)).
+  `pending_auto_base_rebase_rewrite_sha` — the other half of the same record, set once git has produced the replay
+  and before the size gate is entered, and dropped by the same write that drops the anchor. The anchor says which
+  head the push is leased against; this says which local commit the attempt made, and only it can say the divergent
+  checkout a recovery finds is that attempt's work. A rebase REPLAYS the branch, so a worktree rebuilt from
+  elsewhere, an operator's reset, and a branch pointed at somebody else's commit all present the same shape as a
+  replay — clean, diverged, remote still on the anchor — and all satisfy the same lease. Absent (the window between
+  git returning and this write) the recovery falls back to the ahead/behind counts: strictly ahead is a
+  fast-forward the anchor lease loses nothing to, and divergent parks.
 - **Counters / timestamps.** `retry_window_start` + `retry_count` (24h fresh-spawn budget shared between implementing
   and decomposing, with `retry_cap_stage`, `retry_cap_continued`, and the sentence the park owes the thread beside
   them once it runs out — `retry_cap_notice`, or `late_park_notice` where a late adjudication is what ran out, since

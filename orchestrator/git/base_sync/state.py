@@ -33,6 +33,16 @@ _CONFLICT_ROUND = "conflict_round"
 
 _PENDING_PUSH_SHA = "pending_auto_base_rebase_push_sha"
 
+# The head the replay left, recorded once git has produced it and before the
+# gate is entered. The anchor beside it says which head the push is leased
+# against and brings an interrupted attempt back; this says which local commit
+# that attempt made, which is the one thing the anchor cannot prove. A rebase
+# REPLAYS the branch, so the checkout diverges from the head the pull request
+# carries -- and a recovery that read the divergence alone as its own work
+# would force-push whatever the checkout had become over the candidate on the
+# remote, under a lease the anchor satisfies.
+_PENDING_REWRITE_SHA = "pending_auto_base_rebase_rewrite_sha"
+
 _REASON_AUTO_BASE_REBASE_FAILED = "auto_base_rebase_failed"
 
 _REASON_AUTO_BASE_REBASE_PUSH_FAILED = "auto_base_rebase_push_failed"

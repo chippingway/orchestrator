@@ -34,7 +34,8 @@ _EXPECTED_SIGNATURES = (
         "_recover_pending_auto_base_rebase",
         (
             "(gh, spec, issue, state, worktree, *, pr_number, label, "
-            "pending_pre_rebase_sha, behind=0, unparking_consumed_max=None)"
+            "pending_pre_rebase_sha, pending_rewrite_sha='', behind=0, "
+            "unparking_consumed_max=None)"
         ),
     ),
     (
@@ -94,6 +95,9 @@ class BaseSyncCompatibilityAdapterTest(unittest.TestCase):
         context = recover.call_args.args[0]
         self.assertEqual(context.behind, 0)
         self.assertIsNone(context.unparking_consumed_max)
+        # A caller that names no rewrite is one whose attempt never recorded
+        # what it produced, which is the window the counts still answer for.
+        self.assertEqual(context.pending_rewrite_sha, "")
 
     def test_conflict_route_builds_typed_context(self) -> None:
         route = Mock()

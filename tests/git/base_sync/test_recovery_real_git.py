@@ -45,6 +45,24 @@ class RecoveryRealGitTest(RecoveryGitFixtureMixin, unittest.TestCase):
         self.assertEqual(self._remote_head(), self.recovered)
         self._assert_routed_to_validating("crash_recovery_relabel_only")
 
+    def test_an_unrecorded_divergence_is_not_pushed(self) -> None:
+        # The remote is exactly where the crash left it and the checkout is
+        # clean and diverged -- the shape a replay has, and the shape a
+        # worktree somebody rebuilt has too. Nothing on the comment says this
+        # commit is the attempt's own, so the lease the anchor would satisfy
+        # is never spent and the candidate stays on the pull request.
+        stranded = self.strand_an_unrelated_head()
+        ahead, behind = self.divergence_from_remote()
+        self.assertEqual((ahead, behind), (1, 1))
+
+        recovered = self.recover()
+
+        self.assertTrue(recovered)
+        self.assertEqual(self.push.leases, [])
+        self.assertEqual(self._remote_head(), self.anchor)
+        self.assertNotEqual(stranded, self.recovered)
+        self._assert_parked(fixtures.PARK_PUSH_FAILED)
+
     def test_out_of_band_update_restores_anchor(self) -> None:
         pushed_elsewhere = self.advance_remote_out_of_band()
 

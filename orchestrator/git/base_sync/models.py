@@ -76,6 +76,11 @@ class _AutoRebaseRecoveryContext:
     pr_number: int
     label: str
     pending_pre_rebase_sha: str
+    # The head the interrupted attempt's own replay left, where it got as far
+    # as recording one. It is what proves the checkout this recovery finds is
+    # that attempt's work rather than a divergence something else produced --
+    # the anchor beside it names the lease and can prove neither.
+    pending_rewrite_sha: str = ""
     behind: int = 0
     unparking_consumed_max: int | None = None
 
