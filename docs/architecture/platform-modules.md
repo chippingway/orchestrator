@@ -65,15 +65,16 @@ last is held by the loader itself rather than by a check.
   `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three `git/measurement/` owners
   that log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
   `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the twelve
-  `git/worktrees/` owners that log, plus `runtime/artifacts.py` above them — when a maintenance pass ran, and why
-  it did not, are facts about the same artifacts the owners under it report on, so an operator filtering for what
+  `git/worktrees/` owners that log, plus `runtime/artifacts.py` and `runtime/artifact_records.py` above them — when a
+  maintenance pass ran, why it did not, and the record one candidate's answer could not be written as are facts about
+  the same artifacts the owners under it report on, so an operator filtering for what
   happened to a finished issue's checkout is told about the day the host was too busy to attempt one), and
   `orchestrator.branch_publication` (`git/publication/rewrite.py`). A
   module moved between packages does not take its channel with it, and each of the four names is asserted where
   its owner is tested —
   `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
   `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`,
-  `tests/runtime/test_artifacts.py`, and
+  `tests/runtime/test_artifacts.py`, `tests/runtime/test_artifact_records.py`, and
   `tests/git/publication/test_imports.py`.
 - **Import cost.** `import orchestrator` costs the root module and no owner behind it, and importing a `runtime/`
   owner plants neither the CLI nor an app — `tests/runtime/test_imports.py` and `tests/apps/test_imports.py`.
@@ -117,6 +118,21 @@ orchestrator/
                         and whether the run may still act at all -- the run's stop flag, the scheduler's close, and
                         the budget bounding how long one pass may hold the host, which is what the process waiting
                         for it is owed
+    artifact_records.py the one bounded record each of those candidates is reported to the analytics sink as, and the
+                        only thing the pass leaves anywhere but the log: exactly one per candidate DECIDED about --
+                        never one per artifact, phase, or deletion step -- carrying the repository, the issue, the
+                        outcome, the closed reason that fixes it, the layout it was published under, and a branch
+                        only where the reason names one this repository itself publishes that issue under. Which
+                        KIND of artifact a subject is comes off the reason rather than the string, since a checkout
+                        path and a branch name are the same text on a host whose `WORKTREES_DIR` is `orchestrator`,
+                        and what is written is the derived name rather than the one that arrived. Every
+                        vocabulary is proved again as the record is built, so a lookalike value writes no record
+                        rather than a record nobody should have written, and nothing a teardown touched -- a command,
+                        its output, an exception, a checkout path, a tree's contents -- can reach a sink through it.
+                        Built from results the pass has already produced and written behind a boundary per candidate,
+                        so a record it cannot build costs one line and changes no decision; the sink's own two
+                        answers never reach it, being silent when it is off and reported on the analytics channel
+                        when the filesystem refuses the line
     exclusion.py        which process on this host may take the artifacts: one `flock` claim under `WORKTREES_DIR`,
                         held shared for a polling run's whole life and exclusively for as long as any pass acts --
                         including a polling run's own pass, which hands its presence over and takes it back, so a

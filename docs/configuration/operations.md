@@ -590,6 +590,210 @@ and it makes sure nothing resumes against one:
 Continuing after such a park means either implementing the issue as an ordinary change or starting an explicit new
 split cycle on the owner, which preserves a candidate of its own.
 
+## Reclaiming a finished issue's artifacts
+
+An issue this orchestrator finished with leaves two things behind on the host that ran it: the per-issue checkout an
+agent worked in, and the `orchestrator/`-namespaced branch the work was published on — in the clone and on the remote.
+Nothing in the state machine deletes them. A terminal-artifact **maintenance pass** does, once a day by default, and
+this section is what an operator needs to run it, read what it reports, and settle what it would not touch.
+
+**Why maintenance and not a workflow stage.** Every stage handler is about one issue in one repository, and several of
+them run at once. What this pass reclaims is not per-issue: it is one host's disk and one clone's ref store, shared by
+every configured repository and by every worker on the host. A stage cannot say the host is quiet, because a tick is
+what makes it busy — and a handler that deleted a directory would be deleting it beside workers it cannot see. So the
+pass runs *between* polling passes, over a host that has been proved quiet, and it is deliberately the one deletion
+path here that no issue transition triggers. It writes no workflow state at any point: no label, no pinned state, no
+comment, no agent session. An issue that has ended keeps every record of how it ended, and a host tidying its own disk
+cannot change what GitHub says happened.
+
+### When it runs
+
+- **On the daily interval.** The polling loop fits one pass in at the end of the wait between two polling passes —
+  never inside a tick — at most once every `TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS` (default `86400`, one day; see
+  [`../configuration.md`](../configuration.md#cadence-and-budgets)). The due gate is in memory on a monotonic
+  clock, so an NTP step, a suspend, or a timezone change cannot bring a pass forward or push it out, and nothing is
+  persisted: a restart costs at most one extra pass.
+- **On demand.** `python -m orchestrator --cleanup-terminal-artifacts` runs exactly the same pass once and exits,
+  regardless of the interval — the form to point a nightly service timer at on hosts whose orchestrator is not always
+  up. See [Run modes](#run-modes) for what that mode connects and why it exits 0 when it defers.
+- **Only on a quiet host.** Before it reads anything, the pass closes its own scheduler's admission (`submit` refuses
+  with `reason=maintenance`, `track_active` hands back `claimed=False`), waits up to 30s for the work already admitted
+  to drain, and acts only if the host went quiet inside that bound. Nothing running is cancelled or hurried. A bound
+  that expires, a shutdown that started, or a barrier it could not take **defers the whole pass** — which costs one
+  interval of one finished issue's disk and nothing else. Admission always reopens afterwards, whatever the pass did.
+- **Only one process at a time.** The barrier answers for this process's own workers; a second orchestrator on the
+  same host is outside it. So every pass also holds `WORKTREES_DIR/.artifact-maintenance.lock` exclusively while it
+  acts, and every polling run holds that same lock shared for its whole life. A pass refused the lock defers; a poller
+  that wants it back waits without a deadline. What bounds that wait is the pass itself: it gives the host back at a
+  candidate boundary once it has held it for 120s, with whatever it did not reach owed to the next interval. The whole
+  mechanism is in [`../configuration.md#parallel-processing`](../configuration.md#parallel-processing).
+
+Both of those are in-application coordination between orchestrator processes. Neither is an OS boundary: see
+[`../security.md#scheduled-artifact-reclamation`](../security.md#scheduled-artifact-reclamation) for what that does and
+does not protect against, and for the isolation to use where the boundary has to hold against an arbitrary process.
+
+### What it looks for
+
+One host-wide scan per pass, then one repository at a time. A candidate is one *issue*, however many artifacts it is
+holding and wherever they are:
+
+- **Branches, in the exact orchestrator namespace.** The clone's `refs/heads/orchestrator/` listing and one
+  `git ls-remote` of the same namespace on the remote. Two names per issue are recognized and no others: the current
+  `orchestrator/<sanitized-slug>/issue-<n>` this orchestrator publishes now, and the legacy flat
+  `orchestrator/issue-<n>` an issue already in flight when slug namespacing landed is still on. A name outside that
+  pair is never a candidate — no tag, no pull-request ref, no default branch, and no branch of anyone else's is
+  reachable from this path.
+- **Checkouts, under the two roots it writes.** `WORKTREES_DIR/<sanitized-slug>/issue-<n>`, the per-repository path it
+  uses now, and `WORKTREES_DIR/issue-<n>`, the flat path that predates it. A directory has to be a real directory
+  under the exact name (never a symlink) *and* a worktree of this repository's own clone.
+- **Remote-only artifacts.** A branch the remote still carries under the owned namespace with nothing left on this
+  host — a re-cloned checkout, a host rebuilt, a local ref somebody deleted by hand. The local and remote halves are
+  folded into one candidate per issue, so a branch that exists in both places is one artifact over two hosts rather
+  than two artifacts.
+
+The `layout` a candidate is reported under says which of those it was found as: `current`, `legacy`, `mixed` (both
+names at once, which a migration leaves behind), or `remote_only` (nothing local at all, whatever the remote's copy is
+called).
+
+**Shared clones.** Two configured `REPOS` entries can point at one `target_root` — the case slug namespacing exists
+for. Attribution re-derives each spec's own names and refuses anything ambiguous: a name several entries could equally
+own (every legacy flat branch on a shared clone, a checkout directory two lossily-sanitized slugs both produce) is
+attributed to **none** of them and left alone. The flat pre-namespacing checkout is the one artifact whose name says
+nothing at all, so it is attributed by the clone the directory turns out to be a worktree of; where that still cannot
+settle it, the whole issue is withheld from the scan — branches included, because reporting a branch whose checkout
+nobody may remove would hand a teardown a ref to delete out from under a live tree. A repository whose ref store,
+checkout root, or remote listing could not be read is left out of the pass entirely rather than reported in part, and
+said out loud on the log: a partial list of what a repository still holds reads exactly like a complete one.
+
+### What clears a candidate, and what keeps it
+
+Every gate fails closed, and they are asked cheapest first. Nothing is deleted unless all of them pass:
+
+1. **Nothing is running for this issue.** The live scheduler is asked per candidate, underneath the barrier that
+   already emptied it. An unreadable answer keeps the candidate.
+2. **The issue has really ended.** It is closed, it carries exactly one terminal workflow label, and its pinned state
+   parses. Two workflow labels at once, a pinned comment holding something that is not a state, an issue or a comment
+   that could not be read: each keeps the candidate.
+3. **No pull request still stands on it.** Open pull requests are looked up for both branch spellings and for the
+   recorded number, whatever base they target. A human reviewing a branch is standing on it even though the issue
+   underneath has ended. Every branch lookup is **owner-qualified** — the query head is
+   `<this repository's owner>:<branch>`, never the bare branch name — so a fork that happens to carry a branch of the
+   same name is not mistaken for this candidate's pull request, in either direction: a fork's open PR cannot keep an
+   artifact this repository owns, and it cannot be read as the ended PR that accounts for a commit. The recorded
+   number is read straight off this repository for the same reason.
+4. **Every commit an artifact holds survives its deletion.** A branch's tip and the commit a checkout's own HEAD is on
+   each have to be contained in the configured base or in a pull request that has ended. The remote is asked what the
+   branch is at whatever the base says, because the two answer different questions — a merged tip can sit under a
+   branch somebody has since pushed past.
+5. **The checkout carries nothing of its own.** It has to be this issue's own branch, prove it holds nothing modified
+   or untracked, and prove it hides nothing besides: a path the repository's own `.gitignore` covers — a `.env`, a
+   virtualenv, a build directory — keeps the whole candidate, because `git worktree remove` would take all of it and
+   git does not count it as dirty.
+6. **Nothing has touched the checkout for an hour.** Its own directory (for what is created or removed at the top of
+   it) and its index and reflog (for the edit-and-commit that moves neither) are read against a one-hour quiet period.
+   That period is a constant, not a knob: what a shorter one buys is the chance to delete a tree somebody is standing
+   in.
+
+Ambiguous evidence is not permission. Every probe answers "confirmed", "refuted", or "could not read", and the third
+is never collapsed into either: a reading that failed keeps the artifact exactly as a reading that said no does.
+
+### What it deletes, and in what order
+
+Order is not a detail here — it is what a failed pass leaves behind:
+
+1. **Every checkout first**, both layouts, in the order the scan reported them. A branch a worktree still has checked
+   out cannot be deleted, so a pass that took branches first would strand the trees and make their branches
+   undeletable. Removal is **never forced**: `git worktree remove` refuses a tree written in since the proof, and that
+   refusal is the answer.
+2. **Then each branch, on the remote before the clone.** The remote is read first so the three answers stay apart — a
+   branch that is not there is a step already done (the ordinary shape of a merged pull request's head), a branch at
+   another commit is a push nobody here cleared, a reading that failed is not permission to delete. The delete itself
+   is a **leased** push pinned to the proved commit, so a branch somebody pushed to between the proof and the delete
+   is refused by the remote rather than removed. The local delete is the pinned `update-ref -d` naming that same
+   commit and refusing to dereference, so a branch an agent committed onto survives and a symbolic ref planted under a
+   branch name is deleted as itself rather than followed onto the base.
+3. **Local last, on purpose.** The local ref is the cheapest thing the next discovery finds, so a failed remote delete
+   leaves it standing and the candidate discoverable; taking it first would leave a remote-only artifact that only a
+   remote listing would ever surface again.
+
+Immediately before each mutation the artifact's tip is re-read against the commit the classification proved. An
+artifact that has moved since (an agent committed, a human pushed) is not a failure — it is a race, and the candidate
+is kept for the next pass to start over on.
+
+**There is no retry, and that is deliberate.** The first refusal ends the pass *for that candidate*; the ones behind it
+are still evaluated. Nothing is written down — no queue, no ledger, no backoff state — because the discovery that found
+the candidate once finds whatever is left of it again. That is what makes a repeated pass cheap: it reads the host as
+it is now and reports whatever is already gone as done. A candidate refused by a branch-protection ruleset therefore
+reports `failed` once per pass until the rule or the branch changes, and costs one pass each time.
+
+### Reading a cleanup result
+
+Every candidate the pass decided about earns **one** bounded
+[`terminal_artifact_cleanup`](../observability/event-streams.md#terminal_artifact_cleanup-records) record on the
+analytics sink — repository, issue, `outcome`, `reason`, `layout`, and a `branch` where the reason names one — and one
+line per candidate on the `orchestrator.worktree_lifecycle` log channel, followed by the pass's own
+`cleaned=/retained=/failed=` tally. The log is where the artifact each reason is about is named; the record is
+deliberately narrower and never carries a path, a command, or git's own output. Both surfaces are observation-only:
+losing either changes nothing about what was deleted. A sink turned off writes nothing and says nothing, and a sink
+the filesystem refuses (read-only mount, full disk, a path that is not one) is reported on the `orchestrator.analytics`
+channel by the writer itself rather than on the lifecycle channel — so an operator missing records looks there first.
+
+- **`cleaned`** — done. Every artifact that candidate was found holding is gone from this host and the remote,
+  absences included. It will not be reported again.
+- **`retained`** — the pass declined to act, and it will decline again every pass until something changes. This is the
+  one outcome that can repeat forever, so a candidate retained for the same reason day after day is one to settle by
+  hand. Match the `reason` against the
+  [reason-code table](../observability/event-streams.md#terminal_artifact_cleanup-records):
+  - `active_claim` / `recent_activity` are self-clearing — work was in flight, or the checkout had been touched inside
+    the hour. Nothing to do.
+  - `tip_moved` is a race that also clears itself: something moved the artifact between the proof and the mutation.
+  - `unproven` is the classification's own answer, and the log line beside it names the artifact it kept the candidate
+    for. Look at that artifact: an open pull request still on the branch (close or merge it), a checkout carrying
+    modified, untracked, or ignored files (take what you want off it — an ignored `.env` or a stray build directory is
+    the common one), commits the base and every ended pull request do not account for (push them somewhere that
+    outlives the branch, or accept the artifact stays), an issue that is not closed, or a workflow label that is not
+    exactly one terminal.
+  - The `*_unreadable` reasons are a read that failed rather than a fact about the artifact: an expired token, a
+    repository this installation cannot see, a remote that was down, a git command that would not run. They clear
+    themselves when the underlying read works, and the log line beside them says which artifact could not be read.
+  - `branch_checked_out` means some worktree of the clone is still standing on the branch — often an operator's own
+    `git worktree add`. Move that tree off the branch (or remove it) and the next pass takes it.
+- **`failed`** — a step ran and was refused, which is a host or a remote to look at:
+  - `worktree_removal_failed` — git would not remove the checkout. It is never forced, so the usual cause is a tree
+    written into after the proof, or a permission problem on the directory. Inspect the path on the log line; remove
+    it by hand once you are sure nothing wants it.
+  - `remote_delete_failed` — the remote refused the leased delete. A ruleset forbidding deletions under
+    `refs/heads/orchestrator/*`, a token without the permission, or a branch that moved. This blocks tidying and
+    nothing else: no issue is parked or relabelled, and the local ref is deliberately kept so the candidate is found
+    again.
+  - `local_delete_failed` — the pinned local delete would not run: another process holding the clone's ref store, or a
+    ref that moved between the read and the delete.
+
+A candidate the pass never reached has **no** record: nothing was decided about it. The one a stop landed on says
+so on the log — `artifacts left alone: this pass may no longer act` — and earns no record either, for the same
+reason. That is not a silent failure; see below.
+
+### Recovery after an interrupted pass
+
+A pass can stop part way through for four ordinary reasons: `SIGINT` / `SIGTERM`, the scheduler closing under it, its
+120s host-hold budget running out (which is what a polling process waiting for the host is owed), or the process being
+killed outright. Whichever it is, **recovery is nothing**:
+
+- Nothing is persisted, so there is no partial state to repair, no lock file to clear (a `flock` dies with the process
+  that held it), and no queue to drain. The next pass rediscovers the host as it is.
+- A candidate the pass stopped *before* is exactly as it was, and has no result to interpret.
+- A candidate whose teardown was under way cannot be half-deleted in a way that matters. A signal is never answered
+  mid-teardown: the last reading is taken immediately before the first mutation, and past it the candidate is taken as
+  one unit. What a kill can interrupt is therefore a checkout removal and, per branch, a leased remote delete and a
+  pinned local one — each idempotent and each already leased to a proved commit. What ran is done, and what did not is
+  rediscovered; an artifact already gone is simply reported as done next time.
+- The pass that ran can leave a checkout removed with its branch still standing, or a branch gone from the remote and
+  still in the clone. Both are discoverable states, and the next pass finishes them.
+
+So an interrupted pass costs one interval, and a crashed one costs the same. If a host was killed mid-pass often
+enough to matter, the thing to check is not the artifacts but why: the pass gives the host back on its own at a
+candidate boundary, and never blocks workflow progress either way.
+
 ## Applying `.env` changes
 
 `.env` is read once, when `python -m orchestrator` starts. The orchestrator process never reloads it, so most edits

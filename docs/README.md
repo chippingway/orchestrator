@@ -82,7 +82,8 @@ changes. [`../.env.example`](../.env.example) holds the basic parameters for a f
   analytics database URL, skill-trigger tracking, the dashboard read mode, and the dashboard quickstart.
 - [`configuration/operations.md`](configuration/operations.md) — continuous integration, run modes, the systemd user
   service, what a split leaves on the remote and what reclaims it, how to restart an issue whose cycle was cancelled,
-  and what an edited `.env` takes to apply.
+  how a finished issue's worktrees and branches are reclaimed and what each result asks of an operator, and what an
+  edited `.env` takes to apply.
 - [`configuration/snapshot-capability-check.md`](configuration/snapshot-capability-check.md) — the
   disposable-repository check that proves a production token and its rulesets can create, fetch, verify, and delete
   the late split's snapshot refs, and what each failure means.

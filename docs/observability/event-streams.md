@@ -248,6 +248,10 @@ foundation layer for the Postgres aggregation step.
   event of the same
   kind; carries `stage` plus the same bounded payload — see
   [Late-split records](#late-split-records-both-sinks).
+- `terminal_artifact_cleanup` — `runtime/artifact_records.py`, one record per candidate the daily terminal-artifact
+  maintenance pass decided about; carries `outcome`, `reason`, `layout`, and a `branch` only where the reason names
+  one — see [`terminal_artifact_cleanup` records](#terminal_artifact_cleanup-records). No `stage`: the pass is host
+  maintenance between polling passes rather than a workflow stage, and the issues it is about have already ended.
 
 **Append.** `recording.append_record(record)` reopens the file in append mode for every record after
 `path.parent.mkdir(parents=True, exist_ok=True)`. An `OSError` is caught and downgraded to a `log.warning`.
@@ -491,6 +495,101 @@ Postgres `analytics_events` schema require, and the five catalog fields all land
 change**. The whole producer is fail-open: a missing clone, an unfetched ref, a git error, or a sink IO failure logs and
 is swallowed so catalog collection never disturbs the polling tick. An empty catalog still records `skills_available:
 []` (the "scanned, found none" signal) with both maps dropped.
+
+### `terminal_artifact_cleanup` records
+
+`orchestrator/runtime/artifact_records.py` appends one `event="terminal_artifact_cleanup"` analytics record for every
+candidate the terminal-artifact maintenance pass **decided about** — never one per phase, per artifact, or per
+deletion step. A candidate is one finished issue's artifacts on this host and its remote, and the pass takes it as a
+unit, so a count of these records is a count of finished issues considered and a count grouped by `outcome` is what
+the host did about them. An issue carrying both published branch layouts is still one record; a candidate whose
+teardown ran three steps and one whose teardown ran none are one record each. What the pass *is* and when it runs is
+in [`../configuration/operations.md#reclaiming-a-finished-issues-artifacts`](../configuration/operations.md#reclaiming-a-finished-issues-artifacts).
+
+Only candidates the pass reached appear. A pass that stops — a signal, a closed scheduler, its 120s host-hold budget
+spent — answers for the prefix it got to and records exactly that prefix; the rest are rediscovered next interval and
+recorded then. Nothing here is a retry list, and no record is a promise that anything will be revisited.
+
+**Fields.** The `ts` / `repo` / `issue` / `event` envelope, plus four extras and nothing else:
+
+- `outcome` — `cleaned`, `retained`, or `failed`. `cleaned` is every artifact the candidate was found holding now gone
+  from this host and the remote, absences included; `retained` is the pass declining to act; `failed` is a step that
+  ran and was refused.
+- `reason` — the closed code that *fixes* the outcome, listed below. The two fields are separate because two readers
+  want different things: a count of what a pass did comes off `outcome`, and what to go and look at off `reason`.
+- `layout` — which of the layouts this orchestrator published the candidate under: `current` (the slug-namespaced
+  branch it publishes now, and the per-repository checkout beside it), `legacy` (the flat `orchestrator/issue-<n>` an
+  issue in flight when namespacing landed is still on), `mixed` (both at once, which a migration leaves behind), or
+  `remote_only` (this host holds no checkout and no branch — whatever the remote's copy is called, there is nothing
+  here to look at).
+- `branch` — the artifact the reason is about, **only** where that artifact is a branch, and dropped entirely
+  otherwise. Which kind of artifact a result names is settled from its `reason` rather than from the shape of the
+  string, because the two kinds are not distinguishable as text: with `WORKTREES_DIR` set to `orchestrator`, a
+  checkout's path and its issue's branch are the same characters. The vocabulary splits three ways.
+  `branch_checked_out`, `remote_delete_failed`, and `local_delete_failed` are spelled on a branch and nowhere else,
+  so they always name one, however that host spells its checkouts. `reclaimed`, the two claim reasons, the two
+  quiet-period ones, and `worktree_removal_failed` never name a branch. `unproven`, `tip_moved`, and `tip_unreadable`
+  can be about either artifact, so those alone are measured against the candidate's own checkout paths and drop a
+  subject that is both — the record has to say which artifact it means. The value written is then the name re-derived
+  from the repository and the issue number rather than the one the result carried, so it is always one of the exact
+  two names this orchestrator publishes that issue under; a checkout path, an issue reference, and a branch some
+  other configured repo sharing the clone owns each fail that match. A record with no `branch` key is a reason that
+  was never about one, or one nothing could attribute.
+
+**Reason codes.** Closed, and each is fixed to exactly one outcome, so the two fields cannot disagree:
+
+| `reason` | `outcome` | What it means |
+| --- | --- | --- |
+| `reclaimed` | `cleaned` | The teardown reached the end: checkout removed, every branch gone here and on the remote. |
+| `unproven` | `retained` | The classification kept it; which artifact and which question is on the log below. |
+| `recent_activity` | `retained` | A checkout was touched inside the one-hour quiet period. |
+| `activity_unreadable` | `retained` | That modification-time reading could not be taken. |
+| `active_claim` | `retained` | Something is running for this issue right now. |
+| `claim_unreadable` | `retained` | The guard that answers whether anything is could not be asked. |
+| `tip_moved` | `retained` | An artifact left the proved commit between the proof and the mutation. |
+| `tip_unreadable` | `retained` | That last reading failed, or nothing cleared a commit for a named artifact. |
+| `branch_checked_out` | `retained` | Some worktree of the clone is still standing on the branch. |
+| `worktree_removal_failed` | `failed` | `git worktree remove` refused the checkout; it is never forced. |
+| `remote_delete_failed` | `failed` | The remote refused the delete leased at the proved commit. |
+| `local_delete_failed` | `failed` | The pinned local `update-ref -d` would not run. |
+
+`unproven` stands for one or more retentions the classifier recorded, and those are deliberately not on the record:
+each names an artifact, and an artifact is a branch *or* a checkout path. They are reported per candidate on the
+`orchestrator.worktree_lifecycle` log instead, which names the artifact the pass kept the candidate for. The families
+they fall into — a question that was asked and answered no (an open pull request, a dirty tree, a tree hiding files
+its own rules cover, commits nothing accounts for), a question that could not be put (an issue, a pinned comment, a
+pull-request lookup, a git read), and a question answered with something nobody can act on (an issue in two workflow
+states at once, a pinned comment holding something that is not a state, a checkout on a branch this issue never
+published) — are what the remediation section below is organized by.
+
+What each one asks an operator to do is in
+[`../configuration/operations.md#reading-a-cleanup-result`](../configuration/operations.md#reading-a-cleanup-result).
+
+**What never travels.** No command line, no git output, no exception text, no checkout path, no file names, no tree
+contents, no credentials — a sink is a metric surface, and a host's filesystem layout is not a metric. Three of the
+four extras are members of vocabularies the code itself declares, so a record cannot say anything the code does not
+already name, and each is proved a member again as the record is built: a lookalike string is refused as squarely as
+prose, and a refused field writes no record at all rather than a record with the field dropped. The full per-candidate
+detail — the artifact each reason is about — is on the `orchestrator.worktree_lifecycle` log channel, which is the
+operator's own host rather than a sink.
+
+**Analytics only, no audit twin.** The audit log is written through `GitHubClient.emit_event` and records workflow
+events against an issue the tick is driving. This pass drives nothing: it writes no label, no pinned state, and no
+comment, it runs between polling passes (and under `--cleanup-terminal-artifacts` with read-only clients), and every
+issue it is about has already ended. So the record goes to the metric sink and the audit stream stays what it says it
+is.
+
+**Fail-open, on two levels.** The pass has already decided and acted by the time any record is built, so nothing on
+this path can change a cleanup decision — and neither level of failure raises out of it. The shared sink writer
+answers the first two: a **disabled** sink (`ANALYTICS_LOG_PATH` unset to `off` / `disabled` / `none` / empty) is a
+silent no-op that opens nothing and logs nothing, and a filesystem that **refuses the append** — read-only mount, full
+disk, permission denied, a misconfigured path — is caught in `append_jsonl_record`, downgraded to a `log.warning` on
+`orchestrator.analytics`, and the record is dropped. Neither reaches the maintenance owner, so
+`orchestrator.worktree_lifecycle` stays quiet for both. The per-candidate boundary in
+`runtime/artifact_records.py` covers what is left — a payload that could not be built (a field outside its
+vocabulary) or serialized, and anything unexpected — and reports it on `orchestrator.worktree_lifecycle` naming the
+issue and the failure's *type*, never the exception's own words, which are the same unbounded content the record is
+bounded against. Either way one candidate's record is the whole cost: every candidate behind it is still recorded.
 
 ## Agent-run budget records (both sinks)
 

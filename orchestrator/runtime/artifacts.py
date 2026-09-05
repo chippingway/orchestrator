@@ -51,6 +51,13 @@ How often is `TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS`, kept by a gate this
 run holds in memory. Nothing is persisted, so a restart may spend one extra
 pass -- which is a pass that reads the host again and reports whatever is
 already gone as done.
+
+What a pass DID is reported here and in `artifact_records` beside it, and
+nowhere else: one log line per candidate and the tally over them, then one
+bounded record per candidate on the analytics sink. Both are taken from the
+answers the pass has already produced, so neither can reach a decision, and the
+records are handed over per candidate so a refused sink costs one line rather
+than the rest of them.
 """
 from __future__ import annotations
 
@@ -65,6 +72,7 @@ from orchestrator.git.worktrees.models import (
     MaintenanceOutcome,
     MaintenanceResult,
 )
+from orchestrator.runtime import artifact_records
 from orchestrator.runtime.startup import RepoClients
 from orchestrator.runtime.state import RuntimeState
 from orchestrator.scheduler import IssueScheduler
@@ -338,7 +346,9 @@ def run_maintenance_pass(
                 if not sole:
                     log.info(_CONTENDED_LOG)
                     return
-                _log_answers(_maintained(state, clients, scheduler))
+                answers = _maintained(state, clients, scheduler)
+                _log_answers(answers)
+                artifact_records.record_cleanup_results(answers)
     except Exception:
         log.exception("artifact maintenance raised; nothing further was taken")
 
