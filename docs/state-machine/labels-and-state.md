@@ -1644,7 +1644,10 @@ rather than preserving.
   records. The second is a human's: an operator who has read the change says in a comment on the issue that it
   publishes unsplit, and that gesture has to outlive the process that read it, the generation it was made under, and
   the tick that would act on it, or the gate measures the same candidate past the same ceiling on the next poll and
-  asks the same question again.
+  asks the same question again. What does end the group is what ends the exemption above it — a restart's
+  projection, which keeps a whitelist of what is true about the ISSUE rather than about the attempt, so these keys
+  go the way the branch and the candidate they name do. A fresh cycle that inherited one would carry a bypass
+  nobody granted it, over work no operator ever read.
 
   Every term follows from what the record IS — a bypass of the one gate that stops unreviewed bulk reaching a pull
   request. A bypass may license exactly what a human looked at, so it is bound to the candidate rather than declared
