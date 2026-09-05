@@ -110,7 +110,11 @@ examples.
   "no label → `workflow:implementing`" pickup, and sends an issue already sitting on `workflow:decomposing` the same
   way through that stage's own handler (once any half-finished split above it is settled) rather than spawning
   another decomposer. It also gates the **late size gate** below: with the switch off a clean committed candidate is
-  published unmeasured — pushed from the checkout as it stands, with no reading taken. What the switch decides in
+  published unmeasured — pushed from the checkout as it stands, with no reading taken, since the lease that push
+  carries is what answers a remote somebody else moved. The one road it does not save that reading on is the one with
+  no push behind it: a squash recovery that finds an interrupted rewrite never ran drops the record and hands the
+  branch back unchanged, so it reads the pull request whatever this switch says rather than handing
+  `workflow:documenting` a branch whose publication has left. What the switch decides in
   both directions is what
   ENTERS a decomposition, never what is already in one — a live late generation is adjudicated, cancelled, cleaned up,
   and restarted with the switch either way, and a candidate this issue already has a recorded generation for goes on
@@ -278,8 +282,12 @@ examples.
   PR branch into a single subject-only commit and force-push with lease. The subject reuses the dev's first commit
   subject when it carries a reusable `<prefix>:` form (Conventional **or** repo-local such as `event:`/`career:`);
   otherwise it is synthesized with a prefix inferred from recent base-branch history. `off` leaves the per-step commit
-  history intact (useful when downstream tooling depends on it). Parsed as a boolean: `1` / `true` / `on` / `yes`
-  enable, anything else disables.
+  history intact (useful when downstream tooling depends on it). What the switch decides is whether a **new** collapse
+  is made: one an earlier tick already made is finished either way, because the commits it replaced are off the branch
+  and the remote either carries the object that replaced them or does not, so an install that flips the switch off
+  between the rewrite and the push does not abandon reviewer-approved work off the pull request. An issue with no
+  squash recorded costs such an install nothing at all — no probe, no reading, and no write. Parsed as a boolean:
+  `1` / `true` / `on` / `yes` enable, anything else disables.
 - `EXPOSE_TRACKED_REPOS` — default `on`. tell working agents about the *other* repos this orchestrator tracks (slug,
   local `target_root`, base branch) for cross-repo reference. Inert for single-repo hosts — the awareness block is
   emitted only when more than one repo is configured, so a default deployment sees zero added prompt tokens. The
