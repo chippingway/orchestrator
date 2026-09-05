@@ -32,6 +32,9 @@ from orchestrator.workflow.late_split import (
 )
 from tests.git.publication import squash_git_support as squash_support
 from tests.git.publication.squash_gate_support import (
+    MOVED_HEAD,
+    TRACKED_EDIT,
+    TRACKED_FILE,
     PublicationSeed,
     _squash_gate,
 )
@@ -118,7 +121,9 @@ class _RefusesOneWrite:
 class _AdjudicatedSquashMixin:
     """One issue whose exemption names the commit the squash is about to eat."""
 
-    def _adjudicated(self, *, digest: str | None = None, base: str = ""):
+    def _adjudicated(
+        self, *, digest: str | None = None, base: str = "", accepted: str = "",
+    ):
         """The gate for an issue whose exemption names the pre-squash head.
 
         The pinned comment is exactly what a settled `single` verdict leaves:
@@ -128,9 +133,14 @@ class _AdjudicatedSquashMixin:
         `base` replaces that end, which is the one field of the record a hand
         edit can move without the reader refusing it: another commit in this
         repository types exactly as the frozen base does.
+
+        `accepted` names an EARLIER commit than the tip, which is what an
+        issue that went on committing after its verdict looks like: the
+        publication is seeded on the tip the squash would collapse, and the
+        exemption on the one commit a human actually ruled on.
         """
         gate = _squash_gate(self, PublicationSeed())
-        accepted = self._head_sha()
+        accepted = accepted or self._head_sha()
         _exemption.record_exemption(gate.state, accepted)
         _exemption.record_semantic_identity(
             gate.state,
@@ -371,6 +381,23 @@ class UntransferredSquashRealGitTest(
         self._assert_exempts(gate, accepted)
         self.assertEqual(pinned[KEY_CANDIDATE_SHA], self._head_sha())
 
+    def test_work_after_the_verdict_is_measured(self) -> None:
+        # An exemption names one commit, and a branch that went on committing
+        # after its verdict has a different one at the tip. What the squash
+        # collapses is that tip -- the accepted change plus everything on top
+        # of it -- so the contribution a push would publish is not the one a
+        # human ruled on, and it is measured like any other candidate.
+        accepted = self._head_sha()
+        self._commits_over(1)
+        gate = self._adjudicated(accepted=accepted)
+
+        self.assertTrue(self._squashes(gate).held)
+        self.assertIn(
+            (gate.issue.number, LABEL_DECOMPOSING), gate.gh.label_history,
+        )
+        self._assert_exempts(gate, accepted)
+        self.assertNotIn(_rewrites.LATE_REWRITE_PHASE, self._pinned(gate))
+
     def test_unadjudicated_work_is_still_measured(self) -> None:
         # The exemption names one commit and only it. An issue that never
         # earned one gets the reading it always did.
@@ -380,6 +407,62 @@ class UntransferredSquashRealGitTest(
         self.assertIn(
             (gate.issue.number, LABEL_DECOMPOSING), gate.gh.label_history,
         )
+
+
+class InterruptedSquashRealGitTest(
+    _AdjudicatedSquashMixin,
+    squash_support.SquashGitFixtureMixin,
+    unittest.TestCase,
+):
+    """A squash of an accepted commit that stops being publishable as it runs.
+
+    The entry is asked before the reset so a doomed publication costs no
+    rewrite, but the commit is made behind that answer and the gate's second
+    reading is the only one that sees what arrived in between. Nothing is
+    measured there and nothing is granted: the transfer sits behind that
+    reading, so a permission would be a claim about a publication this tick
+    could no longer take.
+    """
+
+    def test_a_publication_that_moved_grants_nothing(self) -> None:
+        # Somebody pushed to the pull request while the rewrite ran, so the
+        # head the force-push is leased against is not the head the remote is
+        # on. A permit granted here would license a push onto a publication
+        # nothing re-read, and its receipt would carry a human's verdict over
+        # on the strength of it.
+        gate = self._adjudicated()
+        accepted = self._head_sha()
+
+        squash_run = self._interrupted(gate, head=MOVED_HEAD)
+
+        self._assert_nothing_moved(gate, accepted, squash_run)
+
+    def test_a_tree_written_to_grants_nothing(self) -> None:
+        # The gate's first refusal, and the one a transfer turns on twice
+        # over: a tree carrying anything loose is one whose contribution is
+        # not the contribution a push would send, so neither end of the
+        # rewrite says what this checkout would publish.
+        gate = self._adjudicated()
+        accepted = self._head_sha()
+
+        squash_run = self._interrupted(gate, writes=TRACKED_EDIT)
+
+        self._assert_nothing_moved(gate, accepted, squash_run)
+        # And the edit survives the restore as the uncommitted change it was,
+        # which is the repair a `--hard` rollback would have thrown away.
+        self.assertEqual((self.work / TRACKED_FILE).read_text(), TRACKED_EDIT)
+
+    def _assert_nothing_moved(self, gate, accepted: str, squash_run) -> None:
+        """The verdict, the branch, and the record after a refused rewrite."""
+        self.assertTrue(squash_run.held)
+        squash_run.push_mock.assert_not_called()
+        self.assertEqual(self._head_sha(), accepted)
+        self._assert_exempts(gate, accepted)
+        self.assertNotIn(_rewrites.LATE_REWRITE_PHASE, self._pinned(gate))
+        identity = _exemption.read_semantic_identity(
+            gate.gh.read_pinned_state(gate.issue),
+        )
+        self.assertEqual(identity.candidate_sha, accepted)
 
 
 class LostGrantRealGitTest(
