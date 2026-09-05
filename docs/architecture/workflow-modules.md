@@ -1154,12 +1154,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             receipts a landed push, so a verdict is never left on a commit no remote carries. A write GitHub REFUSES is
                             handled here rather than allowed out: the staged payload is put back exactly as it was
                             found and the permit is refused, so the tick falls through to the ordinary gate instead
-                            of ending in an exception that would carry past every rollback the squash has. Refused,
+                            of ending in an exception that would carry past every rollback its caller has. Refused,
                             nothing moves and the ordinary cumulative size gate measures the rewrite like any other
                             candidate. The
                             drop a rolled-back force-push needs lives here too, so the rollback takes back exactly
-                            the permission the squash was granted and leaves the exemption, which never moved,
-                            alone. And the tick AFTER a crash between the grant and its push is answered from the
+                            the permission the rewrite was granted and leaves the exemption, which never moved,
+                            alone -- keyed on the head the record itself names as the one that rewrite found, since
+                            a squash is reset onto the commit it collapsed and a rebase onto the anchor it leased. And the tick AFTER a crash between the grant and its push is answered from the
                             same record: the recovery has no plan behind it, so both pairs, the publication, and the
                             lease come off the standing permission and every question is asked again over them --
                             which is why the gate's approved bypass defers here rather than answering on the object

@@ -319,6 +319,7 @@ line. Both parks end the way every park does, by being answered — with one exc
 `late_measurement_failed` standing over a split that has already become children is retired by the reconciliation
 itself, since nothing about that record is a human's to answer, and the branch it was freezing goes back into base
 sync with it.
+
 One approval is the exception, and it is this refresh's own work rather than a stage's. An auto rebase pins its
 recovery anchor before git runs and enters the size gate on that same head, and the gate records the rebased commit
 as one still owed a push before the push goes out — so a process that dies in between leaves the anchor and the
@@ -731,7 +732,8 @@ The keys that matter for the state machine fall into a few groups:
   `pending_auto_base_rebase_push_sha` — set to the pre-rebase local HEAD immediately BEFORE
   `_rebase_base_into_worktree`; cleared on every exit. A non-empty value on entry means a previous tick rebased and died
   before the post-push write, and `_recover_pending_auto_base_rebase` keys off it to either no-op, push the recovered
-  head, or park as `auto_base_rebase_push_failed`.
+  head, or park as `auto_base_rebase_push_failed`. It is also what tells the approval that interrupted attempt wrote
+  from a stage's, so the refresh is not frozen out of finishing its own route (see [Base refresh](#base-refresh)).
 - **Counters / timestamps.** `retry_window_start` + `retry_count` (24h fresh-spawn budget shared between implementing
   and decomposing, with `retry_cap_stage`, `retry_cap_continued`, and the sentence the park owes the thread beside
   them once it runs out — `retry_cap_notice`, or `late_park_notice` where a late adjudication is what ran out, since
@@ -1467,37 +1469,38 @@ rather than preserving.
   for the rest of its life, review and its rebases included.
 
   It shares that window with `late_approved_sha`, and the two are not duplicates of each other. The approval is
-  written in the same breath and answers a different question: *this commit is owed a push, and no other may be
-  pushed in its place*. So it freezes by presence — as the whole pair, `late_approved_lease` included, because the
-  two go down in one write and a lease standing alone is the damage the dispatcher parks on a tick later, by which
-  time a hold keyed to the commit alone would have rebased and force-pushed the branch that park is about. The late
-  reading freezes the same way, on any of the fields the write that mints a generation puts down rather than on
-  `late_candidate_sha` alone. It is proved before anything spawns, and is spent by the publication
-  that lands — durably ahead of the relabel that hands the issue to `validating`, since past that label implementing
-  never runs on the issue again and nothing else would ever drop it. `late_approved_lease` rides with it and is spent
-  by the same write: the head the pull request stood on when the approval was taken, for an approval on the
-  **published** side. The generation that froze that head is retired by the very write that approves the commit, and
-  the push it licenses has not run yet — so if that push fails, or the settlement hands the candidate to another
-  stage, the only head left to read is whatever the pull request has become since, and the retry skips the
-  measurement because the commit is already approved. Pinned to what was frozen, a pull request somebody moved in
-  between rejects the push; pinned to what can be read now, it is force-overwritten by work measured against the head
-  it used to be on. Read fail-closed like every other late commit field, and refused where it cannot be read: an
-  approval on the published side whose lease is absent or hand-edited has nothing left to pin against, and the one
-  head still available is the one the lease exists to catch, so it parks `late_measurement_failed` with nothing
-  pushed. The one exception is a pull request already standing ON the approved commit: the push it licenses has
-  already been made, so there is nothing left to pin and the debt is settled instead of parked. Empty is the ordinary
-  answer for a pre-publication approval — which is what every implementing-seam approval is, and whose push correctly
-  takes its own reading of the remote. After that the exemption is on its own, still
-  saying *this commit needs no measuring* for every later tick that finds the branch where the verdict left it — a
-  claim the gate keeps reading and the base refresh stops honouring, since past the handoff the branch is review's. Each
-  covers what the other cannot: the approval covers the wait for the push and could not survive it without freezing
-  the branch for good, and the exemption covers every tick past it and could not be read by presence for the same
-  reason. Read and
-  written fail-closed like every other late field: only a whole git object id is one, a `record_exemption` handed
-  anything else refuses rather than writing a value the gate would read as a bypass, and a hand-edited field reads
-  back as no exemption at all. The one write that does drop it is a restart's projection, which keeps nothing about
-  the attempt that ended: the branch that commit was on goes with it, so an exemption left behind would name work
-  the fresh cycle has no way to reach and never adjudicated.
+  written in the same breath and answers a different question: *this commit is owed a push, and no other may be pushed
+  in its place*. So it freezes by presence — as the whole pair, `late_approved_lease` included, because the two go
+  down in one write and a lease standing alone is the damage the dispatcher parks on a tick later, by which time a
+  hold keyed to the commit alone would have rebased and force-pushed the branch that park is about. One approval is
+  set aside all the same, and it is the refresh's own rather than a stage's: where `late_approved_lease` IS a
+  still-pinned `pending_auto_base_rebase_push_sha`, the freeze would shut the interrupted auto rebase out of the
+  recovery that anchor exists for ([Base refresh](#base-refresh)). The late reading freezes the same way, on any of
+  the fields the write that mints a generation puts down rather than on `late_candidate_sha` alone, and is never set
+  aside. It is proved before anything spawns, and is spent by the publication that lands — durably ahead of the
+  relabel that hands the issue to `validating`, since past that label implementing never runs on the issue again and
+  nothing else would ever drop it. `late_approved_lease` rides with it and is spent by the same write: the head the
+  pull request stood on when the approval was taken, for an approval on the **published** side. The generation that
+  froze that head is retired by the very write that approves the commit, and the push it licenses has not run yet — so
+  if that push fails, or the settlement hands the candidate to another stage, the only head left to read is whatever
+  the pull request has become since, and the retry skips the measurement because the commit is already approved.
+  Pinned to what was frozen, a pull request somebody moved in between rejects the push; pinned to what can be read
+  now, it is force-overwritten by work measured against the head it used to be on. Read fail-closed like every other
+  late commit field, and refused where it cannot be read: an approval on the published side whose lease is absent or
+  hand-edited has nothing left to pin against, and the one head still available is the one the lease exists to catch,
+  so it parks `late_measurement_failed` with nothing pushed. The one exception is a pull request already standing ON
+  the approved commit: the push it licenses has already been made, so there is nothing left to pin and the debt is
+  settled instead of parked. Empty is the ordinary answer for a pre-publication approval — which is what every
+  implementing-seam approval is, and whose push correctly takes its own reading of the remote. After that the
+  exemption is on its own, still saying *this commit needs no measuring* for every later tick that finds the branch
+  where the verdict left it — a claim the gate keeps reading and the base refresh stops honouring, since past the
+  handoff the branch is review's. Each covers what the other cannot: the approval covers the wait for the push and
+  could not survive it without freezing the branch for good, and the exemption covers every tick past it and could not
+  be read by presence for the same reason. Read and written fail-closed like every other late field: only a whole git
+  object id is one, a `record_exemption` handed anything else refuses rather than writing a value the gate would read
+  as a bypass, and a hand-edited field reads back as no exemption at all. The one write that does drop it is a
+  restart's projection, which keeps nothing about the attempt that ended: the branch that commit was on goes with it,
+  so an exemption left behind would name work the fresh cycle has no way to reach and never adjudicated.
 
   **What that commit carries.** `late_exempt_base_sha`, `late_exempt_candidate_sha`, `late_exempt_fingerprint`, and
   `late_exempt_fingerprint_format` are the semantic identity of the accepted change, written with the exemption in
