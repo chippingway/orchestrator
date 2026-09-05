@@ -316,12 +316,13 @@ orchestrator/
                         declining permit is the ordinary reading, which would either finish the route with the
                         verdict unmoved or adjudicate the change a second time
       outcomes.py       the already-published, unknown-comparison, diverged, dirty, failed-push, unvouched-record,
-                        rolled-back-remote, and unfinished-route answers -- the unvouched one resetting onto the
-                        anchor rather than letting the ordinary gate measure an adjudicated change again, the
-                        rolled-back one resetting rather than force-pushing over an undo under the very lease the
-                        undo restored, and the last parking with HEAD and the anchor left alone, since the remote
-                        carries the rewrite there and a reset would take the checkout off it, and the anchor is the
-                        only thing that brings the recovery back to a transfer it could not account for
+                        damaged-attempt-record, foreign-publication, rolled-back-remote, and unfinished-route
+                        answers -- the unvouched and damaged ones resetting onto the anchor rather than letting the
+                        ordinary gate measure an adjudicated change again, the rolled-back one resetting rather
+                        than force-pushing over an undo under the very lease the undo restored, and the last two
+                        parking with HEAD and the record left alone: the remote carries the rewrite on one and a
+                        reset would take the checkout off it, and on the other which publication the branch belongs
+                        to is exactly what the tick cannot say
       persistence.py    the parks, the reset-and-park tail -- which drops the debt it abandons, and the permission
                         a transfer granted for the same commit, only once the reset has actually landed, since a
                         refused one may leave the branch still standing on the approved commit -- the paired clear
@@ -329,7 +330,9 @@ orchestrator/
                         replay it names behind, and the state / notice / event writes a recovery ends in
       models.py         the frozen contexts, requests, snapshots, and decisions, plus the record one interrupted
                         attempt leaves of the replay it made -- read whole or not at all, since a caller holding
-                        any of its three facts apart would be free to fill the rest in from the world it woke up in
+                        any of its three facts apart would be free to fill the rest in from the world it woke up
+                        in, and read by PRESENCE beside that, so a comment carrying none of the group (the window
+                        before the write) is told from one something took a member out of
       state.py          the pinned-state keys -- the anchor a push is leased against, and the replay it publishes
                         with the publication it was made for -- plus the park reasons, refresh detour labels, and
                         the shared logger

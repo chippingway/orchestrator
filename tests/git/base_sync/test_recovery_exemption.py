@@ -28,6 +28,11 @@ from __future__ import annotations
 import itertools
 import unittest
 
+from orchestrator.git.base_sync import transfers
+from orchestrator.git.base_sync.models import (
+    _AutoRebaseRecoveryContext,
+    _pending_rewrite,
+)
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     rewrites as _rewrites,
@@ -57,6 +62,7 @@ from tests.git.base_sync.refresh_test_support import (
     METHOD_FIELD,
     PARK_FAILED,
     PARK_PUSH_FAILED,
+    PR_NUMBER,
     RESET_COMMAND,
     FakePRRef,
     _patched,
@@ -106,6 +112,10 @@ MALFORMED_LEASE = "not-a-commit"
 # The pinned field an issue's own publication is recorded under, and what a
 # client that cannot answer for the issue raises.
 KEY_PR_NUMBER = "pr_number"
+
+# The debt a grant writes beside the permission, in the one statement that
+# makes each answer for the other.
+KEY_APPROVED_SHA = "late_approved_sha"
 GET_ISSUE = "get_issue"
 UNREADABLE_ISSUE = "the issue could not be read again"
 
@@ -139,9 +149,8 @@ class _ResumedRebaseCase(_CleanRebaseCase):
 
     def _assert_finished_the_route(self, method: str) -> None:
         """The anchor is gone, the round is reset, and review has the head."""
-        pinned = self._pinned()
-        self.assertIsNone(pinned[KEY_PENDING_PUSH_SHA])
-        self.assertEqual(pinned[KEY_REVIEW_ROUND], 0)
+        self._assert_anchor(None)
+        self.assertEqual(self._pinned()[KEY_REVIEW_ROUND], 0)
         self.assertIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
         rebased = self._events_of(EVENT_BASE_REBASED)
         self.assertEqual(rebased[-1][METHOD_FIELD], method)
@@ -155,6 +164,25 @@ class _ResumedRebaseCase(_CleanRebaseCase):
             _rewrites.LateRewritePhase.PUBLISHED,
         )
         self.assertEqual(len(self._events_of(EVENT_TRANSFER)), 1)
+
+    def _issue(self):
+        """The issue this fixture's whole world is about."""
+        return self.gh._issues[ISSUE]
+
+    def _edited(self, edit) -> None:
+        """Apply one hand edit to the pinned comment, durably."""
+        issue = self._issue()
+        state = self.gh.read_pinned_state(issue)
+        edit(state)
+        self.gh.write_pinned_state(issue, state)
+
+    def _assert_anchor(self, expected) -> None:
+        """What the pinned comment says this attempt is still owed, if any."""
+        self.assertEqual(self._pinned()[KEY_PENDING_PUSH_SHA], expected)
+
+    def _assert_nothing_left(self, resumed) -> None:
+        """No push went out on the road this tick could not finish."""
+        resumed[PUSH_PATCH].assert_not_called()
 
     def _pinned(self) -> dict:
         """The pinned comment as the fake client stores it."""
@@ -345,9 +373,8 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
 
         resumed = self._resumes(remote_head=AFTER_SHA, push=False)
 
-        pinned = self._pinned()
-        self.assertEqual(pinned[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
-        self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
+        self._assert_anchor(BEFORE_SHA)
+        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_PUSH_FAILED)
         self.assertEqual(self._resets_of(resumed), [])
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
 
@@ -436,7 +463,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
 
     def _damages_the_permission(self) -> None:
         """Take one field out of the group the grant left on the comment."""
-        issue = self.gh._issues[ISSUE]
+        issue = self._issue()
         state = self.gh.read_pinned_state(issue)
         state.data.pop(DAMAGED_FIELD)
         self.gh.write_pinned_state(issue, state)
@@ -451,10 +478,6 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         self._assert_nothing_left(resumed)
         self._assert_held_for_a_human(resumed)
 
-    def _assert_nothing_left(self, resumed) -> None:
-        """No push went out on the road this tick could not finish."""
-        resumed[PUSH_PATCH].assert_not_called()
-
     def _damages_the_identity(self) -> None:
         """Take one field out of the record of what the exempt commit adds."""
         self._edited(lambda state: state.data.pop(DAMAGED_IDENTITY_FIELD))
@@ -463,20 +486,13 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         """Leave the receipt naming a head this attempt was not pushed from."""
         self._edited(lambda state: state.set(KEY_PUBLISHED_LEASE, lease))
 
-    def _edited(self, edit) -> None:
-        """Apply one hand edit to the pinned comment, durably."""
-        issue = self.gh._issues[ISSUE]
-        state = self.gh.read_pinned_state(issue)
-        edit(state)
-        self.gh.write_pinned_state(issue, state)
-
     def _assert_reset_and_parked(self, resumed) -> None:
         """The branch is back on the anchor and a human owns the record."""
         self.assertEqual(len(self._resets_of(resumed)), 1)
         self._assert_nothing_readjudicated()
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        self._assert_anchor(None)
         pinned = self._pinned()
-        self.assertIsNone(pinned[KEY_PENDING_PUSH_SHA])
         self.assertIsNone(pinned[KEY_PENDING_REWRITE_SHA])
         self.assertEqual(pinned[KEY_PARK_REASON], PARK_FAILED)
         self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
@@ -490,7 +506,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
 
     def _forgets_the_receipt(self) -> None:
         """Take the record of what reached the remote off the comment."""
-        issue = self.gh._issues[ISSUE]
+        issue = self._issue()
         state = self.gh.read_pinned_state(issue)
         state.set(KEY_PUBLISHED_SHA, None)
         self.gh.write_pinned_state(issue, state)
@@ -505,9 +521,8 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         self._assert_nothing_readjudicated()
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
         self.assertEqual(self._resets_of(resumed), [])
-        pinned = self._pinned()
-        self.assertEqual(pinned[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
-        self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
+        self._assert_anchor(BEFORE_SHA)
+        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_PUSH_FAILED)
         self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
 
 
@@ -563,7 +578,7 @@ class UnprovenLandingTest(_ResumedRebaseCase, unittest.TestCase):
 
         resumed = self._resumes(remote_head=AFTER_SHA)
 
-        resumed[PUSH_PATCH].assert_not_called()
+        self._assert_nothing_left(resumed)
         self._assert_held_for_a_human(resumed)
 
     def test_a_malformed_record_holds_the_route(self) -> None:
@@ -575,26 +590,18 @@ class UnprovenLandingTest(_ResumedRebaseCase, unittest.TestCase):
 
         resumed = self._resumes(remote_head=AFTER_SHA)
 
-        resumed[PUSH_PATCH].assert_not_called()
+        self._assert_nothing_left(resumed)
         self._assert_held_for_a_human(resumed)
 
     def _repoints_the_rewrite(self, sha: str) -> None:
         """Leave the pending record naming a replay this attempt never made."""
         self._edited(lambda state: state.set(KEY_PENDING_REWRITE_SHA, sha))
 
-    def _edited(self, edit) -> None:
-        """Apply one hand edit to the pinned comment, durably."""
-        issue = self.gh._issues[ISSUE]
-        state = self.gh.read_pinned_state(issue)
-        edit(state)
-        self.gh.write_pinned_state(issue, state)
-
     def _assert_held_for_a_human(self, resumed) -> None:
         """The anchor stands, HEAD is where it was, and the route is unfinished."""
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
-        pinned = self._pinned()
-        self.assertEqual(pinned[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
-        self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
+        self._assert_anchor(BEFORE_SHA)
+        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_PUSH_FAILED)
         self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
 
 
@@ -606,7 +613,7 @@ class RefusedSettlementTest(_ResumedRebaseCase, unittest.TestCase):
         # publication made under one stage may not be settled under another.
         self._crashes_before_the_push()
         self.gh.set_workflow_label(
-            self.gh._issues[ISSUE], WorkflowLabel.DOCUMENTING,
+            self._issue(), WorkflowLabel.DOCUMENTING,
         )
 
         self._assert_refuses()
@@ -643,7 +650,7 @@ class RefusedSettlementTest(_ResumedRebaseCase, unittest.TestCase):
             pr_number=REPOINTED_PR_NUMBER,
             head=FakePRRef(sha=AFTER_SHA),
         )
-        issue = self.gh._issues[ISSUE]
+        issue = self._issue()
         state = self.gh.read_pinned_state(issue)
         state.set(KEY_PR_NUMBER, REPOINTED_PR_NUMBER)
         self.gh.write_pinned_state(issue, state)
@@ -656,7 +663,7 @@ class RefusedSettlementTest(_ResumedRebaseCase, unittest.TestCase):
         """Nothing is pushed, nothing rotates, and the route is unfinished."""
         resumed = self._resumes(remote_head=AFTER_SHA)
 
-        resumed[PUSH_PATCH].assert_not_called()
+        self._assert_nothing_left(resumed)
         durable = self._durable()
         self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
         self.assertEqual(
@@ -666,29 +673,148 @@ class RefusedSettlementTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
         self._assert_nothing_readjudicated()
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
-        self.assertEqual(
-            self._pinned()[KEY_PENDING_PUSH_SHA], BEFORE_SHA,
-        )
+        self._assert_anchor(BEFORE_SHA)
 
 
-class RecordedProvenanceTest(_ResumedRebaseCase, unittest.TestCase):
-    """The terms a re-derived rewrite is decided on are the dead tick's own."""
+class ForeignPublicationTest(_ResumedRebaseCase, unittest.TestCase):
+    """An attempt made for a publication this issue no longer records."""
 
-    def test_a_relabel_is_not_the_dead_ticks_stage(self) -> None:
-        # The crash came before the grant, so the recovery re-derives the
-        # evidence -- and the stage it names is the one the attempt recorded
-        # rather than the one the issue happens to carry now. Read the other
-        # way the permit would compare today with today and wave through a
-        # publication the rewrite was never entered on.
+    def test_a_relabel_parks_an_unpushed_replay(self) -> None:
+        # Every road out of a recovery posts a notice to the pull request this
+        # tick holds and files its audit event under the stage this tick
+        # reads. A relabel made while the process was down would have both
+        # attributed to a publication the attempt was never made for.
         self._crashes_before_the_grant()
-        self.gh.set_workflow_label(
-            self.gh._issues[ISSUE], WorkflowLabel.DOCUMENTING,
+        self._relabels()
+
+        resumed = self._resumes()
+
+        self._assert_parked_in_place(resumed)
+        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+
+    def test_a_repoint_parks_a_landed_rewrite(self) -> None:
+        # The same after the receipt has landed, which is the road that would
+        # otherwise finalize: the transfer is settled and nothing is left to
+        # push, so the only thing finishing buys is a notice and an event on
+        # the wrong pull request -- and the anchor gone.
+        self._crashes_before_the_route()
+        self._repoints_the_pull_request()
+
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        self._assert_parked_in_place(resumed)
+        self.assertEqual(len(self._events_of(EVENT_TRANSFER)), 1)
+
+    def test_the_evidence_names_the_recorded_terms(self) -> None:
+        # The record is the source of the terms a re-derived rewrite is
+        # decided on. Taken from the context instead they would compare today
+        # with today, and the permit's publication checks would pass on any
+        # repoint or relabel the crash window allowed.
+        self._crashes_before_the_grant()
+
+        rewrite = transfers._reconstructed(
+            self._elsewhere(), AFTER_SHA, transfers._Handoff.UNRECORDED,
         )
 
-        self._resumes()
+        self.assertEqual(rewrite.pr_number, PR_NUMBER)
+        self.assertEqual(rewrite.source_stage, WorkflowLabel.IN_REVIEW)
 
-        self.assertEqual(len(self._events_of(EVENT_MEASUREMENT)), 1)
-        self.assertEqual(self._events_of(EVENT_TRANSFER), [])
+    def _relabels(self) -> None:
+        """Move the issue to another stage the refresh also drives."""
+        self.gh.set_workflow_label(
+            self._issue(), WorkflowLabel.DOCUMENTING,
+        )
+
+    def _repoints_the_pull_request(self) -> None:
+        """Record a different open pull request on the same branch."""
+        self._add_pr(
+            pr_number=REPOINTED_PR_NUMBER,
+            head=FakePRRef(sha=AFTER_SHA),
+        )
+        issue = self._issue()
+        state = self.gh.read_pinned_state(issue)
+        state.set(KEY_PR_NUMBER, REPOINTED_PR_NUMBER)
+        self.gh.write_pinned_state(issue, state)
+
+    def _elsewhere(self) -> _AutoRebaseRecoveryContext:
+        """The same recovery, on the publication a repoint moved it to."""
         durable = self._durable()
-        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
-        self.assertFalse(_rewrites.carries_rewrite_authorization(durable))
+        return _AutoRebaseRecoveryContext(
+            gh=self.gh,
+            spec=self.spec,
+            issue=self._issue(),
+            state=durable,
+            worktree=self.wt,
+            pr_number=REPOINTED_PR_NUMBER,
+            label=WorkflowLabel.DOCUMENTING,
+            pending_pre_rebase_sha=BEFORE_SHA,
+            pending_rewrite=_pending_rewrite(durable),
+        )
+
+    def _assert_parked_in_place(self, resumed) -> None:
+        """Nothing pushed, nothing reset, and the whole record still pinned."""
+        self._assert_nothing_left(resumed)
+        self.assertEqual(self._resets_of(resumed), [])
+        self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        self._assert_nothing_readjudicated()
+        self._assert_anchor(BEFORE_SHA)
+        pinned = self._pinned()
+        self.assertEqual(pinned[KEY_PENDING_REWRITE_SHA], AFTER_SHA)
+        self.assertEqual(pinned[KEY_PARK_REASON], PARK_FAILED)
+
+
+class DamagedAttemptRecordTest(_ResumedRebaseCase, unittest.TestCase):
+    """A record of the attempt that claims more than it can show."""
+
+    def test_a_partial_record_resets_the_replay(self) -> None:
+        # The remote is on the anchor and the checkout is ahead of it, which
+        # is the shape the ahead-only fallback publishes. Read as the absence
+        # it resembles, a group something took a member out of would send the
+        # replay to the ordinary gate and force-push whatever came back.
+        self._crashes_before_the_grant()
+        self._edited(lambda state: state.set(KEY_PENDING_REWRITE_SHA, None))
+
+        resumed = self._resumes()
+
+        self._assert_nothing_left(resumed)
+        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+        self._assert_nothing_readjudicated()
+        self._assert_anchor(None)
+        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_FAILED)
+
+
+class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
+    """A permission whose debt was written with it and is not there now."""
+
+    def test_an_unpaired_permission_resets_the_replay(self) -> None:
+        # The grant writes the permission and the debt in one statement for
+        # one commit. Read as outstanding, the settlement re-asks the permit
+        # -- and a permit that grants re-writes BOTH, so the missing half
+        # would be reconstructed from the very claim nobody could check and
+        # the push would go out under it.
+        self._crashes_before_the_push()
+        self._edited(lambda state: state.set(KEY_APPROVED_SHA, None))
+
+        resumed = self._resumes()
+
+        self._assert_nothing_left(resumed)
+        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+        self.assertEqual(self._events_of(EVENT_TRANSFER), [])
+        self._assert_nothing_readjudicated()
+        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_FAILED)
+
+    def test_a_repointed_debt_resets_the_replay(self) -> None:
+        # The same disagreement one field over: a debt owed for a commit this
+        # permission was never granted for. Its lease still names the anchor,
+        # so the refresh is not frozen out and the recovery has to answer.
+        self._crashes_before_the_push()
+        self._edited(lambda state: state.set(KEY_APPROVED_SHA, FOREIGN_SHA))
+
+        resumed = self._resumes()
+
+        self._assert_nothing_left(resumed)
+        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self.assertEqual(self._events_of(EVENT_TRANSFER), [])
+        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_FAILED)

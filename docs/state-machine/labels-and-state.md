@@ -364,6 +364,13 @@ of them satisfies. Remote-new is proved by the same record: refs that agree prov
 somebody who moved the branch and the remote together leaves exactly that shape, so a landing the attempt cannot
 show it made parks rather than finishing the route.
 
+The pull request and the stage are reconciled ahead of every road, because finishing one is never silent: the
+notice goes to the pull request this tick holds, the audit event is filed under the stage this tick reads, and the
+anchor that is the only thing bringing the tick back is dropped. An attempt recorded against a publication the
+issue no longer records would have all three attributed to work it was never made for, so it parks with HEAD and
+the whole record left exactly where they are — which pull request the branch belongs to is a question about the
+issue's record rather than about the commit, and throwing the replay away would answer neither.
+
 One remote-old shape is not a pre-push recovery at all, and it is read off the record too. Where a receipt names
 the checkout's commit as pushed from this anchor — or a transfer settled, which rides the same write — the pull
 request HAD this replay, so a pull request standing on the anchor now was rolled back out of band. The head it was
@@ -376,9 +383,14 @@ exemption in flight is the ordinary interrupted rebase. A rewrite with no `late_
 grant the crash came before, so the recovery re-derives the same evidence the dead tick would have assembled --
 over the pull request and stage that tick recorded -- and the permit rules on it. Without
 that, the replay of a change a human already ruled on is measured past the same ceiling and routed back into
-adjudication with a pull request open over the work. A group still at `authorized` for the head in hand IS the
-evidence, re-asked in full. One already `published` means the receipt landed and only the notice, the audit event,
-the cleared anchor, and the reviewer's route are outstanding. And a group this build cannot read whole, or one
+adjudication with a pull request open over the work. A group still at `authorized` for the head in hand, with the debt
+written beside it agreeing, IS the evidence, re-asked in full — the grant is one write of two records for one
+commit, and a permission standing beside a debt for another commit or another lease is a comment something took
+apart. Read as outstanding it would be re-asked, and a permit that grants re-writes BOTH, so the missing half would
+be reconstructed from the very claim nobody could check.
+
+One already `published` means the receipt landed and only the notice, the audit event, the cleared anchor, and the
+reviewer's route are outstanding. And a group this build cannot read whole, or one
 naming some other commit, is refused before either road that publishes anything: left to the ordinary cumulative
 gate the replay is measured past the same ceiling and routed into a second adjudication on the strength of a record
 nothing checked, so the branch goes back onto the anchor and the issue parks as `auto_base_rebase_failed` until a
@@ -844,8 +856,14 @@ The keys that matter for the state machine fall into a few groups:
   `pending_auto_base_rebase_rewrite_sha` + `pending_auto_base_rebase_rewrite_pr` +
   `pending_auto_base_rebase_rewrite_stage` — the other half of the same record, written together once git has
   produced the replay and before the size gate is entered, read whole or not at all, and dropped by the same write
-  that drops the anchor. The anchor says which head the push is leased against; the SHA says which local commit the
-  attempt made, and only it can say the divergent checkout a recovery finds is that attempt's work. A rebase
+  that drops the anchor. Absent and DAMAGED are two answers rather than one: a comment carrying none of the three
+  is the window between git returning and this write, while one carrying some of them and not the rest is a group
+  something took apart — read as the absence it resembles, a strictly-ahead checkout would be measured and
+  force-pushed on the strength of a claim nothing could check, so it resets onto the anchor and parks instead.
+  The pull request and the stage are also what the recovery reconciles against the issue's own before it finishes
+  any road, since finishing posts a notice, files an event, and drops the anchor.
+  The anchor says which head the push is leased against; the SHA says which local commit the attempt made, and
+  only it can say the divergent checkout a recovery finds is that attempt's work. A rebase
   REPLAYS the branch, so a worktree rebuilt from elsewhere, an operator's reset, and a branch pointed at somebody
   else's commit all present the same shape as a replay — clean, diverged, remote still on the anchor — and all
   satisfy the same lease. The pull request and the stage are what the permit's publication checks are asked

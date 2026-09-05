@@ -5,20 +5,25 @@
 One interrupted auto-rebase resolves into exactly one of these: the rewrite
 was already published, the comparison is unclassifiable, the remote moved
 out of band, the worktree is dirty, the reissued push failed, the pinned
-comment claims an exemption or a transfer nobody can read whole, the remote
-was rolled back off a replay the record says it carried, or a rewrite the pull
-request already carries is one this tick cannot finish the route behind.
+comment claims an exemption or a transfer nobody can read whole, the attempt's
+own record is in pieces, the attempt was made for a publication this issue no
+longer records, the remote was rolled back off a replay the record says it
+carried, or a rewrite the pull request already carries is one this tick cannot
+finish the route behind.
 Each one either finalizes through ``persistence`` or parks, so keeping them
 in one owner is what makes the set enumerable -- an outcome that neither
 routed nor parked would leave the issue holding an anchor no later tick can
 act on.
 
-Every park but one resets HEAD onto the pre-rebase anchor first, because
-that anchor is the head the remote PR still carries and the reviewer is still
-voting on. The unfinished-route park is the one that must not: the remote is
-standing on the REWRITE there, so putting the branch back on the anchor would
-take the checkout off work the pull request has. It parks with the anchor left
-pinned instead, and the next tick classifies the remote afresh.
+Most parks reset HEAD onto the pre-rebase anchor first, because that anchor
+is the head the remote PR still carries and the reviewer is still voting on.
+Two must not. The unfinished-route park sits over a remote standing on the
+REWRITE, so putting the branch back on the anchor would take the checkout off
+work the pull request has. And the foreign-publication park cannot say which
+pull request the branch belongs to at all, which is a question about the
+issue's record rather than about the commit -- throwing the replay away would
+answer neither. Both park with the anchor left pinned instead, and the next
+tick classifies afresh.
 """
 from __future__ import annotations
 
@@ -360,5 +365,101 @@ def _park_rolled_back_recovery(
             "anything once it is reconciled."
         ),
         reason=_REASON_AUTO_BASE_REBASE_PUSH_FAILED,
+    )
+    return True
+
+
+def _park_foreign_publication_recovery(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Park, without a reset, an attempt made for another publication.
+
+    The interrupted tick recorded which pull request it rebased for and which
+    stage it was entered from, and the issue no longer says either. Every road
+    out of a recovery ends in the same tail -- a notice to the pull request
+    this tick holds, an audit event filed under the stage this tick reads, and
+    the anchor dropped -- so finishing here would attribute the dead tick's
+    work to a publication it was never made for, and drop the one record that
+    could ever say otherwise.
+
+    Nothing is reset. Which publication the branch belongs to is exactly what
+    this tick cannot say, and putting the checkout back onto the anchor would
+    throw the replay away to settle a question about the pull request rather
+    than about the commit. The whole record stays pinned with it, so a human
+    who repoints the issue back, or clears the record, hands the next tick
+    something it can finish.
+    """
+    recorded = context.pending_rewrite
+    log.warning(
+        "issue=#%d auto-rebase recovery: the interrupted attempt recorded PR "
+        "#%d from %r and this issue now records PR #%d on %r; parking rather "
+        "than finishing a route for a publication it was not made for",
+        context.issue.number, recorded.pr_number, str(recorded.stage),
+        context.pr_number, str(context.label),
+    )
+    persistence._park_auto_rebase_failure(
+        context.gh,
+        context.issue,
+        context.state,
+        message=(
+            f"{config.HITL_MENTIONS} crash recovery for this issue's auto "
+            f"rebase: the interrupted attempt was made against pull request "
+            f"#{recorded.pr_number} from `{recorded.stage}`, and this issue "
+            f"now records pull request #{context.pr_number} on "
+            f"`{context.label}`. Finishing it would post the notice, file the "
+            "audit event, and route the reviewer against a publication that "
+            "attempt was never made for, so nothing was pushed and HEAD has "
+            "not been reset. Put the issue back on the publication the rebase "
+            "was made for -- or clear the "
+            "`pending_auto_base_rebase_*` fields on the pinned comment -- then "
+            "reply on this issue with anything to retry."
+        ),
+        reason=_REASON_AUTO_BASE_REBASE_FAILED,
+    )
+    return True
+
+
+def _park_unrecorded_recovery(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Restore the anchor when the attempt's own record is in pieces.
+
+    The pinned comment claims a record of what this attempt produced and
+    cannot show it whole -- a member missing, a pull request that is not an
+    identity, a stage no publication is entered from. Read as the absence it
+    resembles, the recovery would fall through to the ahead/behind counts and
+    a strictly-ahead checkout would be measured and force-pushed on the
+    strength of a claim nothing could check.
+
+    So the branch goes back onto the anchor, which is the head the remote
+    still carries wherever this refusal is reachable, and the issue parks. The
+    record itself is left where the reset's own rule leaves every damaged
+    group: for a human to repair, not for this tick to guess at.
+    """
+    local_short = (recovery_snapshot.local_head or "")[:8]
+    pre_rebase_short = context.pending_pre_rebase_sha[:8]
+    log.warning(
+        "issue=#%d auto-rebase recovery: the record of what this attempt "
+        "produced is not one this build can read whole; resetting %s onto the "
+        "anchor rather than publishing a checkout nothing vouches for",
+        context.issue.number, local_short,
+    )
+    persistence._reset_clear_and_park(
+        context,
+        context.pending_pre_rebase_sha,
+        message=(
+            f"{config.HITL_MENTIONS} crash recovery for PR "
+            f"#{context.pr_number}: the pinned comment claims a record of the "
+            "rebase an earlier tick was interrupted in the middle of, and the "
+            "orchestrator cannot read it back whole -- so it cannot say that "
+            f"`{local_short}` on the branch is that attempt's own work. HEAD "
+            f"has been reset to the pre-rebase SHA `{pre_rebase_short}` and "
+            "nothing was pushed. Repair or clear the "
+            "`pending_auto_base_rebase_*` fields on the pinned comment, then "
+            "reply on this issue with anything to retry."
+        ),
+        reason=_REASON_AUTO_BASE_REBASE_FAILED,
     )
     return True

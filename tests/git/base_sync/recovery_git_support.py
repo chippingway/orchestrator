@@ -91,6 +91,14 @@ KEY_PENDING_REWRITE_PR = "pending_auto_base_rebase_rewrite_pr"
 
 KEY_PENDING_REWRITE_STAGE = "pending_auto_base_rebase_rewrite_stage"
 
+# The record as one group, because the window a case seeds by dropping it is
+# the one where the attempt reached none of it.
+_REWRITE_RECORD_KEYS = (
+    KEY_PENDING_REWRITE_SHA,
+    KEY_PENDING_REWRITE_PR,
+    KEY_PENDING_REWRITE_STAGE,
+)
+
 EVENT_FIELD = "event"
 
 METHOD_FIELD = "method"
@@ -372,7 +380,8 @@ class RecoveryGitFixtureMixin:
         """
         issue = self.gh._issues[ISSUE]
         state = self.gh.read_pinned_state(issue)
-        state.set(KEY_PENDING_REWRITE_SHA, None)
+        for key in _REWRITE_RECORD_KEYS:
+            state.set(key, None)
         self.gh.write_pinned_state(issue, state)
 
     def divergence_from_remote(self) -> tuple[int, int]:

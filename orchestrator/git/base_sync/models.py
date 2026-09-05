@@ -22,6 +22,13 @@ from orchestrator.git.base_sync.state import (
     _PENDING_REWRITE_SHA,
     _PENDING_REWRITE_STAGE,
 )
+
+# Every key one attempt's record of its own replay goes down as, so a reader
+# can tell a comment carrying none of them from one a hand edit or a
+# half-finished write took a member out of.
+_PENDING_REWRITE_KEYS = (
+    _PENDING_REWRITE_SHA, _PENDING_REWRITE_PR, _PENDING_REWRITE_STAGE,
+)
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.state import (
@@ -43,24 +50,61 @@ class _PendingRewrite:
     or a repoint made while the process was down would pass as the dead tick's
     own terms.
 
-    Absent is the window between `git rebase` returning and the write that
-    records this, and `is_recorded` is what every caller asks: an attempt that
-    reached that write can be reconciled against, and one that did not is
-    handled by the readings a recovery can still take for itself.
+    Absent and DAMAGED are two answers rather than one, and keeping them apart
+    is the whole reason `claimed` is here beside the three. Absent is the
+    window between `git rebase` returning and the write that records this: no
+    key on the comment, nothing to reconcile against, and the recovery falls
+    back to the readings it can still take for itself. Damaged is a comment
+    that claims the record and cannot show it -- a member missing, a pull
+    request that is not an identity, a stage no publication is entered from --
+    and reading that as absent would let exactly the state nobody can vouch
+    for take the road reserved for the state nobody ever wrote.
     """
 
     sha: str = ""
     pr_number: int = 0
     stage: WorkflowLabel | None = None
+    # Whether the pinned comment carries any member of this group. Presence
+    # rather than shape, like every other claim in this domain: a record
+    # something edited claims an attempt just as loudly as a whole one. Read
+    # by VALUE rather than by the key being there, because the write that ends
+    # an attempt blanks these fields rather than removing them -- so a group
+    # of nulls is the record nobody wrote, and a member carrying something
+    # beside one that does not is the record something took apart.
+    claimed: bool = False
 
     @property
     def is_recorded(self) -> bool:
         """Whether all three facts came back in the shape they claim."""
         return bool(self.sha) and self.pr_number > 0 and self.stage is not None
 
+    @property
+    def is_damaged(self) -> bool:
+        """Whether this comment claims a record it cannot show whole."""
+        return self.claimed and not self.is_recorded
+
     def names(self, local_head: str) -> bool:
         """Whether this record vouches for the commit a checkout stands on."""
         return self.is_recorded and bool(local_head) and self.sha == local_head
+
+    def answers_for(
+        self, pr_number: int, stage: WorkflowLabel | None,
+    ) -> bool:
+        """Whether the attempt was made for the publication being finished.
+
+        What a recovery has to ask before it finishes anything, because
+        finishing is not silent: the notice goes to the pull request this tick
+        holds, the audit event is filed under the stage this tick reads, and
+        the anchor that would bring the tick back is dropped. A repoint or a
+        relabel made while the process was down would have all three
+        attributed to a publication the interrupted attempt was never made
+        for -- and the record is the only thing that can say so.
+        """
+        return (
+            self.is_recorded
+            and self.pr_number == pr_number
+            and self.stage == stage
+        )
 
 
 def _pending_rewrite(state: PinnedState) -> _PendingRewrite:
@@ -70,15 +114,25 @@ def _pending_rewrite(state: PinnedState) -> _PendingRewrite:
     group short of a member, a pull request that is not an identity, and a
     stage no publication is entered from each answer as no record, which every
     caller reads as "cannot say" rather than as a fact about the world.
+
+    What separates that from a comment carrying no group at all is the
+    presence of any member, which travels back on the answer. A caller acting
+    on the absence needs to know which absence it has: one nothing ever wrote,
+    or one something took apart.
     """
+    claimed = any(
+        state.get(key) is not None for key in _PENDING_REWRITE_KEYS
+    )
     recorded = state.get(_PENDING_REWRITE_SHA)
     number = state.get(_PENDING_REWRITE_PR)
     stage = _recorded_stage(state.get(_PENDING_REWRITE_STAGE))
     if not isinstance(recorded, str) or not isinstance(number, int):
-        return _PendingRewrite()
+        return _PendingRewrite(claimed=claimed)
     if isinstance(number, bool) or number <= 0 or stage is None:
-        return _PendingRewrite()
-    return _PendingRewrite(sha=recorded, pr_number=number, stage=stage)
+        return _PendingRewrite(claimed=claimed)
+    return _PendingRewrite(
+        sha=recorded, pr_number=number, stage=stage, claimed=True,
+    )
 
 
 def _recorded_stage(recorded: object) -> WorkflowLabel | None:

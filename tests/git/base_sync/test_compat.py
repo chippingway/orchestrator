@@ -36,7 +36,8 @@ _EXPECTED_SIGNATURES = (
             "(gh, spec, issue, state, worktree, *, pr_number, label, "
             "pending_pre_rebase_sha, "
             "pending_rewrite=_PendingRewrite(sha='', pr_number=0, "
-            "stage=None), behind=0, unparking_consumed_max=None)"
+            "stage=None, claimed=False), behind=0, "
+            "unparking_consumed_max=None)"
         ),
     ),
     (

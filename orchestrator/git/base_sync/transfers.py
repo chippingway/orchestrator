@@ -27,16 +27,19 @@ are closed:
   written. The grant was still ahead of the crash, so the record cannot supply
   the evidence and the recovery assembles it exactly as the interrupted tick
   would have.
-* `OUTSTANDING` -- a permission stands for this very head and the push it
-  licensed has not been receipted. The record IS the evidence, re-asked in
-  full rather than believed, and the receipt is what this recovery still owes.
+* `OUTSTANDING` -- a permission stands for this very head, the debt written
+  with it agrees, and the push it licensed has not been receipted. The record
+  IS the evidence, re-asked in full rather than believed, and the receipt is
+  what this recovery still owes.
 * `SETTLED` -- the receipt landed and the exemption is already on the head.
   Nothing is left to move, and a recovery that moved anything here would be
   making a second claim about a transfer one write already finished.
-* `UNVOUCHED` -- a group is standing that this build cannot read whole, or one
-  claiming a commit that is not the head in hand. Nothing is assembled and
-  nothing is settled: the ordinary cumulative gate measures the replay, which
-  is the answer a permission nobody can check has to get.
+* `UNVOUCHED` -- a group is standing that this build cannot read whole, one
+  claiming a commit that is not the head in hand, or one whose paired debt
+  disagrees with it. Nothing is assembled and nothing is settled, and the
+  recovery parks rather than letting the ordinary gate measure a change a
+  human already ruled on -- which is the answer a permission nobody can check
+  has to get.
 
 Only `UNRECORDED` is handed fresh evidence, and that asymmetry is the safety
 rule. A grant REPLACES the whole authorization group rather than adding beside
@@ -252,11 +255,11 @@ def _standing_permission(
     with a fresh rebase standing on top of it, so the evidence for THIS replay
     is the recovery's to assemble like any other.
 
-    Everything else is a claim. A group this build cannot read back whole, and
-    one still outstanding for some other commit, are both refused rather than
-    replaced: the group is the only account there is of how the exemption came
-    to name what it names, and a recovery that overwrote one would be
-    repairing evidence nobody checked.
+    Everything else is a claim. A group this build cannot read back whole, one
+    still outstanding for some other commit, and one whose DEBT does not agree
+    with it are all refused rather than replaced: the group is the only
+    account there is of how the exemption came to name what it names, and a
+    recovery that overwrote one would be repairing evidence nobody checked.
     """
     # Lazy for the reason every upward reach in this package is: the record
     # sits in the workflow layer above it.
@@ -267,9 +270,40 @@ def _standing_permission(
     if authorization is None:
         return _Handoff.UNVOUCHED
     settled = authorization.phase == _rewrites.LateRewritePhase.PUBLISHED
-    if authorization.rewrite.to_sha == local_head:
-        return _Handoff.SETTLED if settled else _Handoff.OUTSTANDING
-    return None if settled else _Handoff.UNVOUCHED
+    if authorization.rewrite.to_sha != local_head:
+        return None if settled else _Handoff.UNVOUCHED
+    if settled:
+        return _Handoff.SETTLED
+    return _outstanding_or_unvouched(state, authorization.rewrite)
+
+
+def _outstanding_or_unvouched(state: PinnedState, rewrite) -> _Handoff:
+    """A permission for the head in hand, held to the debt written with it.
+
+    The grant is ONE write of two records for one commit: the permission that
+    says what a push may carry a human's verdict over, and the debt that says
+    the push is owed and what it is pinned to. They are written together
+    precisely so a reader can hold each to the other, and this is that reader.
+
+    A permission standing beside a debt that names another commit, another
+    lease, or nothing at all is a comment something took apart. Read as
+    outstanding, the settlement re-asks the permit -- and a permit that grants
+    RE-WRITES both records, so the missing half would be reconstructed from
+    the very claim nobody could check and the push would go out under it. So
+    the pair is asked before the handoff is called outstanding, and a
+    disagreement is the refusal every other unvouchable record here gets.
+
+    Read through the same fail-closed readers the debt's own owner uses: a
+    hand-edited value is no approval, which is exactly the disagreement this
+    is looking for.
+    """
+    # Lazy for the reason every upward reach in this package is: the debt
+    # sits in the workflow layer above it.
+    from orchestrator.workflow.stages.implementing import late_parks
+    owed = late_parks._approved_commit(state) == rewrite.to_sha
+    if owed and late_parks._approved_lease(state) == rewrite.lease:
+        return _Handoff.OUTSTANDING
+    return _Handoff.UNVOUCHED
 
 
 def _reconstructed(

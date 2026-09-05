@@ -550,8 +550,14 @@ lost, rather than relabelling and leaving it: the permit is scoped to the stage 
 the refresh's own route moves the issue to `workflow:validating`, so a settlement one tick later is refused on the
 stage alone. That settlement is taken on the permit ALONE — a refusal parks rather than falling through to the
 ordinary reading, which would either report a landed publication with the verdict unmoved or adjudicate the change
-a second time. Every state neither of those covers — a permission this build cannot read, one naming
-some other commit, a receipt nobody wrote, a debt nothing paid, a tree carrying uncommitted changes, a remote
+a second time — and it is reached only over a permission whose paired debt agrees with it, since the grant writes
+both in one statement and a permit re-asked over half of one would rebuild the other from a claim nobody checked.
+Every road out of the recovery reconciles the pull request and the stage the attempt recorded against the ones the
+issue holds now, because finishing any of them posts a notice, files an audit event, and drops the anchor that is
+the only thing bringing the tick back.
+
+Every state neither of those covers — a permission this build cannot read, one naming some other commit, a receipt
+nobody wrote, a debt nothing paid, a tree carrying uncommitted changes, a remote
 somebody moved — settles nothing and parks fail-closed rather than finishing the route, because the route clears
 the recovery anchor and the anchor is the only thing that brings the tick back to a verdict that may not have moved
 ([`../state-machine/labels-and-state.md#base-refresh`](../state-machine/labels-and-state.md#base-refresh)).

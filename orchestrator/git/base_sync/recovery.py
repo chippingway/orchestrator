@@ -15,7 +15,10 @@ context from.
 
 What the remote says is only half of what an interrupted rebase has to be
 classified by, because the rebase may have been carrying a human's verdict
-onto the commit it produced. ``transfers`` answers the other half off the
+onto the commit it produced, and because every road out of here ends in a
+notice, an audit event, and the anchor dropped -- so the publication the
+attempt recorded making its rewrite for is reconciled against the one this
+issue holds now before any of them is taken. ``transfers`` answers the other half off the
 pinned comment -- how far the transfer's own writes got -- and the two roads
 that still publish something are handed it. A rewrite the grant never reached
 is given re-derived evidence, so the replay is decided on the transfer the
@@ -412,9 +415,40 @@ def _route_recovery_snapshot(
     if completed is None:
         return True
     carried = transfers._carried_by(context.state, completed.local_head)
+    if _made_for_another_publication(context):
+        return outcomes._park_foreign_publication_recovery(context, completed)
     if completed.local_head and completed.local_head == completed.remote_head:
         return _finish_published_recovery(context, completed, carried)
     return _route_an_unpublished_head(context, completed, carried)
+
+
+def _made_for_another_publication(
+    context: _AutoRebaseRecoveryContext,
+) -> bool:
+    """Whether the attempt was made for a publication this tick is not on.
+
+    Asked ahead of every road, because what a recovery does at the end of one
+    is never silent: the notice goes to the pull request this tick holds, the
+    audit event is filed under the stage this tick reads, and the anchor that
+    is the only thing bringing the tick back is dropped. A pull request
+    repointed or an issue relabelled while the process was down would have all
+    three attributed to a publication the interrupted attempt was never made
+    for -- and would attribute them without anything having noticed.
+
+    Asked of the RECORD rather than of the permit, because the permit is not
+    on every road: a settled transfer has no permit left to re-ask, an issue
+    carrying no verdict never had one, and both still reach the finalize that
+    clears the anchor and announces itself.
+
+    Silent where the attempt recorded nothing, which is the window between git
+    returning and the write that records it. There is no claim to disagree
+    with there, and the roads behind this one already refuse to publish
+    anything they cannot show the terms of.
+    """
+    recorded = context.pending_rewrite
+    if not recorded.is_recorded:
+        return False
+    return not recorded.answers_for(context.pr_number, context.label)
 
 
 def _route_an_unpublished_head(
@@ -424,23 +458,29 @@ def _route_an_unpublished_head(
 ) -> bool:
     """Route a checkout the pull request is not standing on.
 
-    Three refusals before the one road that pushes, in the order the evidence
+    Four refusals before the one road that pushes, in the order the evidence
     for them costs nothing to read. A remote the record says already carried
     this replay has been rolled back by somebody, and the anchor a retry would
-    lease against is the head they rolled it back to. A record nobody can
-    vouch for would reach the ordinary cumulative gate and send an adjudicated
-    change into a second adjudication. And a checkout this attempt cannot show
-    it produced is not one to force-push under a lease every rebuilt worktree
-    and every operator reset satisfies just as well.
+    lease against is the head they rolled it back to. A transfer record nobody
+    can vouch for would reach the ordinary cumulative gate and send an
+    adjudicated change into a second adjudication. An attempt record something
+    took a member out of is the same refusal one field over: read as the
+    absence it resembles, it would fall through to the counts, and a
+    strictly-ahead checkout would be measured and force-pushed on the strength
+    of a claim nothing could check. And a checkout this attempt cannot show it
+    produced is not one to force-push under a lease every rebuilt worktree and
+    every operator reset satisfies just as well.
 
     What is left is the retry the anchor exists for, and -- for a remote
     neither pinned head accounts for -- the counts, which answer the question
-    they were always about.
+    they were always about, over an attempt that recorded nothing at all.
     """
     if transfers._rolled_back_publication(context, completed, carried):
         return outcomes._park_rolled_back_recovery(context, completed)
     if carried == transfers._Handoff.UNVOUCHED:
         return outcomes._park_unvouched_recovery(context, completed)
+    if context.pending_rewrite.is_damaged:
+        return outcomes._park_unrecorded_recovery(context, completed)
     if _is_this_attempts_rewrite(context, completed):
         return _retry_recovery_push(context, completed, carried)
     return _route_a_moved_remote(context, completed, carried)
