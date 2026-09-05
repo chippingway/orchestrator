@@ -172,6 +172,16 @@ examples.
   agent subprocesses and hard-exits (`128 + signum`). Keep below the systemd unit's `TimeoutStopSec` (90s) so
   `systemctl restart` sees a clean stop instead of escalating to SIGKILL — without it the drain waits on in-flight
   workers bounded only by `AGENT_TIMEOUT` (1800s) or a blocking GitHub retry/backoff, which overruns the stop deadline.
+- `TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS` — default `86400` (a day). how long apart the terminal-artifact
+  maintenance passes run: the bounded reclamation of the worktrees and branches of issues this orchestrator has
+  finished with. The polling loop fits one in *between* passes (never inside a tick) once this long has elapsed on
+  its own monotonic clock, and `python -m orchestrator --cleanup-terminal-artifacts` runs one on demand regardless.
+  Must be `>= 1`: a zero or negative interval would put a host-wide teardown between every pair of polling passes,
+  each one holding scheduler admission closed while it proved the host quiet. Nothing is persisted, so a restart
+  costs at most one extra pass — a repeated pass reads the host again and reports whatever is already gone as done.
+  Raising it only delays how long a finished issue's checkout survives; the pass never blocks workflow progress
+  either way, since a host it cannot prove quiet defers the whole pass. The setting bounds the polling process's own
+  passes; the one-shot mode below runs when asked and defers whenever a polling process is live on the host.
 - `MAX_REVIEW_ROUNDS` — default `3`. review/fix iterations before parking on `awaiting_human`
 - `MAX_CONFLICT_ROUNDS` — default `3`. auto-conflict-resolution rounds before parking on `awaiting_human`
 - `MAX_RETRIES_PER_DAY` — default `3`. fresh implementer spawns per issue per 24h window (`0` = unbounded, and an
@@ -451,6 +461,35 @@ agent. The skip is conditional on active state.
 restart) so any in-flight workers complete cleanly. The signal handler also calls `scheduler.shutdown(wait=False)`
 synchronously the instant the signal lands, so the submit path is closed mid-tick.
 
+**Maintenance barrier.** `scheduler.maintenance_barrier(timeout=...)` is the one hold that closes admission without
+closing the scheduler: both admission paths refuse for its duration — `submit` with `reason=maintenance`, and
+`track_active` by handing back `claimed=False`, which the family bucket already treats as "another worker has it" and
+retries next pass — and the work already admitted is then waited out within the bound it was given. Nothing running
+is cancelled or hurried. The hold answers `True` only when every counted worker and every tracked claim is gone
+while it keeps new ones out; a bound that expires, a `shutdown` that started, a scheduler already closed, or a hold
+somebody else has answers `False`, and the caller does nothing. Admission is given back around the body whatever
+the body did, so a pass that raised cannot leave a host refusing work. The one caller is the terminal-artifact
+maintenance pass (`runtime.artifacts`, cadence `TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS`).
+
+The barrier is bounded by what a scheduler knows, and two things sit around it for what it does not. A granted hold
+is a snapshot, so the pass re-reads `state.running`, `scheduler.is_closed()` and its own host-hold budget **twice
+per candidate** — before it is looked at and again as the last thing before its first mutation, since the readings
+in between (the issue, its pull requests, the remote) are where a candidate's seconds go — and it keeps the
+scheduler's per-candidate `is_active` check underneath as defense in depth.
+
+Another *process* is outside all of it: its workers are in its own scheduler, so `runtime.exclusion` takes a `flock`
+claim on `WORKTREES_DIR/.artifact-maintenance.lock`. Every polling run holds it shared for its whole life, and
+**every** pass holds it exclusively while it acts — the one-shot mode from the start, a polling run's own recurring
+pass by handing its presence over and taking it back — so no process reclaims while another could be submitting,
+including a second daemon on the same host. The handover happens **inside** the barrier: a presence says work may be
+running in the process holding it, so it may only be given up once that process has closed admission and drained,
+and it has to be back before admission reopens. A pass refused the claim defers whole; a poller wanting it waits
+without a deadline, because polling through a teardown is never safe, and what bounds that wait is the pass giving
+the host back at a candidate boundary once it has held it for 120s — the one host scan in front of the candidates
+included — plus the candidate in hand.
+That is what makes running the one-shot mode on the same host as
+the daemon safe: it declines to run rather than trusting per-candidate gates against work it cannot see.
+
 `runtime.ticks.run_tick` calls `scheduler.reap()` exactly once per polling pass (right before
 `retention.prune_with_retention_logging()`) so worker failure-completion records drain before the next iteration.
 `_dispatch_via_scheduler` deliberately does NOT reap.
@@ -523,9 +562,11 @@ scans work are in
 
 ## Run modes
 
-`./run.sh` for production polling, `python -m orchestrator --once` for a single tick, `--log-level DEBUG` for verbose
-logs, and the `chipping-orchestrator` console script equivalent to all three are in
-[`configuration/operations.md#run-modes`](configuration/operations.md#run-modes).
+`./run.sh` for production polling, `python -m orchestrator --once` for a single tick,
+`--cleanup-terminal-artifacts` for a maintenance-only run that reclaims finished issues' artifacts (deleting the
+branches it proved reclaimable, locally and on the remote) without polling and without writing any workflow state,
+`--log-level DEBUG` for verbose logs, and the `chipping-orchestrator` console script equivalent to
+all four are in [`configuration/operations.md#run-modes`](configuration/operations.md#run-modes).
 
 ## Running under systemd (user service)
 

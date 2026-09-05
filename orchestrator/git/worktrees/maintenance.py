@@ -70,6 +70,20 @@ log = logging.getLogger("orchestrator.worktree_lifecycle")
 # layer may not reach up into the workflow that owns it.
 ActivityGuard = Callable[[str, int], bool]
 
+# Whether this pass may still act at all, asked with nothing in hand: it is
+# about the process rather than about a candidate. Injected for the same reason
+# the activity guard is -- what ends a pass early is a signal this layer never
+# sees and a hold it did not take.
+#
+# Asked twice per candidate, and both places are boundaries a pass can stop on
+# without leaving a teardown half spent: before the candidate is looked at, and
+# again as the last thing before the first mutation. The second is what makes
+# the first worth anything, since everything expensive happens in between --
+# the issue, the pull requests, the remote, every reading the deletions are
+# pinned to -- and a signal that landed in the middle of all that would
+# otherwise be answered by going ahead and deleting.
+ContinuationGuard = Callable[[], bool]
+
 # How long a checkout is left alone after the last thing that touched it. An
 # hour is longer than any tick and any agent run's gap between writes, and
 # short enough that a host finishing its day's work has its disk back the same
@@ -381,13 +395,28 @@ def _maintained_candidate(
     candidate: MaintenanceCandidate,
     *,
     claimed: ActivityGuard,
-) -> MaintenanceResult:
+    going: ContinuationGuard,
+) -> MaintenanceResult | None:
     """Decide about one candidate, and act on it if everything clears it.
 
     The classification is taken here rather than handed in, because what it
     reads is what the mutations are pinned to: a verdict taken a tick earlier
     would clear commits the artifacts have since left, and the teardown would
     then be spending a proof about branches that no longer exist.
+
+    `None` is the pass being stopped between the readings and the teardown, and
+    it is a different answer from every other one here: the others are what
+    this candidate IS, and this one is that nothing was decided about it. The
+    reading is taken last, immediately before the first mutation, because the
+    readings above it are where the seconds go -- an issue, its pull requests,
+    what the remote carries -- and a stop that arrived during them may not be
+    answered by deleting anyway.
+
+    Once past it the candidate is taken as ONE unit rather than checked again
+    between its artifacts. A teardown is a checkout removal and two pinned ref
+    deletes, each already leased to a commit and each idempotent; stopping in
+    the middle of them would trade a state this vocabulary can report for one
+    it cannot, and buy microseconds of earlier exit for it.
     """
     artifacts = candidate.artifacts
     active = _claim_reason(artifacts, claimed)
@@ -404,7 +433,27 @@ def _maintained_candidate(
     quiet, disturbed = _activity_reason(artifacts)
     if quiet is not None:
         return _answered(candidate, quiet, disturbed)
+    if _stopped(going):
+        return None
     return _reclaimed(candidate, verdict.proven)
+
+
+def _stopped(going: ContinuationGuard) -> bool:
+    """Whether the pass may no longer act, with an unread answer meaning no.
+
+    Fails closed like every gate in front of a deletion here, and behind a
+    total boundary for the reason every injected question carries one: the
+    predicate is the caller's, so what it does when it fails is not something
+    this module can weigh against the mutations behind it.
+    """
+    try:
+        return not going()
+    except Exception:
+        log.warning(
+            "could not be asked whether the maintenance pass may go on; "
+            "stopping it here", exc_info=True,
+        )
+        return True
 
 
 def _maintained_candidates(
@@ -412,6 +461,7 @@ def _maintained_candidates(
     candidates: Iterable[MaintenanceCandidate],
     *,
     claimed: ActivityGuard,
+    going: ContinuationGuard,
 ) -> tuple[MaintenanceResult, ...]:
     """Run the pass over every candidate of ONE repository, in its order.
 
@@ -421,12 +471,35 @@ def _maintained_candidates(
     issue happens to carry that number there -- and then delete branches on the
     strength of it.
 
-    Every candidate gets a result, the untouched ones included. A caller
-    holding only what was cleaned cannot tell a candidate this pass decided to
-    keep from one it never reached, and the second is what a pass that died
-    half way through looks like.
+    Every candidate this pass DECIDED about gets a result, the untouched ones
+    included: a caller holding only what was cleaned cannot tell a candidate
+    this pass kept from one it never reached, and the second is what a pass
+    that died half way through looks like. The candidates behind a stop are
+    the ones it decided nothing about, and they get none -- so the answer is
+    the prefix it reached, in the order the discovery named them.
+
+    Whether it may still act is asked before EACH candidate rather than once
+    for the repository, because what a caller is being asked is not a property
+    of the artifacts: a process that has begun stopping has no standing to
+    spend the quiet it was granted a moment ago, and one asked a repository at
+    a time would spend the whole of the repository it was already inside. The
+    candidate itself asks once more before it acts, and answers `None` when
+    that reading is what stopped it -- so a stop arriving DURING the readings
+    ends the pass here rather than being noticed one candidate later.
+
+    A candidate the pass stops before has no answer at all, which is exactly
+    what an interrupted pass has always looked like from here.
     """
-    return tuple(
-        _maintained_candidate(gh, candidate, claimed=claimed)
-        for candidate in candidates
-    )
+    answers: list[MaintenanceResult] = []
+    for candidate in candidates:
+        answered = None if _stopped(going) else _maintained_candidate(
+            gh, candidate, claimed=claimed, going=going,
+        )
+        if answered is None:
+            log.info(
+                "issue=#%d artifacts left alone: this pass may no longer act",
+                candidate.artifacts.issue_number,
+            )
+            break
+        answers.append(answered)
+    return tuple(answers)

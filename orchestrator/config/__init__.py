@@ -89,6 +89,7 @@ __all__ = [
     "SHUTDOWN_GRACE_SECONDS",
     "SQUASH_ON_APPROVAL",
     "TARGET_REPO_ROOT",
+    "TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS",
     "VERIFY_COMMANDS",
     "VERIFY_TIMEOUT",
     "WORKFLOW_TRANSITION_GUARD",
@@ -421,6 +422,23 @@ SQUASH_ON_APPROVAL: bool = _RESOLVED["SQUASH_ON_APPROVAL"]
 # URLs), and write-containment is unchanged, so default-on-when-multi-repo is
 # the right posture; the kill switch keeps it reversible.
 EXPOSE_TRACKED_REPOS: bool = _RESOLVED["EXPOSE_TRACKED_REPOS"]
+
+# Seconds between two terminal-artifact maintenance passes: the bounded
+# reclamation of the worktrees and branches of issues this orchestrator has
+# finished with, run by the polling process between passes and by the
+# `--cleanup-terminal-artifacts` one-shot mode on its own. A day by default,
+# because what a pass reclaims is disk rather than anything the workflow
+# waits on, and every gate in front of a deletion fails closed -- so the cost
+# of asking rarely is one more day of a finished issue's checkout, and the
+# cost of asking often is nothing gained. The cadence is kept in memory on the
+# clock that cannot jump, so a restart buys at most one extra pass; a pass
+# already spent is not written down anywhere, because a repeated one reports
+# what is already gone as done. Must be >= 1: a zero or negative interval
+# would put a host-wide teardown between every pair of polling passes, each
+# one holding scheduler admission closed while it proved the host quiet.
+TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS: int = _RESOLVED[
+    "TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS"
+]
 
 # Local verification commands run in the per-issue worktree on
 # VERDICT: APPROVED, before the issue is labeled `in_review`. Default

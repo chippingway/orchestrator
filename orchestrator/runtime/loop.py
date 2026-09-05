@@ -7,6 +7,17 @@ it or the checkout it runs from moves under it, which exits 0 so the wrapper
 relaunches the new code. Either way the body runs inside `scheduler_drained`,
 so the workers a pass submitted are waited on even when the pass raised, and
 the drain sets the event the shutdown watchdog is waiting on.
+
+The recurring form is also where the host-wide artifact maintenance is fitted
+in: at the END of the wait between two passes, behind a due gate this loop
+holds for the run. There, because the pass needs the scheduler quiet and a tick
+is what makes it busy -- the far end of the interval is the quietest moment
+this loop has, where the short handlers the last pass submitted have had the
+whole wait to finish. Behind a gate, because the pass is owed once an interval
+and this loop comes round once a poll. `--once` is a single tick and nothing
+besides -- an operator asking for one pass gets one pass, and the
+maintenance-only launch mode is where a host asks for the reclamation on its
+own.
 """
 from __future__ import annotations
 
@@ -16,7 +27,7 @@ import time
 from collections.abc import Iterator
 
 from orchestrator import agents, config
-from orchestrator.runtime import self_update, ticks
+from orchestrator.runtime import artifacts, self_update, ticks
 from orchestrator.runtime.startup import PollingOptions, RepoClients
 from orchestrator.runtime.state import RuntimeState
 from orchestrator.scheduler import IssueScheduler
@@ -42,6 +53,7 @@ def run_polling_loop(
     """Poll until signaled or a self-modifying merge requests restart."""
     own_sha = self_update.own_head_sha()
     log.info("own HEAD=%s", own_sha)
+    due_gate = artifacts.DueGate()
     while state.running:
         if own_sha and self_update.self_modifying_merge_happened(own_sha):
             log.info(
@@ -50,6 +62,7 @@ def run_polling_loop(
             return 0
         ticks.run_tick(state, clients, scheduler)
         wait_for_next_tick(state)
+        artifacts.run_maintenance_when_due(state, clients, scheduler, due_gate)
     return None
 
 

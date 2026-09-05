@@ -19,6 +19,7 @@ per-file-ignores =
     orchestrator/workflow/__init__.py:WPS412,WPS410
     orchestrator/observability/usage/__init__.py:WPS412,WPS410
     orchestrator/observability/analytics/recording/__init__.py:WPS412,WPS410
+    orchestrator/runtime/exclusion.py:WPS202
     orchestrator/git/base_sync/refresh.py:WPS202
     orchestrator/git/snapshots/refs.py:WPS202
     orchestrator/workflow/state.py:WPS202
@@ -106,10 +107,11 @@ per-file-ignores =
     tests/git/worktrees/artifact_test_support.py:WPS214
     tests/git/worktrees/candidate_host_test_support.py:WPS202,WPS214
     tests/git/worktrees/discovery_test_support.py:WPS214
-    tests/git/worktrees/maintenance_test_support.py:WPS214
+    tests/git/worktrees/maintenance_test_support.py:WPS202,WPS214
     tests/git/worktrees/test_artifact_eligibility.py:WPS202
     tests/git/worktrees/test_artifact_evidence.py:WPS202,WPS214
     tests/git/worktrees/test_local_inventory.py:WPS202
+    tests/runtime/test_exclusion.py:WPS202
     tests/git/worktrees/test_maintenance_pass.py:WPS202
     tests/workflow/engine/lifetime_test_support.py:WPS202
     tests/workflow/engine/run_circuit_test_support.py:WPS202

@@ -44,6 +44,12 @@ _DEFAULT_MAX_ADDED_LINES = 4000
 # number counts is on the setting itself in `orchestrator/config/__init__.py`.
 _DEFAULT_MAX_AGENT_RUNS_PER_ISSUE = 50
 
+# Seconds between two terminal-artifact maintenance passes -- a day, so a host
+# spends the disk of a finished issue for one more day at most; what a pass is
+# and what it costs is on the setting itself in
+# `orchestrator/config/__init__.py`.
+_DEFAULT_ARTIFACT_CLEANUP_INTERVAL_SECONDS = 86400
+
 
 def parse_agent_spec(
     setting_name: str,
@@ -267,6 +273,11 @@ class _SettingsResolver:
                 "MAX_AGENT_RUNS_PER_ISSUE",
                 env.get("MAX_AGENT_RUNS_PER_ISSUE", ""),
                 _DEFAULT_MAX_AGENT_RUNS_PER_ISSUE,
+            ),
+            "TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS": positive_int(
+                "TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS",
+                env.get("TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS", ""),
+                _DEFAULT_ARTIFACT_CLEANUP_INTERVAL_SECONDS,
             ),
             "VERIFY_COMMANDS": parse_verify_commands(env.get("VERIFY_COMMANDS", "")),
             "ORCHESTRATOR_BASE_BRANCH": env.get("ORCHESTRATOR_BASE_BRANCH", "main"),

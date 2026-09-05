@@ -81,8 +81,10 @@ orchestrator/
                         the target `run.sh` launches
   runtime/              the polling process's own owners: the state one run
                         carries, the log destinations, startup, one pass over
-                        the configured repos, the polling loop, the
-                        self-restart probes, and shutdown
+                        the configured repos, the polling loop, when the
+                        finished issues' artifacts may be reclaimed and which
+                        process on the host may reclaim them, the self-restart
+                        probes, and shutdown
   config/               the bottom layer: the non-secret `.env` loader, the
                         env parsers and resolver behind the settings surface,
                         credential resolution and secret redaction, and the
@@ -197,8 +199,60 @@ label wherever that rename could not run, are in
 There is **only one long-lived process**: `python -m orchestrator`. It is wrapped by `run.sh` so the loop can
 self-exit and be restarted with new code.
 
-- **Trigger**: started manually (or by a wrapper). Optional `--once` for a single tick.
+- **Trigger**: started manually (or by a wrapper). Optional `--once` for a single tick, or
+  `--cleanup-terminal-artifacts` for a maintenance-only run: it connects read-only clients (no label bootstrap)
+  *before* claiming the host, since a client that lands in a rate-limit backoff sleeps for as long as the reset takes
+  and nothing unbounded may sit inside the claim, then reclaims the artifacts of finished issues and exits without
+  polling. It writes no *workflow* state — no label, no
+  pinned state, no comment — and does delete the orchestrator-owned branches it proved reclaimable, in the clone and
+  on the remote, which is what it is for. The form a nightly service timer runs.
+- **Host exclusivity** (`runtime.exclusion`): one `flock`-based claim on `WORKTREES_DIR/.artifact-maintenance.lock`
+  decides which process may touch this host's artifacts. Every polling run holds it **shared** for its whole life (a
+  presence: "a process that may be running work is live here"), and **every** maintenance pass holds it
+  **exclusively** for as long as it acts — the one-shot mode takes it on the way in, and a polling run's own
+  recurring pass hands its presence over, takes the host, and takes the presence back afterwards. So no pass
+  anywhere reclaims an artifact while any process could be submitting work, including a second daemon on the same
+  host. This is the one thing the in-process barrier below cannot answer: another process's workers are in its own
+  scheduler and its claims in its own sets, so that run's barrier would grant the quiet of an empty process and its
+  claim guard would report nothing running however busy the other one is.
+- **The order between them** (`runtime.artifacts`): the barrier is taken **outside** the handover. A presence says
+  work may be running in the process holding it, so a polling run may only give one up once its own admission is
+  closed and its own workers have drained — dropping it first would publish the host with a worker mid-agent-run,
+  and whatever took it then would sweep on the strength of its own empty scheduler. The presence also has to be back
+  *before* admission reopens, or this run resumes submitting while another process is still free to take the host.
+  Inside the barrier the window between the two locks is safe in both directions, because there is nothing of this
+  run's left to race.
+- **Which side waits**: a pass never waits. Refused the host it defers whole, which costs one interval of a finished
+  issue's disk. A poller always waits, with no deadline: it may not start submitting while another process is
+  deleting, and no length of wait makes doing so safe (giving up and polling would put a tick's fresh checkouts in a
+  directory being torn down; giving up and refusing to poll would be a crash loop under `Restart=always`). Only a
+  lock somebody *holds* is waited for: a lock that does not work at all — a filesystem without `flock`, a full lock
+  table — is not contention and is answered at once, leaving a poller polling with no claim and a pass declining to
+  act, both of them said out loud. What
+  keeps that wait finite is the other side rather than a timeout — a pass stops spending candidates once it has
+  held the host for 120s and gives it back at the next candidate boundary, so the hold is that budget (which the
+  one host scan in front of the candidates spends too) plus the candidate in hand. The barrier's own ≤30s wait is
+  outside the hold entirely: a run that cannot go quiet never takes the host at all. A pass whose process dies
+  holds nothing, since the kernel drops the lock with the file description.
 - **Tick cadence**: every `POLL_INTERVAL` seconds (default 60).
+- **Artifact maintenance cadence** (`runtime.artifacts`): at the end of the wait between two polling passes — never
+  inside a tick, since a tick is what makes the host busy — and at most
+  once every `TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS` (default 86400), the worktrees and branches of finished
+  issues are reclaimed under a scheduler maintenance barrier: admission is closed for counted workers and tracked
+  claims alike, the work already admitted is waited out within a finite bound, and only a host that went quiet is
+  acted on. A bound that expires, a shutdown that started, or a barrier that could not be taken defers the whole
+  pass without touching an artifact; admission always reopens, since the hold is given back around the body whatever
+  the body did. A granted hold is a snapshot, so it is not the last word either: whether the process may still act
+  is re-read **twice per candidate** — before the candidate is looked at, and again as the last thing before its
+  first mutation — from the run's own stop flag, from the scheduler that granted the hold, and from the pass's own
+  host-hold budget. The second reading is what closes the window the first leaves open: everything expensive (the
+  issue, its pull requests, the remote reads every deletion is pinned to) happens in between, so a signal that lands
+  there ends the pass instead of being answered by a teardown. Past that reading one candidate is taken as a unit —
+  its checkouts, then each of its branches on the remote and in the clone, every step pinned to the commit that was
+  proved and idempotent — because a candidate half taken is the one state this vocabulary cannot report. The due
+  gate
+  lives in this process's memory on the monotonic clock, so nothing is persisted and a
+  restart costs at most one extra pass — the pass reads the host again and reports whatever is already gone as done.
 - **Self-restart guard** (`runtime.self_update.self_modifying_merge_happened`): each tick fetches
   `origin/<ORCHESTRATOR_BASE_BRANCH>` (default `main`); if it advanced past the process's startup SHA *and* the new
   commits touch `orchestrator/`, the loop

@@ -8,12 +8,13 @@ import signal
 import unittest
 from unittest.mock import patch
 
-from orchestrator import agents
+from orchestrator import agents, config
 from orchestrator.runtime import loop, shutdown
 from tests.cli.composition_test_support import composed_run
 from tests.runtime import polling_test_support as _support
 
 _TERMINATE_ATTR = "terminate_all_running"
+_WORKTREES_ATTR = "WORKTREES_DIR"
 _DRIVE_POLLING_ATTR = "drive_polling"
 _DEBUG_ARGS = ("--once", "--log-level", "DEBUG")
 
@@ -67,6 +68,29 @@ class ComposedStartupTest(unittest.TestCase):
 
             run.seams.configured_logging.assert_called_once_with("DEBUG")
             run.seams.installed_handlers.assert_called_once_with(run.state)
+
+
+class HermeticHostTest(unittest.TestCase):
+    """A composed run claims a host of its own rather than the operator's.
+
+    The claim a polling run takes is a real `flock` on a real file under
+    `WORKTREES_DIR`. Left pointing at the operator's checkout root, every test
+    here would leave a lock file in it -- and, far worse than the litter, a
+    real maintenance pass holding that host would have all of them waiting on
+    it, which is precisely what that claim is built to make a process do.
+    """
+
+    def test_the_run_claims_a_root_of_its_own(self) -> None:
+        configured = getattr(config, _WORKTREES_ATTR)
+        with composed_run([_support.REPO]) as run:
+            run.main()
+
+            claimed = getattr(config, _WORKTREES_ATTR)
+            self.assertNotEqual(claimed, configured)
+
+        # And it goes when the run does, so nothing one test claimed is still
+        # standing for the next.
+        self.assertFalse(claimed.exists())
 
 
 class ComposedExitTest(unittest.TestCase):

@@ -294,6 +294,26 @@ those rules do not name is cleared by widening them or by hand rather than by wa
   Ctrl+C (or `SIGTERM`) stops the wrapper: the orchestrator exits with `128 + signum` and `run.sh` skips the restart
   loop. A second Ctrl+C terminates immediately.
 - `python -m orchestrator --once` — single tick then exit. Useful for tests and debugging.
+- `python -m orchestrator --cleanup-terminal-artifacts` — reclaim the worktrees and branches of finished issues, then
+  exit. Polls no issue, ensures no labels, and writes **no workflow state** — no label, no pinned state, no comment.
+  It does delete refs, which is what it is for: the orchestrator-owned branches it proved reclaimable go from the
+  local clone *and* from the remote, after the fail-closed gates cleared each one. It connects read-only clients and
+  asks each repository only about the issues and pull requests its artifacts name.
+
+  Safe to run on the same host as the polling process because it refuses to run *beside* it: every polling run holds
+  a shared `flock` claim on `WORKTREES_DIR/.artifact-maintenance.lock` for its whole life, this mode needs that claim
+  exclusively, and a refusal defers the whole pass and exits 0 (a deferral is what the mode was asked for, not a
+  failure a timer unit should report). Two of these runs exclude each other the same way, and the daemon's own
+  recurring pass takes the same claim — from inside its own scheduler barrier, so it only gives its presence up
+  once it has stopped admitting and drained, and takes it back before admitting again. A second daemon on the host
+  therefore cannot be submitting work while either of them deletes. A polling process that starts while a pass is
+  running waits for it (no deadline, because polling through a teardown is never safe — though only for a lock
+  something is holding: one that does not work at all is reported instead, and the pass simply does not act); a
+  pass gives the host back
+  at a candidate boundary once it has held it for 120s, with whatever it did not reach owed to the next interval.
+  Point a nightly service
+  timer at it for hosts whose orchestrator is not always up; a host running the daemon continuously already gets a
+  pass between polling passes every `TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS`, and the timer will simply defer.
 - `python -m orchestrator --log-level DEBUG` — verbose logs.
 
 Both forms above call `orchestrator/cli.py`, which is also what the `chipping-orchestrator` console script declared in
@@ -652,6 +672,10 @@ Each `--once` invocation is a fresh Python process and reads the current `.env` 
 
 When each setting's change takes effect:
 
+- `TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS` — next Python start, like the settings below, and the restart also
+  starts a fresh due gate: the cadence is held in memory, so the run that comes back is owed a pass at once rather
+  than at the end of an interval it cannot remember. A repeated pass costs one discovery and reports whatever is
+  already gone as done.
 - `POLL_INTERVAL`, `AGENT_TIMEOUT`, `REVIEW_TIMEOUT`, `SHUTDOWN_GRACE_SECONDS`, `MAX_REVIEW_ROUNDS`,
   `MAX_CONFLICT_ROUNDS`, `MAX_RETRIES_PER_DAY`, `MAX_ADDED_LINES`, `DEV_SESSION_MAX_RESUMES`,
   `MAX_AGENT_RUNS_PER_ISSUE`, `IN_REVIEW_DEBOUNCE_SECONDS`, `DECOMPOSE`,
