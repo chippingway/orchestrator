@@ -1134,8 +1134,11 @@ semantic identity beside it, both described below, live on the
 [`exemption`](../../orchestrator/workflow/late_split/exemption.py) owner; the `late_rewrite_*` authorization that
 says a rewrite was allowed to carry one of those exemptions over lives on the
 [`rewrites`](../../orchestrator/workflow/late_split/rewrites.py) owner, and outlives the generation for the same
-reason the exemption does — the grant is written a whole publication before the receipt that would spend it;
-`late_retired_cycle_id` and the two-phase terminal record beside it live on the
+reason the exemption does — the grant is written a whole publication before the receipt that would spend it; the
+`late_override_*` terms an operator authorized one oversized publication on live on the
+[`overrides`](../../orchestrator/workflow/late_split/overrides.py) owner, and outlive it because they are what a
+generation is cleared AGAINST — a clear that took them would send the authorized candidate back into the
+adjudication a human already answered; `late_retired_cycle_id` and the two-phase terminal record beside it live on the
 [`endings`](../../orchestrator/workflow/late_split/endings.py) owner. The typed record the
 group round-trips through is `LateGeneration` on the `models` owner beside
 it. A write with no `late_cycle_id` records only what the issue still owes — the two external ledgers, if either
@@ -1632,10 +1635,52 @@ rather than preserving.
   transfer is doing — the exemption moved on since, which dropped the identity and left this group describing a
   commit nothing exempts — so it is replaced without ceremony. Read as a claim it would refuse every transfer the
   issue could ever earn again.
+- **Operator-authorized publication.** `late_override_candidate_sha`, `late_override_base_sha`,
+  `late_override_fingerprint`, `late_override_fingerprint_format`, `late_override_additions`,
+  `late_override_threshold`, and `late_override_comment_id` are the terms an operator authorized one oversized
+  candidate to publish on, written on the [`overrides`](../../orchestrator/workflow/late_split/overrides.py) owner
+  and outside `LATE_STATE_KEYS` on the same terms as the groups above. An oversized candidate has two ways past the
+  size gate. The first is the workflow's own — an adjudication rules it one coherent change, which `late_exempt_sha`
+  records. The second is a human's: an operator who has read the change says in a comment on the issue that it
+  publishes unsplit, and that gesture has to outlive the process that read it, the generation it was made under, and
+  the tick that would act on it, or the gate measures the same candidate past the same ceiling on the next poll and
+  asks the same question again.
+
+  Every term follows from what the record IS — a bypass of the one gate that stops unreviewed bulk reaching a pull
+  request. A bypass may license exactly what a human looked at, so it is bound to the candidate rather than declared
+  over the issue: a flag would authorize whatever the worktree ends on next, and a commit alone would authorize
+  whatever that commit turns out to contribute once a base moved under it. So the group names the exact candidate,
+  the frozen base it was read over, the canonical digest of the contribution between them
+  ([`../architecture.md`](../architecture.md#fingerprinting-a-prospective-contribution-gitmeasurementfingerprintpy))
+  and the format version that digest was taken under, and the measurement that made the candidate oversized at all.
+  Those last two are recorded here rather than read off the generation beside them, and that is the point of them:
+  the generation is cleared when the cycle that earned this record ends, and the ceiling is a knob an operator
+  retunes, so a record pointing at either would answer differently later about a decision made once. What was
+  authorized is a change of *this* size against *that* ceiling. `late_override_comment_id` is what makes the
+  authorization attributable — a bypass is licensed by a gesture somebody made at an address anybody can go and
+  read. Whether that author was trusted is proved before the write rather than stored beside it, since an allowlist
+  is an operator's own and moves, and the durable half of the evidence is which comment was acted on.
+
+  Read whole or not at all, and more strictly than the exemption above. There the exact-SHA field is a claim that
+  stands alone and a damaged member costs only the transfer; here every member IS the authorization. A missing
+  member, a value that is not the shape its field takes (an abbreviated end, a truncated digest, a version or a
+  comment id spelled as text, a count nothing measured), a digest scheme this build does not compute, and a reading
+  at or under its own recorded threshold — which describes a candidate the gate publishes untouched, and so a
+  decision nobody had to make — each read back as no authorization, and so does a whole record asked about any
+  commit but the one it names. What every one of those costs is a measurement: the candidate goes to the gate the
+  way an unauthorized one does, and a human whose comment nothing could read is asked again.
+  `record_publication_override` refuses the same terms on the way in rather than recording them, and writes the
+  whole group in one statement so a record is never half about one candidate and half about the one before it. It
+  touches the fields this owner names and no others, so an unknown field and an exemption group an older binary
+  wrote are preserved verbatim by both the write and the clear.
+
+  The record is durable evidence and nothing more: what a candidate publishes under is decided by the gate and by
+  `late_exempt_sha` beside this group, and what recording an authorization buys is that a human's gesture survives a
+  crash, a cleared generation, and a fresh process.
 - **Pending collapse.** `late_collapse_head`, `late_collapse_base_sha`, and `late_collapse_count` are what a
   squash-on-approval says it is about to do, written on the
   [`collapses`](../../orchestrator/workflow/late_split/collapses.py) owner and outside `LATE_STATE_KEYS` on the same
-  terms as the three groups above — the gate retires the generation a squash is measured under the moment it
+  terms as the four groups above — the gate retires the generation a squash is measured under the moment it
   approves the commit, so a record cleared with one would be gone before the push it exists to recover ever
   happened. They go down **before** the reset, and they have to: a squash collapses the approved commits into one
   object with the same tree, so past that reset the head it replaced is off the branch, the base it was read over is
