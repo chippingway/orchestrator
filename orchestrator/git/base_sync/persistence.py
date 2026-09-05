@@ -382,6 +382,13 @@ def _write_the_finished_route(
     Then the write itself: the record of the attempt, which is the only thing
     bringing this recovery back, and the round the reviewer is being asked to
     spend afresh on the rewritten head.
+
+    Both are held to the base lag the way every other finish here is. A base
+    that advanced again while the process was down leaves the published head
+    behind it, and routing a reviewer at a head that is already stale is what
+    the lag check exists to stop: the record is made durable, the label is
+    left where it is, and the tick falls through to the rebase that brings the
+    branch forward -- whose own finish makes the route.
     """
     log.info(
         "issue=#%d auto-rebase recovery: an earlier tick announced this route "
@@ -389,9 +396,36 @@ def _write_the_finished_route(
         "of it again",
         context.issue.number,
     )
-    if context.label != WorkflowLabel.VALIDATING:
-        context.gh.set_workflow_label(context.issue, WorkflowLabel.VALIDATING)
     _clears_the_attempt(context.state)
     context.state.set(_REVIEW_ROUND, 0)
+    if context.behind:
+        return _falls_through_to_a_fresh_rebase(context)
+    if context.label != WorkflowLabel.VALIDATING:
+        context.gh.set_workflow_label(context.issue, WorkflowLabel.VALIDATING)
     context.gh.write_pinned_state(context.issue, context.state)
     return True
+
+
+def _falls_through_to_a_fresh_rebase(
+    context: _AutoRebaseRecoveryContext,
+) -> bool:
+    """Make this finish durable and leave the branch to the rebase it owes.
+
+    The base moved again while the process was down, so the head the
+    interrupted tick published is behind it already. Relabelling there would
+    send the reviewer to a commit this same tick is about to replace, and
+    clearing the record without a write would lose the finish altogether -- so
+    the record goes down and the route does not, and the rebase behind this
+    call makes its own.
+    """
+    context.gh.write_pinned_state(context.issue, context.state)
+    log.info(
+        "issue=#%d auto-rebase recovery: the finished route is recorded and "
+        "the branch is still %d commit(s) behind %s/%s; falling through to "
+        "the normal rebase + push flow",
+        context.issue.number,
+        context.behind,
+        context.spec.remote_name,
+        context.spec.base_branch,
+    )
+    return False

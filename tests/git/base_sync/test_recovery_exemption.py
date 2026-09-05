@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import itertools
 import unittest
+from unittest.mock import patch
 
+from orchestrator import config
 from orchestrator.git.base_sync import transfers
 from orchestrator.git.base_sync.models import _AutoRebaseRecoveryContext
 from orchestrator.workflow.late_split import (
@@ -97,6 +99,15 @@ KEY_PENDING_REWRITE_PR = "pending_auto_base_rebase_rewrite_pr"
 KEY_PENDING_REWRITE_STAGE = "pending_auto_base_rebase_rewrite_stage"
 KEY_ANNOUNCED_SHA = "pending_auto_base_rebase_announced_sha"
 
+# The whole of that record, for the case that seeds the attempt which
+# left nothing but its anchor behind.
+ATTEMPT_RECORD_KEYS = (
+    KEY_PENDING_REWRITE_SHA,
+    KEY_PENDING_REWRITE_PR,
+    KEY_PENDING_REWRITE_STAGE,
+    KEY_ANNOUNCED_SHA,
+)
+
 # A second open pull request on the same branch, for the case where the issue
 # is repointed at one the interrupted rewrite was never made against.
 REPOINTED_PR_NUMBER = 43
@@ -130,6 +141,19 @@ UNREADABLE_ISSUE = "the issue could not be read again"
 # under, which is the one record a resumed finish may not add to.
 CLEAN_REBASE = "auto_clean_rebase"
 STAGE_FIELD = "stage"
+
+# The kill switch a whole decomposition run is behind, which an operator may
+# have flipped off in the window a recovery is coming back from.
+CONFIG_DECOMPOSE = "DECOMPOSE"
+
+# The scenario alias the rebase seam is installed under, read back where a
+# recovery's answer decides whether a second rebase still runs.
+REBASE_PATCH = "rebase"
+
+# The permission group as it stands before the push that spends it, and the
+# stage a hand moves an issue to while the process is down.
+KEY_REWRITE_PHASE = "late_rewrite_phase"
+PHASE_AUTHORIZED = "authorized"
 
 
 class _ReadableOnce:
@@ -1097,3 +1121,200 @@ class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(len(self._resets_of(resumed)), 1)
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
         self._assert_parked(PARK_FAILED)
+
+
+class DisabledSwitchRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
+    """A recovery that comes back to find decomposition switched off.
+
+    The switch is what decides whether an ordinary tick measures at all, and
+    off it takes every candidate straight past the gate unread. That is the
+    right answer for work nobody has ruled on and the wrong one here: what a
+    recovery needs from the gate is not a measurement but the PERMIT, which is
+    the only thing that can say a replay carries a verdict a human already
+    gave. Taken past it, the transfer never settles, the exemption stays on a
+    commit this branch no longer has, and the push lands with the record of
+    why it was allowed to still owed.
+    """
+
+    def test_an_unrecorded_rewrite_still_settles(self) -> None:
+        # The window before the grant, where the recovery has to assemble the
+        # evidence for itself. Nothing about that work is a measurement, and
+        # the switch has nothing to say about it.
+        self._crashes_before_the_grant()
+
+        resumed = self._resumes_switched_off()
+
+        self._assert_settled_by(resumed)
+
+    def test_an_outstanding_permission_still_settles(self) -> None:
+        # And the window after it, where the record already says what the
+        # push may carry: the permit is re-asked over a group the switch was
+        # on for, and the switch off would drop it on the floor.
+        self._crashes_before_the_push()
+
+        resumed = self._resumes_switched_off()
+
+        self._assert_settled_by(resumed)
+
+    def _resumes_switched_off(self):
+        """The next tick, with the decomposition kill switch flipped off."""
+        with patch.object(config, CONFIG_DECOMPOSE, False):
+            return self._resumes()
+
+    def _assert_settled_by(self, resumed) -> None:
+        """The verdict moved onto the replay the reissued push published."""
+        pushed = resumed[PUSH_PATCH].call_args.kwargs
+        self.assertEqual(pushed[REVISION], AFTER_SHA)
+        self.assertEqual(pushed[LEASE], BEFORE_SHA)
+        self._assert_settled_once()
+        self._assert_nothing_readjudicated()
+        self._assert_finished_the_route(RECOVERY_PUSHED)
+
+
+class AdvancedBaseFinishTest(_ResumedRebaseCase, unittest.TestCase):
+    """A finish to resume, over a base that moved again in the meantime."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._crashes_at_the_relabel()
+        self.resumed = self._resumes(remote_head=AFTER_SHA, behind=True)
+
+    def test_the_tick_falls_through_to_the_rebase(self) -> None:
+        # The lag outlives the recovery: whatever the announcement says was
+        # published, this branch is still behind the base and still owes the
+        # rebase that brings it forward. Claimed by the finish, that rebase
+        # never runs -- and nothing on the next tick brings it back, because
+        # the anchor that would have is gone.
+        self.resumed[REBASE_PATCH].assert_called_once()
+
+    def test_the_stale_head_is_not_routed_to(self) -> None:
+        # The head the announcement was made at is behind the base already.
+        # Relabelling there sends the reviewer to a commit this same tick is
+        # replacing, and spends the round on it.
+        self._assert_routed(False)
+        self.assertEqual(
+            [record[METHOD_FIELD] for record in self._events_of(
+                EVENT_BASE_REBASED,
+            )],
+            [CLEAN_REBASE],
+        )
+
+    def test_the_finish_is_made_durable_first(self) -> None:
+        # Falling through is not forgetting: the record of the announced
+        # route goes down before the rebase runs, so a crash between them
+        # comes back to an issue with nothing half-said on it.
+        self._assert_anchor(None)
+        self.assertIsNone(self._pinned()[KEY_ANNOUNCED_SHA])
+        self.assertEqual(self._pinned()[KEY_REVIEW_ROUND], 0)
+
+    def test_the_verdict_is_still_moved_once(self) -> None:
+        self._assert_settled_once()
+        self._assert_nothing_readjudicated()
+
+
+class AnnouncedForeignMoveTest(_ResumedRebaseCase, unittest.TestCase):
+    """The route's own mark, beside a label the route never writes.
+
+    An announcement is what tells this recovery that the relabel it finds is
+    its own last step rather than somebody else's move -- but that reading is
+    only available for the ONE label a finish moves to. Any other stage is a
+    hand at the issue, and a mark left by the interrupted tick says nothing
+    about it.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._crashes_at_the_relabel()
+        self.gh.set_workflow_label(self._issue(), WorkflowLabel.FIXING)
+        self.resumed = self._resumes(remote_head=AFTER_SHA)
+
+    def test_the_moved_issue_is_not_finished(self) -> None:
+        # Forgiven, the finish would route an issue a human moved to a stage
+        # it was never published under, and drop the anchor on the way.
+        self._assert_routed(False)
+        self._assert_anchor(BEFORE_SHA)
+        self._assert_parked(PARK_FAILED)
+
+    def test_nothing_is_pushed_or_reset_over_it(self) -> None:
+        self._assert_nothing_left(self.resumed)
+        self.assertEqual(self._resets_of(self.resumed), [])
+        self._assert_nothing_readjudicated()
+
+    def test_the_record_it_is_held_by_is_kept(self) -> None:
+        # The park is only useful while the attempt is still readable: an
+        # operator putting the label back is what lets the ordinary recovery
+        # finish this route on its own terms.
+        pinned = self._pinned()
+        self.assertEqual(pinned[KEY_PENDING_REWRITE_SHA], AFTER_SHA)
+        self.assertEqual(pinned[KEY_ANNOUNCED_SHA], AFTER_SHA)
+
+
+class StrandedAttemptTest(_ResumedRebaseCase, unittest.TestCase):
+    """An attempt whose issue was moved off the refresh-driven set entirely.
+
+    The clear this label reaches was written for an anchor and nothing else,
+    and an anchor on its own is only a promise to come back. An attempt that
+    got as far as a recorded rewrite and a granted permission is a different
+    thing: cleared, the replay stops being attributable to anything, the
+    verdict is licensed onto a commit no push carried, and the issue it hands
+    on is one no reader can tell from an issue with nothing in flight.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._crashes_before_the_push()
+        self.gh.set_workflow_label(self._issue(), WorkflowLabel.DECOMPOSING)
+
+    def test_the_attempt_is_parked_not_cleared(self) -> None:
+        self._resumes()
+
+        self._assert_anchor(BEFORE_SHA)
+        self.assertEqual(self._pinned()[KEY_PENDING_REWRITE_SHA], AFTER_SHA)
+        # The park is also what stops the stage this label names from putting
+        # a second agent on a change a human already ruled on.
+        self._assert_parked(PARK_FAILED)
+
+    def test_the_permission_is_left_standing(self) -> None:
+        # The permission and the debt written with it are what a later grant
+        # would trip over, and what says this replay was ever allowed to
+        # publish a human's verdict. Neither survives a clear.
+        self._resumes()
+
+        durable = self._durable()
+        self.assertTrue(_rewrites.carries_rewrite_authorization(durable))
+        self.assertEqual(
+            self._pinned()[KEY_REWRITE_PHASE], PHASE_AUTHORIZED,
+        )
+        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
+
+    def test_nothing_is_pushed_reset_or_rebased(self) -> None:
+        # No road runs under a label the refresh does not drive, and the hand
+        # that moved it may have moved the checkout too.
+        resumed = self._resumes()
+
+        self._assert_nothing_left(resumed)
+        self.assertEqual(self._resets_of(resumed), [])
+        self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+
+    def test_a_bare_anchor_is_still_cleared(self) -> None:
+        # What says the park above is about the records rather than about the
+        # label: the same relabel over an attempt that left nothing but its
+        # anchor drops it and says nothing to anybody.
+        self._forgets_the_attempt()
+
+        self._resumes()
+
+        self._assert_anchor(None)
+        self.assertNotIn(KEY_PARK_REASON, self._pinned())
+
+    def _forgets_the_attempt(self) -> None:
+        """Take the crashed tick's own records off the pinned comment."""
+        self._edited(_drops_the_attempt_records)
+
+
+def _drops_the_attempt_records(state) -> None:
+    """Leave one anchor standing and nothing beside it."""
+    _rewrites.clear_rewrite_authorization(state)
+    for key in ATTEMPT_RECORD_KEYS:
+        state.set(key, None)

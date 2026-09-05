@@ -12,10 +12,12 @@ from unittest.mock import MagicMock, patch
 
 from orchestrator.git import branch_transport, commands as _commands
 from orchestrator.git.base_sync import (
+    models,
     outcomes,
     persistence,
     recovery,
     snapshot,
+    transfers,
 )
 from orchestrator.git.verification import probes as verification_probes
 from tests.git.base_sync import base_sync_helpers as fixtures
@@ -29,6 +31,12 @@ COMPLETE_SNAPSHOT = "_complete_recovery_snapshot"
 CLEAR_INELIGIBLE = "_clear_ineligible_recovery"
 
 CLEAR_UNCHANGED = "_clear_unchanged_recovery"
+
+# The park that keeps a relabelled attempt whole, and the reading that
+# says a permission on the comment is still owed a push.
+STRANDED = "_park_stranded_recovery"
+
+LEFT_MID_TRANSFER = "_left_mid_transfer"
 
 ROUTE_SNAPSHOT = "_route_recovery_snapshot"
 
@@ -190,7 +198,11 @@ class RecoveryRouteTest(unittest.TestCase):
     """Every question is asked before the one it would make unsafe."""
 
     def test_ineligible_label_clears_before_any_fetch(self) -> None:
-        context = fixtures._recovery_context()
+        # An anchor is a promise to come back, and nothing under a label the
+        # refresh does not drive is coming back for it.
+        context = fixtures._recovery_context(
+            pending_rewrite=models._PendingRewrite(),
+        )
         cleared = _handled()
         fetch = MagicMock()
 
@@ -205,6 +217,48 @@ class RecoveryRouteTest(unittest.TestCase):
         cleared.assert_called_once()
         # An issue nobody is refreshing any more is not worth a network hop.
         fetch.assert_not_called()
+
+    def test_a_recorded_attempt_is_held(self) -> None:
+        # The same relabel over an attempt that got as far as recording its
+        # replay. Cleared there, the branch is left standing on a rewrite
+        # nothing names, and the next reader cannot tell this issue from one
+        # with nothing in flight.
+        context = fixtures._recovery_context()
+        cleared = MagicMock()
+        stranded = _handled()
+
+        with _routed(**{CLEAR_INELIGIBLE: cleared}), patch.object(
+            outcomes, STRANDED, stranded,
+        ):
+            recovered = recovery._recover_pending_auto_base_rebase_context(
+                self._relabelled(context),
+            )
+
+        self.assertTrue(recovered)
+        stranded.assert_called_once()
+        cleared.assert_not_called()
+
+    def test_an_unspent_permission_is_held(self) -> None:
+        # And over a permission granted for a push nobody made: the record of
+        # the replay is not the only thing a clear would strand.
+        context = fixtures._recovery_context(
+            pending_rewrite=models._PendingRewrite(),
+        )
+        cleared = MagicMock()
+        stranded = _handled()
+
+        with _routed(**{CLEAR_INELIGIBLE: cleared}), patch.object(
+            outcomes, STRANDED, stranded,
+        ), patch.object(
+            transfers, LEFT_MID_TRANSFER, MagicMock(return_value=True),
+        ):
+            recovered = recovery._recover_pending_auto_base_rebase_context(
+                self._relabelled(context),
+            )
+
+        self.assertTrue(recovered)
+        stranded.assert_called_once()
+        cleared.assert_not_called()
 
     def test_unreadable_snapshot_owns_the_tick(self) -> None:
         # The fetch already reset and parked, so returning True is what stops
@@ -237,7 +291,9 @@ class RecoveryRouteTest(unittest.TestCase):
             },
         ):
             recovered = recovery._recover_pending_auto_base_rebase_context(
-                fixtures._recovery_context(),
+                fixtures._recovery_context(
+                    pending_rewrite=models._PendingRewrite(),
+                ),
             )
 
         # Nothing was rewritten, so there is nothing to compare and the same

@@ -745,3 +745,24 @@ def _reports_a_lost_settlement(
             context.worktree,
         ),
     )
+
+
+def _left_mid_transfer(state: PinnedState) -> bool:
+    """Whether a permission on this comment still says a push is owed.
+
+    Asked where a recovery is about to walk away from an attempt rather than
+    finish it, and asked of the record alone: no fetch, no checkout, no
+    comparison -- none of which the caller is on a road to make. What it needs
+    to know is only whether walking away would leave a human's verdict
+    licensed onto a commit no push carried, with the approval debt granted
+    beside it still standing.
+
+    Fail-closed in the same direction every reader of this record is. A group
+    this build cannot read back whole answers yes, because "not shown to be
+    over" is the only reading available to a caller deciding whether it is
+    safe to forget one.
+    """
+    # Lazy for the reason every upward reach in this package is: the record
+    # sits in the workflow layer above it.
+    from orchestrator.workflow.late_split import rewrites as _rewrites
+    return _rewrites.outstanding_permission(state)

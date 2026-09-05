@@ -4,7 +4,7 @@
 
 The verified facts arrive from ``snapshot`` and the answers live in
 ``outcomes``; what this owner adds is the order they are asked in, and that
-order is the safety property. An ineligible label is cleared before anything
+order is the safety property. An ineligible label is answered before anything
 is fetched, an unmoved HEAD falls back to the normal rebase flow before any
 comparison is trusted, and equality with the remote is checked before the
 ahead/behind counts are -- so the reissued force-push is only ever reached by
@@ -19,11 +19,16 @@ onto the commit it produced, and because every road out of here ends in a
 notice, an audit event, and the anchor dropped -- so the publication the
 attempt recorded making its rewrite for is reconciled against the one this
 issue holds now before any of them is taken, with this route's own last
-relabel recognized rather than refused. And the counts are a fallback for one
-state only: an attempt that recorded nothing. Everything it DID record either
-vouches for the checkout in front of this tick or parks it. ``transfers`` answers the other half off the
-pinned comment -- how far the transfer's own writes got -- and the two roads
-that still publish something are handed it. A rewrite the grant never reached
+relabel -- the one label it writes, and no other -- recognized rather than
+refused. An issue moved off the refresh-driven set is answered by what the
+attempt left rather than by the label alone: an anchor standing on its own is
+dropped, and a recorded replay or an unspent permission parks with every
+record intact, since no road runs here and a clear would leave the three
+asymmetrically stranded. And the counts are a fallback for one state only: an
+attempt that recorded nothing. Everything it DID record either vouches for the
+checkout in front of this tick or parks it. ``transfers`` answers the other
+half off the pinned comment -- how far the transfer's own writes got -- and
+the two roads that still publish something are handed it. A rewrite the grant never reached
 is given re-derived evidence, so the replay is decided on the transfer the
 dead tick would have asked for rather than measured past the same ceiling; a
 push that landed with its receipt lost is settled here, on the stage the
@@ -51,6 +56,7 @@ from orchestrator.git.base_sync.models import (
 )
 from orchestrator.git.base_sync.state import _PR_REFRESH_DETOUR_LABELS
 from orchestrator.git.verification import probes as verification_probes
+from orchestrator.workflow.state import WorkflowLabel
 
 # Why a landed rewrite's route could not be finished, in the operator's own
 # terms. Spelled at the two seams that answer for them rather than beside the
@@ -491,7 +497,7 @@ def _recover_pending_auto_base_rebase_context(
 ) -> bool:
     """Route an interrupted auto-rebase from verified local/remote state."""
     if context.label not in _PR_REFRESH_DETOUR_LABELS:
-        return snapshot._clear_ineligible_recovery(context)
+        return _answers_an_ineligible_label(context)
 
     recovery_snapshot = snapshot._fetch_recovery_snapshot(context)
     if recovery_snapshot is None:
@@ -503,6 +509,36 @@ def _recover_pending_auto_base_rebase_context(
         return _finish_an_unmoved_head(context, recovery_snapshot)
 
     return _route_recovery_snapshot(context, recovery_snapshot)
+
+
+def _answers_an_ineligible_label(
+    context: _AutoRebaseRecoveryContext,
+) -> bool:
+    """Answer an anchor found under a label the base refresh does not drive.
+
+    The clear is the old answer and stays the answer for the case it was
+    written for: an operator moved the issue off the refresh-driven set while
+    an attempt held nothing but its anchor, and an anchor on its own is only a
+    promise to come back. Dropping it costs nothing, and leaving it pinned
+    would strand a flag no later tick under this label ever reads.
+
+    It is the wrong answer for an attempt that got further. A rebase the tick
+    RECORDED, or a permission granted for a push that never landed, is state
+    the clear cannot honour: it fetches nothing, compares nothing, and would
+    drop the one field naming what the branch would go back to while leaving
+    the verdict, the debt, and the replay standing without it. Worse, the
+    issue it hands on is one no reader can tell from an issue with nothing in
+    flight -- so a decomposition tick is free to put a second agent on a
+    change a human already ruled on.
+
+    So the two are separated by what the comment carries rather than by the
+    label, and the second parks with everything intact.
+    """
+    if context.pending_rewrite.claimed:
+        return outcomes._park_stranded_recovery(context)
+    if transfers._left_mid_transfer(context.state):
+        return outcomes._park_stranded_recovery(context)
+    return snapshot._clear_ineligible_recovery(context)
 
 
 def _finish_an_unmoved_head(
@@ -660,8 +696,12 @@ def _made_for_another_publication(
     One stage disagreement is this route's OWN and is forgiven: a finish
     relabels the issue to `validating` right after it records that it has
     announced itself, so a tick that finds that mark beside a record made from
-    another stage is looking at its own last step. The pull request is never
-    forgiven -- no step of this route repoints one.
+    another stage is looking at its own last step. Only `validating` is
+    forgiven, and only there, because that is the one label this route ever
+    writes: an issue somebody moved to `fixing` or `documenting` while the
+    process was down is a publication this attempt was not made for, whatever
+    mark stands beside it. The pull request is never forgiven either -- no
+    step of this route repoints one.
     """
     recorded = context.pending_rewrite
     if not recorded.is_recorded:
@@ -670,6 +710,8 @@ def _made_for_another_publication(
         return True
     if recorded.stage == context.label:
         return False
+    if context.label != WorkflowLabel.VALIDATING:
+        return True
     return not transfers._already_announced(
         context.state, completed.local_head,
     )

@@ -380,6 +380,17 @@ issue no longer records would have all three attributed to work it was never mad
 the whole record left exactly where they are — which pull request the branch belongs to is a question about the
 issue's record rather than about the commit, and throwing the replay away would answer neither.
 
+A relabel out of the refresh-driven set entirely — `workflow:implementing`, `workflow:decomposing`, anything this
+sync does not drive — leaves no road at all, since nothing here fetches, compares, or publishes under a label it
+does not own. An anchor standing alone is dropped there: an anchor is only a promise to come back, and no tick
+under the new label is coming. An attempt that got further is not. A recorded replay, or a permission granted for a
+push nobody made, is state the clear cannot honour — the checkout may be standing on a rewrite the pull request has
+never seen, a human's verdict is licensed onto a commit no push carried, and the debt beside it says a publication
+is still owed. Dropped, the three come apart from one another and the issue reads exactly like one with nothing in
+flight, so a decomposition tick is free to put a second agent on a change a human already ruled on. So that one
+parks instead, with nothing reset and nothing cleared — the hand that moved the label may have moved the checkout
+too — and an operator putting the label back lets the ordinary recovery finish the attempt on its own terms.
+
 One remote-old shape is not a pre-push recovery at all, and it is read off the record too. Where a receipt names
 the checkout's commit as pushed from this anchor — or a transfer settled, which rides the same write — the pull
 request HAD this replay, so a pull request standing on the anchor now was rolled back out of band. The head it was
@@ -441,7 +452,11 @@ contributions that no longer fingerprint alike each park instead. The gate is to
 a permit that stops holding between the two asks is refused there rather than measured. The reissued push a
 remote-old recovery makes is decided the same way wherever it holds a transfer at all — an outstanding permission,
 or evidence re-derived for a grant the crash came before — and a refusal there resets the branch onto the anchor
-rather than measuring a change a human already ruled on.
+rather than measuring a change a human already ruled on. That exclusivity outranks the `DECOMPOSE` switch as well.
+Off, the switch takes new work straight past the gate unread, which is the whole of what it is for — and a recovery
+holding a transfer is not new work: kept out, it would push with nothing vouching for the move, finish its route
+with the exemption still on the commit a human ruled on, and leave the permission standing outstanding for ever. So
+a permit-only call is inside the gate whatever the switch says, and publishes on the permit or not at all.
 
 A dirty checkout holds every one of those roads, not only the one that still owes a receipt: finishing hands the
 issue to the reviewer, and a reviewer sent to a checkout with uncommitted files reads work the pull request does
@@ -906,7 +921,12 @@ The keys that matter for the state machine fall into a few groups:
   without it would strand the issue on the stage the rebase ran from with nothing left to correct it. The window
   the mark cannot close is the one before it — the notice and the event are out and nothing says so — and it
   resolves toward saying them again rather than losing them, since a record a reader can see twice beats one nobody
-  can reconstruct.
+  can reconstruct. What the mark forgives is one LABEL rather than the fact of a relabel: `workflow:validating` is
+  the only stage this route ever writes, so a mark found beside `workflow:fixing`, `workflow:documenting`, or
+  `in_review` is somebody's move over an unfinished attempt and parks as the foreign publication it is. And the
+  finish it resumes is held to the base lag like every other one: a base that advanced again while the process was
+  down leaves the announced head behind it, so the record goes down, the label stays where it is, and the tick falls
+  through to the rebase that brings the branch forward — whose own finish makes the route.
   The anchor says which head the push is leased against; the SHA says which local commit the attempt made, and
   only it can say the divergent checkout a recovery finds is that attempt's work. A rebase
   REPLAYS the branch, so a worktree rebuilt from elsewhere, an operator's reset, and a branch pointed at somebody

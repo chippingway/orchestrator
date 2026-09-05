@@ -252,15 +252,17 @@ def _decided(
     already calls decided has nothing left to earn. Refused, the candidate
     falls through to the measurement exactly as it always did.
 
-    A caller that may publish on the permit and on NOTHING else gets the
-    refusal itself rather than the reading behind it. That is the crash
-    recovery, and the reading is the wrong answer there twice over: the commit
-    it would measure is one the pull request already carries or one an
-    interrupted push was already leased for, so a count under the ceiling
-    reports a publication with the verdict unmoved, and a count over it routes
-    a change a human already ruled on into a second adjudication. Nothing is
-    parked and nothing is routed for it -- the caller owns what a refusal
-    means where it stands.
+    A caller that may publish on the permit and on NOTHING else is answered
+    one function over, and answered there ALONE rather than after the three
+    records below have had their say. That is the crash recovery, and every
+    other road to publishing is the wrong answer for it: the reading it would
+    otherwise fall back to measures a commit the pull request already carries
+    or one an interrupted push is already leased for, and the reasons that
+    skip a reading say the candidate may publish without saying a verdict may
+    move onto it -- so the switch being off would let the push out with no
+    permit behind it, the route would finish with the exemption still on the
+    commit a human ruled on, and the permission would stand outstanding for
+    ever.
 
     The permit's answer is kept APART from the other three rather than folded
     into the one reason, because the two license different things. All four
@@ -272,6 +274,8 @@ def _decided(
     a permit that refused rotates nothing however readable the permission
     beside it still is.
     """
+    if gate.permit_only:
+        return _permitted_only(gate, recorded, candidate_sha)
     decided = _needs_no_measuring(gate, recorded, candidate_sha)
     permitted = decided or _transfer._carried_over(gate, candidate_sha)
     if permitted:
@@ -283,14 +287,6 @@ def _decided(
             gate, recorded, candidate_sha,
             permitted_sha="" if decided else candidate_sha,
         )
-    if gate.permit_only:
-        log.warning(
-            "issue=#%d candidate %s earned no permit and its caller may "
-            "publish it on nothing else; refusing rather than measuring a "
-            "commit that is already the pull request's or already leased",
-            gate.issue.number, candidate_sha,
-        )
-        return _records._REFUSED
     answered = (
         recorded.candidate_sha == candidate_sha
         and recorded.additions is not None
@@ -302,6 +298,47 @@ def _decided(
     if held:
         return _records._HELD
     return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
+
+
+def _permitted_only(
+    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
+) -> _records._GateVerdict:
+    """What a candidate may publish on where a permit is the only licence.
+
+    One question and no fallbacks. The caller is finishing a publication
+    rather than deciding one -- the commit is already on the pull request, or
+    the push it was leased for is already owed -- so what it needs to know is
+    whether the permission may be spent, and every other answer this gate can
+    give is about something else.
+
+    That is why the three records that skip a reading are not asked here, and
+    the switch is not either. Each of them says a candidate may PUBLISH
+    without a count; none of them says a human's verdict may move onto it, and
+    the write past the push turns on the second. Let through on one of them,
+    the recovery would push, finish its route with the exemption still on the
+    commit the adjudication accepted, and leave the permission standing
+    outstanding with nothing left to spend it.
+
+    A refusal is handed back rather than parked or routed: nothing was
+    measured, nothing was decided, and the caller owns what it means where it
+    stands.
+    """
+    permitted = _transfer._carried_over(gate, candidate_sha)
+    if not permitted:
+        log.warning(
+            "issue=#%d candidate %s earned no permit and its caller may "
+            "publish it on nothing else; refusing rather than measuring a "
+            "commit that is already the pull request's or already leased",
+            gate.issue.number, candidate_sha,
+        )
+        return _records._REFUSED
+    log.info(
+        "issue=#%d candidate %s %s; publishing it on that permit alone",
+        gate.issue.number, candidate_sha, permitted,
+    )
+    return _verdict_owner._unmeasured_verdict(
+        gate, recorded, candidate_sha, permitted_sha=candidate_sha,
+    )
 
 
 def _approved_on_a_reading(

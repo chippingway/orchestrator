@@ -229,6 +229,7 @@ def _unentered(
         revision=revision,
         lease=entered.head,
         permitted_sha=verdict.permitted_sha,
+        refused=verdict.refused,
     )
 
 

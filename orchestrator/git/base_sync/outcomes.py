@@ -9,9 +9,10 @@ comment claims an exemption or a transfer nobody can read whole, the attempt's
 own record is in pieces, the attempt was made for a publication this issue no
 longer records, no permit licenses the replay to publish at all, the branch was
 put back on the anchor with the attempt's own records still standing, the
-remote was rolled back off a replay the record says it carried, or a rewrite
+remote was rolled back off a replay the record says it carried, a rewrite
 the pull request already carries is one this tick cannot finish the route
-behind.
+behind, or the issue was relabelled off the refresh-driven set with the
+attempt's own records still standing.
 Each one either finalizes through ``persistence`` or parks, so keeping them
 in one owner is what makes the set enumerable -- an outcome that neither
 routed nor parked would leave the issue holding an anchor no later tick can
@@ -19,13 +20,15 @@ act on.
 
 Most parks reset HEAD onto the pre-rebase anchor first, because that anchor
 is the head the remote PR still carries and the reviewer is still voting on.
-Two must not. The unfinished-route park sits over a remote standing on the
+Three must not. The unfinished-route park sits over a remote standing on the
 REWRITE, so putting the branch back on the anchor would take the checkout off
-work the pull request has. And the foreign-publication park cannot say which
+work the pull request has. The foreign-publication park cannot say which
 pull request the branch belongs to at all, which is a question about the
 issue's record rather than about the commit -- throwing the replay away would
-answer neither. Both park with the anchor left pinned instead, and the next
-tick classifies afresh.
+answer neither. And the stranded park is taken under a label nothing here
+classifies, so it cannot say whether the hand that moved the issue moved the
+checkout too. All three park with the anchor left pinned instead, and the
+next tick classifies afresh.
 """
 from __future__ import annotations
 
@@ -559,6 +562,65 @@ def _park_undone_recovery(
             "so the records it abandoned have been dropped and nothing was "
             "rebased or pushed. Check the worktree and reply on this issue "
             "with anything once it is where you want it."
+        ),
+        reason=_REASON_AUTO_BASE_REBASE_FAILED,
+    )
+    return True
+
+
+def _park_stranded_recovery(context: _AutoRebaseRecoveryContext) -> bool:
+    """Hold an attempt whose issue was relabelled out from under it.
+
+    The label is no longer one refresh drives, so this recovery has no road
+    left: nothing here fetches, compares, or publishes for a stage the sync
+    does not own. What the comment still carries decides what that costs. An
+    issue holding nothing but the anchor loses nothing by dropping it -- the
+    branch is wherever it is, and whichever handler owns the new label works
+    from that. An issue holding a rebase an earlier tick RECORDED, or a
+    permission granted for a push nobody made, is a different thing entirely:
+    the checkout may be standing on a replay the pull request has never seen,
+    a human's verdict is licensed onto a commit no push carried, and the
+    approval debt beside it says a publication is still owed.
+
+    Dropped there, the three come apart from one another. The anchor is the
+    only thing naming what the branch would go back to, so the replay stops
+    being attributable to anything; the permission outlives the attempt it was
+    granted for and the next grant trips over it; and a decomposition tick
+    reading an issue with no attempt in flight is free to put another agent on
+    a change a human already ruled on.
+
+    So nothing is reset and nothing is cleared. The reset cannot run here for
+    the same reason the classification cannot: this tick does not know whether
+    the hand that moved the label also moved the checkout, and a hard reset
+    onto the anchor would answer that by discarding it. The issue parks with
+    every record standing exactly as the interrupted tick left it, which is
+    what lets an operator put the label back and let the ordinary recovery
+    finish the attempt on its own terms.
+    """
+    log.warning(
+        "issue=#%d auto-rebase recovery: label %r is no longer in the "
+        "refresh-driven set and the comment still carries the attempt an "
+        "earlier tick left; parking with every record intact rather than "
+        "clearing it",
+        context.issue.number,
+        context.label,
+    )
+    persistence._park_auto_rebase_failure(
+        context.gh,
+        context.issue,
+        context.state,
+        message=(
+            f"{config.HITL_MENTIONS} crash recovery for PR "
+            f"#{context.pr_number} cannot run under label "
+            f"`{context.label}`, which the base refresh does not drive -- and "
+            "this issue still records an interrupted rebase: the replay an "
+            "earlier tick made, or a permission granted to carry an "
+            "adjudication verdict over a push that never landed. Nothing was "
+            "rebased, pushed, or reset, and no record was dropped, so the "
+            "worktree and the pinned state are exactly as that tick left "
+            "them. Move the issue back to the label the rebase was "
+            "interrupted under and reply here with anything, and the next "
+            "polling tick will finish the recovery on its own terms."
         ),
         reason=_REASON_AUTO_BASE_REBASE_FAILED,
     )

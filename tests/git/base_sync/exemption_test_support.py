@@ -287,6 +287,7 @@ class _CleanRebaseCase(_SyncWorktreeWithBaseFixture):
         diverged: tuple = (1, 0),
         dirty: tuple = (),
         push: bool = True,
+        behind: bool = False,
     ):
         """The next tick, over the world one of those crashes left behind.
 
@@ -299,14 +300,21 @@ class _CleanRebaseCase(_SyncWorktreeWithBaseFixture):
         `local_head` is the other side of the same question, and a case moves
         it to say the branch was put BACK -- a reset that landed without its
         park write, or a hand at the checkout.
+
+        `behind` says the base moved again while the process was down, which
+        is the one reading that outlives the recovery: whatever it decides,
+        the tick behind it still owes this branch the rebase the new base
+        earned. The rebase seam answers for that one the way the crashed tick
+        answered for its own.
         """
         self.gh.pulls[PR_NUMBER].head = FakePRRef(sha=remote_head)
+        lagging = THREE_BEHIND_STDOUT if behind else UP_TO_DATE_STDOUT
         resumed = _scenario(
             dirty=MagicMock(return_value=list(dirty)),
-            rebase=MagicMock(),
+            rebase=MagicMock(return_value=(True, [])),
             push=MagicMock(return_value=push),
             head_sha=MagicMock(return_value=local_head),
-            git=MagicMock(return_value=_git_result(stdout=UP_TO_DATE_STDOUT)),
+            git=MagicMock(return_value=_git_result(stdout=lagging)),
             hardened=MagicMock(side_effect=_RemoteHeadGit(remote_head)),
             fetch=MagicMock(return_value=_git_result()),
             ahead_behind=MagicMock(return_value=_diverged(*diverged)),

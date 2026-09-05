@@ -77,6 +77,7 @@ per-file-ignores =
     orchestrator/workflow/stages/implementing/disposition.py:WPS202
     orchestrator/workflow/stages/implementing/late_evidence.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/late_freeze.py:WPS202
+    orchestrator/workflow/stages/implementing/late_gate.py:WPS202
     orchestrator/workflow/stages/implementing/late_parks.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/late_records.py:WPS202
     orchestrator/workflow/stages/implementing/late_rewrite.py:WPS202
@@ -115,12 +116,12 @@ per-file-ignores =
     orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
     tests/git/test_ref_transport.py:WPS202
-    tests/git/base_sync/exemption_test_support.py:WPS214
+    tests/git/base_sync/exemption_test_support.py:WPS211,WPS214
     tests/git/base_sync/journey_git_support.py:WPS201,WPS214
     tests/git/base_sync/recovery_git_support.py:WPS201,WPS214
     tests/git/base_sync/test_real_git_journey.py:WPS214
     tests/git/base_sync/test_recovery_real_git.py:WPS214
-    tests/git/base_sync/test_recovery_exemption.py:WPS202,WPS214
+    tests/git/base_sync/test_recovery_exemption.py:WPS201,WPS202,WPS214
     tests/git/publication/squash_recovery_support.py:WPS202
     tests/git/worktrees/artifact_test_support.py:WPS214
     tests/git/worktrees/candidate_host_test_support.py:WPS202,WPS214
