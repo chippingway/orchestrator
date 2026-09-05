@@ -2004,9 +2004,10 @@ stage's own, which describe the RUN that adjudicates one:
 - `late_agent_role` — the role the run was recorded under (`decomposer` for the adjudication itself).
 - `late_run_cycle_id`, `late_run_generation`, and `late_source_sha` — the cycle, the generation, and the exact commit
   the run was spawned against.
-- `late_result_verdict`, `late_result_category`, `late_result_question`, and `late_result_children` — what it
-  completed with: the verdict, the category beside it, the sentence a `question` asked, and the ordered child
-  manifest a `split` decided on.
+- `late_result_verdict`, `late_result_category`, `late_result_question`, `late_result_split_blocker`, and
+  `late_result_children` — what it completed with: the verdict, the category beside it, the sentence a `question`
+  asked, the explanation a `single` gave for what stopped a split, and the ordered child manifest a `split` decided
+  on.
 
 They are written by [`late_session.py`](../../orchestrator/workflow/stages/decomposition/late_session.py) and are
 deliberately NOT in `LATE_STATE_KEYS`: clearing late mode drops exactly the domain's group, and a locked backend
@@ -2043,19 +2044,30 @@ paying for a second one — a second run is not free, and it is free to decide d
 acting on the wrong answer instead.
 
 A result records the WHOLE of what its verdict decided, and is read back as an answer only while it does. A `single`
-needs nothing beside itself. A `question` carries the category it was asked under and the sentence it asked, because
-announcing it is that outcome's own external effect. A `split` carries the ordered child manifest, because the
-manifest *is* what a split decided — a marker without it would refuse to re-run the adjudicator while the answer it
-stood for was gone. The agent's rationale is the one part deliberately not kept: it is prose, it belongs on the issue
-thread, and nothing acts on it. A recorded manifest is rewritten from the three fields a child issue is created out
-of, so nothing an agent put beside them travels into the comment humans read.
+carries the explanation of what stopped a split, because that is the one thing somebody deciding what to do about an
+oversized candidate cannot get from anywhere else once the run is over. A `question` carries the category it was
+asked under and the sentence it asked, because announcing it is that outcome's own external effect. A `split` carries
+the ordered child manifest, because the manifest *is* what a split decided — a marker without it would refuse to
+re-run the adjudicator while the answer it stood for was gone. The agent's rationale for accepting the change is the
+part deliberately not kept: it is prose, it belongs on the issue thread, and nothing acts on it. A recorded manifest
+is rewritten from the three fields a child issue is created out of, so nothing an agent put beside them travels into
+the comment humans read.
+
+The explanation is the one of those a result may be missing and still be an answer, and the compatibility rule is the
+same in both directions. `late_result_split_blocker` is written only where the reply gave one, so results recorded
+before this key existed — and replies that declared the verdict without explaining it — carry nothing under it, and
+no live issue is migrated to say so. Read back, that absence answers with a fixed stand-in sentence rather than with
+an empty string, and the `single` stays actionable: reading it as incomplete would send the adjudicator round again
+to recover prose, at the price of a second run free to decide something else entirely. Nothing writes the stand-in
+into the comment, so a record that never had an explanation stays distinguishable from one that does.
 
 Half of an outcome is not one, in either direction. On the way in, what is measured is the whole comment the write would
 produce — the preserved held-PR body and every other stage's keys included, since a result small on its own can still
 be
 the one that pushes the comment past what GitHub accepts — and an outcome past that budget (`MAX_RECORDED_BODY`,
 GitHub's limit less headroom for the keys other stages still write) is refused *whole* rather than shortened: a
-truncated question asks something nobody said and a truncated manifest names children nobody proposed. The issue parks
+truncated question asks something nobody said, a truncated explanation gives a reason nobody wrote, and a truncated
+manifest names children nobody proposed. The issue parks
 instead of being left decided in a way no later tick could see, and learning the same thing from a failed write would
 mean the agent had already been paid for. On the way out, an incomplete record reads back unanswered: a `question` with
 no sentence or no category, and a `split` with no manifest or one the split validator refuses, would each suppress the
