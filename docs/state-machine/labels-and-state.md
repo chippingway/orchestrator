@@ -319,6 +319,17 @@ line. Both parks end the way every park does, by being answered — with one exc
 `late_measurement_failed` standing over a split that has already become children is retired by the reconciliation
 itself, since nothing about that record is a human's to answer, and the branch it was freezing goes back into base
 sync with it.
+One approval is the exception, and it is this refresh's own work rather than a stage's. An auto rebase pins its
+recovery anchor before git runs and enters the size gate on that same head, and the gate records the rebased commit
+as one still owed a push before the push goes out — so a process that dies in between leaves the anchor and the
+approval together. Read as a freeze, the approval takes the branch out of the very recovery the anchor exists for:
+the reconciliation ahead of the next handler would land the push while nothing ever cleared the anchor, reset
+`review_round`, or routed the reviewer at the rewritten head. So an approval whose `late_approved_lease` IS the
+pinned `pending_auto_base_rebase_push_sha` does not freeze the branch, and the refresh finishes the route it
+started. Nothing else writes either field while an anchor is outstanding, and a group too damaged to show its lease
+fails the test and keeps the freeze. The reading group is never set aside: a generation the gate froze and did not
+answer is a question no push settles.
+
 `late_exempt_sha` and `implementing_published_sha` freeze the branch too, but on conditions rather than on their
 presence: neither is ended by a write — the exemption is never cleared at all and the publication record is
 overwritten rather than spent — so read by presence they would take a branch out of the refresh for the rest of its
@@ -326,7 +337,12 @@ issue's life. The refresh asks two things instead. The checkout: the head still 
 there is nothing there left to protect. And the label: the stage that has to act on that commit — `implementing` for
 both, plus `decomposing` for an exemption a relabel has not carried out of it yet — still has the issue. Past the
 handoff neither holds anything, and that is the point: a pushed branch is kept in step with base by the PR-aware
-sync, which is the only route that can move it without stranding the SHA a reviewer is looking at.
+sync, which is the only route that can move it without stranding the SHA a reviewer is looking at. That rebase is a
+REWRITE of whatever the branch was standing on, so where it was standing on an exempt commit the refresh hands the
+size gate the same evidence a squash does — the pair the adjudication recorded, the pair the replay produced, and
+the pull request and pre-rebase anchor the push is made against — and the transfer above may carry the verdict onto
+the replay. A base advance that CHANGED what the branch adds to it fingerprints differently, so the permit refuses
+and the ordinary cumulative gate measures the replay exactly as it always did.
 
 Refresh-only failure modes — push rejected (`auto_base_rebase_push_failed`), rebase failed without conflicted files
 (`auto_base_rebase_failed`), dirty-after-clean-rebase (`auto_base_rebase_dirty`) — reset HEAD back to the pre-rebase
@@ -1437,8 +1453,9 @@ rather than preserving.
   adjudicated again. It names exactly the commit that was measured, which is also the whole invalidation rule —
   anything committed on top of it is work nobody adjudicated, does not match, and is measured as the fresh candidate
   it is. There is no clearing step to remember and no window in which a stale exemption covers a moved head. The one
-  thing that MOVES it is an authorized rewrite — a squash whose contribution fingerprints identically to the accepted
-  one, granted by `late_transfer` and recorded by the `late_rewrite_*` group below — and that move is a write of its
+  thing that MOVES it is an authorized rewrite — a squash on approval, or the clean base rebase the per-tick refresh
+  publishes, whose contribution fingerprints identically to the accepted one, granted by `late_transfer` and recorded
+  by the `late_rewrite_*` group below — and that move is a write of its
   own rather than a widening of the match: it belongs to the receipt of the push that landed rather than to the grant
   before it, so a verdict is never left on a commit no remote carries. `late_rotation` stages it into the push tail's
   own write, so the exemption, the identity, the phase, and the account of what the remote holds land together or not
@@ -1541,14 +1558,17 @@ rather than preserving.
   and they have to: by then the rewrite has already replaced the branch's commits
   with one, so a comment that explains that commit and does not say a push is outstanding is one the next squash
   reads as *nothing to squash* — reported as success, never measured, never pushed. The kind is
-  bounded to rewrites this workflow makes itself (today the squash a reviewer's approval earns, since the pre-tick
-  base refresh holds a branch standing on an exempt commit out of every rebase), and the publication group scopes
+  bounded to rewrites this workflow makes itself, and there are two: `squash`, the collapse a reviewer's approval
+  earns, and `auto_clean_rebase`, the replay the pre-tick base refresh force-pushes once the stage that had to act
+  on the exempt commit has handed the issue on. The publication group scopes
   the whole claim to one push onto one pull request. `late_rewrite_phase` is what says whether the move has
   happened, and every other reading turns on it. It binds the group to the exemption, and which end binds follows
   from it: `late_rewrite_from_sha` while the record stands at `authorized`, `late_rewrite_to_sha` once the receipt
   has moved it to `published`. It is also what a rollback reads — a force-push the remote refuses resets the branch
-  back onto the accepted commit, which is the commit the exemption never left, so what the reset owes is dropping
-  the permission it will never spend; an `authorized` record is therefore droppable and a `published` one is not.
+  back onto the head the rewrite found it on, which the record names as `late_rewrite_from_sha` for a squash (it
+  collapsed that commit) and as `late_rewrite_lease` for a rebase (it read the anchor for itself), so what the reset
+  owes is dropping the permission it will never spend; an `authorized` record is therefore droppable and a
+  `published` one is not.
   An *outstanding* permission is read two more ways on the tick after a crash: it says a push is owed for the commit
   it names, so the approval beside it defers to the permit rather than being spent on the object id, and it says the
   receipt has not landed, so a remote already standing on `late_rewrite_to_sha` is that permit's own push rather than

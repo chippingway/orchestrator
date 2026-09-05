@@ -4,11 +4,12 @@
 
 An exemption names the exact commit a human adjudicated, and nothing else is
 exempt. That is the whole of its safety, and it is also what a workflow
-REWRITE breaks: the squash a reviewer's approval earns collapses the accepted
-commit into a new object carrying the identical contribution, and the gate --
-which recognizes a decided candidate by one commit and only it -- would
-measure that object past the same ceiling and adjudicate the same change a
-second time.
+REWRITE breaks: a squash on approval collapses the accepted commit into a new
+object, and the refresh's own clean base rebase replays it onto a base that
+moved, so either way the identical contribution comes back on a commit nothing
+exempts -- and the gate, which recognizes a decided candidate by one commit
+and only it, would measure that object past the same ceiling and adjudicate
+the same change a second time.
 
 This record is what says the move is earned. It is written before anything
 reaches the remote and it moves NOTHING -- the exemption stays on the commit a
@@ -58,8 +59,9 @@ unchecked.
 That is also what binds this record to the exemption, and which end binds
 follows from the phase: the accepted end while it stands at `authorized`, the
 rewritten one once it is `published`. And it is what a rollback reads. A
-force-push refused between the two puts the branch back onto the commit the
-rewrite replaced -- which is the commit the exemption never left -- so what
+force-push refused between the two puts the branch back onto the head the
+rewrite found it on -- the accepted end for a squash, which collapsed that
+commit, and the lease for a rebase, which read the anchor for itself -- so what
 the reset owes is dropping the permission it will never spend. An `authorized`
 record is therefore droppable and a `published` one is not: the first is a
 transfer whose effect never left this host, the second one the pull request
@@ -110,10 +112,13 @@ class LateRewriteKind(StrEnum):
 
     Bounded, and small on purpose: a member is a rewrite this workflow makes
     itself, over a checkout it is holding still, out of commits it can name
-    both ends of. The squash a reviewer's approval earns is that rewrite --
-    it is the one push that replaces an accepted commit with an object of the
-    orchestrator's own making, since the per-tick base refresh holds a branch
-    standing on an exempt commit out of every rebase it would otherwise take.
+    both ends of. Two are. The SQUASH a reviewer's approval earns collapses
+    the accepted commit into an object of the orchestrator's own making. The
+    clean automatic base REBASE the per-tick refresh publishes replays it onto
+    a base that moved -- the refresh holds a branch standing on an exempt
+    commit out of the rebase only while the stage that has to act on that
+    commit still has the issue, and past that handoff keeping the pushed head
+    in step with base is the PR-aware sync's own job.
 
     A wire string this build does not know is not a kind to widen the
     vocabulary for at read time. It is a record from another build or a hand
@@ -123,6 +128,7 @@ class LateRewriteKind(StrEnum):
     """
 
     SQUASH = "squash"
+    AUTO_CLEAN_REBASE = "auto_clean_rebase"
 
 
 class LateRewriteProof(StrEnum):

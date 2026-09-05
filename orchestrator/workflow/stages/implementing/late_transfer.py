@@ -5,11 +5,13 @@
 The gate recognizes a decided candidate by one commit and only it, which is
 what keeps work committed on top of an accepted one from riding through on
 somebody else's verdict. A workflow REWRITE is the one thing that turns that
-rule against itself: the squash a reviewer's approval earns collapses the
-accepted commit into a new object carrying the identical contribution, and the
-exemption -- which names the old object -- stops answering for it. Measured
-afresh, the very change a human ruled on goes past the same ceiling and into a
-second adjudication, on the last push before the merge button.
+rule against itself. The squash a reviewer's approval earns collapses the
+accepted commit into a new object, and the clean base rebase the per-tick
+refresh publishes replays it onto a base that moved; either way what comes out
+carries the identical contribution and the exemption -- which names the old
+object -- stops answering for it. Measured afresh, the very change a human
+ruled on goes past the same ceiling and into a second adjudication, with a
+pull request already open over the work.
 
 So the exemption may MOVE, and this owner is the whole of what it may move on.
 A permit is granted only when every one of these holds, and the answer is a
@@ -92,9 +94,11 @@ back for. Left to escape, the exception would carry past every failure path the
 squash has, stranding a collapsed branch nothing recorded and nothing pushed.
 
 The other side is the rollback: a force-push the remote refuses puts the branch
-back on the commit the rewrite replaced, which is the commit the exemption has
-never left -- so what the reset owes is dropping the permission it will never
-spend, and nothing else.
+back on the head the rewrite found it on -- the accepted end where a squash
+collapsed that commit, the lease where a rebase read the anchor for itself --
+so what the reset owes is dropping the permission it will never spend, and
+nothing else. The exemption needs nothing either way, since the grant never
+moved it.
 
 An OUTSTANDING permission is a claim on the tick after a crash as well, and it
 is read two ways there. It says a push is owed for the commit it names, so the
@@ -931,13 +935,12 @@ def _persisted(gate: _records._Gate, before: dict) -> bool:
 def _abandoned_authorization(gate: _records._Gate, restored: str) -> bool:
     """Drop the permission a rolled-back rewrite will never spend.
 
-    A force-push the remote refuses is followed by a reset onto the commit the
-    rewrite replaced, so the object the permission was granted FOR is on no
-    branch any more -- only the reflog still has it. The exemption itself needs
-    no repair, because the grant never moved it: it has been on the commit a
-    human ruled on the whole time, which is exactly the commit the reset put
-    the branch back onto. What is left over is the permission, and it names a
-    rewritten commit nothing will ever push.
+    A force-push the remote refuses is followed by a reset onto the head the
+    rewrite found the branch on, so the object the permission was granted FOR
+    is on no branch any more -- only the reflog still has it. The exemption
+    itself needs no repair, because the grant never moved it: it is the commit
+    a human ruled on and has been the whole time. What is left over is the
+    permission, and it names a rewritten commit nothing will ever push.
 
     Left standing it is a claim about this issue's exemption that no later
     write spends and no reader can act on -- and the next rewrite would be
@@ -955,7 +958,7 @@ def _abandoned_authorization(gate: _records._Gate, restored: str) -> bool:
     comment exactly when there is something in it to make durable.
     """
     authorization = _rewrites.read_rewrite_authorization(gate.state)
-    if authorization is None or authorization.rewrite.from_sha != restored:
+    if authorization is None or not _put_back(authorization.rewrite, restored):
         return False
     if authorization.phase != _rewrites.LateRewritePhase.AUTHORIZED:
         return False
@@ -966,3 +969,25 @@ def _abandoned_authorization(gate: _records._Gate, restored: str) -> bool:
         gate.issue.number, authorization.rewrite.to_sha,
     )
     return True
+
+
+def _put_back(rewrite: _rewrites.LateRewrite, restored: str) -> bool:
+    """Whether this reset landed where the rewrite found the branch.
+
+    Two ends of the record answer it, because which of them the branch was
+    standing on beforehand is a fact about the REWRITE rather than about the
+    exemption. A squash collapses the accepted commit itself, so the head it
+    replaced is the commit the contribution came from. A refresh-time base
+    rebase replays whatever the branch had and reads the pre-rebase anchor for
+    itself, so what a reset goes back to there is the head the force-push was
+    leased against -- which is the accepted commit only while the branch was
+    standing exactly on it, and the equality of the two contributions never
+    claimed that it was.
+
+    Held to the record's own ends rather than to "anywhere but the rewritten
+    commit", which is the fail-closed rule every other reader of this group
+    follows: a reset nothing here can tie to the permission in front of it is
+    not this rewrite's rollback, and the group is the only account there is of
+    how the exemption came to name what it names.
+    """
+    return restored in (rewrite.from_sha, rewrite.lease)

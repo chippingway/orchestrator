@@ -116,6 +116,15 @@ def _reset_clear_and_park(
     by id and the next tick measures whatever the worktree turns out to be.
     So the two are ordered -- the reset is proved first, and the record
     follows it rather than the intent.
+
+    The permission a transfer granted goes in the same write and for the same
+    reason: a rebase of a commit an adjudication accepted may be licensed to
+    carry that verdict over, and the reset puts the branch back onto the
+    commit the exemption never left. The exemption itself needs no repair --
+    the grant moved nothing -- so what is left over is a claim about a push
+    that will never happen, for an object no branch has any more. Only an
+    outstanding record this build can read back whole is dropped, which is the
+    rollback's own rule wherever a rewrite is undone.
     """
     reset = commands._git_hardened(
         "reset", "--hard", reset_sha, cwd=context.worktree,
@@ -139,18 +148,46 @@ def _reset_clear_and_park(
                 context.issue.number, (cleaned.stderr or "").strip(),
             )
     context.state.set(_PENDING_PUSH_SHA, None)
-    # Lazily bound for the reason the comment and guard owners are: the size
-    # gate sits in the workflow layer above this package, and binding it at
-    # module load would make every git-side import pay for the stage tree.
-    from orchestrator.workflow.stages.implementing import late_parks
-    if restored and late_parks._approved_commit(context.state) != reset_sha:
-        late_parks._forget_approval(context.state)
+    if restored:
+        _forgets_the_reset(context, reset_sha)
     _park_auto_rebase_failure(
         context.gh,
         context.issue,
         context.state,
         message=message,
         reason=reason,
+    )
+
+
+def _forgets_the_reset(
+    context: _AutoRebaseContext | _AutoRebaseRecoveryContext,
+    reset_sha: str,
+) -> None:
+    """Drop what a landed reset just took the branch off, in memory.
+
+    Both records name a commit only the reflog still has once the branch is
+    back on the pre-rebase anchor: the approval says a push is owed for it,
+    and a transfer's permission says what that push may carry a human's
+    verdict over. Neither has anything left to be paid by, and both are staged
+    rather than written so the park's own write is what makes the drop
+    durable.
+    """
+    # Lazily bound for the reason the comment and guard owners are: the size
+    # gate sits in the workflow layer above this package, and binding it at
+    # module load would make every git-side import pay for the stage tree.
+    from orchestrator.workflow.stages.implementing import (
+        late_parks,
+        late_records,
+        late_transfer,
+    )
+    if late_parks._approved_commit(context.state) != reset_sha:
+        late_parks._forget_approval(context.state)
+    late_transfer._abandoned_authorization(
+        late_records._gate(
+            context.gh, context.spec, context.issue, context.state,
+            context.worktree,
+        ),
+        reset_sha,
     )
 
 

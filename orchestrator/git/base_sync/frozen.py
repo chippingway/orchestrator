@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from orchestrator.git.base_sync.state import log
+from orchestrator.git.base_sync.state import _PENDING_PUSH_SHA, log
 from orchestrator.git.verification import probes as _probes
 from orchestrator.github import pinned_state as _pinned_state
 
@@ -92,9 +92,16 @@ _LATE_READING_KEYS: tuple[str, ...] = (
 )
 
 
+# The head an approval pins its push against, named on its own because one
+# reader asks it for its VALUE rather than for being there: it is the single
+# late field this domain can recognize as its own work, since an auto rebase
+# pins its anchor before git runs and enters the gate on that same head.
+_LATE_APPROVAL_LEASE = "late_approved_lease"
+
+
 _LATE_APPROVAL_KEYS: tuple[str, ...] = (
     "late_approved_sha",
-    "late_approved_lease",
+    _LATE_APPROVAL_LEASE,
 )
 
 
@@ -233,8 +240,39 @@ def _held_records(state: _pinned_state.PinnedState) -> tuple[str, ...]:
     """
     held = tuple(key for key in _FROZEN_BY_KEYS if state.get(key))
     return held + tuple(
-        key for key in _LATE_CLAIM_KEYS if state.get(key) is not None
+        key for key in _claimed_by(state) if state.get(key) is not None
     )
+
+
+def _claimed_by(state: _pinned_state.PinnedState) -> tuple[str, ...]:
+    """Which late keys freeze this branch, given what else is pinned beside them.
+
+    Every one of them, except in the single case where the approval standing
+    here is this refresh's OWN interrupted work. An auto rebase pins its
+    recovery anchor before git runs, rebases, and enters the size gate on that
+    same head -- which records the rebased commit as one still owed a push,
+    durably, before the push goes out. A process that dies in that window
+    comes back to both records at once, and the approval reading alone freezes
+    the branch out of the very recovery the anchor exists for: the reconciliation
+    ahead of the next handler would land the push, and nothing would ever clear
+    the anchor, reset the review round, or route the reviewer at the rewritten
+    head.
+
+    So the approval is set aside for exactly that shape, and the shape is
+    narrow: an anchor still pinned, and an approval leased to it. Nothing else
+    writes either -- the anchor is this owner's domain and no stage handler
+    runs while one is outstanding -- and a group too damaged to show its lease
+    fails the test and keeps the freeze, which is the answer a record nobody
+    can vouch for has to get.
+
+    The reading group is never set aside. A generation the gate froze and did
+    not answer is a question no push settles, so a branch carrying one stays
+    still whatever else is pinned beside it.
+    """
+    anchor = state.get(_PENDING_PUSH_SHA)
+    if anchor and state.get(_LATE_APPROVAL_LEASE) == anchor:
+        return _LATE_READING_KEYS
+    return _LATE_CLAIM_KEYS
 
 
 def _awaits_a_commit_of_its_own(state: _pinned_state.PinnedState) -> bool:

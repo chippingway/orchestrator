@@ -736,18 +736,30 @@ class AbandonedAuthorizationTest(_TransferCase, unittest.TestCase):
         self.gate = _support.gate(self.github, self.issue, self.state)
 
     def test_a_rollback_drops_the_permission(self) -> None:
-        # The reset puts the branch back on the accepted commit, which is the
-        # commit the exemption never left -- so what is left over is a
-        # permission granted for an object on no branch, and it goes with it.
-        self.assertTrue(
-            _transfer._abandoned_authorization(self.gate, ACCEPTED_SHA),
-        )
+        # Both heads a rewrite can be put back onto. A squash collapses the
+        # accepted commit itself, so the reset lands on the commit the
+        # exemption never left. A base rebase reads the pre-rebase anchor for
+        # itself and goes back to THAT, which is the accepted commit only
+        # while the branch was standing exactly on it -- and the equality of
+        # the two contributions never said that it was. Either way the object
+        # the permission was granted for is on no branch, and it goes with it.
+        for restored in (ACCEPTED_SHA, LEASED_SHA):
+            with self.subTest(restored=restored):
+                self._carried()
 
-        self.assertTrue(_exemption.is_exempt(self.state, ACCEPTED_SHA))
-        identity = _exemption.read_semantic_identity(self.state)
-        self.assertEqual(identity.candidate_sha, ACCEPTED_SHA)
-        self.assertEqual(identity.fingerprint, ACCEPTED_DIGEST)
-        self.assertFalse(_rewrites.carries_rewrite_authorization(self.state))
+                self.assertTrue(
+                    _transfer._abandoned_authorization(self.gate, restored),
+                )
+
+                self.assertTrue(
+                    _exemption.is_exempt(self.state, ACCEPTED_SHA),
+                )
+                identity = _exemption.read_semantic_identity(self.state)
+                self.assertEqual(identity.candidate_sha, ACCEPTED_SHA)
+                self.assertEqual(identity.fingerprint, ACCEPTED_DIGEST)
+                self.assertFalse(
+                    _rewrites.carries_rewrite_authorization(self.state),
+                )
 
     def test_a_published_transfer_is_not_dropped(self) -> None:
         # Past the receipt the pull request carries the rewritten commit and

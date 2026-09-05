@@ -83,11 +83,12 @@ new work the switch publishes untouched and the superseded record is retired
 rather than left over a commit nothing will push.
 
 The fifth is the only one no record names in advance: a REWRITE of the exact
-commit an adjudication accepted. A squash on approval replaces that commit
-with an object carrying the identical contribution, and the one-commit rule
-that makes the exemption safe is what stops it answering for the replacement
--- so the same change would be measured past the same ceiling and adjudicated
-again, on the last push before the merge button. It is the only candidate here
+commit an adjudication accepted. A squash on approval and the refresh's own
+clean base rebase each replace that commit with an object carrying the
+identical contribution, and the one-commit rule that makes the exemption safe
+is what stops it answering for the replacement -- so the same change would be
+measured past the same ceiling and adjudicated again, with a pull request
+already open over the work. It is the only candidate here
 that EARNS its way past the reading rather than being recognized, and
 `late_transfer` is the whole of what it is earned on: a permit granted only
 over a semantic record that PROVES itself -- re-fingerprinted over its own

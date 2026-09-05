@@ -463,11 +463,13 @@ publication is handed a candidate the gate never looked at while the record besi
 one still owed a push.
 
 The fifth is the only one no record names in advance, and the only one that has to *earn* its way past the reading:
-a workflow rewrite of the exact commit an adjudication accepted. A squash on approval replaces that commit with an
-object carrying the identical contribution, and the one-commit rule that makes the exemption safe is exactly what
-stops it answering for the replacement — so the same change would be measured past the same ceiling on the last
-push before the merge button. `late_transfer.py` is what it is earned on: a whole semantic record whose exempt
-commit is the one the rewrite came from, evidence naming a bounded rewrite kind and both pre- and post-rewrite
+a workflow rewrite of the exact commit an adjudication accepted. Two of them replace that commit with an object
+carrying the identical contribution: a squash on approval, on the last push before the merge button, and the clean
+base rebase the per-tick refresh force-pushes once the stage that had to act on the exempt commit has handed the
+issue on. The one-commit rule that makes the exemption safe is exactly what stops it answering for either
+replacement — so the same change would be measured past the same ceiling with a pull request already open over it.
+`late_transfer.py` is what it is earned on: a whole semantic record whose exempt commit is the one the rewrite came
+from, evidence naming a bounded rewrite kind and both pre- and post-rewrite
 pairs, no authorization this build cannot read already standing for that exemption, the publication this call
 itself froze and the one the issue still records, a provably clean checkout standing on the rewritten commit, a
 leased head that peels to a commit this host holds — the one end nothing else here reads as an object, since the
@@ -482,9 +484,10 @@ it. Granted, one durable write records the **permission** and the debt the push 
 pushed — the exemption itself does not move there. That rotation belongs to `late_rotation.py`, on the
 write that receipts the landed push, where the exemption, the identity it carries, and the account of what the
 remote holds go down together or not at all, so a verdict is never left on a commit no remote carries; a
-force-push the remote refuses puts the branch back onto the commit the exemption never left, and what the rollback
-owes is dropping the permission it will never spend. Refused, nothing moves and the ordinary cumulative gate
-measures it like any other candidate.
+force-push the remote refuses puts the branch back onto the head the rewrite found it on — the accepted commit
+where a squash collapsed it, the leased anchor where a rebase read it for itself — and what the rollback owes is
+dropping the permission it will never spend, since the exemption never moved. Refused, nothing moves and the
+ordinary cumulative gate measures it like any other candidate.
 
 A crash between that grant and the push it licenses leaves the one approval that was never a reading this gate
 took, and it is read as exactly that: an approval standing beside an outstanding permission defers back to the

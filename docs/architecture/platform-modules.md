@@ -250,8 +250,10 @@ orchestrator/
                         branch by their presence -- the late reading and the approval among them, each read as
                         the whole GROUP its write puts down rather than as its commit alone, since a record
                         carrying part of one is what the dispatcher parks on a tick LATER and a hold keyed to
-                        the commit would rebase and push it first -- the two parks that freeze one with no
-                        record behind them at all
+                        the commit would rebase and push it first; with one exception, an approval leased to an
+                        auto-rebase anchor still pinned here, which is this refresh's own interrupted work and
+                        may not freeze the branch out of the recovery that anchor exists for -- the two parks
+                        that freeze one with no record behind them at all
                         (a size reading nobody could take, and an implementer timeout whose watermark names a
                         commit not yet made), and the two no write ever ends (the accepted commit and the
                         published one), which freeze only while the checkout still stands on the commit they
@@ -265,7 +267,13 @@ orchestrator/
                         against the head this owner read, so a checkout something moved between that read and the
                         gate's own refuses rather than publishing one commit while the notice, the event, and the
                         `validating` route name another -- the lease-pinned force-push, and what an accepted push
-                        writes
+                        writes; and the rewrite evidence handed to that gate beside the candidate, since a clean
+                        replay of a commit an adjudication accepted may carry the exemption over: the pair the
+                        pinned record already holds, the pair the replay produced -- over a base frozen from what
+                        the REMOTE says the branch is at, never off the local ref the rebase named, which any
+                        worktree sharing the store can repoint after this tick's fetch -- and the pull request,
+                        stage, and pre-rebase anchor the push is made against, empty where either half cannot be
+                        shown
       conflicts.py      the counter, notice, event, and relabel a genuinely conflicted rebase is handed to its stage
                         with
       guards.py         the no-op completion and the unreadable-HEAD, dirty-tree, and failed-push refusals
@@ -277,9 +285,10 @@ orchestrator/
                         the base it now sits on, and one something moved since is not the head the finalize
                         behind the push records
       outcomes.py       the already-published, unknown-comparison, diverged, dirty, and failed-push answers
-      persistence.py    the parks, the reset-and-park tail -- which drops the debt it abandons only once the reset
-                        has actually landed, since a refused one may leave the branch still standing on the
-                        approved commit -- and the state / notice / event writes a recovery ends in
+      persistence.py    the parks, the reset-and-park tail -- which drops the debt it abandons, and the permission
+                        a transfer granted for the same commit, only once the reset has actually landed, since a
+                        refused one may leave the branch still standing on the approved commit -- and the state /
+                        notice / event writes a recovery ends in
       models.py         the frozen contexts, requests, snapshots, and decisions
       state.py          the pinned-state keys, park reasons, refresh detour labels, and the shared logger
     publication/        what a branch becomes before review reads it
