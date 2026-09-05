@@ -54,6 +54,7 @@ _LATE_SPLIT_OWNERS = (
     "ledger_encoding",
     "ledgers",
     "models",
+    "overrides",
     "payloads",
     "records",
     "restart",
