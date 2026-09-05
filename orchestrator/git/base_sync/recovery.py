@@ -84,6 +84,14 @@ _REFUSED_NO_OP = (
     "this tick read it"
 )
 
+# The two handoffs that say a grant is still standing over a commit the
+# branch does not have: one this build reads as owed a push, and one it cannot
+# read at all. A settled transfer is neither -- it is never cleared, so an
+# issue that earned one would never look unstarted again.
+_UNSPENT_TRANSFERS = frozenset((
+    transfers._Handoff.OUTSTANDING, transfers._Handoff.UNVOUCHED,
+))
+
 _RECOVERY_SIGNATURE = inspect.Signature((
     inspect.Parameter("gh", inspect.Parameter.POSITIONAL_OR_KEYWORD),
     inspect.Parameter("spec", inspect.Parameter.POSITIONAL_OR_KEYWORD),
@@ -146,11 +154,11 @@ def _retry_recovery_push(
             context, recovery_snapshot, dirty_files,
         )
     rewrite = transfers._reconstructed(
-        context, recovery_snapshot.local_head or "", carried,
+        context, recovery_snapshot.head, carried,
     )
     licensed = rewrite is not None or carried == transfers._Handoff.OUTSTANDING
     if licensed and not transfers._permits_the_publication(
-        context, recovery_snapshot.local_head or "", rewrite,
+        context, recovery_snapshot.head, rewrite,
     ):
         return outcomes._park_refused_permit_recovery(
             context, recovery_snapshot,
@@ -175,7 +183,7 @@ def _pushes_the_recovered_head(
     push leaves the verdict where it was, which the rotation read below
     catches.
     """
-    landed = recovery_snapshot.local_head or ""
+    landed = recovery_snapshot.head
     records = publication._gate_records()
     published = publication._gated_publication()._publishes(
         records._gate(
@@ -238,7 +246,7 @@ def _unfinished_recovery_push(
         return True
     if not published.landed:
         return outcomes._park_failed_recovery_push(context, recovery_snapshot)
-    landed = recovery_snapshot.local_head or ""
+    landed = recovery_snapshot.head
     if licensed and not transfers._rotated_onto(context.state, landed):
         return outcomes._park_unfinished_recovery(
             context, recovery_snapshot, _UNROTATED.format(published=landed),
@@ -295,7 +303,7 @@ def _finish_published_recovery(
     one thing that brings this recovery back and leave the next tick to
     measure an adjudicated change as a fresh candidate.
     """
-    landed = recovery_snapshot.local_head or ""
+    landed = recovery_snapshot.head
     if not context.pending_rewrite.names(landed):
         return outcomes._park_unfinished_recovery(
             context, recovery_snapshot,
@@ -304,15 +312,43 @@ def _finish_published_recovery(
     loose = _loose_tree_holds(context, recovery_snapshot, carried)
     if loose is not None:
         return loose
-    if carried == transfers._Handoff.OUTSTANDING:
-        return _settle_published_recovery(context, recovery_snapshot)
     unaccounted = transfers._unaccounted_publication(
         context.state, landed, context.pending_pre_rebase_sha, carried,
     )
-    if unaccounted:
+    if unaccounted and carried != transfers._Handoff.OUTSTANDING:
         return outcomes._park_unfinished_recovery(
             context, recovery_snapshot, unaccounted,
         )
+    return _finishes_the_landed_route(context, recovery_snapshot, carried)
+
+
+def _finishes_the_landed_route(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+    carried: transfers._Handoff,
+) -> bool:
+    """Take the last step a landed rewrite is still owed.
+
+    The record a settled transfer never got to report is made first, on
+    whichever of them follows: the settlement's own write goes down before the
+    record does, so a tick lost in between is one of the states this road
+    comes back to, and the proof it kept is the one thing no later reading
+    could re-derive. What it stages rides the write every road below makes.
+
+    Then three answers, and the record says which. A finish that ANNOUNCED
+    owes only the relabel it may not have made and the write that clears the
+    attempt -- saying any of the rest again would put a second `base_rebased`
+    on the stream and a second notice on the pull request for one publication
+    that happened once. A permission still OUTSTANDING owes the receipt, taken
+    through the leased no-op that proves the pull request really carries the
+    commit. Everything else owes the ordinary route: the notice, the audit
+    event, and the reviewer sent back to the rewritten head.
+    """
+    transfers._reports_a_lost_settlement(context)
+    if transfers._already_announced(context.state, recovery_snapshot.head):
+        return persistence._write_the_finished_route(context)
+    if carried == transfers._Handoff.OUTSTANDING:
+        return _settle_published_recovery(context, recovery_snapshot)
     return outcomes._finalize_already_published_recovery(
         context, recovery_snapshot,
     )
@@ -390,7 +426,7 @@ def _settle_published_recovery(
     branch off work the remote has. The anchor stays pinned, the issue parks,
     and the next recovery classifies the remote afresh.
     """
-    landed = recovery_snapshot.local_head or ""
+    landed = recovery_snapshot.head
     if not transfers._permits_the_publication(context, landed):
         return outcomes._park_unfinished_recovery(
             context, recovery_snapshot, _REFUSED_PERMIT,
@@ -442,7 +478,7 @@ def _unsettled_no_op(
         return outcomes._park_unfinished_recovery(
             context, recovery_snapshot, _REFUSED_NO_OP,
         )
-    landed = recovery_snapshot.local_head or ""
+    landed = recovery_snapshot.head
     if transfers._rotated_onto(context.state, landed):
         return None
     return outcomes._park_unfinished_recovery(
@@ -464,9 +500,74 @@ def _recover_pending_auto_base_rebase_context(
         recovery_snapshot.local_head
         and recovery_snapshot.local_head == context.pending_pre_rebase_sha
     ):
-        return snapshot._clear_unchanged_recovery(context)
+        return _finish_an_unmoved_head(context, recovery_snapshot)
 
     return _route_recovery_snapshot(context, recovery_snapshot)
+
+
+def _finish_an_unmoved_head(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Answer a checkout standing exactly where the attempt anchored it.
+
+    Two states look identical from HEAD alone, and only one of them is the
+    shortcut. An attempt that pinned its anchor and got no further left
+    nothing else behind: no record of a replay, no permission it never spent,
+    and a tree git has not touched. Dropping the anchor there costs nothing --
+    the normal rebase flow picks the branch up on this same tick and does the
+    work again.
+
+    The other is an attempt that got a long way and was UNDONE. A reset that
+    landed and whose park write did not, or somebody's own `git reset`, puts
+    the branch back on the anchor with the record of the replay, the
+    permission granted for it, and the debt beside it all still standing --
+    and the tree may still carry whatever the reset was taken over. Dropping
+    the anchor there throws away the only thing that brings a recovery back,
+    leaves the transfer state for the next grant to trip over, and hands the
+    branch straight to a fresh rebase.
+
+    So the shortcut is for the unstarted attempt only, and everything else is
+    finished as the rollback it is: the reset is re-run onto the head the
+    branch is already on, which is what lets the abandoned debt and the
+    permission the replay will never spend go with it, and the issue parks for
+    a human to say what undid it.
+    """
+    if _unstarted_attempt(context, recovery_snapshot):
+        return snapshot._clear_unchanged_recovery(context)
+    return outcomes._park_undone_recovery(context, recovery_snapshot)
+
+
+def _unstarted_attempt(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Whether this attempt left nothing behind but the anchor it pinned.
+
+    Two things say it did leave something. A record of the replay it produced,
+    whether whole or in pieces, is an attempt that reached the write after
+    `git rebase` -- and a reset that put the branch back before its own park
+    write leaves exactly that. A permission this build reads as outstanding,
+    or one it cannot vouch for at all, is a grant that was never spent on a
+    commit the branch no longer has.
+
+    A SETTLED permission is not one of them: a transfer that finished is never
+    cleared, so every issue that ever earned one would fail this test for the
+    rest of its life.
+
+    The TREE is nobody's question here, and deliberately. A checkout carrying
+    uncommitted work is one the clean-tree gate ahead of every rebase already
+    refuses, so a shortcut taken over one hands the branch to a flow that
+    stands down on the same tick -- and where the dirt came from a reset this
+    attempt took, the record it left is the first test above.
+
+    Costs no git and no request, which is what lets the ordinary unstarted
+    attempt -- the whole reason this shortcut exists -- pay nothing for it.
+    """
+    if context.pending_rewrite.claimed:
+        return False
+    carried = transfers._carried_by(context, recovery_snapshot.local_head)
+    return carried not in _UNSPENT_TRANSFERS
 
 
 def _route_recovery_snapshot(
@@ -525,65 +626,16 @@ def _route_recovery_snapshot(
     if completed is None:
         return True
     carried = transfers._carried_by(context, completed.local_head)
-    published = bool(completed.local_head) and (
-        completed.local_head == completed.remote_head
-    )
-    if _finished_but_unwritten(context, completed, carried, published):
-        return persistence._write_the_finished_route(context)
-    if _made_for_another_publication(context):
+    if _made_for_another_publication(context, completed):
         return outcomes._park_foreign_publication_recovery(context, completed)
-    if published:
+    if completed.local_head and completed.local_head == completed.remote_head:
         return _finish_published_recovery(context, completed, carried)
     return _route_an_unpublished_head(context, completed, carried)
 
 
-def _finished_but_unwritten(
-    context: _AutoRebaseRecoveryContext,
-    completed: _AutoRebaseRecoverySnapshot,
-    carried: transfers._Handoff,
-    published: bool,
-) -> bool:
-    """Whether the only thing an earlier finish never made is its own write.
-
-    The last window a finish has. The notice, the audit event, and the relabel
-    all go out before the pinned write that clears this record, so a process
-    lost between the relabel and that write comes back to an issue already on
-    the stage the route moves to, carrying an attempt made from wherever it
-    started, over a pull request that already has the rewrite.
-
-    Recognized on the MARK a finish leaves rather than on the label, and that
-    is the whole of what keeps it honest. `validating` on its own says
-    nothing: somebody can relabel an issue there after a crash the push never
-    survived, and a rebase that ran from that stage never moved off it at all.
-    What only a finish past its announcement leaves is the durable note it
-    writes between the audit event and the relabel, and this is the one road
-    that reads it.
-
-    Asked with the accounting beside it, because the note says what was
-    announced and the receipt says what reached the remote: a mark for a
-    commit the pull request does not carry, or one the comment cannot account
-    for, is not a finish anybody may write off.
-
-    What it earns is the write and nothing else. The notice was posted, the
-    event was filed, and the reviewer was routed; repeating them would put a
-    second `base_rebased` on the stream -- under the stage the relabel moved
-    to -- and a second notice on the pull request, for one publication that
-    happened once.
-    """
-    if not published or not context.pending_rewrite.names(
-        completed.local_head,
-    ):
-        return False
-    if not transfers._already_announced(context.state, completed.local_head):
-        return False
-    return not transfers._unaccounted_publication(
-        context.state, completed.local_head, context.pending_pre_rebase_sha,
-        carried,
-    )
-
-
 def _made_for_another_publication(
     context: _AutoRebaseRecoveryContext,
+    completed: _AutoRebaseRecoverySnapshot,
 ) -> bool:
     """Whether the attempt was made for a publication this tick is not on.
 
@@ -604,11 +656,23 @@ def _made_for_another_publication(
     returning and the write that records it. There is no claim to disagree
     with there, and the roads behind this one already refuse to publish
     anything they cannot show the terms of.
+
+    One stage disagreement is this route's OWN and is forgiven: a finish
+    relabels the issue to `validating` right after it records that it has
+    announced itself, so a tick that finds that mark beside a record made from
+    another stage is looking at its own last step. The pull request is never
+    forgiven -- no step of this route repoints one.
     """
     recorded = context.pending_rewrite
     if not recorded.is_recorded:
         return False
-    return not recorded.answers_for(context.pr_number, context.label)
+    if recorded.pr_number != context.pr_number:
+        return True
+    if recorded.stage == context.label:
+        return False
+    return not transfers._already_announced(
+        context.state, completed.local_head,
+    )
 
 
 def _route_an_unpublished_head(

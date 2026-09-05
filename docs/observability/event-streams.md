@@ -779,6 +779,10 @@ the remote is already on the rewritten commit the recovery takes the leased no-o
 rather than relabelling and leaving the permission for a stage the rewrite was never entered from
 ([`../state-machine/labels-and-state.md#base-refresh`](../state-machine/labels-and-state.md#base-refresh)). There is
 no third value — a remote anywhere else is a permit that was refused, which settles nothing and reports nothing.
+The proof is also the one thing here a later tick could not re-derive, so the write that settles a transfer keeps
+it on the pinned comment until this record has been made and drops it behind the record: a process lost between
+the settlement and the report comes back to a verdict that moved and a proof still standing, and makes the record
+from it rather than leaving the move unannounced.
 No `late_verdict` joins it: the transfer carries a decision a human already made onto the object that replaced the
 one they made it about, and a second `single` here would read as a second adjudication of work nobody was asked
 about twice. Two roads leave the

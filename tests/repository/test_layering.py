@@ -120,6 +120,7 @@ _CALL_TIME_HOPS = MappingProxyType({
         f"{PACKAGE}.workflow.stages.implementing.late_overflow",
         f"{PACKAGE}.workflow.stages.implementing.late_parks",
         _LATE_RECORDS,
+        f"{PACKAGE}.workflow.stages.implementing.late_rotation",
         _LATE_TRANSFER,
         _REWRITES,
     ),

@@ -270,7 +270,11 @@ orchestrator/
       eligibility.py    the label, park, open-PR, recovery, and clean-tree gates one PR sync clears
       pre_pr.py         the hardened rebase / merge probes and the aborting pre-PR local rebase
       pr.py             the order a PR-having worktree's gates, rebase, and publication are asked in
-      startup.py        the pre-rebase HEAD guard and the anchor persisted before git runs
+      startup.py        the pre-rebase HEAD guard, the anchor persisted before git runs, and -- on the statement
+                        after `git rebase` returns, before the head is read for anything else -- the replay it
+                        produced with the publication it was made for, since a real replay diverges from the head
+                        the pull request still carries and nothing else can tell that divergence from a worktree
+                        somebody rebuilt
       publication.py    the post-rebase checks, the size gate the rebase passes before it publishes -- reached
                         through a call-time import, since it sits in the workflow layer above this one, and named
                         against the head this owner read, so a checkout something moved between that read and the
@@ -309,7 +313,11 @@ orchestrator/
       guards.py         the no-op completion and the unreadable-HEAD, dirty-tree, and failed-push refusals
       snapshot.py       the branch fetch, the local / remote head reads and divergence counts, and the abort an
                         unreadable one takes
-      recovery.py       the order a crash recovery asks its questions in, over both classifications -- where the
+      recovery.py       the order a crash recovery asks its questions in -- with the shortcut for a checkout
+                        standing on the anchor reserved for an attempt that left nothing else behind, since a
+                        branch put BACK there still carries the replay it recorded and the permission it never
+                        spent, and dropping the anchor over those hands a fresh rebase a record nobody
+                        reconciles -- over both classifications -- where the
                         remote stands, and how far the transfer's own writes got -- and the two roads that still
                         publish something. The remote is classified by exact SHA against the rewrite and against
                         the pinned anchor before the divergence counts are read at all, because a rebase REPLAYS
@@ -324,8 +332,9 @@ orchestrator/
                         was granted from. Both are taken on the PERMIT alone wherever a transfer is in hand, asked
                         before the gate and asked of the gate, since its own fallback for a declining permit is
                         the ordinary reading -- which would either finish the route with the verdict unmoved or
-                        adjudicate the change a second time. A dirty checkout holds either of them, and a finish
-                        whose only unmade step is its own write makes that and announces nothing
+                        adjudicate the change a second time. A dirty checkout holds either of them, a settlement
+                        the sinks were never told about is reported before any of them, and a finish whose only
+                        unmade steps are its relabel and its own write makes those and announces nothing
       outcomes.py       the already-published, unknown-comparison, diverged, dirty, failed-push, unvouched-record,
                         damaged-attempt-record, foreign-publication, rolled-back-remote, and unfinished-route
                         answers -- the unvouched and damaged ones resetting onto the anchor rather than letting the
@@ -336,8 +345,8 @@ orchestrator/
                         to is exactly what the tick cannot say
       persistence.py    the parks, the write a finish makes between its announcement and its relabel -- the one
                         thing that tells a tick lost in that window from one that never announced itself, so the
-                        recovery makes the write it never made rather than saying all of it again -- the
-                        reset-and-park tail -- which drops the debt it abandons, and the permission
+                        recovery makes the relabel and the write it never made rather than saying all of it
+                        again -- the reset-and-park tail -- which drops the debt it abandons, and the permission
                         a transfer granted for the same commit, only once the reset has actually landed, since a
                         refused one may leave the branch still standing on the approved commit -- the paired clear
                         every step that ends an attempt goes through, so no road drops the anchor and leaves the

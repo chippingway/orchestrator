@@ -881,6 +881,69 @@ class LooseSettledTreeTest(_ResumedRebaseCase, unittest.TestCase):
         self._assert_parked(PARK_PUSH_FAILED)
 
 
+class UnroutedFinishTest(_ResumedRebaseCase, unittest.TestCase):
+    """A finish that said what it published and never routed the reviewer."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._crashes_at_the_relabel()
+        self.resumed = self._resumes(remote_head=AFTER_SHA)
+
+    def test_the_reviewer_is_still_sent_to_the_replay(self) -> None:
+        # The anchor is the only thing that brings this tick back, so clearing
+        # it without the relabel would strand the issue on the stage the
+        # rebase ran from with nothing left to correct it.
+        self._assert_routed(True)
+        self._assert_anchor(None)
+        self.assertEqual(self._pinned()[KEY_REVIEW_ROUND], 0)
+
+    def test_nothing_it_already_said_is_said_again(self) -> None:
+        self._assert_nothing_left(self.resumed)
+        self.assertEqual(
+            [record[METHOD_FIELD] for record in self._events_of(
+                EVENT_BASE_REBASED,
+            )],
+            [CLEAN_REBASE],
+        )
+        self.assertEqual(len(self._events_of(EVENT_TRANSFER)), 1)
+
+
+class UndoneAttemptTest(_ResumedRebaseCase, unittest.TestCase):
+    """A branch put back on the anchor with the attempt's records standing."""
+
+    def test_an_undone_replay_parks_and_rolls_back(self) -> None:
+        # HEAD is exactly where the attempt anchored it and the comment still
+        # carries the replay it recorded and the permission granted for it.
+        # Read as an attempt that never started, the anchor would be dropped,
+        # the transfer state left for the next grant to trip over, and the
+        # branch handed straight to a fresh rebase.
+        self._crashes_before_the_push()
+
+        resumed = self._resumes(local_head=BEFORE_SHA)
+
+        self._assert_nothing_left(resumed)
+        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+        self._assert_routed(False)
+        self._assert_anchor(None)
+        self._assert_parked(PARK_FAILED)
+
+    def test_the_rollback_it_abandoned_is_finished(self) -> None:
+        # The reset that put the branch back owed two drops and made neither:
+        # the debt for a commit no branch has, and the permission that will
+        # never be spent on it. The exemption is untouched, since the grant
+        # never moved it.
+        self._crashes_before_the_push()
+
+        self._resumes(local_head=BEFORE_SHA)
+
+        durable = self._durable()
+        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
+        self.assertFalse(_rewrites.carries_rewrite_authorization(durable))
+        self.assertIsNone(self._pinned()[KEY_APPROVED_SHA])
+        self.assertIsNone(self._pinned()[KEY_PENDING_REWRITE_SHA])
+
+
 class DamagedAttemptRecordTest(_ResumedRebaseCase, unittest.TestCase):
     """A record of the attempt that claims more than it can show."""
 

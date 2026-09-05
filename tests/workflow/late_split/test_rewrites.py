@@ -117,6 +117,11 @@ _REFUSED_WRITES = MappingProxyType({
 })
 
 
+# Which reading a settlement was proved by, which the record now
+# carries until the report it owes has been made.
+_SETTLING_PROOF = _rewrites.LateRewriteProof.PUSHED
+
+
 def granted_rewrite(**overrides) -> _rewrites.LateRewrite:
     """The squash a permit is granted over, with any term replaced."""
     return _rewrites.LateRewrite(**{
@@ -253,7 +258,7 @@ class SpentAuthorizationTest(unittest.TestCase):
         # reader here can tell from a hand edit.
         state = authorized_state()
 
-        spent = _rewrites.record_rewrite_publication(state)
+        spent = _rewrites.record_rewrite_publication(state, _SETTLING_PROOF)
 
         self.assertEqual(spent, granted_rewrite())
         self.assertEqual(_exemption.read_exemption(state), REWRITTEN_SHA)
@@ -270,7 +275,7 @@ class SpentAuthorizationTest(unittest.TestCase):
     def test_a_spent_permission_is_not_outstanding(self) -> None:
         state = authorized_state()
 
-        _rewrites.record_rewrite_publication(state)
+        _rewrites.record_rewrite_publication(state, _SETTLING_PROOF)
 
         self.assertFalse(_rewrites.outstanding_permission(state))
 
@@ -288,7 +293,7 @@ class SpentAuthorizationTest(unittest.TestCase):
                 before = dict(state.data)
 
                 with self.assertRaises(InvalidLateValue):
-                    _rewrites.record_rewrite_publication(state)
+                    _rewrites.record_rewrite_publication(state, _SETTLING_PROOF)
 
                 self.assertEqual(state.data, before)
 
@@ -296,7 +301,7 @@ class SpentAuthorizationTest(unittest.TestCase):
 def _published_state() -> PinnedState:
     """The comment one settled transfer leaves, through the write that makes it."""
     state = authorized_state()
-    _rewrites.record_rewrite_publication(state)
+    _rewrites.record_rewrite_publication(state, _SETTLING_PROOF)
     return state
 
 

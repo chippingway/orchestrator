@@ -349,6 +349,15 @@ the pull request and pre-rebase anchor the push is made against — and the tran
 the replay. A base advance that CHANGED what the branch adds to it fingerprints differently, so the permit refuses
 and the ordinary cumulative gate measures the replay exactly as it always did.
 
+A checkout standing exactly where the attempt anchored it takes the shortcut back to the ordinary rebase flow
+only where the attempt left nothing else behind — no record of a replay and no permission this build reads as
+outstanding or cannot vouch for. Anything else is an attempt that got a long way and was UNDONE: a reset whose park
+write was lost, or a hand at the checkout. There the reset is re-run onto the commit the branch is already on, so
+the debt for a commit no branch has and the permission that will never be spent on it go with it on the rollback's
+own terms, and the issue parks for a human to say what undid it. Dropping the anchor instead would throw away the
+only thing that brings a recovery back and hand the branch to a fresh rebase with the transfer state still
+standing.
+
 That rebase is six durable moments in a row — the anchor, the rewrite, the permission, the push, the receipt, and
 the route — so the crash recovery behind `pending_auto_base_rebase_push_sha` classifies TWO things rather than one.
 Where the remote stands says which effect the dead tick reached, and it is read as an exact SHA: still on the pinned
@@ -884,12 +893,20 @@ The keys that matter for the state machine fall into a few groups:
   any road, since finishing posts a notice, files an event, and drops the anchor — and a record that does not name
   the checkout at all is what keeps the divergence counts to the one state they answer for, an attempt that
   recorded nothing.
+  The three are written on the statement after `git rebase` returns, before the head is read for anything else, so
+  the window with no provenance is as narrow as one in this domain gets — a real replay diverges from the head the
+  pull request still carries, and without the record a recovery cannot tell that divergence from a worktree
+  somebody rebuilt.
   `pending_auto_base_rebase_announced_sha` is the last member and covers the last window a finish has: everything a
   finish announces goes out before the relabel and the write that clears this record goes out after it, so the head
   it has already said it published is recorded in between, while the anchor still stands. A tick lost there comes
-  back to a comment that says the announcement was made and makes only the write it never made — rather than
-  putting a second `base_rebased` on the stream, under the stage the relabel moved to, for one publication that
-  happened once.
+  back to a comment that says the announcement was made and owes only the relabel it may not have reached and the
+  write it never made — rather than putting a second `base_rebased` on the stream, under the stage the relabel
+  moved to, for one publication that happened once. The relabel is part of what it owes: dropping the record
+  without it would strand the issue on the stage the rebase ran from with nothing left to correct it. The window
+  the mark cannot close is the one before it — the notice and the event are out and nothing says so — and it
+  resolves toward saying them again rather than losing them, since a record a reader can see twice beats one nobody
+  can reconstruct.
   The anchor says which head the push is leased against; the SHA says which local commit the attempt made, and
   only it can say the divergent checkout a recovery finds is that attempt's work. A rebase
   REPLAYS the branch, so a worktree rebuilt from elsewhere, an operator's reset, and a branch pointed at somebody

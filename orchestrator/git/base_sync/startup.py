@@ -23,6 +23,9 @@ from orchestrator.git.base_sync.state import (
     _AWAITING_HUMAN,
     _PARK_REASON,
     _PENDING_PUSH_SHA,
+    _PENDING_REWRITE_PR,
+    _PENDING_REWRITE_SHA,
+    _PENDING_REWRITE_STAGE,
     _REASON_AUTO_BASE_REBASE_FAILED,
     log,
 )
@@ -125,12 +128,67 @@ def _handle_failed_auto_rebase(
     )
 
 
+def _record_the_rewrite(context: _AutoRebaseContext) -> str:
+    """Say which commit this attempt produced, durably, as git hands it back.
+
+    The anchor pinned before git ran is what brings an interrupted attempt
+    back; it is not what says the checkout it comes back to is this attempt's
+    own work. A rebase REPLAYS the branch, so the commit the pull request
+    still carries is on no local history afterwards and the two look diverged
+    -- which is exactly what a checkout somebody else left, a worktree rebuilt
+    from elsewhere, and an operator's reset look like too. Told those apart by
+    the divergence alone, a recovery would force-push whatever it found over
+    the candidate on the remote, under a lease the anchor happily satisfies.
+
+    So the head goes down as a record of its own, and it goes down HERE:
+    on the statement after `git rebase` returns, before the head is read for
+    anything else and before any guard that could refuse. Every window a crash
+    can be lost in from this point on is behind it, and the one it cannot
+    cover -- between git returning and this write -- is as narrow as a window
+    in this domain gets. There the recovery has no provenance and falls back
+    to what it always did: a strictly-ahead branch is a fast-forward the
+    anchor lease loses nothing to, and a divergent one resets and parks.
+
+    Nothing is recorded for a rebase that moved nothing or left a head this
+    host cannot read. The first is the no-op the guard behind this finishes by
+    dropping the attempt, and the second names no commit to record.
+
+    The publication goes down with it, and for a reason the head alone does
+    not cover. The permit re-asked on the tick after a crash checks the pull
+    request and the stage the rewrite was made against; evidence re-derived
+    from whatever the issue says THEN would compare today with today, and a
+    relabel or a repoint made while the process was down would be adopted as
+    the dead tick's own terms. Recorded here, the disagreement is visible and
+    the permit refuses it.
+
+    Written beside the anchor rather than in place of it, because the two
+    answer different questions -- which head the push is leased against, and
+    what it publishes onto which publication -- and they are dropped together
+    by the one step that ends the attempt.
+    """
+    after_sha = probes._head_sha(context.worktree) or ""
+    if not after_sha or after_sha == context.state.get(_PENDING_PUSH_SHA):
+        return after_sha
+    context.state.set(_PENDING_REWRITE_SHA, after_sha)
+    context.state.set(_PENDING_REWRITE_PR, context.pr_number)
+    context.state.set(_PENDING_REWRITE_STAGE, str(context.label))
+    context.gh.write_pinned_state(context.issue, context.state)
+    return after_sha
+
+
 def _start_auto_rebase(
     context: _AutoRebaseContext,
     pr: PullRequest,
     consumed_comment_id: int | None,
 ) -> str | None:
-    """Anchor and execute the rebase, returning the known pre-rebase SHA."""
+    """Anchor and execute the rebase, returning the known pre-rebase SHA.
+
+    The replay it produced is recorded on the statement after git hands it
+    back, which is what makes a crash there recoverable: a rebase REPLAYS the
+    branch, so what it leaves diverges from the head the pull request still
+    carries, and without the record the tick that comes back cannot tell that
+    divergence from a worktree somebody rebuilt.
+    """
     before_sha = probes._head_sha(context.worktree) or ""
     if not before_sha:
         _park_unreadable_pre_rebase_head(context)
@@ -142,4 +200,5 @@ def _start_auto_rebase(
     if not succeeded:
         _handle_failed_auto_rebase(context, pr, conflicted_files)
         return None
+    _record_the_rewrite(context)
     return before_sha

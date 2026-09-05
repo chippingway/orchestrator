@@ -200,6 +200,17 @@ class CrashedJourneyRealGitTest(
         self._accepted_as_single()
         self._advance_base(conflicting=False)
 
+    def test_a_crash_after_the_rewrite_is_recovered(self) -> None:
+        # The narrowest window: git has replayed the branch and the attempt
+        # has recorded what it produced, and nothing else has run. Without
+        # that record the replay is only a divergence, and the recovery would
+        # reset a perfectly good rewrite off the branch.
+        self._crashes(self._dies_after_the_rewrite())
+
+        pusher = self._refreshes()
+
+        self._assert_finished(pusher, RECOVERY_PUSHED)
+
     def test_a_crash_before_the_grant_is_recovered(self) -> None:
         # The replay is on the branch and nothing on the comment names it as
         # a rewrite yet, so the recovery re-derives the evidence the dead tick
@@ -237,6 +248,50 @@ class CrashedJourneyRealGitTest(
         pusher = self._refreshes()
 
         self._assert_finished(pusher, RECOVERY_RELABELLED)
+
+    def test_a_crash_before_the_report_is_recovered(self) -> None:
+        # The receipt landed and the record it owes the sinks did not, over a
+        # proof no later reading could re-derive. The settlement keeps that
+        # proof until the record is out, so the recovery makes it.
+        self._crashes(self._dies_before_the_report())
+
+        self._refreshes()
+
+        self._assert_settled()
+        self._assert_reviewable()
+
+    def test_a_crash_before_the_mark_repeats_once(self) -> None:
+        # The one window the checkpoint cannot close: the notice and the event
+        # are out and nothing records that they are. It resolves toward
+        # saying them again rather than losing them, since a record a reader
+        # can see twice beats one nobody can reconstruct -- and the durable
+        # state is right either way.
+        self._crashes(self._dies_before_the_checkpoint())
+
+        self._refreshes()
+
+        self._assert_settled()
+        self._assert_reviewable()
+        self.assertEqual(
+            [record[METHOD_FIELD] for record in events_of(self, EVENT_REBASED)],
+            [CLEAN_REBASE, RECOVERY_RELABELLED],
+        )
+
+    def test_a_crash_at_the_relabel_is_recovered(self) -> None:
+        # The finish recorded that it announced itself and never routed, so
+        # the reviewer was left on the stage the rebase ran from with the
+        # anchor still pinned. The tick that comes back owes the route and the
+        # write, and nothing else.
+        self._crashes(self._dies_at_the_relabel())
+
+        self._refreshes()
+
+        self._assert_settled()
+        self._assert_reviewable()
+        self.assertEqual(
+            [record[METHOD_FIELD] for record in events_of(self, EVENT_REBASED)],
+            [CLEAN_REBASE],
+        )
 
     def test_a_crash_after_the_route_is_recovered(self) -> None:
         # The last window: the reviewer has been routed and the write that

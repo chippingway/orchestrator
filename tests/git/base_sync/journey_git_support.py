@@ -25,7 +25,10 @@ from unittest.mock import MagicMock, patch
 from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git import branch_transport as _branch_transport
-from orchestrator.git.base_sync import publication as _base_publication
+from orchestrator.git.base_sync import (
+    persistence as _persistence,
+    publication as _base_publication,
+)
 from orchestrator.git.measurement import additions as _additions, commits as _measurement_commits
 from orchestrator.workflow.stages.decomposition import (
     late_coordinator as _coordinator,
@@ -34,6 +37,7 @@ from orchestrator.workflow.stages.decomposition import (
 from orchestrator.workflow.stages.implementing import (
     late_push as _late_push,
     late_records as _late_records,
+    late_rotation as _rotation,
 )
 from orchestrator.workflow.stages.validating import handler as _validating
 from orchestrator.workflow.state import WorkflowLabel
@@ -69,6 +73,11 @@ AUTHED_FETCH = "_authed_fetch"
 
 # What a process that never came back looks like from inside the tick.
 DIED = "the process died before the tick returned"
+
+
+def _stops_the_tick() -> MagicMock:
+    """A seam that ends the tick the moment it is reached."""
+    return MagicMock(side_effect=RuntimeError(DIED))
 
 
 def _local_branch_fetch(_spec, refspec: str, *, cwd):
@@ -289,21 +298,55 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
         """The base reading the evidence is assembled over never comes back."""
         return patch.object(
             _measurement_commits, "_freeze_base_commit",
-            MagicMock(side_effect=RuntimeError(DIED)),
+            _stops_the_tick(),
         )
 
     def _dies_before_the_push(self):
         """The request that would put the replay on the remote never returns."""
         return patch.object(
             _branch_transport, PUSH_BRANCH,
-            MagicMock(side_effect=RuntimeError(DIED)),
+            _stops_the_tick(),
+        )
+
+    def _dies_after_the_rewrite(self):
+        """The rebase lands and is recorded; nothing after it runs.
+
+        The narrowest window this journey has, and the one the record after
+        `git rebase` exists for: the branch carries a replay that diverges
+        from the head the pull request still has, and the only thing saying
+        so is the record the attempt wrote as git handed it back.
+        """
+        return patch.object(
+            _base_publication, "_publish_auto_rebase",
+            _stops_the_tick(),
+        )
+
+    def _dies_before_the_report(self):
+        """The receipt lands; the record it owes the sinks never goes out."""
+        return patch.object(
+            _rotation, "_reports_the_transfer",
+            _stops_the_tick(),
         )
 
     def _dies_before_the_route(self):
         """The push and the receipt land; the notice never goes out."""
         return patch.object(
             _base_publication, "_post_auto_rebase_notice",
-            MagicMock(side_effect=RuntimeError(DIED)),
+            _stops_the_tick(),
+        )
+
+    def _dies_before_the_checkpoint(self):
+        """The notice and the event go out; nothing records that they did."""
+        return patch.object(
+            _persistence, "_announced",
+            _stops_the_tick(),
+        )
+
+    def _dies_at_the_relabel(self):
+        """The finish records that it announced itself and never routes."""
+        return patch.object(
+            self._gh, "set_workflow_label",
+            _stops_the_tick(),
         )
 
     def _dies_after_the_relabel(self):

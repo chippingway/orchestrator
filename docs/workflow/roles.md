@@ -554,9 +554,11 @@ a second time — and it is reached only over a permission whose paired debt agr
 both in one statement and a permit re-asked over half of one would rebuild the other from a claim nobody checked.
 Every road out of the recovery reconciles the pull request and the stage the attempt recorded against the ones the
 issue holds now, because finishing any of them posts a notice, files an audit event, and drops the anchor that is
-the only thing bringing the tick back — with the route's own last unmade step recognized rather than
+the only thing bringing the tick back — with the route's own last unmade steps recognized rather than
 refused: a finish records the head it has announced before it relabels, so a tick lost between that and the write
-that clears the record makes only the write, and says nothing a second time. And
+that clears the record makes the relabel and the write, and says nothing a second time. The `late_transfer` record
+is recoverable across the same kind of window, since the settlement keeps the proof it was made from on the comment
+until that record is out. And
 the exemption is read before any permission standing beside it -- a permission is a claim about moving one verdict,
 so a group damaged after the grant leaves it reading back whole over a verdict nothing can name -- with every term
 of a whole permission cross-bound to the attempt in hand, since fields each well-shaped on their own still describe

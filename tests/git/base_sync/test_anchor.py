@@ -62,7 +62,9 @@ class CrashRecoveryAnchorUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCas
             dirty=MagicMock(return_value=[]),
             rebase=MagicMock(side_effect=rebase),
             push=MagicMock(return_value=True),
-            head_sha=MagicMock(side_effect=[BEFORE_SHA, AFTER_SHA]),
+            head_sha=MagicMock(
+                side_effect=[BEFORE_SHA, AFTER_SHA, AFTER_SHA],
+            ),
             git=MagicMock(
                 return_value=_git_result(stdout=THREE_BEHIND_STDOUT),
             ),
@@ -118,7 +120,7 @@ class CrashRecoveryAnchorUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCas
             dirty=MagicMock(return_value=[]),
             rebase=MagicMock(return_value=(True, [])),
             push=MagicMock(),
-            head_sha=MagicMock(side_effect=[BEFORE_SHA, ""]),
+            head_sha=MagicMock(side_effect=[BEFORE_SHA, "", ""]),
             git=MagicMock(
                 return_value=_git_result(stdout=TWO_BEHIND_STDOUT),
             ),

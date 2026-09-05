@@ -117,8 +117,11 @@ class CrashRecoverySuccessUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCa
         scenario = _scenario(
             dirty=MagicMock(return_value=[]),
             rebase=MagicMock(return_value=(True, [])),
+            # The recovery's unchanged reading, the anchor the fresh
+            # rebase behind it pins, the replay that attempt records, and the
+            # head its publication names.
             head_sha=MagicMock(
-                side_effect=[BEFORE_SHA, BEFORE_SHA, AFTER_SHA],
+                side_effect=[BEFORE_SHA, BEFORE_SHA, AFTER_SHA, AFTER_SHA],
             ),
             fetch=MagicMock(return_value=_git_result()),
             push=MagicMock(return_value=True),

@@ -7,9 +7,11 @@ was already published, the comparison is unclassifiable, the remote moved
 out of band, the worktree is dirty, the reissued push failed, the pinned
 comment claims an exemption or a transfer nobody can read whole, the attempt's
 own record is in pieces, the attempt was made for a publication this issue no
-longer records, no permit licenses the replay to publish at all, the remote was
-rolled back off a replay the record says it carried, or a rewrite the pull
-request already carries is one this tick cannot finish the route behind.
+longer records, no permit licenses the replay to publish at all, the branch was
+put back on the anchor with the attempt's own records still standing, the
+remote was rolled back off a replay the record says it carried, or a rewrite
+the pull request already carries is one this tick cannot finish the route
+behind.
 Each one either finalizes through ``persistence`` or parks, so keeping them
 in one owner is what makes the set enumerable -- an outcome that neither
 routed nor parked would leave the issue holding an anchor no later tick can
@@ -508,6 +510,55 @@ def _park_refused_permit_recovery(
             f"adjudication, so HEAD has been reset to `{pre_rebase_short}` "
             "and nothing was pushed. Reconcile the pinned comment and reply "
             "on this issue with anything to retry."
+        ),
+        reason=_REASON_AUTO_BASE_REBASE_FAILED,
+    )
+    return True
+
+
+def _park_undone_recovery(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Finish the rollback that put the branch back, and park what undid it.
+
+    HEAD is exactly the head the attempt anchored, and the comment says the
+    attempt got further than that: a replay it recorded producing, a
+    permission it never spent, or a tree the reset never finished cleaning.
+    Something put the branch back -- a reset whose own park write was lost, or
+    a hand at the checkout -- and what it left behind is the bookkeeping that
+    reset owed.
+
+    So the reset is re-run onto the commit the branch is already on. It moves
+    nothing, and that is the point: it is the step the abandoned rollback's
+    own bookkeeping rides, so the debt for a commit no branch has and the
+    permission that will never be spent on it go with it, on the rollback's
+    own terms. The exemption is untouched, since the grant never moved it.
+
+    The park is what the missing half of that rollback owes a human: nothing
+    here can say why the branch went back, and guessing would either rebase
+    over an operator mid-repair or leave a record nobody reconciles.
+    """
+    unmoved = (recovery_snapshot.local_head or "")[:8]
+    log.warning(
+        "issue=#%d auto-rebase recovery: HEAD is back on the anchor %s and "
+        "the comment still carries what the attempt did past it; finishing "
+        "the rollback's bookkeeping and parking rather than starting over",
+        context.issue.number, unmoved,
+    )
+    persistence._reset_clear_and_park(
+        context,
+        context.pending_pre_rebase_sha,
+        message=(
+            f"{config.HITL_MENTIONS} crash recovery for PR "
+            f"#{context.pr_number}: the branch is back on the pre-rebase SHA "
+            f"`{unmoved}` and this issue still records the rebase an earlier "
+            "tick made past it -- the replay it produced, the permission "
+            "granted for it, or uncommitted changes a reset never cleaned. "
+            "Something undid that rebase without finishing its bookkeeping, "
+            "so the records it abandoned have been dropped and nothing was "
+            "rebased or pushed. Check the worktree and reply on this issue "
+            "with anything once it is where you want it."
         ),
         reason=_REASON_AUTO_BASE_REBASE_FAILED,
     )

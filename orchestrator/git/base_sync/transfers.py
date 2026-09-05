@@ -712,3 +712,36 @@ def _already_announced(state: PinnedState, local_head: str) -> bool:
     """
     recorded = state.get(_PENDING_ANNOUNCED_SHA)
     return bool(local_head) and recorded == local_head
+
+
+def _reports_a_lost_settlement(
+    context: _AutoRebaseRecoveryContext,
+) -> None:
+    """Make the record a settled transfer never got to report.
+
+    The last window a transfer has, and the only one whose evidence would be
+    gone for good. The write that receipts a landed push is what settles the
+    transfer, and the record of it goes to the sinks BEHIND that write -- so a
+    process lost in between leaves a verdict that has moved and nothing on
+    either sink saying so, over a proof no later reading could re-derive.
+
+    So the settlement keeps that proof on the comment until the record is out,
+    and this is where a recovery finding one still there makes it. Staged
+    rather than written: the road that calls this has its own write coming,
+    and the drop rides it.
+
+    Silent for every comment that owes nothing, which is every recovery but
+    the one that came back to this window.
+    """
+    # Lazy for the reason every upward reach in this package is: the record
+    # and the sinks it goes to sit in the workflow layer above it.
+    from orchestrator.workflow.stages.implementing import (
+        late_records as _records,
+        late_rotation as _rotation,
+    )
+    _rotation._reports_a_settled_transfer(
+        _records._gate(
+            context.gh, context.spec, context.issue, context.state,
+            context.worktree,
+        ),
+    )

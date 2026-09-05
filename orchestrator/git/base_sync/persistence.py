@@ -370,16 +370,27 @@ def _write_the_finished_route(
     rather than the one the rebase ran from -- and a second notice on a pull
     request that was published once.
 
-    What is left is the write itself: the record of the attempt, which is the
-    only thing bringing this recovery back, and the round the reviewer is
-    being asked to spend afresh on the rewritten head.
+    What is left is the route and the write. The relabel is made where the
+    issue is not already on it, because the announcement and the relabel are
+    two steps and a tick lost between them left the second undone -- clearing
+    the attempt without it would strand the issue on the stage the rebase ran
+    from with no anchor left to correct it, and the reviewer would never be
+    sent to the rewritten head. Made only where it is needed, since the write
+    that puts a label back where it already is is a transition the graph does
+    not describe and a second `stage_enter` on the stream.
+
+    Then the write itself: the record of the attempt, which is the only thing
+    bringing this recovery back, and the round the reviewer is being asked to
+    spend afresh on the rewritten head.
     """
     log.info(
-        "issue=#%d auto-rebase recovery: an earlier tick finished this route "
-        "and died before its own write; clearing the attempt and the review "
-        "round it already announced rather than announcing them again",
+        "issue=#%d auto-rebase recovery: an earlier tick announced this route "
+        "and died before its own write; finishing it rather than saying any "
+        "of it again",
         context.issue.number,
     )
+    if context.label != WorkflowLabel.VALIDATING:
+        context.gh.set_workflow_label(context.issue, WorkflowLabel.VALIDATING)
     _clears_the_attempt(context.state)
     context.state.set(_REVIEW_ROUND, 0)
     context.gh.write_pinned_state(context.issue, context.state)

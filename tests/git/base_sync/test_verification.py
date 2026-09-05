@@ -223,7 +223,9 @@ class CrashRecoveryDivergenceUnitTest(
             "dirty": MagicMock(return_value=[]),
             REBASE_PATCH: MagicMock(return_value=(True, [])),
             "head_sha": MagicMock(
-                side_effect=[REBASED_SHA, REBASED_SHA, NEW_REBASED_SHA],
+                side_effect=[
+                    REBASED_SHA, REBASED_SHA, NEW_REBASED_SHA, NEW_REBASED_SHA,
+                ],
             ),
             "fetch": MagicMock(return_value=_git_result()),
             PUSH_PATCH: (

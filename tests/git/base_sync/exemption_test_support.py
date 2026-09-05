@@ -283,6 +283,7 @@ class _CleanRebaseCase(_SyncWorktreeWithBaseFixture):
         self,
         *,
         remote_head: str = BEFORE_SHA,
+        local_head: str = AFTER_SHA,
         diverged: tuple = (1, 0),
         dirty: tuple = (),
         push: bool = True,
@@ -294,13 +295,17 @@ class _CleanRebaseCase(_SyncWorktreeWithBaseFixture):
         lost its receipt, and anything else for a branch somebody moved. It is
         answered on the pull request as well as on the fetched ref, because
         the gate reads one and the recovery comparison reads the other.
+
+        `local_head` is the other side of the same question, and a case moves
+        it to say the branch was put BACK -- a reset that landed without its
+        park write, or a hand at the checkout.
         """
         self.gh.pulls[PR_NUMBER].head = FakePRRef(sha=remote_head)
         resumed = _scenario(
             dirty=MagicMock(return_value=list(dirty)),
             rebase=MagicMock(),
             push=MagicMock(return_value=push),
-            head_sha=MagicMock(return_value=AFTER_SHA),
+            head_sha=MagicMock(return_value=local_head),
             git=MagicMock(return_value=_git_result(stdout=UP_TO_DATE_STDOUT)),
             hardened=MagicMock(side_effect=_RemoteHeadGit(remote_head)),
             fetch=MagicMock(return_value=_git_result()),
@@ -308,6 +313,19 @@ class _CleanRebaseCase(_SyncWorktreeWithBaseFixture):
         )
         resumed.run(self)
         return resumed
+
+    def _crashes_at_the_relabel(self) -> None:
+        """Record that the finish announced itself, and never route.
+
+        One statement earlier than the window below, and the one that leaves
+        the reviewer where the rebase found them: the notice and the audit
+        event are out, the comment says so, and the label has not moved.
+        """
+        with patch.object(
+            self.gh, "set_workflow_label",
+            MagicMock(side_effect=RuntimeError(DIED)),
+        ):
+            self._dies_mid_tick()
 
     def _crashes_after_the_relabel(self) -> None:
         """Publish, receipt, and die between the relabel and the write.

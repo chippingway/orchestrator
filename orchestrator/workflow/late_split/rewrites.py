@@ -283,6 +283,18 @@ LATE_REWRITE_SOURCE_STAGE = "late_rewrite_source_stage"
 
 LATE_REWRITE_LEASE = "late_rewrite_lease"
 
+# Which reading proved the push a settled transfer was spent on, kept beside
+# the record until the sinks have been told. The proof is a fact about the
+# remote at the moment of the push and nothing later can re-derive it, so a
+# process lost between the write that settles the transfer and the record it
+# owes would lose it for good. Written with the settlement and dropped by the
+# report, so a comment still carrying one is a report somebody still owes.
+#
+# Deliberately outside the group a reader is held to whole: the transfer is
+# settled whether or not it has been reported, and a record short of this
+# member is not one to refuse.
+LATE_REWRITE_PROOF = "late_rewrite_proof"
+
 # What each recorded hex field has to be, at its exact length: every end of
 # either contribution is a whole git object id, the lease is the whole head a
 # push was pinned against, and the fingerprint is a whole digest. An
@@ -675,7 +687,41 @@ def _unusable_terms(rewrite: LateRewrite, fingerprint: str) -> str:
     return ""
 
 
-def record_rewrite_publication(state: PinnedState) -> LateRewrite:
+def unreported_transfer(state: PinnedState) -> LateRewriteProof | None:
+    """The proof a settled transfer still owes the sinks a record of, or None.
+
+    A transfer is settled by the write that receipts its push, and the record
+    of it goes to the sinks behind that write -- so a process lost in between
+    leaves a verdict that moved and nothing anywhere saying so. What cannot be
+    re-derived later is which reading PROVED the push landed, since the
+    receipt looks identical either way, so the proof is kept on the comment
+    until the record is out and dropped by the write that follows it.
+
+    None wherever there is nothing owed: a comment carrying no proof, one
+    whose transfer this build cannot read back whole, one still outstanding,
+    and one whose proof is not a reading this build knows. Each of those is a
+    record nothing may be reported from, which is the same answer every other
+    reader in this domain gives evidence it cannot check.
+    """
+    proof = _payloads.as_member(LateRewriteProof, state.get(LATE_REWRITE_PROOF))
+    if proof is None:
+        return None
+    authorization = read_rewrite_authorization(state)
+    if authorization is None:
+        return None
+    if authorization.phase != LateRewritePhase.PUBLISHED:
+        return None
+    return proof
+
+
+def forget_transfer_proof(state: PinnedState) -> None:
+    """Drop the proof a report has just been made from."""
+    state.data.pop(LATE_REWRITE_PROOF, None)
+
+
+def record_rewrite_publication(
+    state: PinnedState, proof: LateRewriteProof,
+) -> LateRewrite:
     """Spend the permission standing here, carrying the exemption with it.
 
     The one write in this domain that MOVES a verdict, and the three fields it
@@ -697,6 +743,13 @@ def record_rewrite_publication(state: PinnedState) -> LateRewrite:
     the permit was granted over, re-derived and compared before the grant, and
     a reading taken here would fingerprint a checkout that has been writable
     since.
+
+    The PROOF rides the same statement, and it is the one field here that is
+    not about the move: it says which reading showed the push had landed, and
+    nothing later can re-derive it. Kept on the comment until the record it
+    belongs to reaches the sinks, so a process lost between this write and
+    that record leaves the next reader something to report from rather than a
+    settled transfer nobody ever announced.
 
     Staged rather than persisted, like every other writer in this domain: what
     makes the move durable is the caller's own write, which is what lets the
@@ -725,6 +778,7 @@ def record_rewrite_publication(state: PinnedState) -> LateRewrite:
         fingerprint=authorization.fingerprint,
     )
     state.set(LATE_REWRITE_PHASE, str(LateRewritePhase.PUBLISHED))
+    state.set(LATE_REWRITE_PROOF, str(proof))
     return rewrite
 
 
@@ -732,3 +786,4 @@ def clear_rewrite_authorization(state: PinnedState) -> None:
     """Drop the whole authorization, leaving every other field alone."""
     for key in _AUTHORIZATION_KEYS:
         state.data.pop(key, None)
+    forget_transfer_proof(state)
