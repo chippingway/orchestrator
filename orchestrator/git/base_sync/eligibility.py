@@ -19,11 +19,10 @@ from __future__ import annotations
 
 from github.PullRequest import PullRequest
 
-from orchestrator.git.base_sync import persistence, recovery
+from orchestrator.git.base_sync import persistence, recovery, transfers
 from orchestrator.git.base_sync.models import (
     _AutoRebaseContext,
     _AutoRebaseDecision,
-    _pending_rewrite,
 )
 from orchestrator.git.base_sync.state import (
     _AUTO_REBASE_PARK_REASONS,
@@ -50,7 +49,7 @@ def _auto_rebase_label_is_eligible(context: _AutoRebaseContext) -> bool:
             pr_number=context.pr_number,
             label=context.label,
             pending_pre_rebase_sha=str(context.pending_pre_rebase_sha),
-            pending_rewrite=_pending_rewrite(context.state),
+            pending_rewrite=transfers._pending_rewrite(context.state),
         )
     log.debug(
         "issue=#%d behind %s/%s by %d but label=%r; not auto-rebasing",
@@ -168,7 +167,7 @@ def _auto_rebase_recovery_decision(
         pr_number=context.pr_number,
         label=context.label,
         pending_pre_rebase_sha=str(context.pending_pre_rebase_sha),
-        pending_rewrite=_pending_rewrite(context.state),
+        pending_rewrite=transfers._pending_rewrite(context.state),
         behind=context.behind,
         unparking_consumed_max=consumed_comment_id,
     ):

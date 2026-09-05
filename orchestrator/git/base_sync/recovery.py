@@ -18,7 +18,10 @@ classified by, because the rebase may have been carrying a human's verdict
 onto the commit it produced, and because every road out of here ends in a
 notice, an audit event, and the anchor dropped -- so the publication the
 attempt recorded making its rewrite for is reconciled against the one this
-issue holds now before any of them is taken. ``transfers`` answers the other half off the
+issue holds now before any of them is taken, with this route's own last
+relabel recognized rather than refused. And the counts are a fallback for one
+state only: an attempt that recorded nothing. Everything it DID record either
+vouches for the checkout in front of this tick or parks it. ``transfers`` answers the other half off the
 pinned comment -- how far the transfer's own writes got -- and the two roads
 that still publish something are handed it. A rewrite the grant never reached
 is given re-derived evidence, so the replay is decided on the transfer the
@@ -463,13 +466,13 @@ def _route_an_unpublished_head(
     this replay has been rolled back by somebody, and the anchor a retry would
     lease against is the head they rolled it back to. A transfer record nobody
     can vouch for would reach the ordinary cumulative gate and send an
-    adjudicated change into a second adjudication. An attempt record something
-    took a member out of is the same refusal one field over: read as the
-    absence it resembles, it would fall through to the counts, and a
-    strictly-ahead checkout would be measured and force-pushed on the strength
-    of a claim nothing could check. And a checkout this attempt cannot show it
-    produced is not one to force-push under a lease every rebuilt worktree and
-    every operator reset satisfies just as well.
+    adjudicated change into a second adjudication. An attempt record that does
+    not vouch for the checkout -- damaged, or whole and naming some other
+    commit -- is the same refusal one field over: read as the window it
+    resembles, it would fall through to the counts, and a strictly-ahead
+    checkout would be measured and force-pushed on the strength of a claim
+    nothing could check. And a remote standing anywhere but the anchor is not
+    one this attempt's own push was ever leased against.
 
     What is left is the retry the anchor exists for, and -- for a remote
     neither pinned head accounts for -- the counts, which answer the question
@@ -479,11 +482,36 @@ def _route_an_unpublished_head(
         return outcomes._park_rolled_back_recovery(context, completed)
     if carried == transfers._Handoff.UNVOUCHED:
         return outcomes._park_unvouched_recovery(context, completed)
-    if context.pending_rewrite.is_damaged:
+    if _unclaimed_checkout(context, completed):
         return outcomes._park_unrecorded_recovery(context, completed)
     if _is_this_attempts_rewrite(context, completed):
         return _retry_recovery_push(context, completed, carried)
     return _route_a_moved_remote(context, completed, carried)
+
+
+def _unclaimed_checkout(
+    context: _AutoRebaseRecoveryContext,
+    completed: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Whether a record was written and does not vouch for this checkout.
+
+    The counts behind this refusal are a fallback for one state and one only:
+    an attempt that reached no record at all, which is the window between git
+    returning and the write that makes one. There they are all a recovery has,
+    and a strictly-ahead branch is a fast-forward the anchor lease loses
+    nothing to.
+
+    Every other absence is a claim. A group something took a member out of,
+    and a whole group naming some OTHER commit, both leave a checkout the
+    attempt does not vouch for -- and read as the window they resemble, the
+    counts would measure it and force-push it under a lease a rebuilt
+    worktree, an operator's reset, and a branch pointed at other work all
+    satisfy. So the record having been written at all is what decides which
+    road is available, and only a comment carrying none of it reaches the
+    counts.
+    """
+    recorded = context.pending_rewrite
+    return recorded.claimed and not recorded.names(completed.local_head)
 
 
 def _is_this_attempts_rewrite(

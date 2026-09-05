@@ -22,7 +22,7 @@ from unittest import mock
 from orchestrator import config
 from orchestrator.git import branch_transport
 from orchestrator.git.base_sync import recovery
-from orchestrator.git.base_sync.models import _pending_rewrite
+from orchestrator.git.base_sync.transfers import _pending_rewrite
 from tests.git.base_sync.gate_reads_support import _gate_base_reads
 from tests.support.fakes import (
     FakeGitHubClient,

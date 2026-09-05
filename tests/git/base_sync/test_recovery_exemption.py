@@ -29,10 +29,7 @@ import itertools
 import unittest
 
 from orchestrator.git.base_sync import transfers
-from orchestrator.git.base_sync.models import (
-    _AutoRebaseRecoveryContext,
-    _pending_rewrite,
-)
+from orchestrator.git.base_sync.models import _AutoRebaseRecoveryContext
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     rewrites as _rewrites,
@@ -58,6 +55,7 @@ from tests.git.base_sync.refresh_test_support import (
     KEY_PARK_REASON,
     KEY_PENDING_PUSH_SHA,
     KEY_REVIEW_ROUND,
+    LABEL_IN_REVIEW as LABEL,
     LABEL_VALIDATING,
     METHOD_FIELD,
     PARK_FAILED,
@@ -96,6 +94,7 @@ KEY_PUBLISHED_LEASE = "implementing_published_lease"
 # it produced it for.
 KEY_PENDING_REWRITE_SHA = "pending_auto_base_rebase_rewrite_sha"
 KEY_PENDING_REWRITE_PR = "pending_auto_base_rebase_rewrite_pr"
+KEY_PENDING_REWRITE_STAGE = "pending_auto_base_rebase_rewrite_stage"
 
 # A second open pull request on the same branch, for the case where the issue
 # is repointed at one the interrupted rewrite was never made against.
@@ -179,6 +178,10 @@ class _ResumedRebaseCase(_CleanRebaseCase):
     def _assert_anchor(self, expected) -> None:
         """What the pinned comment says this attempt is still owed, if any."""
         self.assertEqual(self._pinned()[KEY_PENDING_PUSH_SHA], expected)
+
+    def _assert_parked(self, reason: str) -> None:
+        """The reason a human is being asked to look at this issue."""
+        self.assertEqual(self._pinned()[KEY_PARK_REASON], reason)
 
     def _assert_nothing_left(self, resumed) -> None:
         """No push went out on the road this tick could not finish."""
@@ -374,7 +377,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         resumed = self._resumes(remote_head=AFTER_SHA, push=False)
 
         self._assert_anchor(BEFORE_SHA)
-        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_PUSH_FAILED)
+        self._assert_parked(PARK_PUSH_FAILED)
         self.assertEqual(self._resets_of(resumed), [])
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
 
@@ -522,7 +525,7 @@ class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
         self.assertEqual(self._resets_of(resumed), [])
         self._assert_anchor(BEFORE_SHA)
-        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_PUSH_FAILED)
+        self._assert_parked(PARK_PUSH_FAILED)
         self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
 
 
@@ -601,7 +604,7 @@ class UnprovenLandingTest(_ResumedRebaseCase, unittest.TestCase):
         """The anchor stands, HEAD is where it was, and the route is unfinished."""
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
         self._assert_anchor(BEFORE_SHA)
-        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_PUSH_FAILED)
+        self._assert_parked(PARK_PUSH_FAILED)
         self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
 
 
@@ -748,7 +751,7 @@ class ForeignPublicationTest(_ResumedRebaseCase, unittest.TestCase):
             pr_number=REPOINTED_PR_NUMBER,
             label=WorkflowLabel.DOCUMENTING,
             pending_pre_rebase_sha=BEFORE_SHA,
-            pending_rewrite=_pending_rewrite(durable),
+            pending_rewrite=transfers._pending_rewrite(durable),
         )
 
     def _assert_parked_in_place(self, resumed) -> None:
@@ -771,8 +774,41 @@ class DamagedAttemptRecordTest(_ResumedRebaseCase, unittest.TestCase):
         # is the shape the ahead-only fallback publishes. Read as the absence
         # it resembles, a group something took a member out of would send the
         # replay to the ordinary gate and force-push whatever came back.
+        self._assert_resets_the_replay(None)
+
+    def test_a_malformed_head_resets_the_replay(self) -> None:
+        # A value that is not a whole git object id is not a commit this tick
+        # can compare anything to. Accepted for being a string, it would name
+        # a checkout nothing here ever wrote and reach the same push.
+        self._assert_resets_the_replay(MALFORMED_LEASE)
+
+    def test_a_malformed_head_is_no_record(self) -> None:
+        # Read one step earlier than the park: a value that is not a whole git
+        # object id is not a commit anything can be compared to, so the group
+        # is damaged rather than one naming a head the checkout might turn out
+        # to be standing on.
         self._crashes_before_the_grant()
-        self._edited(lambda state: state.set(KEY_PENDING_REWRITE_SHA, None))
+        self._edited(
+            lambda state: state.set(KEY_PENDING_REWRITE_SHA, MALFORMED_LEASE),
+        )
+
+        recorded = transfers._pending_rewrite(self._durable())
+
+        self.assertFalse(recorded.is_recorded)
+        self.assertTrue(recorded.is_damaged)
+
+    def test_another_commit_resets_the_replay(self) -> None:
+        # The record is whole and vouches for some other head, which is the
+        # attempt's own answer that this checkout is not its work. Only a
+        # comment carrying none of the group reaches the counts.
+        self._assert_resets_the_replay(FOREIGN_SHA)
+
+    def _assert_resets_the_replay(self, recorded) -> None:
+        """One hand-edited head, and the reset-and-park it has to earn."""
+        self._crashes_before_the_grant()
+        self._edited(
+            lambda state: state.set(KEY_PENDING_REWRITE_SHA, recorded),
+        )
 
         resumed = self._resumes()
 
@@ -781,11 +817,59 @@ class DamagedAttemptRecordTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
         self._assert_nothing_readjudicated()
         self._assert_anchor(None)
-        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_FAILED)
+        self._assert_parked(PARK_FAILED)
+
+
+class RelabelledFinishTest(_ResumedRebaseCase, unittest.TestCase):
+    """The route this recovery's own finish had already most of the way made."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._crashes_after_the_relabel()
+        self.crashed = dict(self._pinned())
+        self.resumed = self._resumes(remote_head=AFTER_SHA)
+
+    def test_the_crash_left_the_route_half_made(self) -> None:
+        # The premise: the reviewer has been routed at the rewritten head and
+        # the pinned comment still carries the whole attempt -- including the
+        # stage it started from, which is not the stage the issue is on now.
+        self.assertIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
+        self.assertEqual(self.crashed[KEY_PENDING_REWRITE_STAGE], LABEL)
+        self.assertEqual(self.crashed[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
+
+    def test_the_next_tick_finishes_rather_than_parks(self) -> None:
+        # The relabel is this route's own last step before the write that
+        # clears the record. Read as somebody else's move, the tick with only
+        # that write left to make would park for a human forever.
+        self._assert_nothing_left(self.resumed)
+        self._assert_finished_the_route(RECOVERY_RELABELLED)
+        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+
+    def test_the_settled_verdict_is_reported_once(self) -> None:
+        self._assert_settled_once()
 
 
 class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
     """A permission whose debt was written with it and is not there now."""
+
+    def test_a_damaged_identity_resets_the_replay(self) -> None:
+        # The permission still reads back whole, and what it is a claim about
+        # -- the verdict and the contribution under it -- no longer does.
+        # Believed, the settlement re-asks a permit whose accepted pair cannot
+        # be fingerprinted, the ordinary gate measures the replay instead, and
+        # a change a human already ruled on is published and announced.
+        self._crashes_before_the_push()
+        self._edited(lambda state: state.data.pop(DAMAGED_IDENTITY_FIELD))
+
+        resumed = self._resumes()
+
+        self._assert_nothing_left(resumed)
+        self.assertEqual(len(self._resets_of(resumed)), 1)
+        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+        self.assertEqual(self._events_of(EVENT_TRANSFER), [])
+        self._assert_nothing_readjudicated()
+        self.assertNotIn((ISSUE, LABEL_VALIDATING), self.gh.label_history)
+        self._assert_parked(PARK_FAILED)
 
     def test_an_unpaired_permission_resets_the_replay(self) -> None:
         # The grant writes the permission and the debt in one statement for
@@ -803,7 +887,7 @@ class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
         self._assert_nothing_readjudicated()
-        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_FAILED)
+        self._assert_parked(PARK_FAILED)
 
     def test_a_repointed_debt_resets_the_replay(self) -> None:
         # The same disagreement one field over: a debt owed for a commit this
@@ -817,4 +901,4 @@ class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
         self._assert_nothing_left(resumed)
         self.assertEqual(len(self._resets_of(resumed)), 1)
         self.assertEqual(self._events_of(EVENT_TRANSFER), [])
-        self.assertEqual(self._pinned()[KEY_PARK_REASON], PARK_FAILED)
+        self._assert_parked(PARK_FAILED)

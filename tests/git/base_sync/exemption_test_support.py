@@ -193,6 +193,24 @@ def adjudicated(
     test_case.gh.write_pinned_state(issue, state)
 
 
+class _DiesAfterTheRelabel:
+    """A client whose relabel lands and whose process does not come back.
+
+    The relabel is the second-to-last thing a finish does, and the pinned
+    write that clears the attempt is the last -- so this is the whole of the
+    window between them, staged where it really is rather than by seeding a
+    comment nothing wrote.
+    """
+
+    def __init__(self, relabel) -> None:
+        self._relabel = relabel
+
+    def __call__(self, issue, label) -> None:
+        """Apply the label the finish chose, then stop the tick."""
+        self._relabel(issue, label)
+        raise RuntimeError(DIED)
+
+
 class _CleanRebaseCase(_SyncWorktreeWithBaseFixture):
     """One behind-base issue in review whose head a human already ruled on."""
 
@@ -290,6 +308,19 @@ class _CleanRebaseCase(_SyncWorktreeWithBaseFixture):
         )
         resumed.run(self)
         return resumed
+
+    def _crashes_after_the_relabel(self) -> None:
+        """Publish, receipt, and die between the relabel and the write.
+
+        The last window one finish has: the reviewer has already been routed
+        at the rewritten head and the pinned comment still carries the whole
+        record of the attempt, including the stage it started from.
+        """
+        relabelled = self.gh.set_workflow_label
+        with patch.object(
+            self.gh, "set_workflow_label", _DiesAfterTheRelabel(relabelled),
+        ):
+            self._dies_mid_tick()
 
     def _dies_mid_tick(self) -> None:
         """Run one clean rebase whose tick is stopped by the caller's seam."""

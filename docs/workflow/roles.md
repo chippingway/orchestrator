@@ -554,7 +554,10 @@ a second time — and it is reached only over a permission whose paired debt agr
 both in one statement and a permit re-asked over half of one would rebuild the other from a claim nobody checked.
 Every road out of the recovery reconciles the pull request and the stage the attempt recorded against the ones the
 issue holds now, because finishing any of them posts a notice, files an audit event, and drops the anchor that is
-the only thing bringing the tick back.
+the only thing bringing the tick back — with the route's own last relabel to `workflow:validating` recognized
+rather than refused, since a crash between it and the write that clears the record leaves exactly that shape. And
+the exemption is read before any permission standing beside it: a permission is a claim about moving one verdict,
+so a group damaged after the grant leaves it reading back whole over a verdict nothing can name.
 
 Every state neither of those covers — a permission this build cannot read, one naming some other commit, a receipt
 nobody wrote, a debt nothing paid, a tree carrying uncommitted changes, a remote

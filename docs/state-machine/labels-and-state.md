@@ -378,10 +378,14 @@ rolled back to is the very head a reissued push would lease itself against, so t
 the rollback overwritten. That parks as the externally moved remote it is: HEAD back onto the anchor, the record
 dropped with it, and a human asked which of the two heads the branch is supposed to be on.
 
-What the pinned comment carries says how far the transfer's own writes got, and there are five answers. No
-exemption in flight is the ordinary interrupted rebase. A rewrite with no `late_rewrite_*` group behind it is a
-grant the crash came before, so the recovery re-derives the same evidence the dead tick would have assembled --
-over the pull request and stage that tick recorded -- and the permit rules on it. Without
+What the pinned comment carries says how far the transfer's own writes got, and there are five answers — with the
+exemption and the identity under it asked before any permission standing beside them is believed, since a
+permission is a claim about moving one verdict and a group damaged after the grant went down leaves it reading back
+whole over a verdict nothing can name.
+
+No exemption in flight is the ordinary interrupted rebase. A rewrite with no `late_rewrite_*` group behind it is a
+grant the crash came before, so the recovery re-derives the same evidence the dead tick would have assembled —
+over the pull request and stage that tick recorded — and the permit rules on it. Without
 that, the replay of a change a human already ruled on is measured past the same ceiling and routed back into
 adjudication with a pull request open over the work. A group still at `authorized` for the head in hand, with the debt
 written beside it agreeing, IS the evidence, re-asked in full — the grant is one write of two records for one
@@ -856,12 +860,18 @@ The keys that matter for the state machine fall into a few groups:
   `pending_auto_base_rebase_rewrite_sha` + `pending_auto_base_rebase_rewrite_pr` +
   `pending_auto_base_rebase_rewrite_stage` — the other half of the same record, written together once git has
   produced the replay and before the size gate is entered, read whole or not at all, and dropped by the same write
-  that drops the anchor. Absent and DAMAGED are two answers rather than one: a comment carrying none of the three
-  is the window between git returning and this write, while one carrying some of them and not the rest is a group
-  something took apart — read as the absence it resembles, a strictly-ahead checkout would be measured and
-  force-pushed on the strength of a claim nothing could check, so it resets onto the anchor and parks instead.
+  that drops the anchor, and typed against the same shapes every other late field is — an abbreviation or a value
+  that is not a whole git object id is no head. Absent and CLAIMED are two answers rather than one: a comment
+  carrying none of the three is the window between git returning and this write, and only there do the ahead/behind
+  counts get to answer. A comment carrying the group and not vouching for the checkout — a member taken out, a head
+  that is not a commit, or a whole record naming some other commit — resets onto the anchor and parks, because read
+  as the window it resembles a strictly-ahead checkout would be measured and force-pushed on the strength of a
+  claim nothing could check.
   The pull request and the stage are also what the recovery reconciles against the issue's own before it finishes
-  any road, since finishing posts a notice, files an event, and drops the anchor.
+  any road, since finishing posts a notice, files an event, and drops the anchor. One relabel is recognized rather
+  than refused there: every finish moves the issue to `workflow:validating` immediately before the write that
+  clears this record, so an issue found on that stage carrying an attempt made from another one is this route's own
+  last step and not somebody else's move.
   The anchor says which head the push is leased against; the SHA says which local commit the attempt made, and
   only it can say the divergent checkout a recovery finds is that attempt's work. A rebase
   REPLAYS the branch, so a worktree rebuilt from elsewhere, an operator's reset, and a branch pointed at somebody

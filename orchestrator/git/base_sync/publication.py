@@ -164,7 +164,15 @@ def _finalize_auto_rebase(
     branch: str,
     after_sha: str,
 ) -> None:
-    """Publish the notice, audit event, validating route, and pinned state."""
+    """Publish the notice, audit event, validating route, and pinned state.
+
+    The pinned write goes last so a tick that dies partway leaves the anchor
+    for the next one to recover from, and the one window that ordering opens
+    is between the relabel and that write. What the next tick comes back to
+    there is an issue on `validating` still carrying an attempt made from
+    wherever this one started -- which the recovery recognizes as this route's
+    own last step rather than somebody else's move, and finishes.
+    """
     _post_auto_rebase_notice(context, after_sha)
     persistence._clears_the_attempt(context.state)
     context.state.set(_REVIEW_ROUND, 0)

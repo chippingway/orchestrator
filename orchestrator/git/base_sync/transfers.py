@@ -70,9 +70,18 @@ from orchestrator.git.base_sync.models import (
     _AutoRebaseRecoveryContext,
     _PendingRewrite,
 )
-from orchestrator.git.base_sync.state import log
+from orchestrator.git.base_sync.state import (
+    _PENDING_REWRITE_PR,
+    _PENDING_REWRITE_SHA,
+    _PENDING_REWRITE_STAGE,
+    log,
+)
 from orchestrator.git.measurement import commits as measurement_commits
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.state import (
+    WorkflowLabel,
+    publishes_onto_a_pull_request,
+)
 
 
 class _Handoff(StrEnum):
@@ -83,6 +92,14 @@ class _Handoff(StrEnum):
     OUTSTANDING = "outstanding"
     SETTLED = "settled"
     UNVOUCHED = "unvouched"
+
+
+# Every key one attempt's record of its own replay goes down as, so a reader
+# can tell a comment carrying none of them from one a hand edit or a
+# half-finished write took a member out of.
+_PENDING_REWRITE_KEYS = (
+    _PENDING_REWRITE_SHA, _PENDING_REWRITE_PR, _PENDING_REWRITE_STAGE,
+)
 
 
 # The two handoffs a landed rewrite can be ACCOUNTED for under: the transfer
@@ -217,6 +234,15 @@ def _carried_by(state: PinnedState, local_head: str) -> _Handoff:
     target somebody edited would otherwise be invisible here and the recovery
     would carry on as though no transfer had ever been in flight.
 
+    Asked of the EXEMPTION first, before any permission standing beside it is
+    believed. A permission is a claim about moving one verdict, and what says
+    which verdict is the exemption and the identity under it -- so a group
+    something damaged after the grant went down leaves a permission that still
+    reads back whole over a verdict nothing can name. Believed there, the
+    settlement re-asks a permit whose accepted contribution cannot be
+    fingerprinted, the ordinary gate measures the replay instead, and a change
+    a human already ruled on is published and announced as though it had been.
+
     Asked by PRESENCE where the record has to be absent for the answer to be
     `NOTHING`, which is the difference between an issue that never earned a
     verdict and one whose record something damaged. The fail-closed readers
@@ -234,11 +260,11 @@ def _carried_by(state: PinnedState, local_head: str) -> _Handoff:
     # Lazy for the reason every upward reach in this package is: the record
     # sits in the workflow layer above it.
     from orchestrator.workflow.late_split import exemption as _exemption
+    if _exemption.unreadable_exemption(state):
+        return _Handoff.UNVOUCHED
     standing = _standing_permission(state, local_head)
     if standing is not None:
         return standing
-    if _exemption.unreadable_exemption(state):
-        return _Handoff.UNVOUCHED
     if _exemption.read_exemption(state) is None:
         return _Handoff.NOTHING
     return _Handoff.UNRECORDED
@@ -532,3 +558,54 @@ def _permits_the_settlement(
         gate, entry=entry, candidate=local_head, reconciling=True,
     )
     return bool(_transfer._carried_over(gate, local_head))
+
+
+def _pending_rewrite(state: PinnedState) -> _PendingRewrite:
+    """The record one interrupted attempt left of the replay it made.
+
+    Read whole or not at all, like every other record this domain acts on: a
+    group short of a member, a head that is not a whole git object id, a pull
+    request that is not an identity, and a stage no publication is entered
+    from each answer as no record, which every caller reads as "cannot say"
+    rather than as a fact about the world. The head is held to the same shape
+    every other recorded commit here is, and for the same reason -- it is
+    compared against one this tick read off a checkout, and a value that
+    cannot be a commit would either never match or match something nothing
+    ever wrote.
+
+    What separates that from a comment carrying no group at all is the
+    presence of any member, which travels back on the answer. A caller acting
+    on the absence needs to know which absence it has: one nothing ever wrote,
+    or one something took apart.
+    """
+    # Lazy for the reason every upward reach in this package is: the shape a
+    # recorded commit is held to is the late domain's own, and spelling it
+    # twice is how a comment comes to accept what every other reader refuses.
+    from orchestrator.workflow.late_split import formats as _formats
+    claimed = any(
+        state.get(key) is not None for key in _PENDING_REWRITE_KEYS
+    )
+    recorded = state.get(_PENDING_REWRITE_SHA)
+    number = state.get(_PENDING_REWRITE_PR)
+    stage = _recorded_stage(state.get(_PENDING_REWRITE_STAGE))
+    if not _formats.is_hex_of(recorded, _formats.COMMIT_LENGTHS):
+        return _PendingRewrite(claimed=claimed)
+    if not _formats.whole_number(number) or number <= 0 or stage is None:
+        return _PendingRewrite(claimed=claimed)
+    return _PendingRewrite(
+        sha=recorded, pr_number=number, stage=stage, claimed=True,
+    )
+
+
+def _recorded_stage(recorded: object) -> WorkflowLabel | None:
+    """The stage a record names, or None where it names no publication.
+
+    Held to the same predicate the permit holds its own evidence to -- the
+    states that push onto a pull request the remote already carries -- so a
+    record naming any other describes an attempt this workflow never made.
+    """
+    try:
+        stage = WorkflowLabel(recorded)
+    except ValueError:
+        return None
+    return stage if publishes_onto_a_pull_request(stage) else None

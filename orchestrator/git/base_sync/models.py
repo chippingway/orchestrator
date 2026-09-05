@@ -17,24 +17,9 @@ from pathlib import Path
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git.base_sync.state import (
-    _PENDING_REWRITE_PR,
-    _PENDING_REWRITE_SHA,
-    _PENDING_REWRITE_STAGE,
-)
-
-# Every key one attempt's record of its own replay goes down as, so a reader
-# can tell a comment carrying none of them from one a hand edit or a
-# half-finished write took a member out of.
-_PENDING_REWRITE_KEYS = (
-    _PENDING_REWRITE_SHA, _PENDING_REWRITE_PR, _PENDING_REWRITE_STAGE,
-)
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.state import (
-    WorkflowLabel,
-    publishes_onto_a_pull_request,
-)
+from orchestrator.workflow.state import WorkflowLabel
 
 
 @dataclass(frozen=True)
@@ -99,54 +84,21 @@ class _PendingRewrite:
         relabel made while the process was down would have all three
         attributed to a publication the interrupted attempt was never made
         for -- and the record is the only thing that can say so.
+
+        One relabel is this route's OWN and is recognized rather than
+        refused. Every finish here ends by moving the issue to `validating` so
+        the reviewer re-runs at the rewritten head, and that relabel is the
+        last thing it does before the write that clears this record -- so a
+        process lost between the two comes back to an issue on `validating`
+        carrying an attempt made from wherever it started. Read as somebody
+        else's move, the tick that only had a pinned write left to make would
+        park forever; read as what it is, it finishes the route it was already
+        most of the way through, and the notice and the event land on exactly
+        the publication and stage the interrupted finish had chosen.
         """
-        return (
-            self.is_recorded
-            and self.pr_number == pr_number
-            and self.stage == stage
-        )
-
-
-def _pending_rewrite(state: PinnedState) -> _PendingRewrite:
-    """The record one interrupted attempt left of the replay it made.
-
-    Read whole or not at all, like every other record this domain acts on: a
-    group short of a member, a pull request that is not an identity, and a
-    stage no publication is entered from each answer as no record, which every
-    caller reads as "cannot say" rather than as a fact about the world.
-
-    What separates that from a comment carrying no group at all is the
-    presence of any member, which travels back on the answer. A caller acting
-    on the absence needs to know which absence it has: one nothing ever wrote,
-    or one something took apart.
-    """
-    claimed = any(
-        state.get(key) is not None for key in _PENDING_REWRITE_KEYS
-    )
-    recorded = state.get(_PENDING_REWRITE_SHA)
-    number = state.get(_PENDING_REWRITE_PR)
-    stage = _recorded_stage(state.get(_PENDING_REWRITE_STAGE))
-    if not isinstance(recorded, str) or not isinstance(number, int):
-        return _PendingRewrite(claimed=claimed)
-    if isinstance(number, bool) or number <= 0 or stage is None:
-        return _PendingRewrite(claimed=claimed)
-    return _PendingRewrite(
-        sha=recorded, pr_number=number, stage=stage, claimed=True,
-    )
-
-
-def _recorded_stage(recorded: object) -> WorkflowLabel | None:
-    """The stage a record names, or None where it names no publication.
-
-    Held to the same predicate the permit holds its own evidence to -- the
-    states that push onto a pull request the remote already carries -- so a
-    record naming any other describes an attempt this workflow never made.
-    """
-    try:
-        stage = WorkflowLabel(recorded)
-    except ValueError:
-        return None
-    return stage if publishes_onto_a_pull_request(stage) else None
+        if not self.is_recorded or self.pr_number != pr_number:
+            return False
+        return stage in (self.stage, WorkflowLabel.VALIDATING)
 
 
 @dataclass(frozen=True)

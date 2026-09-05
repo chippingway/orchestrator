@@ -281,14 +281,21 @@ orchestrator/
                         is one a crash is lost in, the anchor alone cannot say which local commit the attempt made,
                         and terms re-read after a crash would compare today with today; the rewrite evidence it
                         hands that gate beside the candidate comes from `transfers.py`
-      transfers.py      what a rebase REPLACED, as the evidence a transfer is decided on -- the pair the pinned
+      transfers.py      the record one interrupted attempt left, read off the comment and typed against the same
+                        shapes every other late field is: an abbreviation or a value that is not a whole git
+                        object id is no head, so a group carrying one is damaged rather than one naming a commit a
+                        checkout might turn out to be standing on. Beside it, what a rebase REPLACED, as the
+                        evidence a transfer is decided on -- the pair the pinned
                         record already holds, the pair the replay produced, over a base frozen from what the
                         REMOTE says the branch is at, never off the local ref the rebase named, which any worktree
                         sharing the store can repoint after this tick's fetch, and the pull request, stage, and
                         pre-rebase anchor the push is made against, empty where either half cannot be shown --
                         beside it the five states an interrupted rebase's transfer can be found in: none, a
                         rewrite no permission was ever written for, a permission still owed a receipt, one already
-                        spent, and one nobody can vouch for. Only the second is handed re-derived evidence, since
+                        spent, and one nobody can vouch for -- the exemption and the identity under it asked
+                        FIRST, since a permission is a claim about moving one verdict and a group damaged after
+                        the grant leaves it reading back whole over a verdict nothing can name. Only the second is
+                        handed re-derived evidence, since
                         a grant REPLACES the whole group and a recovery may not repair a record under the
                         authority of the transfer it is deciding. And the last question: whether a rewrite the
                         pull request already carries is one the comment ACCOUNTS for -- an issue carrying no
@@ -328,11 +335,15 @@ orchestrator/
                         refused one may leave the branch still standing on the approved commit -- the paired clear
                         every step that ends an attempt goes through, so no road drops the anchor and leaves the
                         replay it names behind, and the state / notice / event writes a recovery ends in
-      models.py         the frozen contexts, requests, snapshots, and decisions, plus the record one interrupted
-                        attempt leaves of the replay it made -- read whole or not at all, since a caller holding
-                        any of its three facts apart would be free to fill the rest in from the world it woke up
-                        in, and read by PRESENCE beside that, so a comment carrying none of the group (the window
-                        before the write) is told from one something took a member out of
+      models.py         the frozen contexts, requests, snapshots, and decisions, plus the SHAPE of the record one
+                        interrupted attempt leaves of the replay it made -- held whole or not at all, since a
+                        caller holding any of its three facts apart would be free to fill the rest in from the
+                        world it woke up in, and carrying whether the comment CLAIMED the group beside them, so
+                        one that never had it (the window before the write) is told from one something took a
+                        member out of. The one stage it answers for besides the recorded one is `validating`,
+                        which every finish here relabels to just before the write that clears the record -- a
+                        crash between the two is this route's own last step rather than somebody else's move.
+                        Reading the group off the comment belongs to `transfers.py`
       state.py          the pinned-state keys -- the anchor a push is leased against, and the replay it publishes
                         with the publication it was made for -- plus the park reasons, refresh detour labels, and
                         the shared logger

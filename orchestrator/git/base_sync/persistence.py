@@ -277,7 +277,14 @@ def _route_recovered_rebase(
     local_head: str,
     method: str,
 ) -> bool:
-    """Persist recovery progress and route only a current head to validation."""
+    """Persist recovery progress and route only a current head to validation.
+
+    The relabel goes ahead of the pinned write for the reason the publisher's
+    own tail does, and leaves the same window: an issue already on
+    `validating` whose comment still names the stage the attempt started
+    from. The recovery reads that as this route's own last step rather than a
+    publication somebody else moved the issue to.
+    """
     if context.behind == 0:
         log.info(
             "issue=#%d auto-rebase recovery (%s): recovered head %s is "
