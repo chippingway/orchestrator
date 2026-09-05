@@ -170,8 +170,9 @@ def _rewritten_by_the_rebase(
     issue that never earned an exemption, one written before the record
     existed, one whose fingerprint could not be taken -- has no accepted pair
     to name, and a base the remote would not name, or one this host does not
-    hold even after a fetch, is no commit to read a contribution over. In both
-    the rebase is measured exactly as it always was.
+    hold even after a fetch, is no commit to read a contribution over. In
+    both the rebase goes to the ordinary cumulative gate and is measured like
+    any other candidate.
 
     The PUBLICATION is the caller's where it hands one in, and that is the
     difference between the tick that makes the rewrite and the tick that comes
@@ -255,6 +256,14 @@ def _carried_by(
     So a comment claiming an exemption it cannot show whole is `UNVOUCHED`,
     and only a comment claiming none at all is `NOTHING`.
 
+    The settlement PROOF is asked the same way and for the same reason. It is
+    written by the statement that settles a transfer and dropped by the write
+    behind the record it feeds, so one standing beside a phase, a reading, or
+    an authorization this build cannot account for is a checkpoint saying two
+    things at once. It is invisible to the readers above -- they answer for
+    the permission, not for what was reported about it -- and the road it
+    would let through clears the anchor and files no record of the move.
+
     Costs no git and no request. Every answer is a field this issue already
     carries, which is what lets the ordinary recovery -- the overwhelming
     majority, on issues that never earned an exemption -- pay nothing for a
@@ -262,8 +271,13 @@ def _carried_by(
     """
     # Lazy for the reason every upward reach in this package is: the record
     # sits in the workflow layer above it.
-    from orchestrator.workflow.late_split import exemption as _exemption
+    from orchestrator.workflow.late_split import (
+        exemption as _exemption,
+        rewrites as _rewrites,
+    )
     if _exemption.unreadable_exemption(context.state):
+        return _Handoff.UNVOUCHED
+    if _rewrites.stranded_transfer_proof(context.state):
         return _Handoff.UNVOUCHED
     standing = _standing_permission(context, local_head)
     if standing is not None:
@@ -278,11 +292,19 @@ def _standing_permission(
 ) -> _Handoff | None:
     """What a permission already on the comment says about this head, or None.
 
-    None only where the comment carries no claim this recovery has to answer
-    for: no group at all, and a group whose transfer is over and whose commit
-    is not the one in hand -- which is an exemption an earlier rewrite moved
-    with a fresh rebase standing on top of it, so the evidence for THIS replay
-    is the recovery's to assemble like any other.
+    None where the comment carries no claim this recovery has to answer for,
+    and a transfer that is OVER is the larger half of that. A settled record
+    is never cleared, so it outlives the attempt that earned it: the exemption
+    it moved is on the rewritten commit, the pull request is standing on that
+    commit, and the next base advance anchors its own rebase to exactly that
+    head. A settled record whose `to_sha` IS this attempt's anchor is
+    therefore the previous rotation's history rather than a claim about this
+    one -- and read as a claim it would be bound by a lease belonging to that
+    earlier attempt, come back as a group nobody can vouch for, and park an
+    attempt that has not started. So it is passed over, and the evidence for
+    THIS replay is the recovery's to assemble like any other. A settled record
+    naming any other commit is passed over for the plainer reason that the
+    head in hand is not the one it is about.
 
     Everything else is a claim, and a claim is believed only where every field
     of it agrees with the attempt this recovery is finishing. A group this
@@ -301,8 +323,12 @@ def _standing_permission(
     authorization = _rewrites.read_rewrite_authorization(context.state)
     if authorization is None:
         return _Handoff.UNVOUCHED
-    if authorization.rewrite.to_sha != local_head:
-        return None if _is_settled(authorization) else _Handoff.UNVOUCHED
+    settled = _is_settled(authorization)
+    rewrite = authorization.rewrite
+    if settled and rewrite.to_sha == context.pending_pre_rebase_sha:
+        return None
+    if rewrite.to_sha != local_head:
+        return None if settled else _Handoff.UNVOUCHED
     return _claimed_by_this_attempt(context, authorization)
 
 
@@ -753,12 +779,33 @@ def _already_announced(state: PinnedState, local_head: str) -> bool:
     tick: the notice is a comment, the audit event is on the sinks, and the
     label alone cannot say whose move it was.
 
-    Held to the commit, like every other recorded id here. A mark naming some
-    other head is about an attempt this recovery is not finishing, and one
-    that is not a commit is no mark at all.
+    Held to the commit, like every other recorded id here -- which is why
+    `_foreign_mark` beside this is what the roads that would announce
+    something ask: a mark naming any other head, or naming no commit at all,
+    is not an answer this reader may give as "nothing was announced".
     """
     recorded = state.get(_PENDING_ANNOUNCED_SHA)
     return bool(local_head) and recorded == local_head
+
+
+def _foreign_mark(state: PinnedState, local_head: str) -> bool:
+    """Whether a mark stands here that does not belong to the head in hand.
+
+    Presence rather than truth, for the reason every other checkpoint on this
+    comment is read that way. The mark is written by a finish naming what it
+    had just published and dropped by the write that clears the attempt, so
+    the key being there says a finish announced THIS attempt's replay -- and a
+    value that is not that commit, or not a commit at all, is a checkpoint
+    something took apart.
+
+    Read as "not announced", such a mark costs the pull request a second
+    notice and the stream a second `base_rebased` for one publication that
+    happened once, with no way for a reader to tell which of the two describes
+    the head the branch ended on. So it parks instead.
+    """
+    if state.get(_PENDING_ANNOUNCED_SHA) is None:
+        return False
+    return not _already_announced(state, local_head)
 
 
 def _reports_a_lost_settlement(

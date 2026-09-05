@@ -109,7 +109,7 @@ class TransferredRebaseTest(_CleanRebaseCase, unittest.TestCase):
 
 
 class MeasuredRebaseTest(_CleanRebaseCase, unittest.TestCase):
-    """The replays no transfer is granted for, measured as they always were."""
+    """The replays no transfer is granted for, read by the cumulative gate."""
 
     def test_a_changed_contribution_is_measured(self) -> None:
         # A base advance that moved what the branch adds to it produces a

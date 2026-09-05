@@ -168,9 +168,9 @@ def _record_the_rewrite(context: _AutoRebaseContext) -> str:
     the anchor already carries: the attempt reads as one still IN FLIGHT, and
     the head it left has to be vouched for by what it contributes rather than
     by an id nobody wrote down. Where nothing can vouch for it, the recovery
-    falls back to what it always did: a strictly-ahead branch is a
-    fast-forward the anchor lease loses nothing to, and a divergent one resets
-    and parks.
+    falls back to the counts alone: a strictly-ahead branch is a fast-forward
+    the anchor lease loses nothing to, and a divergent one resets and
+    parks.
 
     Nothing is recorded for a rebase that moved nothing or left a head this
     host cannot read. The first is the no-op the guard behind this finishes by

@@ -27,6 +27,7 @@ from orchestrator.agents import runner as _agent_runner
 from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.base_sync import (
     persistence as _persistence,
+    pre_pr as _pre_pr,
     publication as _base_publication,
     startup as _base_startup,
 )
@@ -48,6 +49,7 @@ from tests.git.base_sync.exemption_git_support import (
 )
 from tests.git.base_sync.real_git_test_support import (
     ADD_COMMAND,
+    BASE_BRANCH,
     ORIGIN_REMOTE,
     PR_BRANCH,
     PR_NUMBER,
@@ -95,6 +97,11 @@ def _local_branch_fetch(_spec, refspec: str, *, cwd):
 JOURNEY_CEILING = 20
 JOURNEY_FILE = "oversized.py"
 JOURNEY_LINES = 200
+
+# The file a second base advance lands on. `_advance_base` writes one fixed
+# name with fixed content, so a journey that needs the base to move TWICE
+# needs a commit of its own for the second move.
+SECOND_ADVANCE_FILE = "later.txt"
 
 # The verdict the adjudicator reaches on that candidate, in the fence the
 # reply owner really parses -- taken from that owner rather than retyped, so
@@ -264,6 +271,17 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
                 self._gh.read_pinned_state(issue),
             )
 
+    def _advances_the_base_again(self) -> None:
+        """Move the real base branch a second time, on its own commit."""
+        self._git("checkout", BASE_BRANCH, cwd=self._work)
+        (self._work / SECOND_ADVANCE_FILE).write_text("later base side\n")
+        self._git(ADD_COMMAND, ".", cwd=self._work)
+        self._git(
+            "commit", "-m", "chore: advance the base again",
+            cwd=self._work, env_extra=self._author_env,
+        )
+        self._git(PUSH_COMMAND, ORIGIN_REMOTE, BASE_BRANCH, cwd=self._work)
+
     def _refreshes(self) -> _LocalBranchPusher:
         """Run one refresh over the advanced base and report the push it made."""
         pusher = _PublishesToThePullRequest(self._gh)
@@ -306,6 +324,19 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
         """The request that would put the replay on the remote never returns."""
         return patch.object(
             _branch_transport, PUSH_BRANCH,
+            _stops_the_tick(),
+        )
+
+    def _dies_before_the_rebase(self):
+        """The anchor and the terms go down and `git rebase` never runs.
+
+        The first window an attempt has, and the one that looks exactly like
+        the window after it from the comment alone: what is pinned is the
+        anchor and the terms, and the checkout is still standing where the
+        pull request has it.
+        """
+        return patch.object(
+            _pre_pr, "_rebase_base_into_worktree",
             _stops_the_tick(),
         )
 

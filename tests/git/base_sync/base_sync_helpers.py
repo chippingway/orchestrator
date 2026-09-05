@@ -87,8 +87,15 @@ HUMAN_COMMENT_BODY = "branch reconciled, please retry"
 # produced, and the publication it produced it for. Both are the fixture's
 # ordinary world -- the head the recovery finds, on the pull request the issue
 # records -- so a case says only what it moves.
-_RECORDED_REWRITE = models._PendingRewrite(
+RECORDED_REWRITE = models._PendingRewrite(
     sha=RECOVERED_SHA, pr_number=PR_NUMBER, stage=WorkflowLabel.IN_REVIEW,
+)
+
+# The same record one `git rebase` earlier: the terms an attempt pins beside
+# its anchor before git may touch the branch, with no head yet naming what the
+# replay produced.
+IN_FLIGHT_REWRITE = models._PendingRewrite(
+    pr_number=PR_NUMBER, stage=WorkflowLabel.IN_REVIEW,
 )
 
 
@@ -111,7 +118,7 @@ def _recovery_context(
     *,
     behind: int = 0,
     unparking_consumed_max: int | None = None,
-    pending_rewrite: models._PendingRewrite = _RECORDED_REWRITE,
+    pending_rewrite: models._PendingRewrite = RECORDED_REWRITE,
     **state_fields,
 ) -> models._AutoRebaseRecoveryContext:
     """Seed issue #7 with PR #42 pinned and wrap it in a recovery context.

@@ -25,9 +25,10 @@ no record of a replay at all -- and the window between git returning and the
 write that names one has a road of its own, where the head is proved by what
 it contributes rather than by an id nobody wrote down. An issue moved off the
 refresh-driven set is answered by what the attempt left rather than by the
-label alone: an anchor standing on its own is dropped, and a recorded replay
-or an unspent permission parks with every record intact, since no road runs
-here and a clear would leave the three asymmetrically stranded. Everything an
+label alone: an anchor over a checkout still standing on it is dropped, and a
+recorded replay, an unspent permission, or a branch git has already moved
+parks with every record intact, since no road runs here and a clear would
+leave them asymmetrically stranded. Everything an
 attempt DID record either vouches for the checkout in front of this tick or
 parks it. ``transfers`` answers the other half off the pinned comment -- how
 far the transfer's own writes got -- and the roads that still publish
@@ -38,7 +39,8 @@ push that landed with its receipt lost is settled here, on the stage the
 permit was granted under, through the leased no-op that proves the pull
 request really carries it. Every state neither of those covers -- a record
 this build cannot read, a tree carrying uncommitted changes, a remote
-somebody moved -- keeps the fail-closed park or reset it always had.
+somebody moved -- is fail-closed: the branch goes back onto the anchor, or
+the anchor stays pinned, and a human is asked.
 """
 from __future__ import annotations
 
@@ -91,6 +93,12 @@ _REFUSED_NO_OP = (
     "the `--force-with-lease` no-op that would have recorded it, leased "
     "against that same commit, was refused -- the remote branch moved after "
     "this tick read it"
+)
+
+_FOREIGN_MARK = (
+    "a finish on this attempt recorded that it had already announced some "
+    "other commit, so whichever of the two this route said it published "
+    "cannot be told from the comment"
 )
 
 # The two handoffs that say a grant is still standing over a commit the
@@ -317,7 +325,7 @@ def _finish_published_recovery(
     the rewrite the pull request carries, and only an accounted one is
     finished.
     An issue carrying no verdict always is, which is the ordinary interrupted
-    rebase and the whole of what this road used to be. One whose transfer
+    rebase and has nothing a missing record could strand. One whose transfer
     settled, or whose replay the ordinary cumulative gate published, is
     accounted for by the receipt that write left. Anything else -- a record
     this build cannot read, a receipt nobody wrote, a debt nothing paid --
@@ -396,9 +404,8 @@ def _loose_tree_holds(
     back once a human has cleaned up can make it.
 
     Silent for an issue carrying no verdict at all, which is the ordinary
-    interrupted rebase and the road this one has always taken: nothing is
-    being moved onto the replay there, and the dirty tree is the stage's own
-    to answer for as it always was.
+    interrupted rebase: nothing is being moved onto the replay there, and the
+    dirty tree is the stage handler's own to answer for.
     """
     if carried == transfers._Handoff.NOTHING:
         return None
@@ -532,27 +539,43 @@ def _answers_an_ineligible_label(
 ) -> bool:
     """Answer an anchor found under a label the base refresh does not drive.
 
-    The clear is the old answer and stays the answer for the case it was
-    written for: an operator moved the issue off the refresh-driven set while
-    an attempt held nothing but its anchor, and an anchor on its own is only a
-    promise to come back. Dropping it costs nothing, and leaving it pinned
-    would strand a flag no later tick under this label ever reads.
+    Nothing is fetched and nothing is compared, because nothing under this
+    label is coming back to do either. So the road is a clear or a park, and
+    what decides between them is whether the attempt left anything a clear
+    would strand.
 
-    It is the wrong answer for an attempt that got further. A rebase the tick
+    An anchor over a checkout still standing ON it strands nothing. Git never
+    moved the branch, no replay exists, and no permission was granted, so the
+    anchor is a promise to come back that nobody is coming back for: dropping
+    it costs the issue nothing, and leaving it pinned would strand a flag no
+    later tick under this label ever reads.
+
+    Everything else parks with every record intact. A rebase the tick
     RECORDED, or a permission granted for a push that never landed, is state
-    the clear cannot honour: it fetches nothing, compares nothing, and would
-    drop the one field naming what the branch would go back to while leaving
-    the verdict, the debt, and the replay standing without it. Worse, the
-    issue it hands on is one no reader can tell from an issue with nothing in
-    flight -- so a decomposition tick is free to put a second agent on a
-    change a human already ruled on.
+    the clear cannot honour: it would drop the one field naming what the
+    branch would go back to while leaving the verdict, the debt, and the
+    replay standing without it. A checkout that has MOVED off the anchor
+    under the terms alone is the same refusal one reading over: that is the
+    window between `git rebase` returning and the write that names what it
+    produced, and the terms on their own cannot tell it from an attempt that
+    never started. Cleared there, the replay stays on the branch with nothing
+    on the comment naming it, and the issue this route hands on is one no
+    reader can tell from an issue with nothing in flight -- so another handler
+    or a decomposition tick is free to start over on a change a human already
+    ruled on.
 
-    So the two are separated by what the comment carries rather than by the
-    label, and the second parks with everything intact.
+    The head is read locally, which costs no fetch and no request. A reading
+    that could not be taken at all is no evidence the branch is where the
+    attempt left it, so it parks with everything else this route cannot
+    prove.
     """
     if context.pending_rewrite.left_a_replay:
         return outcomes._park_stranded_recovery(context)
     if transfers._left_mid_transfer(context.state):
+        return outcomes._park_stranded_recovery(context)
+    if verification_probes._head_sha(
+        context.worktree,
+    ) != context.pending_pre_rebase_sha:
         return outcomes._park_stranded_recovery(context)
     return snapshot._clear_ineligible_recovery(context)
 
@@ -596,12 +619,14 @@ def _unstarted_attempt(
 ) -> bool:
     """Whether this attempt left nothing behind but the anchor it pinned.
 
-    Two things say it did leave something. A record of the replay it produced,
-    whether whole or in pieces, is an attempt that reached the write after
-    `git rebase` -- and a reset that put the branch back before its own park
-    write leaves exactly that. A permission this build reads as outstanding,
-    or one it cannot vouch for at all, is a grant that was never spent on a
-    commit the branch no longer has.
+    Three things say it did leave something. A record of the replay it
+    produced, whether whole or in pieces, is an attempt that reached the write
+    after `git rebase` -- and a reset that put the branch back before its own
+    park write leaves exactly that. A mark saying a finish had already
+    announced a head says the same from the far end of the route, since no
+    finish ever announces the anchor. A permission this build reads as
+    outstanding, or one it cannot vouch for at all, is a grant that was never
+    spent on a commit the branch no longer has.
 
     A SETTLED permission is not one of them: a transfer that finished is never
     cleared, so every issue that ever earned one would fail this test for the
@@ -617,6 +642,8 @@ def _unstarted_attempt(
     attempt -- the whole reason this shortcut exists -- pay nothing for it.
     """
     if context.pending_rewrite.left_a_replay:
+        return False
+    if transfers._foreign_mark(context.state, recovery_snapshot.local_head):
         return False
     carried = transfers._carried_by(context, recovery_snapshot.local_head)
     return carried not in _UNSPENT_TRANSFERS
@@ -667,8 +694,15 @@ def _route_recovery_snapshot(
     routed into a second adjudication with a pull request already open over
     the work -- so the branch goes back onto the anchor and a human is asked.
 
+    The mark a finish leaves is asked here for the same reason and one step
+    earlier than the road that reads it: a mark naming any head but the one in
+    hand is a checkpoint something took apart, and every road below would read
+    it as no announcement at all -- putting a second notice on the pull
+    request and a second `base_rebased` on the stream for one publication that
+    happened once.
+
     The counts still answer for every remote neither SHA accounts for, which
-    is the case they were always about: a publication that moved out of band
+    is the one question they can settle: a publication that moved out of band
     is behind as well as ahead, and a pair of zeros over two heads that
     disagree is a reading that did not happen.
     """
@@ -680,6 +714,10 @@ def _route_recovery_snapshot(
     carried = transfers._carried_by(context, completed.local_head)
     if _made_for_another_publication(context, completed):
         return outcomes._park_foreign_publication_recovery(context, completed)
+    if transfers._foreign_mark(context.state, completed.local_head):
+        return outcomes._park_unfinished_recovery(
+            context, completed, _FOREIGN_MARK,
+        )
     if completed.local_head and completed.local_head == completed.remote_head:
         return _finish_published_recovery(context, completed, carried)
     return _route_an_unpublished_head(context, completed, carried)
@@ -754,8 +792,8 @@ def _route_an_unpublished_head(
     one this attempt's own push was ever leased against.
 
     What is left is the retry the anchor exists for, and -- for a remote
-    neither pinned head accounts for -- the counts, which answer the question
-    they were always about, over an attempt that recorded nothing at all.
+    neither pinned head accounts for -- the counts, over an attempt that
+    recorded nothing at all.
     """
     if transfers._rolled_back_publication(context, completed, carried):
         return outcomes._park_rolled_back_recovery(context, completed)

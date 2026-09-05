@@ -251,8 +251,9 @@ def _announced(context, published: str) -> None:
     Written while the anchor is still pinned, and that is deliberate: the
     anchor is what brings the recovery back at all, so this write may say only
     that the announcement was made and must leave every other field of the
-    attempt exactly where it is. The clear rides the finish's own last write,
-    as it always did.
+    attempt exactly where it is. The clear rides the finish's own last
+    write, which is what keeps the anchor standing until every road is
+    behind it.
     """
     context.state.set(_PENDING_ANNOUNCED_SHA, published)
     context.gh.write_pinned_state(context.issue, context.state)

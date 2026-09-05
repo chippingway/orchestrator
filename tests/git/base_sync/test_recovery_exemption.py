@@ -20,8 +20,8 @@ nothing more.
 What none of them may do is start over. A replay of the exact change a human
 already ruled on must not spawn an agent, take a measurement, rebase again,
 force-rewrite a branch the remote already has, or put a second adjudication on
-the thread -- and the states nobody can vouch for keep the fail-closed park or
-reset they always had.
+the thread -- and every state nobody can vouch for is fail-closed: the branch
+goes back onto the anchor, or the anchor stays pinned, and a human is asked.
 """
 from __future__ import annotations
 
@@ -165,6 +165,11 @@ REBASE_PATCH = "rebase"
 KEY_REWRITE_PHASE = "late_rewrite_phase"
 PHASE_AUTHORIZED = "authorized"
 
+# The note a settled transfer keeps until its record is out, and a value for
+# it that names no reading this build knows.
+KEY_REWRITE_PROOF = "late_rewrite_proof"
+DAMAGED_PROOF = "not-a-reading"
+
 # What a real replay looks like to the divergence probe: one commit of
 # its own, and the pull request's head on no local history at all.
 REBASED_COUNTS = (1, 2)
@@ -265,123 +270,92 @@ class _ResumedRebaseCase(_CleanRebaseCase):
         self.assertNotIn((ISSUE, LABEL_DECOMPOSING), self.gh.label_history)
 
 
-class UnrecordedRewriteRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
-    """The rewrite that reached the branch before any permission reached disk."""
+class ResumedHandoffTest(_ResumedRebaseCase, unittest.TestCase):
+    """Each window one transfer has, and the single finish it resolves into.
 
-    def setUp(self) -> None:
-        super().setUp()
-        self._crashes_before_the_grant()
-        self.resumed = self._resumes()
+    One class rather than four because the outcome is one outcome -- the
+    verdict on the replay, the reviewer routed to it, and nobody asked to
+    adjudicate the change again -- and what differs is only where the process
+    stopped and what that leaves the next tick to do.
+    """
 
-    def test_the_crash_left_no_claim_behind(self) -> None:
-        # The premise: the replay is on the branch and the comment says
-        # nothing about it, so the record cannot supply the evidence and a
-        # recovery that asked it would measure an adjudicated change afresh.
-        self.assertFalse(
-            _rewrites.carries_rewrite_authorization(self._crashed),
-        )
-        self.assertEqual(
-            self._crashed.get(KEY_PENDING_PUSH_SHA), BEFORE_SHA,
-        )
-
-    def test_the_recovery_re_derives_and_settles(self) -> None:
-        # Assembled from the same four readings the dead tick would have
-        # used, and decided by the same permit: the push is named against the
+    def test_an_ungranted_rewrite_is_re_derived(self) -> None:
+        # The replay is on the branch and the comment says nothing about it,
+        # so the record cannot supply the evidence and a recovery that asked
+        # it would measure an adjudicated change afresh. What it assembles
+        # instead is the same four readings the dead tick would have taken,
+        # and the same permit rules on them: the push is named against the
         # replay and pinned to the anchor the remote is still standing on.
-        pushed = self.resumed[PUSH_PATCH].call_args.kwargs
+        self._crashes_before_the_grant()
+        crashed = self._durable()
+
+        resumed = self._resumes()
+
+        self.assertFalse(_rewrites.carries_rewrite_authorization(crashed))
+        self.assertEqual(crashed.get(KEY_PENDING_PUSH_SHA), BEFORE_SHA)
+        pushed = resumed[PUSH_PATCH].call_args.kwargs
         self.assertEqual(pushed[REVISION], AFTER_SHA)
         self.assertEqual(pushed[LEASE], BEFORE_SHA)
         self._assert_settled_once()
-
-    def test_the_replay_is_not_measured_again(self) -> None:
         self._assert_nothing_readjudicated()
         self._assert_finished_the_route(RECOVERY_PUSHED)
 
-    def _crashes_before_the_grant(self) -> None:
-        super()._crashes_before_the_grant()
-        self._crashed = self._durable()
-
-
-class OutstandingPermissionRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
-    """The tick that dies between the grant and the push it licensed."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        self._crashes_before_the_push()
-        self.resumed = self._resumes()
-
-    def test_the_recovery_publishes_and_settles(self) -> None:
+    def test_an_outstanding_permission_is_spent(self) -> None:
         # The permit is re-asked over the record the grant left -- the
         # recovery has no evidence of its own -- and the receipt behind the
-        # reissued push is what finally carries the verdict over.
-        pushed = self.resumed[PUSH_PATCH].call_args.kwargs
+        # reissued push is what finally carries the verdict over. The debt
+        # that grant recorded is what freezes this branch out of the very
+        # recovery the anchor beside it exists for, so leaving it there is
+        # how a later stage lands the push with the reviewer never routed.
+        self._crashes_before_the_push()
+
+        resumed = self._resumes()
+
+        pushed = resumed[PUSH_PATCH].call_args.kwargs
         self.assertEqual(pushed[REVISION], AFTER_SHA)
         self.assertEqual(pushed[LEASE], BEFORE_SHA)
         self._assert_settled_once()
-
-    def test_the_refresh_tail_is_finished(self) -> None:
-        # The debt the grant recorded is what freezes this branch, and it
-        # freezes it out of the very recovery the anchor beside it exists for.
-        # Left there, a later stage lands the push and the reviewer is never
-        # routed at the rewritten head.
         self._assert_nothing_readjudicated()
         self._assert_finished_the_route(RECOVERY_PUSHED)
 
-
-class LandedPushRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
-    """The push that reached the remote and lost the write that receipts it."""
-
-    def setUp(self) -> None:
-        super().setUp()
+    def test_a_landed_push_earns_a_leased_no_op(self) -> None:
         # The request went out and the process died waiting for its answer,
         # so the pull request carries the replay while the comment still says
-        # a push is owed for it.
+        # a push is owed for it. The remote standing there already makes the
+        # push the leased no-op that proves it -- named against that commit
+        # and pinned to it, a request with nothing to send rather than a
+        # second force-rewrite of a branch the pull request has.
         self._crashes_before_the_push()
-        self.resumed = self._resumes(remote_head=AFTER_SHA)
 
-    def test_the_settlement_rewrites_nothing(self) -> None:
-        # The remote is already standing on the replay, so the push is the
-        # leased no-op that proves it: named against that commit and pinned to
-        # it, which is a request with nothing to send rather than a second
-        # force-rewrite of a branch the pull request already has.
-        pushed = self.resumed[PUSH_PATCH].call_args.kwargs
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        pushed = resumed[PUSH_PATCH].call_args.kwargs
         self.assertEqual(pushed[REVISION], AFTER_SHA)
         self.assertEqual(pushed[LEASE], AFTER_SHA)
-
-    def test_the_receipt_carries_the_verdict_over(self) -> None:
         self._assert_settled_once()
         self.assertEqual(
             self._events_of(EVENT_TRANSFER)[0]["transfer_proof"],
             str(_rewrites.LateRewriteProof.ALREADY_PUBLISHED),
         )
-
-    def test_the_route_finishes_untouched(self) -> None:
         self._assert_nothing_readjudicated()
         self._assert_finished_the_route(RECOVERY_RELABELLED)
 
-
-class SettledHandoffRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
-    """The transfer that finished, on a tick that never finished its route."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        self._crashes_before_the_route()
-        self.resumed = self._resumes(remote_head=AFTER_SHA)
-
-    def test_nothing_is_pushed_or_moved_a_second_time(self) -> None:
+    def test_a_settled_transfer_owes_only_its_route(self) -> None:
         # The receipt landed with the rotation on it, so every question this
-        # recovery could ask is already answered: there is no permission left
+        # recovery could ask is already answered: no permission left
         # outstanding, nothing to send, and nothing to report twice.
-        self.resumed[PUSH_PATCH].assert_not_called()
-        self._assert_settled_once()
+        self._crashes_before_the_route()
 
-    def test_only_the_route_is_finished(self) -> None:
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        resumed[PUSH_PATCH].assert_not_called()
+        self._assert_settled_once()
         self._assert_nothing_readjudicated()
         self._assert_finished_the_route(RECOVERY_RELABELLED)
 
 
 class FailClosedRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
-    """The states nobody can vouch for keep the answer they always had."""
+    """Every state nobody can vouch for parks or resets rather than acts."""
 
     def test_a_moved_remote_rolls_the_permission_back(self) -> None:
         # Somebody pushed to the branch while the interrupted tick was down,
@@ -597,38 +571,28 @@ if __name__ == "__main__":
 class RolledBackRemoteTest(_ResumedRebaseCase, unittest.TestCase):
     """The remote somebody put back after this attempt's push had landed."""
 
-    def setUp(self) -> None:
-        super().setUp()
-        self._crashes_before_the_route()
+    def test_the_rollback_is_answered_not_undone(self) -> None:
         # The pull request is back on the head the rebase found it on, which
-        # is the very commit a reissued push would lease itself against.
-        self.resumed = self._resumes(remote_head=BEFORE_SHA, diverged=(1, 1))
+        # is the very commit a reissued push would lease itself against -- so
+        # the lease would be satisfied and the rollback gone. Nothing is
+        # pushed for it. What the externally moved remote earns instead is
+        # HEAD onto the anchor the pull request is standing on, the anchor
+        # dropped with it, and a human asked which of the two heads the branch
+        # is supposed to be on. The transfer itself is left alone: the write
+        # that receipted it moved the exemption, and a rollback nobody here
+        # made is not this recovery's to undo.
+        self._crashes_before_the_route()
 
-    def test_nothing_is_pushed_over_the_rollback(self) -> None:
-        self.resumed[PUSH_PATCH].assert_not_called()
+        resumed = self._resumes(remote_head=BEFORE_SHA, diverged=(1, 1))
+
+        resumed[PUSH_PATCH].assert_not_called()
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
         self._assert_routed(False)
-
-    def test_the_branch_goes_back_where_the_remote_is(self) -> None:
-        # The externally moved remote's own answer: HEAD onto the anchor the
-        # pull request is standing on, the anchor dropped with it, and a human
-        # asked which of the two heads the branch is supposed to be on.
-        self.assertEqual(len(self._resets_of(self.resumed)), 1)
+        self._assert_reset_once(resumed)
         pinned = self._pinned()
         self.assertIsNone(pinned[KEY_PENDING_PUSH_SHA])
         self.assertEqual(pinned[KEY_PARK_REASON], PARK_PUSH_FAILED)
-
-    def test_the_settled_verdict_is_left_alone(self) -> None:
-        # The transfer is over: the write that receipted it moved the
-        # exemption, and a rollback nobody here made is not this recovery's
-        # to undo.
-        durable = self._durable()
-        self.assertTrue(_exemption.is_exempt(durable, AFTER_SHA))
-        self.assertEqual(
-            _rewrites.read_rewrite_authorization(durable).phase,
-            _rewrites.LateRewritePhase.PUBLISHED,
-        )
-        self.assertEqual(len(self._events_of(EVENT_TRANSFER)), 1)
+        self._assert_settled_once()
 
 
 class UnprovenLandingTest(_ResumedRebaseCase, unittest.TestCase):
@@ -926,21 +890,20 @@ class LooseSettledTreeTest(_ResumedRebaseCase, unittest.TestCase):
 class UnroutedFinishTest(_ResumedRebaseCase, unittest.TestCase):
     """A finish that said what it published and never routed the reviewer."""
 
-    def setUp(self) -> None:
-        super().setUp()
-        self._crashes_at_the_relabel()
-        self.resumed = self._resumes(remote_head=AFTER_SHA)
-
-    def test_the_reviewer_is_still_sent_to_the_replay(self) -> None:
+    def test_the_route_is_made_and_not_repeated(self) -> None:
         # The anchor is the only thing that brings this tick back, so clearing
         # it without the relabel would strand the issue on the stage the
-        # rebase ran from with nothing left to correct it.
+        # rebase ran from with nothing left to correct it. What the mark
+        # beside it buys is the other half: the notice and the audit event
+        # are already out, so this tick owes the route and the write alone.
+        self._crashes_at_the_relabel()
+
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
         self._assert_routed(True)
         self._assert_anchor(None)
         self.assertEqual(self._pinned()[KEY_REVIEW_ROUND], 0)
-
-    def test_nothing_it_already_said_is_said_again(self) -> None:
-        self._assert_nothing_left(self.resumed)
+        self._assert_nothing_left(resumed)
         self.assertEqual(
             [record[METHOD_FIELD] for record in self._events_of(
                 EVENT_BASE_REBASED,
@@ -1052,47 +1015,37 @@ class DamagedAttemptRecordTest(_ResumedRebaseCase, unittest.TestCase):
 class RelabelledFinishTest(_ResumedRebaseCase, unittest.TestCase):
     """The route this recovery's own finish had already most of the way made."""
 
-    def setUp(self) -> None:
-        super().setUp()
-        self._crashes_after_the_relabel()
-        self.crashed = dict(self._pinned())
-        self.resumed = self._resumes(remote_head=AFTER_SHA)
-
-    def test_the_crash_left_the_route_half_made(self) -> None:
+    def test_only_the_last_write_is_made(self) -> None:
         # The premise: the reviewer has been routed at the rewritten head, the
         # finish has recorded that it said so, and the write that clears the
-        # attempt never happened.
-        self._assert_routed(True)
-        self.assertEqual(self.crashed[KEY_ANNOUNCED_SHA], AFTER_SHA)
-        self.assertEqual(self.crashed[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
+        # attempt never happened. The relabel is this route's own last step
+        # before that write -- read as somebody else's move, the tick with
+        # only the write left to make would park for a human forever. And the
+        # notice, the audit event, and the route all went out before the write
+        # the crash swallowed, so the tick that makes it owes none of them: a
+        # second `base_rebased` would be filed under the stage the relabel
+        # moved to, for one publication that happened once.
+        self._crashes_after_the_relabel()
+        crashed = dict(self._pinned())
 
-    def test_the_next_tick_writes_rather_than_parks(self) -> None:
-        # The relabel is this route's own last step before the write that
-        # clears the record. Read as somebody else's move, the tick with only
-        # that write left to make would park for a human forever.
-        self._assert_nothing_left(self.resumed)
-        self._assert_anchor(None)
-        self.assertEqual(self._pinned()[KEY_REVIEW_ROUND], 0)
-        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+        resumed = self._resumes(remote_head=AFTER_SHA)
 
-    def test_the_finish_it_made_is_not_made_again(self) -> None:
-        # The notice, the audit event, and the route all went out before the
-        # write the crash swallowed, so the tick that makes that write owes
-        # none of them -- a second `base_rebased` would be filed under the
-        # stage the relabel moved to, for one publication that happened once.
-        rebased = self._events_of(EVENT_BASE_REBASED)
-
-        self.assertEqual([record[METHOD_FIELD] for record in rebased],
-                         [CLEAN_REBASE])
-        self.assertEqual(rebased[0][STAGE_FIELD], LABEL)
-        self.assertEqual(len(self._pr_comments()), 1)
-
-    def test_the_settled_verdict_is_reported_once(self) -> None:
+        self.assertEqual(crashed[KEY_ANNOUNCED_SHA], AFTER_SHA)
+        self.assertEqual(crashed[KEY_PENDING_PUSH_SHA], BEFORE_SHA)
+        self._assert_nothing_left(resumed)
+        self._assert_finished_the_route(CLEAN_REBASE)
+        self._assert_said_once()
         self._assert_settled_once()
 
-    def _pr_comments(self) -> list:
-        """Every comment this journey posted on the pull request."""
-        return list(self.gh.posted_pr_comments)
+    def _assert_said_once(self) -> None:
+        """The finish that crashed announced itself, and this one did not."""
+        self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
+        rebased = self._events_of(EVENT_BASE_REBASED)
+        self.assertEqual(
+            [record[METHOD_FIELD] for record in rebased], [CLEAN_REBASE],
+        )
+        self.assertEqual(rebased[0][STAGE_FIELD], LABEL)
+        self.assertEqual(len(list(self.gh.posted_pr_comments)), 1)
 
 
 class UnpairedPermissionTest(_ResumedRebaseCase, unittest.TestCase):
@@ -1276,64 +1229,144 @@ class AnnouncedForeignMoveTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(pinned[KEY_ANNOUNCED_SHA], AFTER_SHA)
 
 
+class DamagedCheckpointTest(_ResumedRebaseCase, unittest.TestCase):
+    """The two notes a finish leaves about itself, read by presence.
+
+    Neither is evidence for a decision; both are marks saying how far the tick
+    that made them got, and both are dropped by the write that ends the
+    attempt. So a mark standing at all says its window is still open, and one
+    standing over a value this build cannot square with the head in hand is a
+    comment something took apart. Read as "nothing owed" they cost the two
+    things a recovery exists to protect: the record of a verdict that moved,
+    and the pull request's account of what published it.
+    """
+
+    def test_a_malformed_proof_holds_the_route(self) -> None:
+        # The proof is kept until the `late_transfer` record is out. Read as
+        # absent, the route finishes -- the anchor that brings this tick back
+        # is dropped, no record reaches either sink, and the damaged proof is
+        # left standing for nobody.
+        self._crashes_before_the_route()
+        self._edited(lambda state: state.set(KEY_REWRITE_PROOF, DAMAGED_PROOF))
+
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        self._assert_nothing_left(resumed)
+        self._assert_anchor(BEFORE_SHA)
+        self._assert_parked(PARK_PUSH_FAILED)
+        self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        self._assert_routed(False)
+
+    def test_a_foreign_mark_holds_the_route(self) -> None:
+        # The mark says a finish already announced THIS attempt's replay, so
+        # one naming any other head cannot say whether the notice and the
+        # audit event are out. Read as "not announced", the tick says both
+        # again for a publication that happened once.
+        self._crashes_at_the_relabel()
+        self._edited(lambda state: state.set(KEY_ANNOUNCED_SHA, FOREIGN_SHA))
+
+        resumed = self._resumes(remote_head=AFTER_SHA)
+
+        self._assert_nothing_left(resumed)
+        self._assert_anchor(BEFORE_SHA)
+        self._assert_parked(PARK_PUSH_FAILED)
+        self.assertEqual(
+            [record[METHOD_FIELD] for record in self._events_of(
+                EVENT_BASE_REBASED,
+            )],
+            [CLEAN_REBASE],
+        )
+
+
 class StrandedAttemptTest(_ResumedRebaseCase, unittest.TestCase):
     """An attempt whose issue was moved off the refresh-driven set entirely.
 
-    The clear this label reaches was written for an anchor and nothing else,
-    and an anchor on its own is only a promise to come back. An attempt that
-    got as far as a recorded rewrite and a granted permission is a different
+    The clear this label reaches is for an anchor over a checkout still
+    standing on it, which is only a promise to come back. An attempt that got
+    as far as a recorded rewrite and a granted permission is a different
     thing: cleared, the replay stops being attributable to anything, the
     verdict is licensed onto a commit no push carried, and the issue it hands
-    on is one no reader can tell from an issue with nothing in flight.
+    on is one no reader can tell from an issue with nothing in flight. So is
+    one that got as far as `git rebase` and no further, since the terms it
+    left cannot tell that window from an attempt that never started.
     """
 
-    def setUp(self) -> None:
-        super().setUp()
+    def test_a_granted_attempt_is_parked_whole(self) -> None:
+        # Everything the clear would have come apart, in one resumption: the
+        # anchor and the replay it names, the permission and the debt a later
+        # grant would trip over, and the exemption still on the commit a
+        # human ruled on. Nothing is pushed, reset, or rebased for it either
+        # -- no road runs under a label the refresh does not drive, and the
+        # hand that moved it may have moved the checkout too.
         self._crashes_before_the_push()
-        self.gh.set_workflow_label(self._issue(), WorkflowLabel.DECOMPOSING)
+        self._moves_the_issue_off()
 
-    def test_the_attempt_is_parked_not_cleared(self) -> None:
-        self._resumes()
+        resumed = self._resumes()
 
         self._assert_anchor(BEFORE_SHA)
         self.assertEqual(self._pinned()[KEY_PENDING_REWRITE_SHA], AFTER_SHA)
-        # The park is also what stops the stage this label names from putting
-        # a second agent on a change a human already ruled on.
+        self._assert_permission_standing()
+        self._assert_nothing_ran(resumed)
         self._assert_parked(PARK_FAILED)
 
-    def test_the_permission_is_left_standing(self) -> None:
-        # The permission and the debt written with it are what a later grant
-        # would trip over, and what says this replay was ever allowed to
-        # publish a human's verdict. Neither survives a clear.
+    def test_an_unwritten_replay_is_parked_too(self) -> None:
+        # The crash seam no id can close, found under this same label: `git
+        # rebase` has replayed the branch and the write naming what it
+        # produced never happened, so the comment carries the anchor and the
+        # terms alone. Cleared there, the rewrite is left on the branch with
+        # nothing naming it and the stage this label names is free to start
+        # over on a change a human already ruled on.
+        self._crashes_before_the_record()
+        self._moves_the_issue_off()
+
         self._resumes()
 
-        durable = self._durable()
-        self.assertTrue(_rewrites.carries_rewrite_authorization(durable))
-        self.assertEqual(
-            self._pinned()[KEY_REWRITE_PHASE], PHASE_AUTHORIZED,
-        )
-        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
+        self._assert_anchor(BEFORE_SHA)
+        pinned = self._pinned()
+        self.assertNotIn(KEY_PENDING_REWRITE_SHA, pinned)
+        self.assertEqual(pinned[KEY_PENDING_REWRITE_PR], PR_NUMBER)
+        self._assert_parked(PARK_FAILED)
 
-    def test_nothing_is_pushed_reset_or_rebased(self) -> None:
-        # No road runs under a label the refresh does not drive, and the hand
-        # that moved it may have moved the checkout too.
-        resumed = self._resumes()
+    def test_a_bare_anchor_is_still_cleared(self) -> None:
+        # What says the parks above are about what the attempt left rather
+        # than about the label: the same relabel over an anchor whose
+        # checkout never moved drops it and says nothing to anybody. The
+        # label is the conflict stage rather than the adjudication because
+        # the checkout here is back on the exempt commit, and an issue under
+        # `workflow:decomposing` standing on the commit it is adjudicating is
+        # held out of the refresh by the freeze ahead of this route.
+        self._crashes_before_the_push()
+        self._moves_the_issue_off(WorkflowLabel.RESOLVING_CONFLICT)
+        self._forgets_the_attempt()
 
+        self._resumes(local_head=BEFORE_SHA)
+
+        self._assert_anchor(None)
+        self.assertNotIn(KEY_PARK_REASON, self._pinned())
+
+    def _assert_nothing_ran(self, resumed) -> None:
+        """No push, no reset, no rebase, and no reading of the replay.
+
+        The last of those is what stops the stage this label names from
+        putting a second agent on a change a human already ruled on.
+        """
         self._assert_nothing_left(resumed)
         self.assertEqual(self._resets_of(resumed), [])
         self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
         self.assertEqual(self._events_of(EVENT_MEASUREMENT), [])
 
-    def test_a_bare_anchor_is_still_cleared(self) -> None:
-        # What says the park above is about the records rather than about the
-        # label: the same relabel over an attempt that left nothing but its
-        # anchor drops it and says nothing to anybody.
-        self._forgets_the_attempt()
+    def _assert_permission_standing(self) -> None:
+        """The grant and the verdict it was made over are where they were."""
+        durable = self._durable()
+        self.assertTrue(_rewrites.carries_rewrite_authorization(durable))
+        self.assertEqual(self._pinned()[KEY_REWRITE_PHASE], PHASE_AUTHORIZED)
+        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
 
-        self._resumes()
-
-        self._assert_anchor(None)
-        self.assertNotIn(KEY_PARK_REASON, self._pinned())
+    def _moves_the_issue_off(
+        self, label: WorkflowLabel = WorkflowLabel.DECOMPOSING,
+    ) -> None:
+        """Take the issue to a label the base refresh does not drive."""
+        self.gh.set_workflow_label(self._issue(), label)
 
     def _forgets_the_attempt(self) -> None:
         """Take the crashed tick's own records off the pinned comment."""
@@ -1392,9 +1425,9 @@ class UnprovenInFlightTest(_ResumedRebaseCase, unittest.TestCase):
     """What the in-flight window costs where nothing can prove the head.
 
     The road is opened by the evidence and by nothing else. Every state that
-    cannot produce it keeps the reset and the park it always had, because the
-    only thing behind this road is the cumulative reading -- and a count says
-    how big a change is, never whose it is.
+    cannot produce it resets and parks, because the only thing behind this
+    road is the cumulative reading -- and a count says how big a change is,
+    never whose it is.
     """
 
     def test_a_changed_contribution_refuses(self) -> None:
@@ -1422,7 +1455,7 @@ class UnprovenInFlightTest(_ResumedRebaseCase, unittest.TestCase):
 
     def test_an_issue_with_no_verdict_still_parks(self) -> None:
         # Nothing to prove anything against at all: the road is not opened,
-        # and the divergent checkout gets the answer it always got.
+        # and the divergent checkout resets onto the anchor and parks.
         self._forgets_the_verdict()
         self._crashes_before_the_record()
 

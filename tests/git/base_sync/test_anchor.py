@@ -38,6 +38,10 @@ BEFORE_SHA = "be40e5ba" * 5
 
 LABEL_RESOLVING_CONFLICT = "workflow:resolving_conflict"
 
+# The anchor an attempt pinned before an operator moved the issue off the
+# refresh-driven set, and the head its checkout is still standing on.
+STALE_ANCHOR = "57a1ea11" * 5
+
 # Awaiting-human park reasons the auto-rebase flow writes.
 PARK_PUSH_FAILED = "auto_base_rebase_push_failed"
 PARK_DIRTY = "auto_base_rebase_dirty"
@@ -167,16 +171,18 @@ class CrashRecoveryAnchorUnitTest(_SyncWorktreeWithBaseFixture, unittest.TestCas
         _assert_parked_without_anchor(self, self, PARK_DIRTY)
 
     def test_stale_anchor_cleared_after_label_exit(self) -> None:
+        # The checkout is still standing on the anchor, so nothing this
+        # attempt could have left is stranded by dropping it.
         self._seed_pr_issue(
             label=LABEL_RESOLVING_CONFLICT,
-            pending_auto_base_rebase_push_sha="stale-anchor",
+            pending_auto_base_rebase_push_sha=STALE_ANCHOR,
         )
         self._add_pr()
         scenario = _scenario(
             dirty=MagicMock(return_value=[]),
             rebase=MagicMock(),
             push=MagicMock(),
-            head_sha=MagicMock(),
+            head_sha=MagicMock(return_value=STALE_ANCHOR),
             ahead_behind=MagicMock(),
             fetch=MagicMock(),
             git=MagicMock(

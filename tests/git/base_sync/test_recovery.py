@@ -194,12 +194,28 @@ class RolledBackDebtTest(unittest.TestCase):
             yield
 
 
+# Every state a clear under an ineligible label would strand, and what the
+# road reads to find it: the record the attempt left of its own replay, the
+# head the checkout answers with, and whether a permission on the comment
+# still says a push is owed. Each case names only what it moves off the
+# ordinary world -- terms pinned, branch still on the anchor, nothing granted.
+_STRANDED_ATTEMPTS = MappingProxyType({
+    "a replay the attempt recorded": {
+        "pending_rewrite": fixtures.RECORDED_REWRITE,
+    },
+    "a permission nobody spent": {"mid_transfer": True},
+    "a checkout git already moved": {"head": fixtures.RECOVERED_SHA},
+    "a head this host cannot read": {"head": ""},
+})
+
+
 class RecoveryRouteTest(unittest.TestCase):
     """Every question is asked before the one it would make unsafe."""
 
-    def test_ineligible_label_clears_before_any_fetch(self) -> None:
-        # An anchor is a promise to come back, and nothing under a label the
-        # refresh does not drive is coming back for it.
+    def test_an_unmoved_anchor_clears_unfetched(self) -> None:
+        # An anchor over a checkout still standing on it is a promise to come
+        # back, and nothing under a label the refresh does not drive is
+        # coming back for it.
         context = fixtures._recovery_context(
             pending_rewrite=models._PendingRewrite(),
         )
@@ -208,6 +224,10 @@ class RecoveryRouteTest(unittest.TestCase):
 
         with _routed(
             **{CLEAR_INELIGIBLE: cleared, FETCH_SNAPSHOT: fetch},
+        ), patch.object(
+            verification_probes,
+            "_head_sha",
+            MagicMock(return_value=fixtures.PRE_REBASE_SHA),
         ):
             recovered = recovery._recover_pending_auto_base_rebase_context(
                 self._relabelled(context),
@@ -218,47 +238,19 @@ class RecoveryRouteTest(unittest.TestCase):
         # An issue nobody is refreshing any more is not worth a network hop.
         fetch.assert_not_called()
 
-    def test_a_recorded_attempt_is_held(self) -> None:
-        # The same relabel over an attempt that got as far as recording its
-        # replay. Cleared there, the branch is left standing on a rewrite
-        # nothing names, and the next reader cannot tell this issue from one
-        # with nothing in flight.
-        context = fixtures._recovery_context()
-        cleared = MagicMock()
-        stranded = _handled()
-
-        with _routed(**{CLEAR_INELIGIBLE: cleared}), patch.object(
-            outcomes, STRANDED, stranded,
-        ):
-            recovered = recovery._recover_pending_auto_base_rebase_context(
-                self._relabelled(context),
-            )
-
-        self.assertTrue(recovered)
-        stranded.assert_called_once()
-        cleared.assert_not_called()
-
-    def test_an_unspent_permission_is_held(self) -> None:
-        # And over a permission granted for a push nobody made: the record of
-        # the replay is not the only thing a clear would strand.
-        context = fixtures._recovery_context(
-            pending_rewrite=models._PendingRewrite(),
-        )
-        cleared = MagicMock()
-        stranded = _handled()
-
-        with _routed(**{CLEAR_INELIGIBLE: cleared}), patch.object(
-            outcomes, STRANDED, stranded,
-        ), patch.object(
-            transfers, LEFT_MID_TRANSFER, MagicMock(return_value=True),
-        ):
-            recovered = recovery._recover_pending_auto_base_rebase_context(
-                self._relabelled(context),
-            )
-
-        self.assertTrue(recovered)
-        stranded.assert_called_once()
-        cleared.assert_not_called()
+    def test_a_stranded_attempt_is_held(self) -> None:
+        # Everything a clear under this same relabel would come apart. A
+        # replay the tick recorded leaves the branch standing on a rewrite
+        # nothing names. A permission granted for a push nobody made leaves a
+        # human's verdict licensed onto a commit no push carried. A checkout
+        # git has already moved under the terms alone is the window between
+        # `git rebase` returning and the write that names what it produced,
+        # which the terms cannot tell from an attempt that never started. And
+        # a head this host cannot read is no evidence the branch is anywhere
+        # in particular. Each parks with every record intact.
+        for described, held in _STRANDED_ATTEMPTS.items():
+            with self.subTest(standing=described):
+                self._assert_stranded(**held)
 
     def test_unreadable_snapshot_owns_the_tick(self) -> None:
         # The fetch already reset and parked, so returning True is what stops
@@ -320,6 +312,36 @@ class RecoveryRouteTest(unittest.TestCase):
 
     def _relabelled(self, context):
         return dataclasses.replace(context, label="workflow:implementing")
+
+    def _assert_stranded(
+        self,
+        *,
+        pending_rewrite: models._PendingRewrite = fixtures.IN_FLIGHT_REWRITE,
+        head: str = fixtures.PRE_REBASE_SHA,
+        mid_transfer: bool = False,
+    ) -> None:
+        """The relabel parks with every record intact and fetches nothing."""
+        context = fixtures._recovery_context(pending_rewrite=pending_rewrite)
+        cleared = MagicMock()
+        stranded = _handled()
+        fetch = MagicMock()
+
+        with _routed(
+            **{CLEAR_INELIGIBLE: cleared, FETCH_SNAPSHOT: fetch},
+        ), patch.object(outcomes, STRANDED, stranded), patch.object(
+            transfers, LEFT_MID_TRANSFER, MagicMock(return_value=mid_transfer),
+        ), patch.object(
+            verification_probes, "_head_sha", MagicMock(return_value=head),
+        ):
+            recovered = recovery._recover_pending_auto_base_rebase_context(
+                self._relabelled(context),
+            )
+
+        self.assertTrue(recovered)
+        stranded.assert_called_once()
+        cleared.assert_not_called()
+        # An issue nobody is refreshing any more is not worth a network hop.
+        fetch.assert_not_called()
 
 
 class RecoveryComparisonTest(unittest.TestCase):

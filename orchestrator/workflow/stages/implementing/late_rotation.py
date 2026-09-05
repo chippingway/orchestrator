@@ -309,14 +309,18 @@ def _reports_a_settled_transfer(gate: _records._Gate) -> bool:
     sink saying so -- and the one fact nothing later could re-derive, which
     reading proved the push landed, is exactly what that write kept.
 
-    So the record is made from what the comment carries, and the proof is
-    dropped in memory for the caller's own write to make durable. Answering
-    whether anything was staged is what tells that caller it has something to
-    write at all.
+    So the record is made from what the comment carries, and the write that
+    drops the proof it was made from is taken with it: every tick that finds
+    the proof still standing reports the record again, so the drop may not
+    wait on a caller's write that is not guaranteed. Answering whether the
+    record was made is what tells that caller a verdict on this comment has
+    already been announced.
 
-    Silent for every comment that owes nothing: no proof on it, a transfer
-    this build cannot read whole, one still outstanding, and one whose proof
-    is not a reading this build knows.
+    Silent for every comment that owes nothing, which is a comment carrying
+    no proof at all. A proof standing over a transfer this build cannot read
+    whole, one still outstanding, or a reading this build does not know is
+    not silence: it is a checkpoint saying two things at once, and the roads
+    that ask park on it rather than reaching here.
     """
     proof = _rewrites.unreported_transfer(gate.state)
     if proof is None:

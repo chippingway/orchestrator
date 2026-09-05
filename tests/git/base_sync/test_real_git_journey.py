@@ -80,6 +80,10 @@ ADJUDICATION_COMMENTS = 2
 KEY_PUBLISHED_SHA = "implementing_published_sha"
 KEY_REVIEW_ROUND = "review_round"
 
+# The flag every fail-closed park in this domain sets, and the one a rotation
+# that resumed cleanly must not have.
+KEY_AWAITING_HUMAN = "awaiting_human"
+
 
 class AdjudicatedRebaseJourneyTest(
     OversizedJourneyRealGitFixture, unittest.TestCase,
@@ -95,48 +99,42 @@ class AdjudicatedRebaseJourneyTest(
         self.pushed = self._refreshes()
         self.replayed = self._wt_head()
 
-    def test_the_first_round_earned_the_exemption(self) -> None:
-        # The premise, and it is a real reading rather than a seeded one: the
-        # gate counted the diff past the ceiling, held the publication, and
-        # the adjudicator's `single` is what put the verdict on the comment.
-        self.assertTrue(self.held.held)
-        self.assertEqual(len(events_of(self, EVENT_MEASUREMENT)), 1)
-        self.assertEqual(len(events_of(self, EVENT_VERDICT)), 1)
-        self.assertIn((ISSUE, LABEL_DECOMPOSING), self._gh.label_history)
-
-    def test_the_rebase_is_leased_to_the_old_head(self) -> None:
-        # The pull request was standing on the accepted commit, so that is
-        # what the force-push is pinned against -- a branch somebody else
-        # moved rejects it instead of being overwritten -- and what goes out
-        # is the replay the gate proved rather than whatever HEAD became.
+    def test_the_replay_carries_the_verdict_over(self) -> None:
+        # The whole of what the refresh leg leaves, in one reading of it. The
+        # premise is real rather than seeded: the gate counted the diff past
+        # the ceiling, held the publication, and the adjudicator's `single`
+        # put the verdict on the comment. Then the replay -- named against
+        # the commit the gate proved and leased to the head the pull request
+        # was standing on, so a branch somebody else moved rejects it instead
+        # of being overwritten -- and the exemption, its identity, and the
+        # receipt all on the far side of it, since a reader may never see a
+        # verdict for a commit no remote carries. Last the route: a new head
+        # to vote on, so the round the reviewer had spent is reset and the
+        # issue goes back to them rather than on to a merge gate.
+        self._assert_adjudicated_once()
         self.assertNotEqual(self.replayed, self.accepted)
         self.assertEqual(self.pushed.revision, self.replayed)
         self.assertEqual(self.pushed.force_with_lease, self.accepted)
-
-    def test_the_exemption_and_receipt_rotate(self) -> None:
-        # The verdict moves on the write that receipts the landed push, so a
-        # reader never sees an exemption for a commit no remote carries.
         durable = self._durable()
-        self.assertTrue(_exemption.is_exempt(durable, self.replayed))
-        identity = _exemption.read_semantic_identity(durable)
-        self.assertEqual(identity.base_sha, self._merge_base())
+        self._assert_rotated_onto(durable, self.replayed)
         self.assertEqual(
-            _rewrites.read_rewrite_authorization(durable).phase,
-            _rewrites.LateRewritePhase.PUBLISHED,
+            _exemption.read_semantic_identity(durable).base_sha,
+            self._merge_base(),
         )
         self.assertEqual(durable.get(KEY_PUBLISHED_SHA), self.replayed)
-
-    def test_the_reviewer_is_sent_back_to_the_replay(self) -> None:
-        # The rebase is a new head to vote on, so the round the reviewer had
-        # spent is reset and the issue goes back to them rather than on to a
-        # merge gate that would pass on a SHA nobody read.
         self.assertIn((ISSUE, LABEL_VALIDATING), self._gh.label_history)
-        self.assertEqual(self._durable().get(KEY_REVIEW_ROUND), 0)
+        self.assertEqual(durable.get(KEY_REVIEW_ROUND), 0)
 
-    def test_the_reviewer_reruns_on_the_replay(self) -> None:
-        # The real validating tick, over the checkout the refresh rewrote: one
-        # reviewer round, one verdict, and the approval it earns carrying the
-        # issue on to the documentation pass.
+    def test_the_rerun_adjudicates_nothing_again(self) -> None:
+        # The real `workflow:validating` tick over the checkout the refresh
+        # rewrote, and everything it settles. One reviewer round, one verdict,
+        # and the approval carrying the issue on to the documentation pass --
+        # with the journey still counting one reading, one verdict, one trip
+        # through the adjudication, and the two comments that trip posted,
+        # all of them naming the commit a human was actually asked about. Two
+        # rewrites now separate that commit from the head the approval leaves
+        # -- the replay and the squash -- and the exemption is past both, so a
+        # later reading of that head finds the change already decided.
         reviewer = self._reviews()
 
         self.assertEqual(reviewer.call_count, 1)
@@ -145,34 +143,31 @@ class AdjudicatedRebaseJourneyTest(
             [APPROVED],
         )
         self.assertIn((ISSUE, LABEL_DOCUMENTING), self._gh.label_history)
+        self._assert_adjudicated_once()
+        announced = self._issue_comments()
+        self.assertEqual(len(announced), ADJUDICATION_COMMENTS)
+        for body in announced:
+            self.assertIn(self.accepted, body)
+        approved = self._wt_head()
+        self.assertNotEqual(approved, self.accepted)
+        self.assertTrue(_exemption.is_exempt(self._durable(), approved))
 
-    def test_the_rerun_adjudicates_nothing_again(self) -> None:
-        # The whole journey, counted once the reviewer has been round again:
-        # one reading, one verdict, one trip through the adjudication, and the
-        # two comments that trip posted -- both naming the commit a human was
-        # actually asked about.
-        self._reviews()
-
+    def _assert_adjudicated_once(self) -> None:
+        """One reading, one verdict, and one trip through the adjudication."""
+        self.assertTrue(self.held.held)
         self.assertEqual(len(events_of(self, EVENT_MEASUREMENT)), 1)
         self.assertEqual(len(events_of(self, EVENT_VERDICT)), 1)
         self.assertEqual(
             self._gh.label_history.count((ISSUE, LABEL_DECOMPOSING)), 1,
         )
-        announced = self._issue_comments()
-        self.assertEqual(len(announced), ADJUDICATION_COMMENTS)
-        for body in announced:
-            self.assertIn(self.accepted, body)
 
-    def test_the_verdict_follows_the_work_it_covers(self) -> None:
-        # Two rewrites separate the commit a human ruled on from the head the
-        # approval leaves -- the base refresh's replay and the squash on
-        # approval -- and the exemption is on the far side of both, so a later
-        # reading of that head finds the change already decided.
-        self._reviews()
-
-        approved = self._wt_head()
-        self.assertNotEqual(approved, self.accepted)
-        self.assertTrue(_exemption.is_exempt(self._durable(), approved))
+    def _assert_rotated_onto(self, durable, published: str) -> None:
+        """The verdict is on this commit and its permission is spent."""
+        self.assertTrue(_exemption.is_exempt(durable, published))
+        self.assertEqual(
+            _rewrites.read_rewrite_authorization(durable).phase,
+            _rewrites.LateRewritePhase.PUBLISHED,
+        )
 
 
 if __name__ == "__main__":
@@ -323,9 +318,37 @@ class CrashedJourneyRealGitTest(
             [CLEAN_REBASE],
         )
 
+    def test_a_rotation_follows_a_settled_one(self) -> None:
+        # A settled transfer is never cleared, so it is still standing when
+        # the next base advance anchors its own rebase to the very commit
+        # that transfer rotated onto. Read as a claim about the new attempt
+        # it is a permission leased to the previous one -- unvouchable -- and
+        # the tick that has not even rebased yet parks instead of retrying.
+        self._refreshes()
+        rotated = self._wt_head()
+        self._advances_the_base_again()
+        self._crashes(self._dies_before_the_rebase())
+
+        self._refreshes()
+
+        self._assert_rotated_again(rotated)
+
     def _dies_before_the_push_returns(self):
         """The request reaches the remote and its answer never comes back."""
         return _LandsThenDies(self._gh)
+
+    def _assert_rotated_again(self, rotated: str) -> None:
+        """The second replay carries the verdict the first one earned."""
+        replayed = self._wt_head()
+        self.assertNotEqual(replayed, rotated)
+        durable = self._durable()
+        self.assertFalse(durable.get(KEY_AWAITING_HUMAN))
+        self._assert_rotated_onto(durable, replayed)
+        # Two rotations, and still one reading and one verdict: the second
+        # replay is licensed by the permit rather than adjudicated afresh.
+        self.assertEqual(len(events_of(self, EVENT_TRANSFER)), 2)
+        self._assert_decided_once()
+        self._assert_reviewable()
 
     def _assert_left_a_replay_nothing_names(self) -> None:
         """The premise of the window between `git rebase` and its record."""
@@ -356,9 +379,21 @@ class CrashedJourneyRealGitTest(
             _rewrites.read_rewrite_authorization(durable).phase,
             _rewrites.LateRewritePhase.PUBLISHED,
         )
+        self.assertEqual(len(events_of(self, EVENT_TRANSFER)), 1)
+        self._assert_decided_once()
+
+    def _assert_rotated_onto(self, durable, published: str) -> None:
+        """The verdict is on this commit and its permission is spent."""
+        self.assertTrue(_exemption.is_exempt(durable, published))
+        self.assertEqual(
+            _rewrites.read_rewrite_authorization(durable).phase,
+            _rewrites.LateRewritePhase.PUBLISHED,
+        )
+
+    def _assert_decided_once(self) -> None:
+        """One reading, one verdict, and one trip through the adjudication."""
         self.assertEqual(len(events_of(self, EVENT_MEASUREMENT)), 1)
         self.assertEqual(len(events_of(self, EVENT_VERDICT)), 1)
-        self.assertEqual(len(events_of(self, EVENT_TRANSFER)), 1)
         self.assertEqual(
             self._gh.label_history.count((ISSUE, LABEL_DECOMPOSING)), 1,
         )

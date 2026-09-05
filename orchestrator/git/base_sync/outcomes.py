@@ -632,12 +632,13 @@ def _park_stranded_recovery(context: _AutoRebaseRecoveryContext) -> bool:
 
     The label is no longer one refresh drives, so this recovery has no road
     left: nothing here fetches, compares, or publishes for a stage the sync
-    does not own. What the comment still carries decides what that costs. An
-    issue holding nothing but the anchor loses nothing by dropping it -- the
-    branch is wherever it is, and whichever handler owns the new label works
-    from that. An issue holding a rebase an earlier tick RECORDED, or a
-    permission granted for a push nobody made, is a different thing entirely:
-    the checkout may be standing on a replay the pull request has never seen,
+    does not own. What the attempt left decides what that costs. An issue
+    whose checkout is still standing on the anchor and holds nothing else
+    loses nothing by dropping it -- git never moved the branch, and whichever
+    handler owns the new label works from where it is. An issue holding a
+    rebase an earlier tick RECORDED, a permission granted for a push nobody
+    made, or a branch git has already replayed is a different thing entirely:
+    the checkout may be standing on a rewrite the pull request has never seen,
     a human's verdict is licensed onto a commit no push carried, and the
     approval debt beside it says a publication is still owed.
 
@@ -672,9 +673,10 @@ def _park_stranded_recovery(context: _AutoRebaseRecoveryContext) -> bool:
             f"{config.HITL_MENTIONS} crash recovery for PR "
             f"#{context.pr_number} cannot run under label "
             f"`{context.label}`, which the base refresh does not drive -- and "
-            "this issue still records an interrupted rebase: the replay an "
-            "earlier tick made, or a permission granted to carry an "
-            "adjudication verdict over a push that never landed. Nothing was "
+            "this issue still carries an interrupted rebase: the replay an "
+            "earlier tick made, a permission granted to carry an adjudication "
+            "verdict over a push that never landed, or a checkout git has "
+            "already moved off the pre-rebase SHA. Nothing was "
             "rebased, pushed, or reset, and no record was dropped, so the "
             "worktree and the pinned state are exactly as that tick left "
             "them. Move the issue back to the label the rebase was "
