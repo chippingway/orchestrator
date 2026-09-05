@@ -173,6 +173,17 @@ def _reconciles_published_work(
     It settles nothing and stops nothing -- the verdict has moved and the
     receipt beside it already says which commit the remote holds -- so the
     answers below and the handler behind them run exactly as they would have.
+
+    A note that cannot produce that account is a claim like any other here,
+    and `_unreadable_record` above asks the transfer's own reader for it. The
+    report reader cannot say so: it answers "nothing to report" for a note
+    standing over a permission, a phase, or a reading nothing can account for
+    exactly as it does for a comment carrying no note at all. Left at that,
+    this seam walks past the one state it exists to close -- the account is
+    never made, the corrupt note stands for the life of the issue, and the
+    stage runs behind a verdict nothing here can account for. So it parks
+    with the rest of the damage instead, once, and nothing is discarded for
+    it.
     """
     recorded = _late_state.read_late_generation(state)
     damage = _claims._unreadable_record(label, state)

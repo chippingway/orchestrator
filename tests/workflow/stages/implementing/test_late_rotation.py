@@ -13,6 +13,7 @@ durable comment, the push the tail issued, and the one record it left.
 from __future__ import annotations
 
 import unittest
+from types import MappingProxyType
 from unittest.mock import patch
 
 from orchestrator import config
@@ -21,6 +22,7 @@ from orchestrator.workflow.late_split import (
     rewrites as _rewrites,
 )
 from orchestrator.workflow.stages.implementing import (
+    late_claims as _claims,
     late_push as _push,
     late_reconcile as _reconcile,
     late_records as _records,
@@ -68,6 +70,26 @@ CEILING = 100
 # is stopped.
 KEY_TRANSFER_PROOF = "late_rewrite_proof"
 REPORTS_THE_TRANSFER = "_reports_the_transfer"
+
+# The park a record nothing can read earns, and the flag beside it.
+KEY_PARK_REASON = "park_reason"
+PARK_DAMAGED = "late_measurement_failed"
+
+# Every way the note a settled transfer keeps can stand and say nothing: a
+# reading this build does not know, a permission short of a member, and a
+# phase the settlement never reached. Each is what the reader that makes the
+# record answers None to, and none of them is an absence.
+_STRANDED_PROOFS = MappingProxyType({
+    "a reading this build does not know": {
+        KEY_TRANSFER_PROOF: "not-a-reading",
+    },
+    "a permission short of a member": {_rewrites.LATE_REWRITE_LEASE: None},
+    "a phase the settlement never reached": {
+        _rewrites.LATE_REWRITE_PHASE: str(
+            _rewrites.LateRewritePhase.AUTHORIZED,
+        ),
+    },
+})
 
 
 class _Interrupted(RuntimeError):
@@ -310,8 +332,64 @@ class UnreportedTransferTest(_SettlementCase):
             WorkflowLabel.RESOLVING_CONFLICT,
         )
 
+    def test_an_unreportable_proof_parks_the_tick(self) -> None:
+        # The same window with the note something took apart: a reading this
+        # build does not know, a permission short of a member, and a phase
+        # the settlement never reached. Each answers "nothing to report" to
+        # the reader that makes the record -- so read no further, the
+        # reconciliation walks past all three, the account is never made, the
+        # corrupt note stands for the life of the issue, and the stage runs
+        # behind a verdict nothing here can account for.
+        settled = self._settles_without_reporting(
+            _rewrites.LateRewriteKind.SQUASH, _support.SOURCE_STAGE,
+        )
+        for described, damage in _STRANDED_PROOFS.items():
+            with self.subTest(standing=described):
+                self._restores(settled, damage)
+
+                self.assertTrue(self._reconciles(_support.SOURCE_STAGE))
+
+                self.assertEqual(
+                    _claims._unreadable_record(
+                        _support.SOURCE_STAGE, self._durable(),
+                    ),
+                    _claims._DAMAGED_TRANSFER,
+                )
+                durable = self._durable()
+                self.assertEqual(durable.get(KEY_PARK_REASON), PARK_DAMAGED)
+                # Nothing is discarded for it: the note an operator has to
+                # repair is exactly what the crash left.
+                self.assertIn(KEY_TRANSFER_PROOF, durable.data)
+                self.assertEqual(self._records_of(EVENT_TRANSFER), [])
+
+    def _restores(self, settled: dict, damage: dict) -> None:
+        """Put the receipted comment back, with one field of the note edited."""
+        state = self.github.read_pinned_state(self.issue)
+        state.data.clear()
+        state.data.update(settled)
+        for key, written in damage.items():
+            if written is None:
+                state.data.pop(key, None)
+            else:
+                state.data[key] = written
+        self.github.write_pinned_state(self.issue, state)
+
     def _assert_reconciled(self, kind, stage) -> None:
         """The record the crashed settlement owed is made by the next tick."""
+        self._settles_without_reporting(kind, stage)
+
+        self._reconciles(stage)
+
+        self.assertEqual(self._reported()["rewrite_kind"], str(kind))
+        self.assertIsNone(self._durable().get(KEY_TRANSFER_PROOF))
+
+    def _settles_without_reporting(self, kind, stage) -> dict:
+        """Land the receipt and lose the record behind it, and say so.
+
+        Answers the comment that crash leaves, so a case about a note
+        something took apart edits the real one rather than a comment nothing
+        wrote.
+        """
         self._entered_on(stage)
         with patch.object(
             _rotation, REPORTS_THE_TRANSFER, _DiesBeforeTheReport(),
@@ -324,10 +402,7 @@ class UnreportedTransferTest(_SettlementCase):
             )
 
         self._assert_owes_a_record()
-        self._reconciles(stage)
-
-        self.assertEqual(self._reported()["rewrite_kind"], str(kind))
-        self.assertIsNone(self._durable().get(KEY_TRANSFER_PROOF))
+        return dict(self._durable().data)
 
     def _entered_on(self, stage) -> None:
         """Re-seed this case's world on the stage its rewrite is made from."""
@@ -349,9 +424,9 @@ class UnreportedTransferTest(_SettlementCase):
         )
         self.assertEqual(self._records_of(EVENT_TRANSFER), [])
 
-    def _reconciles(self, stage) -> None:
+    def _reconciles(self, stage) -> bool:
         """Run the reconciliation every handler is dispatched behind."""
-        _reconcile._reconciles_published_work(
+        return _reconcile._reconciles_published_work(
             self.github, _support.SPEC, self.issue, stage, self._durable(),
         )
 

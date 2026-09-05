@@ -1869,6 +1869,15 @@ rather than preserving.
   nothing — the verdict moved and the receipt beside it already says which commit the remote holds — and what it
   adds is the account of it, on both sinks, once.
 
+  A note that cannot produce one is the other half of the same seam, and it PARKS there. The reader that makes the
+  record answers "nothing to report" for a note over a permission, a phase, or a reading nothing can account for —
+  the same answer it gives a comment carrying no note at all — so read no further the reconciliation would walk
+  past it, the account would never be made, and the corrupt note would stand for the life of the issue while the
+  stage ran behind a verdict nothing here can account for. So `late_claims` asks the transfer's own reader among
+  the claims a record can make and fail to produce, on the same five publishing stages the other four are asked on,
+  and the refusal takes the once-only park those share. `workflow:decomposing` is not asked it, for the reason it is
+  asked no claim but the publication: a settlement in flight is exactly what that mode may be in the middle of.
+
   Being unreadable is not being absent, and the difference is what a WRITER asks. A grant replaces the whole group
   rather than adding beside it, so a group that CLAIMS the commit currently exempt and cannot be read back is
   evidence a transfer may not overwrite to repair: the permit refuses, the exemption stays where the adjudication
