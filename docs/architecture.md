@@ -82,9 +82,10 @@ orchestrator/
   runtime/              the polling process's own owners: the state one run
                         carries, the log destinations, startup, one pass over
                         the configured repos, the polling loop, when the
-                        finished issues' artifacts may be reclaimed and which
-                        process on the host may reclaim them, the self-restart
-                        probes, and shutdown
+                        finished issues' artifacts may be reclaimed, which
+                        process on the host may reclaim them and the one
+                        bounded record each candidate is reported as, the
+                        self-restart probes, and shutdown
   config/               the bottom layer: the non-secret `.env` loader, the
                         env parsers and resolver behind the settings surface,
                         credential resolution and secret redaction, and the
@@ -254,6 +255,11 @@ self-exit and be restarted with new code.
   gate
   lives in this process's memory on the monotonic clock, so nothing is persisted and a
   restart costs at most one extra pass — the pass reads the host again and reports whatever is already gone as done.
+  What it did is reported per candidate and nowhere else: one line on the `orchestrator.worktree_lifecycle` log, and
+  one bounded [`terminal_artifact_cleanup`](observability/event-streams.md#terminal_artifact_cleanup-records)
+  analytics record (`runtime.artifact_records`) — never a label, a pinned state, or a comment. The operator runbook
+  over both is
+  [`configuration/operations.md#reclaiming-a-finished-issues-artifacts`](configuration/operations.md#reclaiming-a-finished-issues-artifacts).
 - **Self-restart guard** (`runtime.self_update.self_modifying_merge_happened`): each tick fetches
   `origin/<ORCHESTRATOR_BASE_BRANCH>` (default `main`); if it advanced past the process's startup SHA *and* the new
   commits touch `orchestrator/`, the loop

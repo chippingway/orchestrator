@@ -14,7 +14,8 @@ parser read them back is in [`../observability/analytics-database.md`](../observ
 - `EVENT_LOG_PATH` — default _(unset)_. optional JSONL audit sink, one event per line, no built-in rotation. See
   [`event-streams.md#audit-event-log`](../observability/event-streams.md#audit-event-log-event_log_path).
 - `ANALYTICS_LOG_PATH` — default `LOG_DIR/analytics.jsonl`. project-local analytics JSONL sink. Set to empty / `off` /
-  `disabled` / `none` to disable. Which kinds land here — the per-tick and per-run records, and the two families
+  `disabled` / `none` to disable. Which kinds land here — the per-tick and per-run records, the one bounded record
+  each candidate of the daily terminal-artifact maintenance pass earns, and the two families
   written to this sink and the audit log alike — is inventoried on
   [`event-streams.md#analytics-sink`](../observability/event-streams.md#analytics-sink-analytics_log_path) rather than
   repeated here, so the list has one home as it grows.

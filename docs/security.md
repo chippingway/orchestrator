@@ -241,24 +241,63 @@ branches those issues were published under, in the clone *and* on the remote. Th
 issue transition triggers, so what bounds it is worth an operator's attention:
 
 - **It can only name this repository's own branches for this issue.** The candidates come from re-deriving the exact
-  names this repository publishes an issue under; a name on a shared clone that several configured `REPOS` entries
-  could equally own is attributed to none of them and left alone, and a name outside the owned namespace is never a
-  candidate at all. No tag, pull-request ref, or default branch is reachable from this path.
-- **Nothing unmerged is deleted, and every unread question keeps the artifact.** The issue has to have ended, no open
-  pull request may still stand on the branch, and every commit an artifact holds — a branch's tip, and the commit a
-  checkout's own HEAD is on — has to already exist somewhere that outlives it: inside the configured base, or inside
-  a pull request that has ended. A checkout carrying loose or ignored files, a reading that failed, a probe that
-  could not be taken: each of them keeps the whole candidate.
+  names this repository publishes an issue under — the current `orchestrator/<slug>/issue-<n>` and the legacy flat
+  `orchestrator/issue-<n>`, and no third spelling — and the checkouts from the two roots it writes,
+  `WORKTREES_DIR/<slug>/issue-<n>` and the flat `WORKTREES_DIR/issue-<n>` that predates it. A directory has to be a
+  real directory under the exact name (never a symlink) and a worktree of this repository's own clone. A name on a
+  shared clone that several configured `REPOS` entries could equally own is attributed to none of them and left
+  alone, and a name outside the owned namespace is never a candidate at all. No tag, pull-request ref, or default
+  branch is reachable from this path.
+- **Nothing is taken on a stale reading.** Every claim is re-established inside the pass that acts, never carried
+  over from an earlier tick: the issue is closed and carries exactly one terminal workflow label, no open pull
+  request stands on either branch spelling or on the recorded number, and each artifact's tip is re-read immediately
+  before the mutation it gates and compared against the commit that was proved. An artifact that moved in between is
+  kept for the next pass rather than deleted, and each delete is additionally leased at that commit (below).
+- **Every pull-request lookup is owner-qualified.** A branch query names the head as
+  `<this repository's owner>:<branch>` rather than the bare branch name, so a fork carrying a branch of the same name
+  is never read as this candidate's pull request — neither as an open one that would keep the artifact, nor as an
+  ended one whose commits would account for it. The pinned number is looked up on this repository directly. A
+  fork therefore cannot reach either side of the decision by naming its branch after ours.
+- **Nothing unmerged is deleted, and every unread question keeps the artifact.** Every commit an artifact holds — a
+  branch's tip, and the commit a checkout's own HEAD is on — has to already exist somewhere that outlives it: inside
+  the configured base, or inside a pull request that has ended. Ambiguous evidence fails closed: every probe answers
+  "confirmed", "refuted", or "could not read", and the third is never collapsed into either, so a reading that failed
+  keeps the whole candidate exactly as a reading that said no does.
+- **A checkout with anything of its own in it is kept.** Modified or untracked files keep it, and so does content the
+  repository's own ignore rules cover — a `.env`, a virtualenv, a build directory — which git reports as neither
+  dirty nor a reason to refuse a removal. That is read deliberately, because removing the tree would take all of it.
+- **The removal is never forced.** `git worktree remove` runs without `--force`, so a tree written into since the
+  proof refuses to come down and the candidate is reported as failed rather than deleted.
+- **Anything running for the issue stops the pass touching it.** The live scheduler is asked per candidate, on top of
+  the barrier that already emptied it, and an answer that could not be read keeps the artifacts.
 - **Each remote delete is leased at the proved commit.** Like the snapshot delete above, it is a leased push rather
   than an API call by name, so a branch somebody pushed to between the proof and the delete is refused by the remote
   instead of removed. A ruleset that forbids deletions under `refs/heads/orchestrator/*` therefore blocks tidying
   and nothing else: the attempt is reported, the local ref is kept so the candidate is found again, and no issue is
   parked or relabelled — the pass writes no label, no pinned state, and no comment at any point.
+- **What it reports is bounded.** Each candidate earns one `terminal_artifact_cleanup` record on the analytics sink
+  carrying the repository, the issue, the outcome, the closed reason, the layout, and — only where the reason names
+  one — a branch re-derived from that repository and issue rather than copied. No command, git output, exception
+  text, checkout path, file name, or tree content reaches a sink through it; the per-artifact detail stays on this
+  host's own `orchestrator.worktree_lifecycle` log. See
+  [`observability/event-streams.md#terminal_artifact_cleanup-records`](observability/event-streams.md#terminal_artifact_cleanup-records).
 
-Two processes cannot run it at once, and it never runs beside live work: it holds this host exclusively for as long
-as it acts (`WORKTREES_DIR/.artifact-maintenance.lock`) and holds its own scheduler's admission closed while it
-does, so a nightly timer on a host whose orchestrator is polling defers instead of overlapping. The mechanism is in
-[`configuration.md#parallel-processing`](configuration.md#parallel-processing).
+Two orchestrator processes cannot run it at once, and it never runs beside live work: it holds this host exclusively
+for as long as it acts (`WORKTREES_DIR/.artifact-maintenance.lock`) and holds its own scheduler's admission closed
+while it does, so a nightly timer on a host whose orchestrator is polling defers instead of overlapping. The mechanism
+is in [`configuration.md#parallel-processing`](configuration.md#parallel-processing), and the operator-facing runbook —
+what each result means and what to do about a candidate that is kept or refused — is in
+[`configuration/operations.md#reclaiming-a-finished-issues-artifacts`](configuration/operations.md#reclaiming-a-finished-issues-artifacts).
+
+**Where that boundary ends.** Every control above is an application check, and application checks bind only the
+processes that make them. A `flock` claim is advisory: it stops another orchestrator, not an arbitrary process running
+as the same OS user, which can read the checkouts, write into them between the proof and the removal, hold the ref
+store, or delete the same branches itself — and the pass's own fail-closed readings then protect the artifacts, not
+the host. Nothing in this program can create that boundary from inside it. Where it is required, put it in the
+operating system: run the orchestrator under a dedicated user account whose home, `WORKTREES_DIR`, and clone roots no
+other workload can reach, separate it from anything untrusted at the process level, or confine it to a container or VM
+with its own filesystem — and treat the orchestrator's token, `.env`, and worktrees as belonging to that boundary
+rather than to the host at large.
 
 ### Required human reviews for dependency-touching changes
 

@@ -14,7 +14,9 @@ tick needs and the read-only form a run that will not tick may have -- ``ticks``
 drives one pass over the configured repositories, ``loop`` decides how many
 passes there are and guarantees the drain around them, ``artifacts`` decides
 when the finished issues' worktrees and branches may be reclaimed and holds the
-scheduler quiet while they are, ``exclusion`` is how that claim reaches the
+scheduler quiet while they are, ``artifact_records`` is the one bounded record
+each of those candidates is reported to the analytics sink as, ``exclusion`` is
+how that claim reaches the
 processes this one cannot see -- the only coordination here that is not between
 threads -- ``self_update`` answers whether the checkout
 the process runs from has moved, and ``shutdown`` owns the signal handler, the

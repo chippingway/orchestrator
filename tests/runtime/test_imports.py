@@ -20,6 +20,7 @@ _PACKAGE = f"{_ORCHESTRATOR}.runtime"
 _MODULES = tuple(
     f"{_PACKAGE}.{owner}"
     for owner in (
+        "artifact_records",
         "artifacts",
         "exclusion",
         "logs",

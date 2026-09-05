@@ -181,7 +181,12 @@ examples.
   costs at most one extra pass — a repeated pass reads the host again and reports whatever is already gone as done.
   Raising it only delays how long a finished issue's checkout survives; the pass never blocks workflow progress
   either way, since a host it cannot prove quiet defers the whole pass. The setting bounds the polling process's own
-  passes; the one-shot mode below runs when asked and defers whenever a polling process is live on the host.
+  passes; the one-shot mode below runs when asked and defers whenever a polling process is live on the host. What the
+  pass finds, what it deletes and in what order, what each per-candidate result means, and what an interrupted pass
+  needs afterwards (nothing) are in
+  [`configuration/operations.md#reclaiming-a-finished-issues-artifacts`](configuration/operations.md#reclaiming-a-finished-issues-artifacts);
+  the bounded record each candidate earns on the analytics sink is
+  [`observability/event-streams.md#terminal_artifact_cleanup-records`](observability/event-streams.md#terminal_artifact_cleanup-records).
 - `MAX_REVIEW_ROUNDS` — default `3`. review/fix iterations before parking on `awaiting_human`
 - `MAX_CONFLICT_ROUNDS` — default `3`. auto-conflict-resolution rounds before parking on `awaiting_human`
 - `MAX_RETRIES_PER_DAY` — default `3`. fresh implementer spawns per issue per 24h window (`0` = unbounded, and an
@@ -566,7 +571,9 @@ scans work are in
 
 `./run.sh` for production polling, `python -m orchestrator --once` for a single tick,
 `--cleanup-terminal-artifacts` for a maintenance-only run that reclaims finished issues' artifacts (deleting the
-branches it proved reclaimable, locally and on the remote) without polling and without writing any workflow state,
+branches it proved reclaimable, locally and on the remote) without polling and without writing any workflow state —
+the runbook for that pass is
+[`configuration/operations.md#reclaiming-a-finished-issues-artifacts`](configuration/operations.md#reclaiming-a-finished-issues-artifacts) —
 `--log-level DEBUG` for verbose logs, and the `chipping-orchestrator` console script equivalent to
 all four are in [`configuration/operations.md#run-modes`](configuration/operations.md#run-modes).
 
