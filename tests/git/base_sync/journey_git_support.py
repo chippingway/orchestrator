@@ -18,12 +18,15 @@ has.
 """
 from __future__ import annotations
 
+import os
+import subprocess
 from unittest.mock import MagicMock, patch
 
 from orchestrator import config
 from orchestrator.agents import runner as _agent_runner
 from orchestrator.git import branch_transport as _branch_transport
-from orchestrator.git.measurement import additions as _additions
+from orchestrator.git.base_sync import publication as _base_publication
+from orchestrator.git.measurement import additions as _additions, commits as _measurement_commits
 from orchestrator.workflow.stages.decomposition import (
     late_coordinator as _coordinator,
     late_reply as _late_reply,
@@ -58,9 +61,26 @@ from tests.workflow.fixtures import (
 # The ceiling the journey's candidate is oversized against, and the file that
 # puts it there. Both are small enough to keep the real diff cheap and large
 # enough that the real counter really crosses the ceiling on the real objects.
-# The seam a push goes out through, named once because three legs of this
-# journey hold it and the alias is what a mock lands on.
+# The seams a push and the recovery's own branch fetch go out through, named
+# once because several legs of this journey hold them and the alias is what a
+# mock lands on.
 PUSH_BRANCH = "_push_branch"
+AUTHED_FETCH = "_authed_fetch"
+
+# What a process that never came back looks like from inside the tick.
+DIED = "the process died before the tick returned"
+
+
+def _local_branch_fetch(_spec, refspec: str, *, cwd):
+    """Stand in for the authenticated fetch of the pull request's branch."""
+    return subprocess.run(
+        ["git", "fetch", "--quiet", ORIGIN_REMOTE, refspec],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        check=False,
+    )
 
 JOURNEY_CEILING = 20
 JOURNEY_FILE = "oversized.py"
@@ -104,6 +124,50 @@ class _PublishesToThePullRequest(_LocalBranchPusher):
         return landed
 
 
+class _DiesAfterTheRelabel:
+    """A client whose relabel lands and whose process does not come back.
+
+    The last window a finish has: the notice, the audit event, and the route
+    have all gone out, and the write that clears the record of the attempt has
+    not. Staged where it really is rather than by seeding a comment nothing
+    wrote.
+    """
+
+    def __init__(self, relabel) -> None:
+        self._relabel = relabel
+
+    def __call__(self, issue, label) -> None:
+        """Apply the label the finish chose, then stop the tick."""
+        self._relabel(issue, label)
+        raise RuntimeError(DIED)
+
+
+class _LandsThenDies:
+    """A push that reaches the remote and whose answer never comes back.
+
+    The window between the request landing and the write that receipts it,
+    which no seam above the transport can stage: the branch really moves, and
+    the tick that moved it never learns that it did.
+    """
+
+    def __init__(self, github) -> None:
+        self._pusher = _PublishesToThePullRequest(github)
+        self._held = patch.object(_branch_transport, PUSH_BRANCH, self)
+
+    def __call__(self, *called, **options) -> bool:
+        """Publish the branch, then stop the tick that asked for it."""
+        self._pusher(*called, **options)
+        raise RuntimeError(DIED)
+
+    def __enter__(self):
+        """Hold the push seam for the tick that is about to be lost."""
+        return self._held.__enter__()
+
+    def __exit__(self, *details) -> None:
+        """Release it once that tick has ended."""
+        self._held.__exit__(*details)
+
+
 class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
     """One oversized candidate, adjudicated for real and then rebased for real.
 
@@ -117,6 +181,11 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
 
     def setUp(self) -> None:
         super().setUp()
+        # The crash recovery fetches the pull request's own branch before it
+        # will compare anything, and that hop is the one this fixture has no
+        # token for. Answered against the bare repository behind the clone,
+        # which IS the remote.
+        _patched(self, _branch_transport, AUTHED_FETCH, _local_branch_fetch)
         _patched(self, _additions, "_count_added_lines", _REAL_ADDITION_COUNT)
         _patched(self, config, "MAX_ADDED_LINES", JOURNEY_CEILING)
         # The adjudicator fingerprints the accepted pair in the checkout the
@@ -191,6 +260,58 @@ class OversizedJourneyRealGitFixture(AdjudicatedRebaseRealGitFixture):
         with patch.object(_branch_transport, PUSH_BRANCH, pusher):
             self._refresh()
         return pusher
+
+    def _crashes(self, seam) -> None:
+        """Run one refresh whose tick a durable boundary never returns from.
+
+        `seam` is a context manager standing in for the process dying at one
+        of the moments this journey is about, and every one of them is a real
+        moment: the refresh really rebases, really enters the gate, and really
+        pushes up to whichever of them the case is about.
+
+        Nothing is asserted about the raise. The refresh already treats one
+        worktree's failure as that worktree's -- it logs and moves on -- so
+        what the tick leaves behind is the same durable state a process death
+        would, which is the whole of what the next one has to work from.
+
+        The ordinary push double goes on first and the seam second, so a case
+        about the transport replaces it and every other case still reaches a
+        real remote.
+        """
+        pushing = patch.object(
+            _branch_transport, PUSH_BRANCH,
+            _PublishesToThePullRequest(self._gh),
+        )
+        with pushing, seam:
+            self._refresh()
+
+    def _dies_before_the_grant(self):
+        """The base reading the evidence is assembled over never comes back."""
+        return patch.object(
+            _measurement_commits, "_freeze_base_commit",
+            MagicMock(side_effect=RuntimeError(DIED)),
+        )
+
+    def _dies_before_the_push(self):
+        """The request that would put the replay on the remote never returns."""
+        return patch.object(
+            _branch_transport, PUSH_BRANCH,
+            MagicMock(side_effect=RuntimeError(DIED)),
+        )
+
+    def _dies_before_the_route(self):
+        """The push and the receipt land; the notice never goes out."""
+        return patch.object(
+            _base_publication, "_post_auto_rebase_notice",
+            MagicMock(side_effect=RuntimeError(DIED)),
+        )
+
+    def _dies_after_the_relabel(self):
+        """The reviewer is routed; the write that clears the record is not."""
+        return patch.object(
+            self._gh, "set_workflow_label",
+            _DiesAfterTheRelabel(self._gh.set_workflow_label),
+        )
 
     def _durable(self):
         """The pinned comment as a process starting now would read it."""

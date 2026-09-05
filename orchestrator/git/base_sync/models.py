@@ -85,20 +85,21 @@ class _PendingRewrite:
         attributed to a publication the interrupted attempt was never made
         for -- and the record is the only thing that can say so.
 
-        One relabel is this route's OWN and is recognized rather than
-        refused. Every finish here ends by moving the issue to `validating` so
-        the reviewer re-runs at the rewritten head, and that relabel is the
-        last thing it does before the write that clears this record -- so a
-        process lost between the two comes back to an issue on `validating`
-        carrying an attempt made from wherever it started. Read as somebody
-        else's move, the tick that only had a pinned write left to make would
-        park forever; read as what it is, it finishes the route it was already
-        most of the way through, and the notice and the event land on exactly
-        the publication and stage the interrupted finish had chosen.
+        Answered on the terms alone, with no exception for the stage the
+        route's own finish moves to. That relabel IS a state a recovery has to
+        recognize -- it is the last thing a finish does before the write that
+        clears this record -- but the label on its own cannot say whether it
+        was this route's step or somebody else's, and an issue moved to
+        `validating` after a crash the push never survived looks identical.
+        What tells them apart is the effect the finish had already had, which
+        the caller reads off the remote and the receipt rather than off a
+        label.
         """
-        if not self.is_recorded or self.pr_number != pr_number:
-            return False
-        return stage in (self.stage, WorkflowLabel.VALIDATING)
+        return (
+            self.is_recorded
+            and self.pr_number == pr_number
+            and self.stage == stage
+        )
 
 
 @dataclass(frozen=True)

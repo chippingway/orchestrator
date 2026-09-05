@@ -21,6 +21,13 @@ rewritten checkout, approves, and the issue leaves for the documentation pass
 and two adjudication comments for the life of the issue, all of them naming
 the commit a human was actually asked about.
 
+The crashes are the second half of the same journey, and nothing about them
+is seeded either. Each one runs this same road up to one of the five moments
+an auto rebase makes durable -- the anchor, the replay, the permission, the
+push, the receipt -- lets the process die there, and runs the next real
+refresh over whatever that left on disk and on the comment. Every one of them
+has to come back to the same finish.
+
 Only three things are stood in for, and none of them is a decision: the two
 agents' replies, the authenticated push, and the remote-side base freeze this
 fixture has no token to take.
@@ -36,6 +43,7 @@ from orchestrator.workflow.late_split import (
 from tests.git.base_sync.exemption_git_support import ISSUE, events_of
 from tests.git.base_sync.journey_git_support import (
     OversizedJourneyRealGitFixture,
+    _LandsThenDies,
 )
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
@@ -44,6 +52,17 @@ from tests.workflow.fixtures import (
 )
 
 EVENT_MEASUREMENT = "late_measurement"
+EVENT_TRANSFER = "late_transfer"
+EVENT_REBASED = "base_rebased"
+
+METHOD_FIELD = "method"
+CLEAN_REBASE = "auto_clean_rebase"
+RECOVERY_PUSHED = "crash_recovery_pushed"
+RECOVERY_RELABELLED = "crash_recovery_relabel_only"
+
+# The record one interrupted attempt leaves, which every finish drops.
+KEY_PENDING_PUSH_SHA = "pending_auto_base_rebase_push_sha"
+KEY_PENDING_REWRITE_SHA = "pending_auto_base_rebase_rewrite_sha"
 EVENT_VERDICT = "late_verdict"
 EVENT_REVIEW = "review_verdict"
 
@@ -155,3 +174,119 @@ class AdjudicatedRebaseJourneyTest(
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CrashedJourneyRealGitTest(
+    OversizedJourneyRealGitFixture, unittest.TestCase,
+):
+    """The same journey, stopped at each moment it makes durable.
+
+    One auto rebase of the adjudicated commit writes five things in order --
+    the anchor, the replay it produced, the permission, the push, the receipt
+    -- and announces itself last. A process can be lost in any window between
+    them, and what every one of them has to come back to is the same finish:
+    the verdict on the replay, the reviewer routed to it, and nobody asked to
+    adjudicate the change a second time.
+
+    Nothing about the crash is seeded. Each case runs the real refresh up to
+    the moment it is about, lets the process die there, and runs the next
+    real refresh over whatever that left on disk and on the comment.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.accepted = self._commits_an_oversized_candidate()
+        self._publishes_the_candidate(self.accepted)
+        self._accepted_as_single()
+        self._advance_base(conflicting=False)
+
+    def test_a_crash_before_the_grant_is_recovered(self) -> None:
+        # The replay is on the branch and nothing on the comment names it as
+        # a rewrite yet, so the recovery re-derives the evidence the dead tick
+        # would have assembled and the permit rules on that.
+        self._crashes(self._dies_before_the_grant())
+
+        pusher = self._refreshes()
+
+        self._assert_finished(pusher, RECOVERY_PUSHED)
+
+    def test_a_crash_before_the_push_is_recovered(self) -> None:
+        # The permission is durable and the remote is still on the head the
+        # push was leased against, so the recovery reissues it.
+        self._crashes(self._dies_before_the_push())
+
+        pusher = self._refreshes()
+
+        self._assert_finished(pusher, RECOVERY_PUSHED)
+
+    def test_a_crash_before_the_receipt_is_recovered(self) -> None:
+        # The push landed and the write that receipts it did not, so the pull
+        # request carries a replay the comment still says is owed one. The
+        # leased no-op is what proves it and carries the receipt.
+        self._crashes(self._dies_before_the_push_returns())
+
+        pusher = self._refreshes()
+
+        self._assert_finished(pusher, RECOVERY_RELABELLED)
+
+    def test_a_crash_before_the_route_is_recovered(self) -> None:
+        # Everything durable landed and the notice, the event, and the route
+        # did not, so the recovery has only the route left to make.
+        self._crashes(self._dies_before_the_route())
+
+        pusher = self._refreshes()
+
+        self._assert_finished(pusher, RECOVERY_RELABELLED)
+
+    def test_a_crash_after_the_route_is_recovered(self) -> None:
+        # The last window: the reviewer has been routed and the write that
+        # clears the record has not. Nothing is announced twice.
+        self._crashes(self._dies_after_the_relabel())
+
+        self._refreshes()
+
+        self._assert_settled()
+        self._assert_reviewable()
+        self.assertEqual(
+            [record[METHOD_FIELD] for record in events_of(self, EVENT_REBASED)],
+            [CLEAN_REBASE],
+        )
+
+    def _dies_before_the_push_returns(self):
+        """The request reaches the remote and its answer never comes back."""
+        return _LandsThenDies(self._gh)
+
+    def _assert_finished(self, pusher, method: str) -> None:
+        """The verdict is on the replay and the reviewer has been sent to it."""
+        self._assert_settled()
+        self._assert_reviewable()
+        self.assertEqual(len(events_of(self, EVENT_REBASED)), 1)
+        self.assertEqual(
+            events_of(self, EVENT_REBASED)[0][METHOD_FIELD], method,
+        )
+        self.assertFalse(pusher.revision and pusher.revision != self._wt_head())
+
+    def _assert_settled(self) -> None:
+        """One adjudication, one transfer, and the exemption on the replay."""
+        replayed = self._wt_head()
+        self.assertNotEqual(replayed, self.accepted)
+        durable = self._durable()
+        self.assertTrue(_exemption.is_exempt(durable, replayed))
+        self.assertEqual(
+            _rewrites.read_rewrite_authorization(durable).phase,
+            _rewrites.LateRewritePhase.PUBLISHED,
+        )
+        self.assertEqual(len(events_of(self, EVENT_MEASUREMENT)), 1)
+        self.assertEqual(len(events_of(self, EVENT_VERDICT)), 1)
+        self.assertEqual(len(events_of(self, EVENT_TRANSFER)), 1)
+        self.assertEqual(
+            self._gh.label_history.count((ISSUE, LABEL_DECOMPOSING)), 1,
+        )
+
+    def _assert_reviewable(self) -> None:
+        """The record of the attempt is gone and the round is the reviewer's."""
+        durable = self._durable()
+        self.assertIsNone(durable.get(KEY_PENDING_PUSH_SHA))
+        self.assertIsNone(durable.get(KEY_PENDING_REWRITE_SHA))
+        self.assertEqual(durable.get(KEY_REVIEW_ROUND), 0)
+        self.assertIn((ISSUE, LABEL_VALIDATING), self._gh.label_history)

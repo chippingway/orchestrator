@@ -55,6 +55,15 @@ _PENDING_REWRITE_PR = "pending_auto_base_rebase_rewrite_pr"
 
 _PENDING_REWRITE_STAGE = "pending_auto_base_rebase_rewrite_stage"
 
+# The head a finish has already said it published. Written after the notice
+# and the audit event and before the relabel, which is the one window a finish
+# cannot otherwise be recovered across: everything it announces goes out
+# before the pinned write that clears the record, so a process lost between
+# them comes back to an attempt that looks unfinished and announces itself a
+# second time -- a second `base_rebased` on the stream and a second notice on
+# the pull request, for one publication that happened once.
+_PENDING_ANNOUNCED_SHA = "pending_auto_base_rebase_announced_sha"
+
 _REASON_AUTO_BASE_REBASE_FAILED = "auto_base_rebase_failed"
 
 _REASON_AUTO_BASE_REBASE_PUSH_FAILED = "auto_base_rebase_push_failed"

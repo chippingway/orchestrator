@@ -146,7 +146,14 @@ def _emit_auto_rebase_event(
     context: _AutoRebaseContext,
     after_sha: str,
 ) -> None:
-    """Emit the stable audit shape for a published clean rebase."""
+    """Emit the stable audit shape for a published clean rebase.
+
+    The round is zero by definition rather than read: this publication is what
+    resets it, so the record of it is about a reviewer with no rounds spent on
+    the head it names. Spelled rather than read so the emit can sit ahead of
+    the write that resets it -- which is what lets the finish record that it
+    announced itself while the anchor is still pinned.
+    """
     context.gh.emit_event(
         "base_rebased",
         issue_number=context.issue.number,
@@ -154,7 +161,7 @@ def _emit_auto_rebase_event(
         pr_number=context.pr_number,
         sha=after_sha,
         method="auto_clean_rebase",
-        review_round=int(context.state.get(_REVIEW_ROUND) or 0),
+        review_round=0,
         retry_count=context.state.get("retry_count"),
     )
 
@@ -166,16 +173,15 @@ def _finalize_auto_rebase(
 ) -> None:
     """Publish the notice, audit event, validating route, and pinned state.
 
-    The pinned write goes last so a tick that dies partway leaves the anchor
-    for the next one to recover from, and the one window that ordering opens
-    is between the relabel and that write. What the next tick comes back to
-    there is an issue on `validating` still carrying an attempt made from
-    wherever this one started -- which the recovery recognizes as this route's
-    own last step rather than somebody else's move, and finishes.
+    The pinned write that clears the attempt goes last so a tick that dies
+    partway leaves the anchor for the next one to recover from. What the
+    announcement owes that ordering is a durable mark of its own, written
+    while the anchor still stands: the notice and the audit event are out
+    before the relabel, and a tick lost between them and the last write would
+    otherwise come back to an attempt that looks unfinished and say all of it
+    a second time.
     """
     _post_auto_rebase_notice(context, after_sha)
-    persistence._clears_the_attempt(context.state)
-    context.state.set(_REVIEW_ROUND, 0)
     log.info(
         "issue=#%d auto base rebase pushed %s/%s -> %s; routing %r -> "
         "validating",
@@ -186,6 +192,9 @@ def _finalize_auto_rebase(
         context.label,
     )
     _emit_auto_rebase_event(context, after_sha)
+    persistence._announced(context, after_sha)
+    persistence._clears_the_attempt(context.state)
+    context.state.set(_REVIEW_ROUND, 0)
     context.gh.set_workflow_label(context.issue, WorkflowLabel.VALIDATING)
     context.gh.write_pinned_state(context.issue, context.state)
 

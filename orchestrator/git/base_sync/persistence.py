@@ -25,6 +25,7 @@ from orchestrator.git.base_sync.state import (
     _AUTO_REBASE_PARK_REASONS,
     _AWAITING_HUMAN,
     _PARK_REASON,
+    _PENDING_ANNOUNCED_SHA,
     _PENDING_PUSH_SHA,
     _PENDING_REWRITE_PR,
     _PENDING_REWRITE_SHA,
@@ -44,6 +45,7 @@ _ATTEMPT_KEYS = (
     _PENDING_REWRITE_SHA,
     _PENDING_REWRITE_PR,
     _PENDING_REWRITE_STAGE,
+    _PENDING_ANNOUNCED_SHA,
 )
 
 
@@ -235,6 +237,27 @@ def _prepare_recovered_rebase_state(
     context.state.set(_REVIEW_ROUND, 0)
 
 
+def _announced(context, published: str) -> None:
+    """Record that this finish has said what it did, before it routes.
+
+    The one write in a finish whose whole purpose is the window behind it.
+    Everything a finish announces -- the notice on the pull request, the audit
+    event on both sinks -- goes out before the relabel, and the write that
+    clears the record of the attempt goes out after it. A process lost in
+    between comes back to an attempt that looks unfinished, and announcing it
+    again puts a second `base_rebased` on the stream and a second notice on
+    the pull request for one publication that happened once.
+
+    Written while the anchor is still pinned, and that is deliberate: the
+    anchor is what brings the recovery back at all, so this write may say only
+    that the announcement was made and must leave every other field of the
+    attempt exactly where it is. The clear rides the finish's own last write,
+    as it always did.
+    """
+    context.state.set(_PENDING_ANNOUNCED_SHA, published)
+    context.gh.write_pinned_state(context.issue, context.state)
+
+
 def _post_recovered_rebase_notice(
     context: _AutoRebaseRecoveryContext, notice: str,
 ) -> None:
@@ -319,8 +342,45 @@ def _finalize_recovered_rebase(
     method: str,
     notice: str,
 ) -> bool:
-    """Finalize a recovered push and route it according to current base lag."""
-    _prepare_recovered_rebase_state(context)
+    """Finalize a recovered push and route it according to current base lag.
+
+    The announcement comes first and is made durable before anything is
+    cleared, so the window between it and the relabel is one a later tick can
+    tell from an attempt that never got this far. What the clear rides is
+    still the last write, since the anchor is what brings that tick back.
+    """
     _post_recovered_rebase_notice(context, notice)
     _emit_recovered_rebase_event(context, local_head, method)
+    _announced(context, local_head)
+    _prepare_recovered_rebase_state(context)
     return _route_recovered_rebase(context, local_head, method)
+
+
+def _write_the_finished_route(
+    context: _AutoRebaseRecoveryContext,
+) -> bool:
+    """Make durable the finish an earlier tick made everywhere but the comment.
+
+    The one terminal that announces nothing. Every other road here ends by
+    posting a notice, filing an audit event, and routing the reviewer, and
+    those are exactly what the interrupted tick had already done: they go out
+    before the pinned write, so a process lost between the relabel and that
+    write leaves them all behind it. Repeating them would put a second
+    `base_rebased` on the stream -- under the stage the relabel moved to
+    rather than the one the rebase ran from -- and a second notice on a pull
+    request that was published once.
+
+    What is left is the write itself: the record of the attempt, which is the
+    only thing bringing this recovery back, and the round the reviewer is
+    being asked to spend afresh on the rewritten head.
+    """
+    log.info(
+        "issue=#%d auto-rebase recovery: an earlier tick finished this route "
+        "and died before its own write; clearing the attempt and the review "
+        "round it already announced rather than announcing them again",
+        context.issue.number,
+    )
+    _clears_the_attempt(context.state)
+    context.state.set(_REVIEW_ROUND, 0)
+    context.gh.write_pinned_state(context.issue, context.state)
+    return True

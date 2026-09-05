@@ -252,6 +252,16 @@ def _decided(
     already calls decided has nothing left to earn. Refused, the candidate
     falls through to the measurement exactly as it always did.
 
+    A caller that may publish on the permit and on NOTHING else gets the
+    refusal itself rather than the reading behind it. That is the crash
+    recovery, and the reading is the wrong answer there twice over: the commit
+    it would measure is one the pull request already carries or one an
+    interrupted push was already leased for, so a count under the ceiling
+    reports a publication with the verdict unmoved, and a count over it routes
+    a change a human already ruled on into a second adjudication. Nothing is
+    parked and nothing is routed for it -- the caller owns what a refusal
+    means where it stands.
+
     The permit's answer is kept APART from the other three rather than folded
     into the one reason, because the two license different things. All four
     say the candidate may publish without a reading; only the permit says a
@@ -273,6 +283,14 @@ def _decided(
             gate, recorded, candidate_sha,
             permitted_sha="" if decided else candidate_sha,
         )
+    if gate.permit_only:
+        log.warning(
+            "issue=#%d candidate %s earned no permit and its caller may "
+            "publish it on nothing else; refusing rather than measuring a "
+            "commit that is already the pull request's or already leased",
+            gate.issue.number, candidate_sha,
+        )
+        return _records._REFUSED
     answered = (
         recorded.candidate_sha == candidate_sha
         and recorded.additions is not None

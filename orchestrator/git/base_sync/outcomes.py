@@ -7,9 +7,9 @@ was already published, the comparison is unclassifiable, the remote moved
 out of band, the worktree is dirty, the reissued push failed, the pinned
 comment claims an exemption or a transfer nobody can read whole, the attempt's
 own record is in pieces, the attempt was made for a publication this issue no
-longer records, the remote was rolled back off a replay the record says it
-carried, or a rewrite the pull request already carries is one this tick cannot
-finish the route behind.
+longer records, no permit licenses the replay to publish at all, the remote was
+rolled back off a replay the record says it carried, or a rewrite the pull
+request already carries is one this tick cannot finish the route behind.
 Each one either finalizes through ``persistence`` or parks, so keeping them
 in one owner is what makes the set enumerable -- an outcome that neither
 routed nor parked would leave the issue holding an anchor no later tick can
@@ -459,6 +459,55 @@ def _park_unrecorded_recovery(
             "nothing was pushed. Repair or clear the "
             "`pending_auto_base_rebase_*` fields on the pinned comment, then "
             "reply on this issue with anything to retry."
+        ),
+        reason=_REASON_AUTO_BASE_REBASE_FAILED,
+    )
+    return True
+
+
+def _park_refused_permit_recovery(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+) -> bool:
+    """Restore the anchor when the permit for an unpushed replay refuses.
+
+    The branch is standing on a rewrite of a commit an adjudication accepted
+    and the push it was made for never went out. The permit is the whole of
+    what may let that push out here: measured instead, an oversized replay
+    goes back into adjudication with a pull request already open over the
+    work, and a small one is force-pushed and the route finished with the
+    verdict still on the commit a human ruled on.
+
+    So the branch goes back onto the anchor -- the head the remote carries
+    wherever a retry was ever possible -- and the issue parks. The permission
+    the rollback finds goes with the object it was granted for, on the
+    rollback's own terms: the replay is on no branch after the reset, so a
+    claim about a push that will never happen is dropped, and the exemption
+    stays exactly where the adjudication put it.
+    """
+    local_short = (recovery_snapshot.local_head or "")[:8]
+    pre_rebase_short = context.pending_pre_rebase_sha[:8]
+    log.warning(
+        "issue=#%d auto-rebase recovery: no permit licenses %s to publish and "
+        "there is nothing else this road may publish it on; resetting onto "
+        "the anchor rather than measuring an adjudicated change again",
+        context.issue.number, local_short,
+    )
+    persistence._reset_clear_and_park(
+        context,
+        context.pending_pre_rebase_sha,
+        message=(
+            f"{config.HITL_MENTIONS} crash recovery for PR "
+            f"#{context.pr_number}: an earlier tick rebased this branch onto "
+            "the advanced base and died before pushing, and the permission "
+            f"that would let `{local_short}` publish as the change a human "
+            "already adjudicated no longer holds -- the pull request, the "
+            "stage, the checkout, the leased head, or the two contributions "
+            "no longer agree, and the orchestrator log names which. "
+            "Publishing it on anything else would send that change back into "
+            f"adjudication, so HEAD has been reset to `{pre_rebase_short}` "
+            "and nothing was pushed. Reconcile the pinned comment and reply "
+            "on this issue with anything to retry."
         ),
         reason=_REASON_AUTO_BASE_REBASE_FAILED,
     )

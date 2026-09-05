@@ -125,17 +125,57 @@ def _retry_recovery_push(
     Unless the branch is standing on a rewrite of a commit an adjudication
     accepted, which is the one candidate that may be published without a
     reading. `carried` says how far the interrupted tick got with that
-    transfer, and what this call owes it is only the evidence: a permission
-    the grant already recorded is what `late_transfer` re-asks the permit
-    over, and a rewrite that never reached one is re-derived here so the
-    replay is not measured past the same ceiling and adjudicated a second
-    time with a pull request open over the work.
+    transfer, and what this call owes it is the evidence: a permission the
+    grant already recorded is what `late_transfer` re-asks the permit over,
+    and a rewrite that never reached one is re-derived here so the replay is
+    not measured past the same ceiling and adjudicated a second time with a
+    pull request open over the work.
+
+    Where there IS such a transfer, the permit is the whole of what may let
+    this push out. It is asked before the gate and the gate is told the same,
+    so a refusal is a refusal on both sides of that seam rather than a
+    fall-through to the cumulative reading -- which on this road would
+    force-push a replay nothing vouched for and clear the recovery with the
+    verdict still on the commit a human ruled on. The rotation is read back
+    afterwards for the same reason, since a permit that stopped holding
+    between the two asks leaves the push landed and the verdict where it was.
     """
     dirty_files = verification_probes._worktree_dirty_files(context.worktree)
     if dirty_files:
         return outcomes._park_dirty_recovery(
             context, recovery_snapshot, dirty_files,
         )
+    rewrite = transfers._reconstructed(
+        context, recovery_snapshot.local_head or "", carried,
+    )
+    licensed = rewrite is not None or carried == transfers._Handoff.OUTSTANDING
+    if licensed and not transfers._permits_the_publication(
+        context, recovery_snapshot.local_head or "", rewrite,
+    ):
+        return outcomes._park_refused_permit_recovery(
+            context, recovery_snapshot,
+        )
+    return _pushes_the_recovered_head(
+        context, recovery_snapshot, rewrite, licensed,
+    )
+
+
+def _pushes_the_recovered_head(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+    rewrite,
+    licensed: bool,
+) -> bool:
+    """Reissue the interrupted push and finalize what it earns.
+
+    `licensed` says a transfer this recovery already knows about is the whole
+    of what may let the push out, and it is passed to the gate as well as
+    asked ahead of it: a permit that stops holding between the two asks is
+    refused there rather than measured, and one that stops holding after the
+    push leaves the verdict where it was, which the rotation read below
+    catches.
+    """
+    landed = recovery_snapshot.local_head or ""
     records = publication._gate_records()
     published = publication._gated_publication()._publishes(
         records._gate(
@@ -151,29 +191,59 @@ def _retry_recovery_push(
             # readings would be the one pushed while the notice and the event
             # named this one -- so the candidate is bound and a moved checkout
             # refuses instead.
-            candidate=recovery_snapshot.local_head or "",
-            rewrite=transfers._reconstructed(
-                context, recovery_snapshot.local_head or "", carried,
-            ),
+            candidate=landed,
+            rewrite=rewrite,
+            permit_only=licensed,
         ),
     )
+    unfinished = _unfinished_recovery_push(
+        context, recovery_snapshot, published, licensed,
+    )
+    if unfinished is not None:
+        return unfinished
+    return persistence._finalize_recovered_rebase(
+        context,
+        local_head=landed,
+        method="crash_recovery_pushed",
+        notice=outcomes._pushed_recovery_notice(context, landed),
+    )
+
+
+def _unfinished_recovery_push(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+    published,
+    licensed: bool,
+) -> bool | None:
+    """What a reissued push that did not finish owes, or None where it did.
+
+    Four answers before the finalize, and each is a different tick. A permit
+    the gate refused publishes nothing and parks here, since measuring is the
+    one thing this road may not fall back on. A hold is a tick the gate
+    finished for itself -- parked, or handed to the adjudication -- and only
+    the flags it left in memory are owed a write. A push that went out and
+    failed is the caller's own park. And a push that landed without the
+    verdict moving with it is a permit that stopped holding inside the gate.
+    """
+    if published.refused:
+        return outcomes._park_refused_permit_recovery(
+            context, recovery_snapshot,
+        )
     if published.held:
         # The gate took the candidate this recovery was finishing, so the
-        # finalize below -- the notice, the event, the `validating` route --
-        # is not this tick's. The park it left is written here, since nothing
-        # behind this call would.
+        # finalize behind this -- the notice, the event, the `validating`
+        # route -- is not this tick's. The park it left is written here, since
+        # nothing else would.
         context.gh.write_pinned_state(context.issue, context.state)
         return True
     if not published.landed:
         return outcomes._park_failed_recovery_push(context, recovery_snapshot)
-    return persistence._finalize_recovered_rebase(
-        context,
-        local_head=recovery_snapshot.local_head,
-        method="crash_recovery_pushed",
-        notice=outcomes._pushed_recovery_notice(
-            context, recovery_snapshot.local_head,
-        ),
-    )
+    landed = recovery_snapshot.local_head or ""
+    if licensed and not transfers._rotated_onto(context.state, landed):
+        return outcomes._park_unfinished_recovery(
+            context, recovery_snapshot, _UNROTATED.format(published=landed),
+        )
+    return None
 
 
 def _finish_published_recovery(
@@ -231,8 +301,11 @@ def _finish_published_recovery(
             context, recovery_snapshot,
             _UNPROVEN_LANDING.format(published=landed or "an unreadable head"),
         )
+    loose = _loose_tree_holds(context, recovery_snapshot, carried)
+    if loose is not None:
+        return loose
     if carried == transfers._Handoff.OUTSTANDING:
-        return _settles_the_landed_rewrite(context, recovery_snapshot)
+        return _settle_published_recovery(context, recovery_snapshot)
     unaccounted = transfers._unaccounted_publication(
         context.state, landed, context.pending_pre_rebase_sha, carried,
     )
@@ -245,28 +318,35 @@ def _finish_published_recovery(
     )
 
 
-def _settles_the_landed_rewrite(
+def _loose_tree_holds(
     context: _AutoRebaseRecoveryContext,
     recovery_snapshot: _AutoRebaseRecoverySnapshot,
-) -> bool:
-    """Take the settlement a landed push still owes, or park for the tree.
+    carried: transfers._Handoff,
+) -> bool | None:
+    """The park a checkout carrying loose work owes, or None where it is clean.
 
-    The permission is outstanding and the commit it names is the one the pull
-    request carries, so what is missing is the receipt -- and taking it is
-    what stops the permit being re-asked one stage later, against an issue the
-    rewrite was never entered from.
+    Asked of every handoff carrying a verdict rather than only of the one that
+    still owes a receipt, because what finishing does is hand the issue to the
+    reviewer -- and a reviewer sent to a checkout with uncommitted files reads
+    work the pull request does not have as though it were under review. A
+    settled transfer is no different from an outstanding one there: the remote
+    is right either way, and the tree is what the next reader works from.
 
-    A checkout carrying uncommitted changes may not be settled over: the
-    contribution the permit is re-derived from is fingerprinted in that tree,
-    and one carrying work nobody committed is not the contribution the pull
-    request has. Nothing is reset for it -- the remote is right and so is the
-    branch -- but the route is not finished either, because clearing the
-    anchor over an exemption still on the old commit is what sends the replay
-    back into adjudication.
+    Nothing is reset for it. The pull request carries the rewrite and so does
+    the branch, so there is nothing here to put back -- what a loose tree
+    costs is the finish, and the anchor stays pinned so the tick that comes
+    back once a human has cleaned up can make it.
+
+    Silent for an issue carrying no verdict at all, which is the ordinary
+    interrupted rebase and the road this one has always taken: nothing is
+    being moved onto the replay there, and the dirty tree is the stage's own
+    to answer for as it always was.
     """
+    if carried == transfers._Handoff.NOTHING:
+        return None
     dirty_files = verification_probes._worktree_dirty_files(context.worktree)
     if not dirty_files:
-        return _settle_published_recovery(context, recovery_snapshot)
+        return None
     return outcomes._park_unfinished_recovery(
         context, recovery_snapshot,
         _LOOSE_TREE.format(count=len(dirty_files)),
@@ -311,7 +391,7 @@ def _settle_published_recovery(
     and the next recovery classifies the remote afresh.
     """
     landed = recovery_snapshot.local_head or ""
-    if not transfers._permits_the_settlement(context, landed):
+    if not transfers._permits_the_publication(context, landed):
         return outcomes._park_unfinished_recovery(
             context, recovery_snapshot, _REFUSED_PERMIT,
         )
@@ -325,8 +405,36 @@ def _settle_published_recovery(
         records._Entered(
             head=context.pending_pre_rebase_sha or "", reconciling=True,
             candidate=landed,
+            permit_only=True,
         ),
     )
+    unsettled = _unsettled_no_op(context, recovery_snapshot, published)
+    if unsettled is not None:
+        return unsettled
+    return outcomes._finalize_already_published_recovery(
+        context, recovery_snapshot,
+    )
+
+
+def _unsettled_no_op(
+    context: _AutoRebaseRecoveryContext,
+    recovery_snapshot: _AutoRebaseRecoverySnapshot,
+    published,
+) -> bool | None:
+    """What a leased no-op that settled nothing owes, or None where it did.
+
+    Three ways the receipting push does not finish, and each is its own tick.
+    A permit the gate refused publishes nothing and parks here rather than
+    falling through to a reading nothing on this road needs. A hold is a tick
+    the gate finished for itself, and only the flags it left are owed a write.
+    A refused push is a remote that moved between this tick's fetch and the
+    request. And past all three, a push that landed with the verdict still
+    where it was is a permit that stopped holding inside the gate.
+    """
+    if published.refused:
+        return outcomes._park_unfinished_recovery(
+            context, recovery_snapshot, _REFUSED_PERMIT,
+        )
     if published.held:
         context.gh.write_pinned_state(context.issue, context.state)
         return True
@@ -334,12 +442,11 @@ def _settle_published_recovery(
         return outcomes._park_unfinished_recovery(
             context, recovery_snapshot, _REFUSED_NO_OP,
         )
-    if not transfers._rotated_onto(context.state, landed):
-        return outcomes._park_unfinished_recovery(
-            context, recovery_snapshot, _UNROTATED.format(published=landed),
-        )
-    return outcomes._finalize_already_published_recovery(
-        context, recovery_snapshot,
+    landed = recovery_snapshot.local_head or ""
+    if transfers._rotated_onto(context.state, landed):
+        return None
+    return outcomes._park_unfinished_recovery(
+        context, recovery_snapshot, _UNROTATED.format(published=landed),
     )
 
 
@@ -417,12 +524,62 @@ def _route_recovery_snapshot(
     )
     if completed is None:
         return True
-    carried = transfers._carried_by(context.state, completed.local_head)
+    carried = transfers._carried_by(context, completed.local_head)
+    published = bool(completed.local_head) and (
+        completed.local_head == completed.remote_head
+    )
+    if _finished_but_unwritten(context, completed, carried, published):
+        return persistence._write_the_finished_route(context)
     if _made_for_another_publication(context):
         return outcomes._park_foreign_publication_recovery(context, completed)
-    if completed.local_head and completed.local_head == completed.remote_head:
+    if published:
         return _finish_published_recovery(context, completed, carried)
     return _route_an_unpublished_head(context, completed, carried)
+
+
+def _finished_but_unwritten(
+    context: _AutoRebaseRecoveryContext,
+    completed: _AutoRebaseRecoverySnapshot,
+    carried: transfers._Handoff,
+    published: bool,
+) -> bool:
+    """Whether the only thing an earlier finish never made is its own write.
+
+    The last window a finish has. The notice, the audit event, and the relabel
+    all go out before the pinned write that clears this record, so a process
+    lost between the relabel and that write comes back to an issue already on
+    the stage the route moves to, carrying an attempt made from wherever it
+    started, over a pull request that already has the rewrite.
+
+    Recognized on the MARK a finish leaves rather than on the label, and that
+    is the whole of what keeps it honest. `validating` on its own says
+    nothing: somebody can relabel an issue there after a crash the push never
+    survived, and a rebase that ran from that stage never moved off it at all.
+    What only a finish past its announcement leaves is the durable note it
+    writes between the audit event and the relabel, and this is the one road
+    that reads it.
+
+    Asked with the accounting beside it, because the note says what was
+    announced and the receipt says what reached the remote: a mark for a
+    commit the pull request does not carry, or one the comment cannot account
+    for, is not a finish anybody may write off.
+
+    What it earns is the write and nothing else. The notice was posted, the
+    event was filed, and the reviewer was routed; repeating them would put a
+    second `base_rebased` on the stream -- under the stage the relabel moved
+    to -- and a second notice on the pull request, for one publication that
+    happened once.
+    """
+    if not published or not context.pending_rewrite.names(
+        completed.local_head,
+    ):
+        return False
+    if not transfers._already_announced(context.state, completed.local_head):
+        return False
+    return not transfers._unaccounted_publication(
+        context.state, completed.local_head, context.pending_pre_rebase_sha,
+        carried,
+    )
 
 
 def _made_for_another_publication(

@@ -294,7 +294,9 @@ orchestrator/
                         rewrite no permission was ever written for, a permission still owed a receipt, one already
                         spent, and one nobody can vouch for -- the exemption and the identity under it asked
                         FIRST, since a permission is a claim about moving one verdict and a group damaged after
-                        the grant leaves it reading back whole over a verdict nothing can name. Only the second is
+                        the grant leaves it reading back whole over a verdict nothing can name, and every term of
+                        a whole permission cross-bound to the attempt in hand, since fields each well-shaped on
+                        their own still describe some other attempt when they disagree. Only the second is
                         handed re-derived evidence, since
                         a grant REPLACES the whole group and a recovery may not repair a record under the
                         authority of the transfer it is deciding. And the last question: whether a rewrite the
@@ -319,9 +321,11 @@ orchestrator/
                         one something moved since is not the head the finalize behind the push records. The
                         settlement beside it is the leased no-op onto a pull request already standing on the
                         rewrite, taken here rather than a stage later so the permit is re-asked under the stage it
-                        was granted from -- and taken on the PERMIT alone, since the gate's own fallback for a
-                        declining permit is the ordinary reading, which would either finish the route with the
-                        verdict unmoved or adjudicate the change a second time
+                        was granted from. Both are taken on the PERMIT alone wherever a transfer is in hand, asked
+                        before the gate and asked of the gate, since its own fallback for a declining permit is
+                        the ordinary reading -- which would either finish the route with the verdict unmoved or
+                        adjudicate the change a second time. A dirty checkout holds either of them, and a finish
+                        whose only unmade step is its own write makes that and announces nothing
       outcomes.py       the already-published, unknown-comparison, diverged, dirty, failed-push, unvouched-record,
                         damaged-attempt-record, foreign-publication, rolled-back-remote, and unfinished-route
                         answers -- the unvouched and damaged ones resetting onto the anchor rather than letting the
@@ -330,7 +334,10 @@ orchestrator/
                         parking with HEAD and the record left alone: the remote carries the rewrite on one and a
                         reset would take the checkout off it, and on the other which publication the branch belongs
                         to is exactly what the tick cannot say
-      persistence.py    the parks, the reset-and-park tail -- which drops the debt it abandons, and the permission
+      persistence.py    the parks, the write a finish makes between its announcement and its relabel -- the one
+                        thing that tells a tick lost in that window from one that never announced itself, so the
+                        recovery makes the write it never made rather than saying all of it again -- the
+                        reset-and-park tail -- which drops the debt it abandons, and the permission
                         a transfer granted for the same commit, only once the reset has actually landed, since a
                         refused one may leave the branch still standing on the approved commit -- the paired clear
                         every step that ends an attempt goes through, so no road drops the anchor and leaves the
@@ -340,13 +347,12 @@ orchestrator/
                         caller holding any of its three facts apart would be free to fill the rest in from the
                         world it woke up in, and carrying whether the comment CLAIMED the group beside them, so
                         one that never had it (the window before the write) is told from one something took a
-                        member out of. The one stage it answers for besides the recorded one is `validating`,
-                        which every finish here relabels to just before the write that clears the record -- a
-                        crash between the two is this route's own last step rather than somebody else's move.
-                        Reading the group off the comment belongs to `transfers.py`
-      state.py          the pinned-state keys -- the anchor a push is leased against, and the replay it publishes
-                        with the publication it was made for -- plus the park reasons, refresh detour labels, and
-                        the shared logger
+                        member out of. The publication it names is answered for strictly, since which pull request
+                        and stage a finish attributes its notice and its event to is not a thing a label can
+                        settle. Reading the group off the comment belongs to `transfers.py`
+      state.py          the pinned-state keys -- the anchor a push is leased against, the replay it publishes
+                        with the publication it was made for, and the head a finish has already announced -- plus
+                        the park reasons, refresh detour labels, and the shared logger
     publication/        what a branch becomes before review reads it
       models.py         the record a squash hands back, in the three shapes it can end in -- published, refused, or
                         held by the size gate for the adjudication -- with a refusal NAMING which of four places

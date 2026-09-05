@@ -71,6 +71,7 @@ from orchestrator.git.base_sync.models import (
     _PendingRewrite,
 )
 from orchestrator.git.base_sync.state import (
+    _PENDING_ANNOUNCED_SHA,
     _PENDING_REWRITE_PR,
     _PENDING_REWRITE_SHA,
     _PENDING_REWRITE_STAGE,
@@ -219,7 +220,9 @@ def _rewritten_by_the_rebase(
     )
 
 
-def _carried_by(state: PinnedState, local_head: str) -> _Handoff:
+def _carried_by(
+    context: _AutoRebaseRecoveryContext, local_head: str,
+) -> _Handoff:
     """How far the transfer this interrupted rebase was making got.
 
     Read off the pinned comment alone, and asked before any of the recovery's
@@ -260,18 +263,18 @@ def _carried_by(state: PinnedState, local_head: str) -> _Handoff:
     # Lazy for the reason every upward reach in this package is: the record
     # sits in the workflow layer above it.
     from orchestrator.workflow.late_split import exemption as _exemption
-    if _exemption.unreadable_exemption(state):
+    if _exemption.unreadable_exemption(context.state):
         return _Handoff.UNVOUCHED
-    standing = _standing_permission(state, local_head)
+    standing = _standing_permission(context, local_head)
     if standing is not None:
         return standing
-    if _exemption.read_exemption(state) is None:
+    if _exemption.read_exemption(context.state) is None:
         return _Handoff.NOTHING
     return _Handoff.UNRECORDED
 
 
 def _standing_permission(
-    state: PinnedState, local_head: str,
+    context: _AutoRebaseRecoveryContext, local_head: str,
 ) -> _Handoff | None:
     """What a permission already on the comment says about this head, or None.
 
@@ -281,26 +284,104 @@ def _standing_permission(
     with a fresh rebase standing on top of it, so the evidence for THIS replay
     is the recovery's to assemble like any other.
 
-    Everything else is a claim. A group this build cannot read back whole, one
-    still outstanding for some other commit, and one whose DEBT does not agree
-    with it are all refused rather than replaced: the group is the only
-    account there is of how the exemption came to name what it names, and a
-    recovery that overwrote one would be repairing evidence nobody checked.
+    Everything else is a claim, and a claim is believed only where every field
+    of it agrees with the attempt this recovery is finishing. A group this
+    build cannot read back whole, one still outstanding for some other commit,
+    one whose DEBT does not agree with it, and one whose publication, lease,
+    or contribution belongs to some other attempt are all refused rather than
+    replaced: the group is the only account there is of how the exemption came
+    to name what it names, and a recovery that acted on one it could not tie
+    to the attempt in front of it would be finishing somebody else's work.
     """
     # Lazy for the reason every upward reach in this package is: the record
     # sits in the workflow layer above it.
     from orchestrator.workflow.late_split import rewrites as _rewrites
-    if not _rewrites.carries_rewrite_authorization(state):
+    if not _rewrites.carries_rewrite_authorization(context.state):
         return None
-    authorization = _rewrites.read_rewrite_authorization(state)
+    authorization = _rewrites.read_rewrite_authorization(context.state)
     if authorization is None:
         return _Handoff.UNVOUCHED
-    settled = authorization.phase == _rewrites.LateRewritePhase.PUBLISHED
     if authorization.rewrite.to_sha != local_head:
-        return None if settled else _Handoff.UNVOUCHED
-    if settled:
+        return None if _is_settled(authorization) else _Handoff.UNVOUCHED
+    return _claimed_by_this_attempt(context, authorization)
+
+
+def _is_settled(authorization) -> bool:
+    """Whether this record says the receipt behind its push has landed."""
+    from orchestrator.workflow.late_split import rewrites as _rewrites
+    return authorization.phase == _rewrites.LateRewritePhase.PUBLISHED
+
+
+def _claimed_by_this_attempt(context, authorization) -> _Handoff:
+    """What a whole permission for the head in hand is, once it is bound.
+
+    Whole and about this commit is where the fail-closed reader stops; which
+    ATTEMPT it belongs to is what the two questions here add, and both have to
+    be answered before a recovery acts on it.
+    """
+    if not _made_by_this_attempt(context, authorization):
+        return _Handoff.UNVOUCHED
+    if _is_settled(authorization):
         return _Handoff.SETTLED
-    return _outstanding_or_unvouched(state, authorization.rewrite)
+    return _outstanding_or_unvouched(context.state, authorization.rewrite)
+
+
+def _made_by_this_attempt(context, authorization) -> bool:
+    """Whether every term of this permission belongs to the attempt in hand.
+
+    The reader above proves the group is WHOLE and that its rewritten end is
+    the commit on this checkout. Whole is not the same as this attempt's: each
+    field is individually well-shaped, and a comment where the publication,
+    the leased head, or the digest came from somewhere else reads back exactly
+    as cleanly as one that did not. Acted on, the recovery finishes -- clears
+    the anchor, posts a notice, files an event -- over a transfer it cannot
+    tie to the rebase it is recovering.
+
+    So the record is cross-bound to the two things that CAN say which attempt
+    this is. The pending record names the pull request and the stage the
+    rebase was made for, and the anchor names the head its force-push was
+    leased against; those are the three the permit itself is scoped by. And
+    the semantic identity names the pair the digest was taken between -- the
+    accepted one while the transfer stands, the rewritten one once the receipt
+    has moved it -- so a target base or a fingerprint from another reading is
+    a contribution this issue never adjudicated.
+
+    Silent about the attempt's own record where there is none: the window
+    before that write leaves nothing to bind to, and the roads behind this one
+    already refuse to publish anything they cannot show the terms of.
+    """
+    rewrite = authorization.rewrite
+    recorded = context.pending_rewrite
+    if rewrite.lease != context.pending_pre_rebase_sha:
+        return False
+    if recorded.is_recorded and (
+        rewrite.pr_number, rewrite.source_stage,
+    ) != (recorded.pr_number, recorded.stage):
+        return False
+    return _names_the_adjudicated_pair(context, authorization)
+
+
+def _names_the_adjudicated_pair(context, authorization) -> bool:
+    """Whether the digest and the pair this record carries are the issue's.
+
+    The end the phase binds is the one the semantic identity has to name --
+    the accepted commit and the base it was measured over while the transfer
+    stands, the rewritten commit and the base it was replayed onto once the
+    receipt has moved it -- and the digest between them is the one the grant
+    was taken over. A record carrying a pair or a digest from another reading
+    describes a contribution this issue never adjudicated, however well each
+    field is shaped on its own.
+    """
+    from orchestrator.workflow.late_split import exemption as _exemption
+    identity = _exemption.read_semantic_identity(context.state)
+    if identity is None or identity.fingerprint != authorization.fingerprint:
+        return False
+    rewrite = authorization.rewrite
+    named = (
+        (rewrite.to_sha, rewrite.to_base_sha) if _is_settled(authorization)
+        else (rewrite.from_sha, rewrite.from_base_sha)
+    )
+    return (identity.candidate_sha, identity.base_sha) == named
 
 
 def _outstanding_or_unvouched(state: PinnedState, rewrite) -> _Handoff:
@@ -500,25 +581,29 @@ def _rotated_onto(state: PinnedState, local_head: str) -> bool:
     return _exemption.is_exempt(state, local_head)
 
 
-def _permits_the_settlement(
-    context: _AutoRebaseRecoveryContext, local_head: str,
+def _permits_the_publication(
+    context: _AutoRebaseRecoveryContext, local_head: str, rewrite=None,
 ) -> bool:
-    """Whether the permit still licenses the landed rewrite to be settled.
+    """Whether the permit still licenses this recovery to publish.
 
-    Asked BEFORE the gated publication rather than through it, and that is the
-    whole of what makes this road safe. The gate's answer to a permit that
-    declines is the ordinary cumulative reading, which is right for a rebase
-    deciding whether to publish and wrong here twice over: a count under the
-    ceiling reports a landed publication and lets the route finish with the
-    permission outstanding and the verdict still on the commit a human ruled
-    on, and a count over it routes an adjudicated change into a second
-    adjudication with the pull request already carrying the work. There is
-    nothing on this road to measure -- the remote has the commit -- so the
-    only question is whether the permission may be spent, and a refusal is a
-    refusal.
+    Asked BEFORE the gated publication rather than through it, and that is
+    the whole of what makes these roads safe. The gate's answer to a permit
+    that declines is the ordinary cumulative reading, which is right for a
+    rebase deciding whether to publish and wrong on a recovery twice over: a
+    count under the ceiling reports a publication landed with the verdict
+    still on the commit a human ruled on, and a count over it routes an
+    adjudicated change into a second adjudication with a pull request already
+    open over the work. There is nothing on either road to decide -- the
+    remote has the commit, or the push it never made is already leased -- so
+    the only question is whether the permission may be spent, and a refusal is
+    a refusal. The gate is told the same thing on the way in, so a permit that
+    stops holding between this ask and its own is refused there rather than
+    measured.
 
-    Asked over the record the grant left, which is what `late_transfer` reads
-    when a caller hands in no rewrite of its own. Every term is re-derived
+    Asked over the evidence this recovery holds: the record the grant left,
+    where there is one, and otherwise the rewrite re-derived for a grant the
+    crash came before -- which is what `late_transfer` reads when a caller
+    hands in no rewrite of its own. Every term is re-derived
     there: the publication this call freezes, the one the issue records, the
     checkout, the lease as an object this host holds, the issue read afresh,
     and both contributions fingerprinted from the objects themselves. A grant
@@ -556,6 +641,7 @@ def _permits_the_settlement(
         return False
     gate = _replace(
         gate, entry=entry, candidate=local_head, reconciling=True,
+        rewrite=rewrite,
     )
     return bool(_transfer._carried_over(gate, local_head))
 
@@ -609,3 +695,20 @@ def _recorded_stage(recorded: object) -> WorkflowLabel | None:
     except ValueError:
         return None
     return stage if publishes_onto_a_pull_request(stage) else None
+
+
+def _already_announced(state: PinnedState, local_head: str) -> bool:
+    """Whether a finish already said what it published, for this commit.
+
+    The mark a finish leaves between its announcement and its relabel, and the
+    only thing that tells the last window of a finish from every earlier one.
+    Everything else a finish does before its own write is invisible to a later
+    tick: the notice is a comment, the audit event is on the sinks, and the
+    label alone cannot say whose move it was.
+
+    Held to the commit, like every other recorded id here. A mark naming some
+    other head is about an attempt this recovery is not finishing, and one
+    that is not a commit is no mark at all.
+    """
+    recorded = state.get(_PENDING_ANNOUNCED_SHA)
+    return bool(local_head) and recorded == local_head

@@ -388,14 +388,19 @@ grant the crash came before, so the recovery re-derives the same evidence the de
 over the pull request and stage that tick recorded — and the permit rules on it. Without
 that, the replay of a change a human already ruled on is measured past the same ceiling and routed back into
 adjudication with a pull request open over the work. A group still at `authorized` for the head in hand, with the debt
-written beside it agreeing, IS the evidence, re-asked in full — the grant is one write of two records for one
+written beside it agreeing and every term of it bound to the attempt this recovery is finishing — the pull request
+and the stage that attempt recorded, the anchor its push was leased against, and the pair and digest the semantic
+identity names — IS the evidence, re-asked in full — the grant is one write of two records for one
 commit, and a permission standing beside a debt for another commit or another lease is a comment something took
 apart. Read as outstanding it would be re-asked, and a permit that grants re-writes BOTH, so the missing half would
 be reconstructed from the very claim nobody could check.
 
 One already `published` means the receipt landed and only the notice, the audit event, the cleared anchor, and the
-reviewer's route are outstanding. And a group this build cannot read whole, or one
-naming some other commit, is refused before either road that publishes anything: left to the ordinary cumulative
+reviewer's route are outstanding — and it is cross-bound the same way, since fields that are each well-shaped on
+their own still describe some other attempt when they disagree with the one in hand.
+
+And a group this build cannot read whole, or one naming some other commit, is refused before either road that
+publishes anything: left to the ordinary cumulative
 gate the replay is measured past the same ceiling and routed into a second adjudication on the strength of a record
 nothing checked, so the branch goes back onto the anchor and the issue parks as `auto_base_rebase_failed` until a
 human repairs the comment.
@@ -423,7 +428,15 @@ publication and let the route finish with the permission outstanding and the ver
 ruled on, and a count over it would route an adjudicated change into a second adjudication with the pull request
 already carrying the work. There is nothing on this road to measure — the remote has the commit — so a relabelled
 issue, a repointed pull request, an owner nobody could re-read, a lease this host cannot peel, or two
-contributions that no longer fingerprint alike each park instead. The rotation is read back afterwards for the
+contributions that no longer fingerprint alike each park instead. The gate is told the same thing on the way in, so
+a permit that stops holding between the two asks is refused there rather than measured. The reissued push a
+remote-old recovery makes is decided the same way wherever it holds a transfer at all — an outstanding permission,
+or evidence re-derived for a grant the crash came before — and a refusal there resets the branch onto the anchor
+rather than measuring a change a human already ruled on.
+
+A dirty checkout holds every one of those roads, not only the one that still owes a receipt: finishing hands the
+issue to the reviewer, and a reviewer sent to a checkout with uncommitted files reads work the pull request does
+not have as though it were under review. The rotation is read back afterwards for the
 same reason: the terms are re-asked inside the gate, and a push that landed without the verdict moving with it is
 a route this recovery may not finish.
 
@@ -868,10 +881,15 @@ The keys that matter for the state machine fall into a few groups:
   as the window it resembles a strictly-ahead checkout would be measured and force-pushed on the strength of a
   claim nothing could check.
   The pull request and the stage are also what the recovery reconciles against the issue's own before it finishes
-  any road, since finishing posts a notice, files an event, and drops the anchor. One relabel is recognized rather
-  than refused there: every finish moves the issue to `workflow:validating` immediately before the write that
-  clears this record, so an issue found on that stage carrying an attempt made from another one is this route's own
-  last step and not somebody else's move.
+  any road, since finishing posts a notice, files an event, and drops the anchor — and a record that does not name
+  the checkout at all is what keeps the divergence counts to the one state they answer for, an attempt that
+  recorded nothing.
+  `pending_auto_base_rebase_announced_sha` is the last member and covers the last window a finish has: everything a
+  finish announces goes out before the relabel and the write that clears this record goes out after it, so the head
+  it has already said it published is recorded in between, while the anchor still stands. A tick lost there comes
+  back to a comment that says the announcement was made and makes only the write it never made — rather than
+  putting a second `base_rebased` on the stream, under the stage the relabel moved to, for one publication that
+  happened once.
   The anchor says which head the push is leased against; the SHA says which local commit the attempt made, and
   only it can say the divergent checkout a recovery finds is that attempt's work. A rebase
   REPLAYS the branch, so a worktree rebuilt from elsewhere, an operator's reset, and a branch pointed at somebody
