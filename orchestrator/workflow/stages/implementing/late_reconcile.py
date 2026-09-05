@@ -24,6 +24,7 @@ import logging
 from github.Issue import Issue
 
 from orchestrator import config
+from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -35,6 +36,7 @@ from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
     late_push as _push,
     late_records as _records,
+    late_rotation as _rotation,
     state as _state,
 )
 from orchestrator.workflow.state import WorkflowLabel
@@ -154,10 +156,43 @@ def _reconciles_published_work(
     of. The recorded pair keeps the branch and the record exactly as they are
     until a host that has the checkout comes back, which is what the recorded
     pair is for.
+
+    The record a settled TRANSFER never got to report is made here too, ahead
+    of every one of those answers. That is a different debt with a different
+    owner -- `late_rotation` makes it -- and what this seam supplies is the
+    only tick that is guaranteed to come. The write receipting a landed push
+    is what settles a transfer and the record of it goes to the sinks BEHIND
+    that write, so a process lost between the two leaves a verdict that has
+    moved and nothing anywhere saying so, over the one fact no later reading
+    could re-derive. Every rewrite this workflow settles has that window,
+    since all of them go through the same push tail: the squash a reviewer's
+    approval earns, the replay `workflow:resolving_conflict` publishes, and
+    the base refresh's own rebase. Only the last has a recovery route that
+    would come back for it; the other two resume into a stage with nothing to
+    say about a transfer, and this reconciliation is the seam all three reach.
+    It settles nothing and stops nothing -- the verdict has moved and the
+    receipt beside it already says which commit the remote holds -- so the
+    answers below and the handler behind them run exactly as they would have.
+
+    A note that cannot produce that account is a claim like any other here,
+    and `_unreadable_record` above asks the transfer's own reader for it. The
+    report reader cannot say so: it answers "nothing to report" for a note
+    standing over a permission, a phase, or a reading nothing can account for
+    exactly as it does for a comment carrying no note at all. Left at that,
+    this seam walks past the one state it exists to close -- the account is
+    never made, the corrupt note stands for the life of the issue, and the
+    stage runs behind a verdict nothing here can account for. So it parks
+    with the rest of the damage instead, once, and nothing is discarded for
+    it.
     """
     recorded = _late_state.read_late_generation(state)
     damage = _claims._unreadable_record(label, state)
     owed = _debt._owes_a_published_push(label, state)
+    gate = _records._gate(
+        gh, spec, issue, state,
+        _worktree_paths._worktree_path(spec, issue.number),
+    )
+    _rotation._reports_a_settled_transfer(gate)
     if not damage and not owed and not _claims._awaits_its_count(
         recorded,
     ):
@@ -170,15 +205,52 @@ def _reconciles_published_work(
             )
             gh.write_pinned_state(issue, state)
         return False
-    gate = _records._gate(
-        gh, spec, issue, state,
-        _worktree_paths._worktree_path(spec, issue.number),
-    )
     if damage:
         return _claims._parks_the_damage(gate, damage)
+    if _defers_to_the_rebase_recovery(issue, state):
+        return True
     if owed:
         return _debt._publishes_the_debt(gate, label)
     return _answers_the_frozen_pair(gate, recorded, label)
+
+
+def _defers_to_the_rebase_recovery(
+    issue: Issue, state: PinnedState,
+) -> bool:
+    """Whether an interrupted auto rebase still owns what is standing here.
+
+    The base refresh pins its anchor before `git rebase` runs and drops it
+    only when the attempt is finished, reset, or parked -- so an anchor still
+    on the comment at dispatch is an attempt no tick has resolved yet. What it
+    left beside it is exactly what this owner would otherwise act on: the gate
+    it entered froze a pair, and past the reading it recorded the rebased
+    commit as one still owed a push.
+
+    Acted on here, both are answered by the wrong owner. This road publishes
+    the commit and settles it as an ordinary debt -- and the recovery's own
+    finish, which is what clears the anchor, resets the reviewer's round, and
+    routes them at the rewritten head, never happens. The stage then runs over
+    a branch the refresh rewrote with the round it had spent before the
+    rewrite, so the reviewer is neither reset nor re-asked and the anchor is
+    left for a later tick to classify against a remote this one has moved.
+
+    So the tick stops instead, and nothing is written for it. The recovery
+    reaches the same records on the refresh ahead of the next handler --
+    which is normally the same tick, and a later one wherever the pull request
+    could not be read -- and finishes them on its own terms or parks. Stopping
+    is the fail-closed half of that: the stage may not run over a publication
+    whose owner has not settled it yet.
+    """
+    anchor = state.get(_base_sync_state._PENDING_PUSH_SHA)
+    if not anchor:
+        return False
+    log.info(
+        "issue=#%d holds an auto rebase anchored at %s that no tick has "
+        "finished; leaving what it recorded to that recovery rather than "
+        "publishing it here and running the stage behind it",
+        issue.number, str(anchor)[:8],
+    )
+    return True
 
 
 def _answers_the_frozen_pair(

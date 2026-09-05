@@ -1327,9 +1327,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             It stops the tick outright where the checkout that pair names is not on this host and
                             where the label has left the stage the pair was frozen on, since neither a re-entry nor
                             the handler is this process's to pick -- and it retires its own measurement park on a
-                            record whose split has settled, which is a group with no count that owes no reading
+                            record whose split has settled, which is a group with no count that owes no reading.
+                            It stands down entirely while an auto-rebase anchor is still on the comment, since the
+                            frozen pair and the debt beside one are that recovery's to finish -- paid here, the
+                            replay publishes and settles while the finish that clears the anchor, resets the round,
+                            and routes the reviewer never happens, and the stage runs over a branch the refresh
+                            rewrote with the round spent before the rewrite.
+                            It also makes the record a settled TRANSFER never got to report, since every rewrite
+                            this workflow settles goes through one push tail and only the base refresh has a
+                            recovery of its own to come back for that window -- a squash and a conflict replay
+                            resume into a stage with nothing to say about a transfer, and this is the seam all
+                            three reach. That report settles nothing and stops nothing: the handler below runs on
+                            the same tick either way
       late_claims.py        what a post-publication record claims and what it cannot produce: whether a live one
-                            still owes its count, and -- ahead of both reconciliations -- the four refusals a record
+                            still owes its count, and -- ahead of both reconciliations -- the five refusals a record
                             that cannot make a claim whole earns. Read off the RAW fields, because the parse is what
                             loses them: a group missing one member comes back as no group, an approval missing its
                             lease as no approval, a frozen field the comment CARRIES and no reader will type as a
@@ -1339,12 +1350,18 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             remote that has moved. A field the comment does NOT carry is the same gap: what the
                             write that mints a generation puts down in one go is required rather than merely checked
                             when present, and a base is required beside any count, since a number is taken over a
-                            pair. All four claims on the five stages the transition graph's own set names, since
-                            `workflow:implementing` has an edge to the adjudication too and its approval carries no
-                            head by design; `workflow:decomposing` is asked the publication one ALONE, because that
-                            group is what a settlement decides everything by and cannot re-derive, while a verdict
-                            taken before publication approves its commit with no head to pin it against -- the very
-                            half-written pair the approval claim calls damage
+                            pair. The fifth is the note a settled TRANSFER keeps until the account it owes the
+                            sinks is out, asked through that record's own reader rather than a question worded
+                            here: a note standing over a permission, a phase, or a reading nothing can account for
+                            answers "nothing to report" to the owner that makes the record, so read no further the
+                            reconciliation walks past it, the account is never made, and the corrupt note stands
+                            for the life of the issue. All five claims on the five stages the transition graph's
+                            own set names -- which is also where every rewrite this workflow settles resumes --
+                            since `workflow:implementing` has an edge to the adjudication too and its approval
+                            carries no head by design; `workflow:decomposing` is asked the publication one ALONE,
+                            because that group is what a settlement decides everything by and cannot re-derive,
+                            while a verdict taken before publication approves its commit with no head to pin it
+                            against -- the very half-written pair the approval claim calls damage
       late_debt.py          the approval the dispatcher pays ahead of every handler, where a crash past the write
                             that granted one left no generation to reconcile from: that write retires the record
                             before the push, deliberately, so what is left names a commit the pull request never
