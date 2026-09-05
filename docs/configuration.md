@@ -479,14 +479,16 @@ scheduler's per-candidate `is_active` check underneath as defense in depth.
 
 Another *process* is outside all of it: its workers are in its own scheduler, so `runtime.exclusion` takes a `flock`
 claim on `WORKTREES_DIR/.artifact-maintenance.lock`. Every polling run holds it shared for its whole life, and
-**every** pass holds it exclusively while it acts — the one-shot mode from the start, a polling run's own recurring
-pass by handing its presence over and taking it back — so no process reclaims while another could be submitting,
-including a second daemon on the same host. The handover happens **inside** the barrier: a presence says work may be
-running in the process holding it, so it may only be given up once that process has closed admission and drained,
-and it has to be back before admission reopens. A pass refused the claim defers whole; a poller wanting it waits
-without a deadline, because polling through a teardown is never safe, and what bounds that wait is the pass giving
-the host back at a candidate boundary once it has held it for 120s — the one host scan in front of the candidates
-included — plus the candidate in hand.
+**every** pass holds it exclusively while it acts — the one-shot mode from the moment it has connected, a polling
+run's own recurring pass by handing its presence over and taking it back — so no process reclaims while another
+could be submitting, including a second daemon on the same host. The handover happens **inside** the barrier: a
+presence says work may be running in the process holding it, so it may only be given up once that process has closed
+admission and drained, and it has to be back before admission reopens. A pass refused the claim defers whole; a
+poller wanting it waits without a deadline, because polling through a teardown is never safe, and what bounds that
+wait is the pass giving the host back at a candidate boundary once it has held it for 120s — the one host scan in
+front of the candidates included — plus the candidate in hand. Only a lock somebody *holds* is waited for at all:
+one that does not work (no `flock` on that filesystem, a full lock table) is not contention, so it is reported
+instead and leaves a poller polling with no claim and a pass declining to act.
 That is what makes running the one-shot mode on the same host as
 the daemon safe: it declines to run rather than trusting per-candidate gates against work it cannot see.
 

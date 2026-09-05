@@ -209,8 +209,9 @@ self-exit and be restarted with new code.
 - **Host exclusivity** (`runtime.exclusion`): one `flock`-based claim on `WORKTREES_DIR/.artifact-maintenance.lock`
   decides which process may touch this host's artifacts. Every polling run holds it **shared** for its whole life (a
   presence: "a process that may be running work is live here"), and **every** maintenance pass holds it
-  **exclusively** for as long as it acts — the one-shot mode takes it on the way in, and a polling run's own
-  recurring pass hands its presence over, takes the host, and takes the presence back afterwards. So no pass
+  **exclusively** for as long as it acts — the one-shot mode takes it once it has connected and before it reads
+  anything, and a polling run's own recurring pass hands its presence over, takes the host, and takes the presence
+  back afterwards. So no pass
   anywhere reclaims an artifact while any process could be submitting work, including a second daemon on the same
   host. This is the one thing the in-process barrier below cannot answer: another process's workers are in its own
   scheduler and its claims in its own sets, so that run's barrier would grant the quiet of an empty process and its
