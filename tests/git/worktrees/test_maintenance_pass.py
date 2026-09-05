@@ -23,7 +23,12 @@ import time
 import unittest
 from unittest.mock import patch
 
-from orchestrator.git.worktrees import maintenance, probes, reclaim
+from orchestrator.git.worktrees import (
+    eligibility,
+    maintenance,
+    probes,
+    reclaim,
+)
 from orchestrator.git.worktrees.models import (
     MaintenanceOutcome,
     MaintenanceReason,
@@ -56,7 +61,9 @@ from tests.git.worktrees.maintenance_test_support import (
     _CloneOfAllBut,
     _MaintenanceTestCase,
     _refused_delete,
+    _stopping,
     _unanswerable_claim,
+    _unanswerable_continuation,
 )
 from tests.workflow.stages.question.question_real_git_test_support import (
     _run_git,
@@ -72,6 +79,8 @@ HIDDEN_FILE = "secrets.env"
 HIDDEN_CONTENT = "TOKEN=an operator's own\n"
 IMPLEMENTING_LABEL = "workflow:implementing"
 OTHER_ISSUE_NUMBER = 315
+# The classification a stop is driven through, named on its own owner.
+_CLASSIFY_ATTR = "_classify_artifacts"
 # Where an operator puts a worktree to look at a finished branch.
 INSPECTED_DIR = "inspected"
 OBJECT_ID_LENGTH = 40
@@ -751,6 +760,130 @@ class RepeatedPassTest(_MaintenanceTestCase):
         self.assertEqual(self.local_branches(), ())
         self.assertEqual(self.remote_branches(), ())
         self.assertEqual(swept.candidate.artifacts.spec.slug, WIDGET_SLUG)
+
+
+class Stopping:
+    """A continuation a test flips, standing in for the signal that flips it."""
+
+    def __init__(self) -> None:
+        self.going = True
+
+    def __call__(self) -> bool:
+        return self.going
+
+
+class StopsWhileClassifying:
+    """A classification the run is stopped during, on the real classifier.
+
+    Where a signal really lands. The readings are where a candidate's seconds
+    go -- the issue, its pull requests, what the remote carries -- and the
+    verdict they end at is what every deletion behind them would be pinned to,
+    so a stop that arrives in the middle of them is the one that must not be
+    answered by going ahead and deleting.
+    """
+
+    def __init__(self, stopping: Stopping) -> None:
+        self._stopping = stopping
+        self._real = eligibility._classify_artifacts
+
+    def __call__(self, gh, artifacts):
+        verdict = self._real(gh, artifacts)
+        self._stopping.going = False
+        return verdict
+
+
+class StoppedAfter:
+    """A continuation that goes on for a fixed number of candidates.
+
+    What a signal landing mid-repository looks like from inside the pass, and
+    the reason the answer is asked per candidate: the caller says yes to the
+    candidates before the stop and no to every one behind it, and `asked` is
+    the record of how often it was put.
+    """
+
+    def __init__(self, allowed: int) -> None:
+        self.asked: list[bool] = []
+        self._allowed = allowed
+
+    def __call__(self) -> bool:
+        going = len(self.asked) < self._allowed
+        self.asked.append(going)
+        return going
+
+
+class InterruptedPassTest(_MaintenanceTestCase):
+    """A pass that may no longer act stops where it is, having taken nothing.
+
+    The candidate would otherwise be cleaned: its tip is one the base carries,
+    its checkout has been quiet, and nothing holds a claim on the issue. What
+    keeps every artifact is the run being on its way out, which is asked before
+    the candidate rather than after it -- and asked again for each candidate
+    behind it, so a stop lands between two of them rather than a repository
+    later.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.tip = self.landed()
+        self.worktree = self.settled_checkout()
+
+    def assert_nothing_taken(self, swept) -> None:
+        """No answer for the candidate, and every artifact still in place."""
+        self.assertEqual(swept, ())
+        self.assertTrue(self.worktree.exists())
+        self.assertEqual(self.local_branches(), self.only_branch)
+        self.assertEqual(self.remote_branches(), self.only_branch)
+
+    def test_a_stopped_run_takes_nothing(self) -> None:
+        with self.assertLogs(LIFECYCLE_LOGGER, level=INFO_LEVEL):
+            swept = self.swept(going=_stopping)
+
+        self.assert_nothing_taken(swept)
+
+    def test_an_unreadable_continuation_stops_it(self) -> None:
+        # Fails closed like every other question in front of a deletion: a run
+        # that cannot say whether it is still going is not permission to act.
+        with self.assertLogs(LIFECYCLE_LOGGER, level=WARNING):
+            swept = self.swept(going=_unanswerable_continuation)
+
+        self.assert_nothing_taken(swept)
+
+    def test_a_stop_while_classifying_takes_nothing(self) -> None:
+        # The window the per-candidate reading alone would leave open: the
+        # candidate clears every gate, the run is stopped while its readings
+        # are being taken, and the teardown behind them is what must not run.
+        stopping = Stopping()
+        with (
+            patch.object(
+                eligibility,
+                _CLASSIFY_ATTR,
+                StopsWhileClassifying(stopping),
+            ),
+            self.assertLogs(LIFECYCLE_LOGGER, level=INFO_LEVEL),
+        ):
+            swept = self.swept(going=stopping)
+
+        self.assert_nothing_taken(swept)
+
+    def test_the_answer_is_taken_per_candidate(self) -> None:
+        # Two candidates of one repository and two readings each -- once
+        # before the candidate, once before it is acted on -- with the stop
+        # arriving after the first candidate was taken: the second is left
+        # exactly as the discovery found it.
+        second = _namespaced_branch(WIDGET_SLUG, OTHER_ISSUE_NUMBER)
+        _branch_at(self.clone, second, self.tip)
+        self.world.publish(self.clone, second, self.tip)
+        going = StoppedAfter(2)
+
+        with self.assertLogs(LIFECYCLE_LOGGER, level=INFO_LEVEL):
+            swept = self.swept(going=going)
+
+        self.assertEqual(
+            [answer.outcome for answer in swept],
+            [MaintenanceOutcome.CLEANED],
+        )
+        self.assertEqual(going.asked, [True, True, False])
+        self.assertEqual(self.remote_branches(), (second,))
 
 
 class OutcomeVocabularyTest(unittest.TestCase):

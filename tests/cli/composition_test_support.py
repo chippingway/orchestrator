@@ -8,12 +8,21 @@ prune, the logging configuration, and the signal registration. Everything the
 composition itself decides -- the order the owners run in, the state they
 share, the live scheduler every tick is handed, and the exit code the run ends
 at -- is the real thing, because that is what these tests are about.
+
+The checkout root is redirected for the same reason the analytics sinks are:
+a composed run claims this host for its whole life, on a real `flock` under
+`WORKTREES_DIR`. Left pointing at the operator's own root, these tests would
+create a lock file in it and -- worse than the litter -- a real maintenance
+pass holding that host would have every one of them waiting on it, which is
+exactly what that claim is built to make a process do.
 """
 
 from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from orchestrator import cli, config, workflow
@@ -33,6 +42,7 @@ _SCHEDULER_ATTR = "IssueScheduler"
 _STATE_ATTR = "RuntimeState"
 _CONFIGURE_LOGGING_ATTR = "configure_logging"
 _INSTALL_HANDLERS_ATTR = "install_signal_handlers"
+_WORKTREES_ATTR = "WORKTREES_DIR"
 
 
 class StateFactory:
@@ -90,19 +100,43 @@ class ComposedRun:
 
 
 @contextmanager
+def _own_worktrees_root():
+    """A checkout root of this run's own, so no claim it takes is anybody's.
+
+    A test that wants to contend for that claim takes its own from inside the
+    composed run, which is where this redirection is in force.
+    """
+    with TemporaryDirectory() as root, patch.object(
+        config, _WORKTREES_ATTR, Path(root),
+    ):
+        yield
+
+
+def _recorded_startup(intercepted: ExitStack, run: ComposedRun) -> None:
+    """Record the two collaborators `startup` builds rather than building them.
+
+    One step because they are one idea: a composed run is asserted on the
+    clients it paired with each spec and on the single scheduler it shared, and
+    neither can be a real one in a test process.
+    """
+    intercepted.enter_context(patch.object(
+        startup, _GITHUB_CLIENT_ATTR, side_effect=run.clients,
+    ))
+    intercepted.enter_context(patch.object(
+        startup, _SCHEDULER_ATTR, run.schedulers,
+    ))
+
+
+@contextmanager
 def composed_run(slugs: list[str]):
     """Compose one run over `slugs` and hand back its recorders."""
     run = ComposedRun()
     with ExitStack() as intercepted:
+        intercepted.enter_context(_own_worktrees_root())
         intercepted.enter_context(patch.object(
             config, _DEFAULT_SPECS_ATTR, return_value=_support.repo_specs(slugs),
         ))
-        intercepted.enter_context(patch.object(
-            startup, _GITHUB_CLIENT_ATTR, side_effect=run.clients,
-        ))
-        intercepted.enter_context(patch.object(
-            startup, _SCHEDULER_ATTR, run.schedulers,
-        ))
+        _recorded_startup(intercepted, run)
         intercepted.enter_context(patch.object(cli, _STATE_ATTR, run.states))
         intercepted.enter_context(patch.object(
             workflow, _support.TICK_ATTR, side_effect=run.recorder,

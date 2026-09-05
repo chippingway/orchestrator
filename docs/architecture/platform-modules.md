@@ -65,11 +65,15 @@ last is held by the loader itself rather than by a check.
   `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three `git/measurement/` owners
   that log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
   `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the twelve
-  `git/worktrees/` owners that log), and `orchestrator.branch_publication` (`git/publication/rewrite.py`). A
+  `git/worktrees/` owners that log, plus `runtime/artifacts.py` above them — when a maintenance pass ran, and why
+  it did not, are facts about the same artifacts the owners under it report on, so an operator filtering for what
+  happened to a finished issue's checkout is told about the day the host was too busy to attempt one), and
+  `orchestrator.branch_publication` (`git/publication/rewrite.py`). A
   module moved between packages does not take its channel with it, and each of the four names is asserted where
   its owner is tested —
   `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
-  `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`, and
+  `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`,
+  `tests/runtime/test_artifacts.py`, and
   `tests/git/publication/test_imports.py`.
 - **Import cost.** `import orchestrator` costs the root module and no owner behind it, and importing a `runtime/`
   owner plants neither the CLI nor an app — `tests/runtime/test_imports.py` and `tests/apps/test_imports.py`.
@@ -91,12 +95,39 @@ orchestrator/
   cli.py                the `chipping-orchestrator` console script: the polling process's composition point
   __main__.py           the `python -m orchestrator` launch form over `cli.main`, and what `run.sh` starts
   runtime/              the polling process's own owners
-    state.py            the mutable state one run carries and the shell-style code a signal stop exits with
+    state.py            the mutable state one run carries -- the stop flag, the signal, the scheduler a handler may
+                        close, the host claim a pass turns into exclusive ownership, and the drain's event -- plus
+                        the shell-style code a signal stop exits with
     logs.py             the stderr and rotating-file destinations a run settles before its first client
-    startup.py          the run options, one client per configured repo, and the scheduler every tick shares
+    startup.py          which launch mode a run is and how loud, one client per configured repo -- in the
+                        bootstrapping form a tick needs and the read-only form a run that will not tick may have,
+                        which is the one write a connect makes -- and the scheduler every tick shares
     ticks.py            one pass over the configured repos: the per-repo tick, the fan-out, and the reap / prune
                         drains
-    loop.py             one-shot vs recurring polling, the interruptible wait, and the guaranteed scheduler drain
+    loop.py             one-shot vs recurring polling, the interruptible wait, the artifact-maintenance step the
+                        recurring form fits between passes, and the guaranteed scheduler drain
+    artifacts.py        when the artifacts of finished issues may be reclaimed and what the pass is allowed to see:
+                        the in-memory monotonic due gate between polling passes, the three gates a pass defers whole
+                        without -- a claim on this host at all, then the scheduler hold over this process's own
+                        workers, and only inside that the exclusive hold on the host, since a presence may only be
+                        handed over by a process that has already gone quiet and has to be back before admission
+                        reopens -- and the split of one host-wide discovery back
+                        into the client of the repository each candidate belongs to. Two of this process's own
+                        readings go down with it, asked per candidate: whether anything is running for that issue,
+                        and whether the run may still act at all -- the run's stop flag, the scheduler's close, and
+                        the budget bounding how long one pass may hold the host, which is what the process waiting
+                        for it is owed
+    exclusion.py        which process on this host may take the artifacts: one `flock` claim under `WORKTREES_DIR`,
+                        held shared for a polling run's whole life and exclusively for as long as any pass acts --
+                        including a polling run's own pass, which hands its presence over and takes it back, so a
+                        second daemon cannot be submitting while this one deletes. A pass never waits for it and a
+                        poller always does, without a deadline, because there is no length of wait that makes
+                        polling through a teardown safe -- and only for a lock somebody HOLDS, since a lock that
+                        does not work is nobody's and waiting on one would never end. The only coordination in the
+                        tree that is not between
+                        threads, and the only thing that can answer for a process whose scheduler this one cannot
+                        read; a lock rather than a marker, so a host that died mid-pass comes back with a stale
+                        file and no claim
     self_update.py      the git probes behind the self-restart guard
     shutdown.py         the signal handler, the bounded-drain watchdog, and the forced exit it ends at
   config/               the resolved settings surface, bound as module attributes
@@ -164,9 +195,15 @@ orchestrator/
   scheduler/            publishes `IssueScheduler` and `SubmissionRequest`
     models.py           the typed submission, the historical `submit` binding, and field normalization
     service.py          the concrete scheduler: the caps, the tracked claims, the family mutex, dispatch, and
-                        shutdown. What a refused submission MEANT is the caller's -- a cleanup refused because a
-                        worker holds the issue costs an observation rather than a turn, and the workflow keeps that
-                        reading where its own stage handlers can reach it
+                        shutdown, plus the reversible maintenance barrier -- both admission paths closed, the
+                        already-admitted work waited out within one finite bound, and the hold given back around
+                        the body whatever the body did. The closed reading beside it is what a caller spending a
+                        granted hold comes back for: the grant was true when it was given, and a signal lands a
+                        line later. What a refused submission MEANT is the caller's -- a cleanup
+                        refused because a worker holds the issue costs an observation rather than a turn, and the
+                        workflow keeps that reading where its own stage handlers can reach it; a submission refused
+                        by a held barrier costs the caller its next polling pass, which is why it is reported apart
+                        from a closed scheduler
   git/
     branch_transport.py the authenticated fetches, the remote read that answers what a branch is at without trusting
                         a local ref -- in the plain form a caller acts on and the form that also carries why a read
@@ -472,9 +509,14 @@ orchestrator/
                         the caller, which reads what each host carries before it decides there is a deletion to
                         attempt at all -- so the pinned local delete reports a ref that is not there as the
                         refusal git gave it rather than papering over it
-      maintenance.py    the pass that spends one classification: the injected active/claimed guard, the
-                        classification itself, and the quiet period every checkout is left alone for, asked in
-                        that order and each failing closed. Then the teardown -- every checkout first, since a
+      maintenance.py    the pass that spends one classification: the two injected guards -- whether the run may
+                        still act at all, asked before each candidate AND again as the last thing before its first
+                        mutation, since the readings in between are where a candidate's seconds go, and whether
+                        anything is running for this issue -- the classification itself, and the quiet
+                        period every checkout is left alone for, asked in that order and each failing closed. A
+                        candidate the pass stopped before has no answer at all, which is what an interrupted pass
+                        has always looked like from here; past the last reading it is taken as one unit. Then the
+                        teardown -- every checkout first, since a
                         branch checked out somewhere cannot be deleted, and each branch on the remote before the
                         clone, so a failed remote delete leaves the local ref standing and the candidate
                         discoverable. Every tip is re-read against the proof immediately before the mutation it
@@ -529,8 +571,10 @@ off a facade:
   The pass over them is where that stops, and only its own step owner writes: `discovery` calls `inventory`,
   `attribution`, and `paths`, plus `ref_transport` for the namespace listing no local read can answer; `reclaim`
   calls `commands`, `locks`, and `ref_transport` for the leased delete; `maintenance` calls `eligibility`,
-  `evidence`, and `reclaim`, takes the active/claimed answer from a guard its caller injects rather than reaching
-  up for it, and names nothing in the workflow layer.
+  `evidence`, and `reclaim`, takes both the active/claimed answer and the may-I-go-on answer from guards its caller
+  injects rather than reaching up for either, and names nothing in the workflow layer. The caller that injects them
+  is `runtime/artifacts.py`, which is where the pass is scheduled, where the scheduler hold it runs under is taken,
+  and — through `runtime/exclusion.py` — where the host is claimed against the processes no hold can see.
 - `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
   `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
   side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,

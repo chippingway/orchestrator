@@ -75,6 +75,21 @@ def _unanswerable_claim(_repo_slug: str, _issue_number: int) -> bool:
     raise RuntimeError("the scheduler could not be asked")
 
 
+def _going_on() -> bool:
+    """The continuation a process that is not stopping answers with."""
+    return True
+
+
+def _stopping() -> bool:
+    """The continuation a process whose run has been stopped answers with."""
+    return False
+
+
+def _unanswerable_continuation() -> bool:
+    """A continuation that fails the way one reaching into a live run can."""
+    raise RuntimeError("the run could not be asked whether it goes on")
+
+
 def _settle(worktree: Path) -> None:
     """Back-date a checkout to before the pass's quiet period."""
     _settle_checkout(worktree, time.time() - SETTLED_SECONDS)
@@ -210,12 +225,14 @@ class _MaintenanceTestCase(unittest.TestCase):
         candidates: Sequence[MaintenanceCandidate] | None = None,
         *,
         claimed=_never_claimed,
+        going=_going_on,
     ) -> tuple[MaintenanceResult, ...]:
         """Run one maintenance pass over what the discovery found."""
         return maintenance._maintained_candidates(
             self.gh,
             self.discovered() if candidates is None else candidates,
             claimed=claimed,
+            going=going,
         )
 
     def only_result(self, **options) -> MaintenanceResult:

@@ -9,9 +9,14 @@ reading it back off a module, so two runs in one interpreter never share it and
 a test drives the state it created.
 
 ``logs`` settles where the process writes, ``startup`` reads the arguments and
-builds the collaborators a run is composed from, ``ticks`` drives one pass over
-the configured repositories, ``loop`` decides how many passes there are and
-guarantees the drain around them, ``self_update`` answers whether the checkout
+builds the collaborators a run is composed from -- in the bootstrapping form a
+tick needs and the read-only form a run that will not tick may have -- ``ticks``
+drives one pass over the configured repositories, ``loop`` decides how many
+passes there are and guarantees the drain around them, ``artifacts`` decides
+when the finished issues' worktrees and branches may be reclaimed and holds the
+scheduler quiet while they are, ``exclusion`` is how that claim reaches the
+processes this one cannot see -- the only coordination here that is not between
+threads -- ``self_update`` answers whether the checkout
 the process runs from has moved, and ``shutdown`` owns the signal handler, the
 watchdog behind it, and the forced exit it ends at.
 

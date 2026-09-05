@@ -232,6 +232,34 @@ the clone the agents' own worktrees share, so a name that merely resolves proves
 One consequence for an operator: deleting a snapshot ref on the remote by hand leaves this host's copy behind, and a
 child on that host goes on working from it until the copy is deleted too.
 
+### Scheduled artifact reclamation
+
+Once every `TERMINAL_ARTIFACT_CLEANUP_INTERVAL_SECONDS` (a day by default) the polling process reclaims what the
+issues it has finished with left behind — the per-issue checkouts on this host, and the `orchestrator/`-namespaced
+branches those issues were published under, in the clone *and* on the remote. The same pass runs on demand under
+[`--cleanup-terminal-artifacts`](configuration/operations.md#run-modes). It is the one deletion path here that no
+issue transition triggers, so what bounds it is worth an operator's attention:
+
+- **It can only name this repository's own branches for this issue.** The candidates come from re-deriving the exact
+  names this repository publishes an issue under; a name on a shared clone that several configured `REPOS` entries
+  could equally own is attributed to none of them and left alone, and a name outside the owned namespace is never a
+  candidate at all. No tag, pull-request ref, or default branch is reachable from this path.
+- **Nothing unmerged is deleted, and every unread question keeps the artifact.** The issue has to have ended, no open
+  pull request may still stand on the branch, and every commit an artifact holds — a branch's tip, and the commit a
+  checkout's own HEAD is on — has to already exist somewhere that outlives it: inside the configured base, or inside
+  a pull request that has ended. A checkout carrying loose or ignored files, a reading that failed, a probe that
+  could not be taken: each of them keeps the whole candidate.
+- **Each remote delete is leased at the proved commit.** Like the snapshot delete above, it is a leased push rather
+  than an API call by name, so a branch somebody pushed to between the proof and the delete is refused by the remote
+  instead of removed. A ruleset that forbids deletions under `refs/heads/orchestrator/*` therefore blocks tidying
+  and nothing else: the attempt is reported, the local ref is kept so the candidate is found again, and no issue is
+  parked or relabelled — the pass writes no label, no pinned state, and no comment at any point.
+
+Two processes cannot run it at once, and it never runs beside live work: it holds this host exclusively for as long
+as it acts (`WORKTREES_DIR/.artifact-maintenance.lock`) and holds its own scheduler's admission closed while it
+does, so a nightly timer on a host whose orchestrator is polling defers instead of overlapping. The mechanism is in
+[`configuration.md#parallel-processing`](configuration.md#parallel-processing).
+
 ### Required human reviews for dependency-touching changes
 
 A PR that adds, removes, or pins a dependency — or that edits a workflow file pulling actions — should not merge on
