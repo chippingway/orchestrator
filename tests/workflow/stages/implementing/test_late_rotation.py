@@ -22,9 +22,12 @@ from orchestrator.workflow.late_split import (
 )
 from orchestrator.workflow.stages.implementing import (
     late_push as _push,
+    late_reconcile as _reconcile,
     late_records as _records,
+    late_rotation as _rotation,
     state as _state,
 )
+from orchestrator.workflow.state import WorkflowLabel
 from tests.workflow.stages.implementing import late_transfer_test_support as _support
 
 ACCEPTED_SHA = _support.ACCEPTED_SHA
@@ -59,6 +62,29 @@ RELABELLED = "workflow:fixing"
 # rewritten commit publishes on its count once the permit has refused.
 MAX_ADDED_LINES = "MAX_ADDED_LINES"
 CEILING = 100
+
+# The note a settled transfer keeps until its record is out, and the seam that
+# record goes out through -- which is where a process lost behind the receipt
+# is stopped.
+KEY_TRANSFER_PROOF = "late_rewrite_proof"
+REPORTS_THE_TRANSFER = "_reports_the_transfer"
+
+
+class _Interrupted(RuntimeError):
+    """The process dying at the seam a case is about."""
+
+
+class _DiesBeforeTheReport:
+    """A tick whose receipt lands and whose record never goes out.
+
+    The one window behind the settlement's own write, staged where it really
+    is: the exemption, the identity, the phase, and the receipt are all
+    durable, and the report the write behind them owed never happened.
+    """
+
+    def __call__(self, gate, rotation) -> None:
+        """End the tick at the step that would have made the record."""
+        raise _Interrupted("died before the transfer was reported")
 
 
 class _RefusesTheReceipt:
@@ -253,6 +279,81 @@ class AlreadyLandedTransferTest(_SettlementCase):
 
         self.assertEqual(recorded["transfer_proof"], "already_published")
         self.assertEqual(recorded["source_sha"], REWRITTEN_SHA)
+
+
+class UnreportedTransferTest(_SettlementCase):
+    """A settlement whose own record never reached the sinks.
+
+    The receipt and the move are one durable write and the record of them goes
+    out BEHIND it, so a process lost in between leaves a verdict that has
+    moved and nothing on either sink saying so -- over the one fact no later
+    reading could re-derive, which of the two publications proved the push. It
+    is a window every rewrite this workflow settles has, since all of them go
+    through the same push tail, and only the base refresh has a recovery route
+    that would come back for it. What the other two reach instead is the
+    reconciliation ahead of every handler, and these say it makes the record
+    there.
+    """
+
+    def test_a_squash_settlement_is_reported_later(self) -> None:
+        # The collapse a reviewer's approval earns. It resumes into the
+        # documentation pass, which has nothing to say about a transfer.
+        self._assert_reconciled(
+            _rewrites.LateRewriteKind.SQUASH, _support.SOURCE_STAGE,
+        )
+
+    def test_a_conflict_replay_is_reported_later(self) -> None:
+        # The replay `workflow:resolving_conflict` publishes, which bounces
+        # the issue back to the reviewer with the same window behind it.
+        self._assert_reconciled(
+            _rewrites.LateRewriteKind.CONFLICT_REBASE,
+            WorkflowLabel.RESOLVING_CONFLICT,
+        )
+
+    def _assert_reconciled(self, kind, stage) -> None:
+        """The record the crashed settlement owed is made by the next tick."""
+        self._entered_on(stage)
+        with patch.object(
+            _rotation, REPORTS_THE_TRANSFER, _DiesBeforeTheReport(),
+        ), self.assertRaises(_Interrupted):
+            self._publishes(
+                standing=LEASED_SHA,
+                granted=False,
+                stage=stage,
+                rewrite=_support.rewrite(kind=kind, source_stage=stage),
+            )
+
+        self._assert_owes_a_record()
+        self._reconciles(stage)
+
+        self.assertEqual(self._reported()["rewrite_kind"], str(kind))
+        self.assertIsNone(self._durable().get(KEY_TRANSFER_PROOF))
+
+    def _entered_on(self, stage) -> None:
+        """Re-seed this case's world on the stage its rewrite is made from."""
+        if stage == _support.SOURCE_STAGE:
+            return
+        adjudicated = _support.adjudicated(labels=(str(stage),))
+        self.github = adjudicated.github
+        self.issue = adjudicated.issue
+        self.state = adjudicated.state
+
+    def _assert_owes_a_record(self) -> None:
+        """The move is durable, and nothing anywhere says it happened."""
+        self._assert_carried()
+        durable = self._durable()
+        self.assertEqual(durable.data[KEY_RECEIPT_SHA], REWRITTEN_SHA)
+        self.assertEqual(
+            durable.get(KEY_TRANSFER_PROOF),
+            str(_rewrites.LateRewriteProof.PUSHED),
+        )
+        self.assertEqual(self._records_of(EVENT_TRANSFER), [])
+
+    def _reconciles(self, stage) -> None:
+        """Run the reconciliation every handler is dispatched behind."""
+        _reconcile._reconciles_published_work(
+            self.github, _support.SPEC, self.issue, stage, self._durable(),
+        )
 
 
 class RefusedSettlementTest(_SettlementCase):

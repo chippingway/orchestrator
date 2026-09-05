@@ -407,6 +407,15 @@ on the branch with nothing naming it. So each of them parks instead, with nothin
 hand that moved the label may have moved the checkout too — and an operator putting the label back lets the
 ordinary recovery finish the attempt on its own terms.
 
+That park is taken ONCE. Keeping the record is what brings this route back, and the route is reached from the label
+check ahead of every gate, so every poll under the wrong label arrives at the same comment again. Repeated, it
+fills the thread with one sentence and — the part that actually breaks the recovery — each park ratchets
+`last_action_comment_id` forward, so the operator's reply ends up behind the orchestrator's own newest comment and
+the retry scan never sees it. A park this route already left standing is therefore left completely alone: nothing
+posted, nothing written, nothing ratcheted. It is recognized by `awaiting_human` and `auto_base_rebase_failed`
+standing over an anchor that is still pinned, which only this park leaves — every other road ending on that reason
+resets the branch and clears the attempt first.
+
 One remote-old shape is not a pre-push recovery at all, and it is read off the record too. Where a receipt names
 the checkout's commit as pushed from this anchor — or a transfer settled, which rides the same write — the pull
 request HAD this replay, so a pull request standing on the anchor now was rolled back out of band. The head it was
@@ -1832,6 +1841,14 @@ rather than preserving.
   saying two things at once, and every road that asks parks rather than reading it as nothing owed. A fresh grant
   drops it with the transfer it described, since the phase going back to `authorized` is what would leave it
   unreadable beside the new one.
+
+  Every rewrite this workflow settles goes through the same push tail, so every one of them has the window this note
+  exists for — the squash a reviewer's approval earns, the replay `workflow:resolving_conflict` publishes, and the
+  base refresh's own rebase. Only the last has a recovery route that would come back for it, and the other two
+  resume into a stage with nothing to say about a transfer. So the record a lost report still owes is made by
+  `late_reconcile`, ahead of every handler on whatever label the resumed issue wears: it settles nothing and stops
+  nothing — the verdict moved and the receipt beside it already says which commit the remote holds — and what it
+  adds is the account of it, on both sinks, once.
 
   Being unreadable is not being absent, and the difference is what a WRITER asks. A grant replaces the whole group
   rather than adding beside it, so a group that CLAIMS the commit currently exempt and cannot be read back is

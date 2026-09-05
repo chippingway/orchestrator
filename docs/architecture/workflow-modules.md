@@ -1327,7 +1327,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             It stops the tick outright where the checkout that pair names is not on this host and
                             where the label has left the stage the pair was frozen on, since neither a re-entry nor
                             the handler is this process's to pick -- and it retires its own measurement park on a
-                            record whose split has settled, which is a group with no count that owes no reading
+                            record whose split has settled, which is a group with no count that owes no reading.
+                            It also makes the record a settled TRANSFER never got to report, since every rewrite
+                            this workflow settles goes through one push tail and only the base refresh has a
+                            recovery of its own to come back for that window -- a squash and a conflict replay
+                            resume into a stage with nothing to say about a transfer, and this is the seam all
+                            three reach. That report settles nothing and stops nothing: the handler below runs on
+                            the same tick either way
       late_claims.py        what a post-publication record claims and what it cannot produce: whether a live one
                             still owes its count, and -- ahead of both reconciliations -- the four refusals a record
                             that cannot make a claim whole earns. Read off the RAW fields, because the parse is what

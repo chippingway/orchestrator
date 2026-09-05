@@ -30,6 +30,13 @@ answer neither. And the stranded park is taken under a label nothing here
 classifies, so it cannot say whether the hand that moved the issue moved the
 checkout too. All three park with the anchor left pinned instead, and the
 next tick classifies afresh.
+
+The stranded one is also the only park here that has to recognize its own
+work. It is reached from the label check ahead of every gate, so every poll
+under the wrong label comes back to a comment nothing has changed -- and
+saying it again would repeat one sentence on the thread and ratchet the
+watermark past the operator's own reply, which is the thing that would
+release the attempt.
 """
 from __future__ import annotations
 
@@ -40,6 +47,8 @@ from orchestrator.git.base_sync.models import (
     _AutoRebaseRecoverySnapshot,
 )
 from orchestrator.git.base_sync.state import (
+    _AWAITING_HUMAN,
+    _PARK_REASON,
     _REASON_AUTO_BASE_REBASE_FAILED,
     _REASON_AUTO_BASE_REBASE_PUSH_FAILED,
     log,
@@ -270,6 +279,21 @@ def _park_unfinished_recovery(
         reason=_REASON_AUTO_BASE_REBASE_PUSH_FAILED,
     )
     return True
+
+
+def _already_stranded(state) -> bool:
+    """Whether this route's own stranded park is already standing.
+
+    Two fields, and the anchor beside them is what makes the pair this park's
+    own rather than any other auto-rebase failure's: every other road that
+    ends on this reason resets the branch and clears the attempt first, so a
+    comment still carrying one is one only this park could have left. The
+    caller is on that road by definition, since the record is what brought it
+    here.
+    """
+    if not state.get(_AWAITING_HUMAN):
+        return False
+    return state.get(_PARK_REASON) == _REASON_AUTO_BASE_REBASE_FAILED
 
 
 def _park_unvouched_recovery(
@@ -656,7 +680,32 @@ def _park_stranded_recovery(context: _AutoRebaseRecoveryContext) -> bool:
     every record standing exactly as the interrupted tick left it, which is
     what lets an operator put the label back and let the ordinary recovery
     finish the attempt on its own terms.
+
+    Which is also why the park has to be taken ONCE. Keeping the record is
+    what brings this route back, and this route is reached from the label
+    check ahead of every gate -- so every poll under the wrong label arrives
+    here again, over a comment nothing has changed. Said again each time, the
+    thread fills with one sentence repeated and, worse, each park ratchets
+    `last_action_comment_id` past whatever the operator wrote: the reply that
+    would release the attempt ends up behind the orchestrator's own newest
+    comment and the retry scan never sees it.
+
+    So a park this route already left standing is left alone entirely --
+    nothing posted, nothing written, nothing ratcheted -- and the state it
+    guarded is exactly what a later tick reads. It is recognized by the pair
+    only this park writes with an anchor still pinned: every other road that
+    ends on this reason clears the attempt first, so an issue that still holds
+    one and is already flagged for a human is one this route stopped before.
     """
+    if _already_stranded(context.state):
+        log.debug(
+            "issue=#%d auto-rebase recovery: the attempt stranded under %r is "
+            "already parked for a human; leaving the comment and the record "
+            "exactly as the park left them",
+            context.issue.number,
+            context.label,
+        )
+        return True
     log.warning(
         "issue=#%d auto-rebase recovery: label %r is no longer in the "
         "refresh-driven set and the comment still carries the attempt an "

@@ -35,6 +35,7 @@ from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
     late_push as _push,
     late_records as _records,
+    late_rotation as _rotation,
     state as _state,
 )
 from orchestrator.workflow.state import WorkflowLabel
@@ -154,10 +155,32 @@ def _reconciles_published_work(
     of. The recorded pair keeps the branch and the record exactly as they are
     until a host that has the checkout comes back, which is what the recorded
     pair is for.
+
+    The record a settled TRANSFER never got to report is made here too, ahead
+    of every one of those answers. That is a different debt with a different
+    owner -- `late_rotation` makes it -- and what this seam supplies is the
+    only tick that is guaranteed to come. The write receipting a landed push
+    is what settles a transfer and the record of it goes to the sinks BEHIND
+    that write, so a process lost between the two leaves a verdict that has
+    moved and nothing anywhere saying so, over the one fact no later reading
+    could re-derive. Every rewrite this workflow settles has that window,
+    since all of them go through the same push tail: the squash a reviewer's
+    approval earns, the replay `workflow:resolving_conflict` publishes, and
+    the base refresh's own rebase. Only the last has a recovery route that
+    would come back for it; the other two resume into a stage with nothing to
+    say about a transfer, and this reconciliation is the seam all three reach.
+    It settles nothing and stops nothing -- the verdict has moved and the
+    receipt beside it already says which commit the remote holds -- so the
+    answers below and the handler behind them run exactly as they would have.
     """
     recorded = _late_state.read_late_generation(state)
     damage = _claims._unreadable_record(label, state)
     owed = _debt._owes_a_published_push(label, state)
+    gate = _records._gate(
+        gh, spec, issue, state,
+        _worktree_paths._worktree_path(spec, issue.number),
+    )
+    _rotation._reports_a_settled_transfer(gate)
     if not damage and not owed and not _claims._awaits_its_count(
         recorded,
     ):
@@ -170,10 +193,6 @@ def _reconciles_published_work(
             )
             gh.write_pinned_state(issue, state)
         return False
-    gate = _records._gate(
-        gh, spec, issue, state,
-        _worktree_paths._worktree_path(spec, issue.number),
-    )
     if damage:
         return _claims._parks_the_damage(gate, damage)
     if owed:

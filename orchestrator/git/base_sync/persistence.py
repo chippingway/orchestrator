@@ -226,7 +226,16 @@ def _forgets_the_reset(
 def _prepare_recovered_rebase_state(
     context: _AutoRebaseRecoveryContext,
 ) -> None:
-    """Clear the recovery anchor and commit any pending human retry."""
+    """Clear the recovery anchor and commit any pending human retry.
+
+    The three things every finish on this route owes its own write, staged
+    together so no road can make one of them and forget another. The retry is
+    the one that is easy to lose: a parked attempt is re-entered only because
+    a human replied, and a finish that dropped the anchor without spending
+    that reply would leave the issue routed to a stage that stands down on the
+    auto-rebase park still flagged beside it, with nothing left to bring the
+    tick back.
+    """
     if context.unparking_consumed_max is not None:
         context.state.set(
             "last_action_comment_id", context.unparking_consumed_max,
@@ -380,16 +389,24 @@ def _write_the_finished_route(
     that puts a label back where it already is is a transition the graph does
     not describe and a second `stage_enter` on the stream.
 
-    Then the write itself: the record of the attempt, which is the only thing
-    bringing this recovery back, and the round the reviewer is being asked to
-    spend afresh on the rewritten head.
+    Then the write itself, and it is the same one every other finish here
+    makes: the record of the attempt, which is the only thing bringing this
+    recovery back, the round the reviewer is being asked to spend afresh on
+    the rewritten head, and the park a human's reply released. That last one
+    is why this road may not spell its own two fields. An announced attempt
+    can be parked -- the push failed, a record could not be read -- and a
+    human's reply is what re-enters this route; taking the finish without
+    spending it leaves the issue on `validating` still flagged
+    `awaiting_human` under an auto-rebase reason, which the stage below reads
+    as a park of its own and stands down for, with no anchor left to bring
+    anything back.
 
-    Both are held to the base lag the way every other finish here is. A base
-    that advanced again while the process was down leaves the published head
-    behind it, and routing a reviewer at a head that is already stale is what
-    the lag check exists to stop: the record is made durable, the label is
-    left where it is, and the tick falls through to the rebase that brings the
-    branch forward -- whose own finish makes the route.
+    All of it is held to the base lag the way every other finish here is. A
+    base that advanced again while the process was down leaves the published
+    head behind it, and routing a reviewer at a head that is already stale is
+    what the lag check exists to stop: the record is made durable, the label
+    is left where it is, and the tick falls through to the rebase that brings
+    the branch forward -- whose own finish makes the route.
     """
     log.info(
         "issue=#%d auto-rebase recovery: an earlier tick announced this route "
@@ -397,8 +414,7 @@ def _write_the_finished_route(
         "of it again",
         context.issue.number,
     )
-    _clears_the_attempt(context.state)
-    context.state.set(_REVIEW_ROUND, 0)
+    _prepare_recovered_rebase_state(context)
     if context.behind:
         return _falls_through_to_a_fresh_rebase(context)
     if context.label != WorkflowLabel.VALIDATING:

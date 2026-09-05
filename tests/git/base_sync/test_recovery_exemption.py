@@ -170,6 +170,14 @@ PHASE_AUTHORIZED = "authorized"
 KEY_REWRITE_PROOF = "late_rewrite_proof"
 DAMAGED_PROOF = "not-a-reading"
 
+# The reply an operator leaves once they have repaired whatever a park was
+# about, and the two fields the retry it releases has to spend.
+HUMAN_LOGIN = "human"
+RETRY_COMMENT_ID = 4100
+RETRY_BODY = "worktree cleaned up, please retry"
+KEY_AWAITING_HUMAN = "awaiting_human"
+KEY_LAST_ACTION_COMMENT_ID = "last_action_comment_id"
+
 # What a real replay looks like to the divergence probe: one commit of
 # its own, and the pull request's head on no local history at all.
 REBASED_COUNTS = (1, 2)
@@ -912,6 +920,32 @@ class UnroutedFinishTest(_ResumedRebaseCase, unittest.TestCase):
         )
         self.assertEqual(len(self._events_of(EVENT_TRANSFER)), 1)
 
+    def test_a_retried_finish_spends_the_reply(self) -> None:
+        # The same window, reached the long way round: the announced attempt
+        # was parked over a checkout carrying loose work, a human cleaned it
+        # up and replied, and the retry is what re-enters this route. The
+        # finish it makes owes that reply -- routed to `validating` with the
+        # park still flagged and the watermark still behind the comment, the
+        # stage below stands down on a reason it does not own, and the anchor
+        # that would bring anything back is already gone.
+        self._crashes_at_the_relabel()
+        self._parks_over_a_loose_tree()
+        self._add_comment(RETRY_COMMENT_ID, RETRY_BODY, HUMAN_LOGIN)
+
+        self._resumes(remote_head=AFTER_SHA)
+
+        self._assert_routed(True)
+        self._assert_anchor(None)
+        pinned = self._pinned()
+        self.assertFalse(pinned[KEY_AWAITING_HUMAN])
+        self.assertIsNone(pinned[KEY_PARK_REASON])
+        self.assertEqual(pinned[KEY_LAST_ACTION_COMMENT_ID], RETRY_COMMENT_ID)
+
+    def _parks_over_a_loose_tree(self) -> None:
+        """Hold the announced finish for a human, with the record intact."""
+        self._resumes(remote_head=AFTER_SHA, dirty=LOOSE_EDITS)
+        self._assert_parked(PARK_PUSH_FAILED)
+
 
 class UndoneAttemptTest(_ResumedRebaseCase, unittest.TestCase):
     """A branch put back on the anchor with the attempt's records standing."""
@@ -1327,6 +1361,26 @@ class StrandedAttemptTest(_ResumedRebaseCase, unittest.TestCase):
         self.assertEqual(pinned[KEY_PENDING_REWRITE_PR], PR_NUMBER)
         self._assert_parked(PARK_FAILED)
 
+    def test_a_repeated_poll_says_it_once(self) -> None:
+        # The park keeps the record, and the record is what brings this route
+        # back -- so every poll under the wrong label arrives here again over
+        # a comment nothing has changed. Said again each time, the thread
+        # fills with one sentence repeated and each park ratchets the
+        # watermark past whatever the operator wrote, hiding the reply that
+        # would release the attempt behind the orchestrator's own comment.
+        self._crashes_before_the_push()
+        self._moves_the_issue_off()
+        self._resumes()
+        parked = dict(self._pinned())
+        said = len(self._issue_comments())
+
+        self._resumes()
+
+        self.assertEqual(len(self._issue_comments()), said)
+        self.assertEqual(self._pinned(), parked)
+        self._assert_anchor(BEFORE_SHA)
+        self._assert_permission_standing()
+
     def test_a_bare_anchor_is_still_cleared(self) -> None:
         # What says the parks above are about what the attempt left rather
         # than about the label: the same relabel over an anchor whose
@@ -1343,6 +1397,13 @@ class StrandedAttemptTest(_ResumedRebaseCase, unittest.TestCase):
 
         self._assert_anchor(None)
         self.assertNotIn(KEY_PARK_REASON, self._pinned())
+
+    def _issue_comments(self) -> list[str]:
+        """Every comment this route has put on the issue thread."""
+        return [
+            body for number, body in self.gh.posted_comments
+            if number == ISSUE
+        ]
 
     def _assert_nothing_ran(self, resumed) -> None:
         """No push, no reset, no rebase, and no reading of the replay.
