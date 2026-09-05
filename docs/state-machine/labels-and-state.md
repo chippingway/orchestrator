@@ -335,6 +335,25 @@ started. Nothing else writes either field while an anchor is outstanding, and a 
 fails the test and keeps the freeze. The reading group is never set aside: a generation the gate froze and did not
 answer is a question no push settles.
 
+The reconciliation stands down for the other half of that same pairing, and it has to: the refresh reads the pull
+request before it will run a recovery, so a `get_pr` that fails leaves the anchor pinned with the debt beside it
+and the recovery deferred to a later tick. Reached then, this owner would pay that debt as an ordinary approval —
+publishing the replay and settling it — while the finish that clears the anchor, resets `review_round`, and routes
+the reviewer at the rewritten head never happens, and the stage would run over a branch the refresh rewrote with
+the round the reviewer spent before the rewrite. So an anchor still on the comment stops the tick outright: nothing
+is published, nothing is written, and nothing is parked for a read that will answer on the next one. It is the
+fail-closed half of the same rule — the interrupted rebase owns what it recorded until its own recovery finishes it
+or parks.
+
+A pull request that is no longer OPEN ends the pairing the other way. Nothing can be pushed onto a merged or closed
+one, so the debt is unpayable and the permission beside it is a claim about a push that will never happen — and
+left standing, the debt is exactly what this reconciliation would try to pay, parking the issue on a publication it
+cannot even enter while the stage that would finalize the merge to `done` never runs. So the refresh retires the
+whole handoff in the write that drops the anchor: the attempt, the approval whatever it is leased to (nothing else
+writes one while an anchor is outstanding), and an `authorized` permission made over the head the anchor names. A
+`published` one is kept, because it describes a transfer that already happened and an exemption the merge carried
+with it.
+
 `late_exempt_sha` and `implementing_published_sha` freeze the branch too, but on conditions rather than on their
 presence: neither is ended by a write — the exemption is never cleared at all and the publication record is
 overwritten rather than spent — so read by presence they would take a branch out of the refresh for the rest of its

@@ -223,6 +223,53 @@ def _forgets_the_reset(
     )
 
 
+def _forgets_the_unpayable_handoff(
+    context: _AutoRebaseContext | _AutoRebaseRecoveryContext,
+) -> None:
+    """Drop what an interrupted attempt owed a pull request that is over.
+
+    The anchor is not the whole of what one attempt leaves. Between the gate
+    and the push it records a DEBT -- one commit still owed a publication, and
+    the head that publication is pinned to -- and, on an issue whose exemption
+    the rewrite is about to move, a PERMISSION for the write behind that push
+    to carry the verdict over. Both are claims about a push onto one pull
+    request, and a merged or closed one can never receive it.
+
+    Left standing beside a cleared anchor, the debt is worse than stale. The
+    reconciliation ahead of every handler reads it as a commit the pull
+    request has not received, tries to publish it, and cannot even enter a
+    publication that is over -- so it parks the issue on a reading nobody can
+    take, and the stage that would have finalized a merged pull request to
+    `done` never runs. So the record goes with the attempt that made it,
+    in the attempt's own write.
+
+    The debt is dropped whatever it is leased to, because while an anchor is
+    pinned there is nothing else it could belong to: no stage handler runs
+    over an outstanding attempt, so the approval standing beside one is that
+    attempt's own. The permission is held to its own rule instead -- only an
+    `authorized` record this reader can vouch for, and only one made over the
+    head the anchor names -- because a `published` one describes a transfer
+    that already happened and an exemption that has already moved, which the
+    merge carried with it.
+    """
+    # Lazily bound for the reason the comment and guard owners are: the debt,
+    # the permission, and the subject they are read on sit in the workflow
+    # layer above this package.
+    from orchestrator.workflow.stages.implementing import (
+        late_parks,
+        late_records,
+        late_transfer,
+    )
+    late_parks._forget_approval(context.state)
+    late_transfer._abandoned_authorization(
+        late_records._gate(
+            context.gh, context.spec, context.issue, context.state,
+            context.worktree,
+        ),
+        str(context.pending_pre_rebase_sha or ""),
+    )
+
+
 def _prepare_recovered_rebase_state(
     context: _AutoRebaseRecoveryContext,
 ) -> None:

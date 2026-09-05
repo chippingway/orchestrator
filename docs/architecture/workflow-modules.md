@@ -1328,6 +1328,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             where the label has left the stage the pair was frozen on, since neither a re-entry nor
                             the handler is this process's to pick -- and it retires its own measurement park on a
                             record whose split has settled, which is a group with no count that owes no reading.
+                            It stands down entirely while an auto-rebase anchor is still on the comment, since the
+                            frozen pair and the debt beside one are that recovery's to finish -- paid here, the
+                            replay publishes and settles while the finish that clears the anchor, resets the round,
+                            and routes the reviewer never happens, and the stage runs over a branch the refresh
+                            rewrote with the round spent before the rewrite.
                             It also makes the record a settled TRANSFER never got to report, since every rewrite
                             this workflow settles goes through one push tail and only the base refresh has a
                             recovery of its own to come back for that window -- a squash and a conflict replay

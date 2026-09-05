@@ -24,6 +24,7 @@ import logging
 from github.Issue import Issue
 
 from orchestrator import config
+from orchestrator.git.base_sync import state as _base_sync_state
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -195,9 +196,50 @@ def _reconciles_published_work(
         return False
     if damage:
         return _claims._parks_the_damage(gate, damage)
+    if _defers_to_the_rebase_recovery(issue, state):
+        return True
     if owed:
         return _debt._publishes_the_debt(gate, label)
     return _answers_the_frozen_pair(gate, recorded, label)
+
+
+def _defers_to_the_rebase_recovery(
+    issue: Issue, state: PinnedState,
+) -> bool:
+    """Whether an interrupted auto rebase still owns what is standing here.
+
+    The base refresh pins its anchor before `git rebase` runs and drops it
+    only when the attempt is finished, reset, or parked -- so an anchor still
+    on the comment at dispatch is an attempt no tick has resolved yet. What it
+    left beside it is exactly what this owner would otherwise act on: the gate
+    it entered froze a pair, and past the reading it recorded the rebased
+    commit as one still owed a push.
+
+    Acted on here, both are answered by the wrong owner. This road publishes
+    the commit and settles it as an ordinary debt -- and the recovery's own
+    finish, which is what clears the anchor, resets the reviewer's round, and
+    routes them at the rewritten head, never happens. The stage then runs over
+    a branch the refresh rewrote with the round it had spent before the
+    rewrite, so the reviewer is neither reset nor re-asked and the anchor is
+    left for a later tick to classify against a remote this one has moved.
+
+    So the tick stops instead, and nothing is written for it. The recovery
+    reaches the same records on the refresh ahead of the next handler --
+    which is normally the same tick, and a later one wherever the pull request
+    could not be read -- and finishes them on its own terms or parks. Stopping
+    is the fail-closed half of that: the stage may not run over a publication
+    whose owner has not settled it yet.
+    """
+    anchor = state.get(_base_sync_state._PENDING_PUSH_SHA)
+    if not anchor:
+        return False
+    log.info(
+        "issue=#%d holds an auto rebase anchored at %s that no tick has "
+        "finished; leaving what it recorded to that recovery rather than "
+        "publishing it here and running the stage behind it",
+        issue.number, str(anchor)[:8],
+    )
+    return True
 
 
 def _answers_the_frozen_pair(

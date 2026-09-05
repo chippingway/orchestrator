@@ -267,7 +267,12 @@ orchestrator/
                         commit not yet made), and the two no write ever ends (the accepted commit and the
                         published one), which freeze only while the checkout still stands on the commit they
                         name and only while the stage that has to act on it still holds the issue
-      eligibility.py    the label, park, open-PR, recovery, and clean-tree gates one PR sync clears
+      eligibility.py    the label, park, open-PR, recovery, and clean-tree gates one PR sync clears. A pull
+                        request that is no longer open retires the whole handoff rather than the anchor alone: the
+                        debt the gate recorded before the push and an `authorized` permission made over that
+                        anchor are both claims about a push a merged or closed pull request can never receive, and
+                        a debt left standing is what the reconciliation ahead of the next handler parks on while
+                        the stage that would finalize the merge never runs
       pre_pr.py         the hardened rebase / merge probes and the aborting pre-PR local rebase
       pr.py             the order a PR-having worktree's gates, rebase, and publication are asked in
       startup.py        the pre-rebase HEAD guard, the anchor persisted before git runs, and -- on the statement

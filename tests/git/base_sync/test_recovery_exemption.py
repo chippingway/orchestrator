@@ -27,14 +27,18 @@ from __future__ import annotations
 
 import itertools
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from orchestrator import config
+from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.base_sync import transfers
 from orchestrator.git.base_sync.models import _AutoRebaseRecoveryContext
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     rewrites as _rewrites,
+)
+from orchestrator.workflow.stages.implementing import (
+    late_reconcile as _reconcile,
 )
 from orchestrator.workflow.state import WorkflowLabel
 from tests.git.base_sync.exemption_test_support import (
@@ -138,6 +142,9 @@ KEY_PR_NUMBER = "pr_number"
 # makes each answer for the other.
 KEY_APPROVED_SHA = "late_approved_sha"
 
+# What a pull request that has been merged reads back as.
+PR_STATE_CLOSED = "closed"
+
 # The three terms of an authorization a recovery cross-binds to the attempt it
 # is finishing: the head the push was leased against, the pull request it was
 # made for, and the base the replay was read over.
@@ -146,6 +153,13 @@ KEY_REWRITE_PR = "late_rewrite_pr_number"
 KEY_REWRITE_TO_BASE = "late_rewrite_to_base_sha"
 GET_ISSUE = "get_issue"
 UNREADABLE_ISSUE = "the issue could not be read again"
+
+# The pull-request read the refresh takes before it will run a recovery, and
+# the round the reviewer had already spent on the head the rebase replaced.
+GET_PR = "get_pr"
+UNREADABLE_PR = "the pull request could not be read"
+PUSH_BRANCH = "_push_branch"
+SPENT_ROUNDS = 3
 
 # The method and the stage the tick that really published recorded itself
 # under, which is the one record a resumed finish may not add to.
@@ -1310,6 +1324,133 @@ class DamagedCheckpointTest(_ResumedRebaseCase, unittest.TestCase):
             )],
             [CLEAN_REBASE],
         )
+
+
+class TerminalPullRequestTest(_ResumedRebaseCase, unittest.TestCase):
+    """An attempt still in flight for a pull request that has been merged.
+
+    The anchor is the flag the refresh comes back for and the least of what
+    the attempt left. The debt the gate recorded before the push says one
+    commit is still owed a publication onto this pull request, and the
+    permission beside it says what that push may carry a human's verdict
+    over. A merged pull request can receive neither -- and left standing, the
+    debt is what the reconciliation ahead of the next handler tries to pay,
+    parking the issue on a publication it cannot even enter while the stage
+    that would finalize the merge never runs.
+    """
+
+    def test_a_merged_pull_request_retires_the_debt(self) -> None:
+        # The authorization boundary: the permit granted, the debt written,
+        # and the push never made -- then the pull request merged without it.
+        self._crashes_before_the_push()
+        self._merges_the_pull_request()
+
+        self._resumes()
+
+        pinned = self._pinned()
+        self.assertIsNone(pinned[KEY_PENDING_PUSH_SHA])
+        self.assertIsNone(pinned[KEY_APPROVED_SHA])
+        durable = self._durable()
+        self.assertFalse(_rewrites.carries_rewrite_authorization(durable))
+        # The grant moved nothing, so the verdict is still on the commit the
+        # merge carried.
+        self.assertTrue(_exemption.is_exempt(durable, BEFORE_SHA))
+        self._assert_finalizable()
+
+    def test_a_merged_request_keeps_a_settled_move(self) -> None:
+        # The receipting boundary one step on: the push landed, the receipt
+        # carried the verdict over, and the route never finished. There is no
+        # debt left to retire and the transfer is over, so what the retirement
+        # may not do is undo either.
+        self._crashes_before_the_route()
+        self._merges_the_pull_request()
+
+        self._resumes(remote_head=AFTER_SHA)
+
+        self.assertIsNone(self._pinned()[KEY_PENDING_PUSH_SHA])
+        durable = self._durable()
+        self.assertTrue(_exemption.is_exempt(durable, AFTER_SHA))
+        self.assertEqual(
+            _rewrites.read_rewrite_authorization(durable).phase,
+            _rewrites.LateRewritePhase.PUBLISHED,
+        )
+        self._assert_finalizable()
+
+    def _merges_the_pull_request(self) -> None:
+        """Take the pull request this attempt was made for out of `open`."""
+        pull_request = self.gh.pulls[PR_NUMBER]
+        pull_request.merged = True
+        pull_request.state = PR_STATE_CLOSED
+
+    def _assert_finalizable(self) -> None:
+        """The reconciliation lets the stage that finalizes a merge run."""
+        issue = self._issue()
+        held = _reconcile._reconciles_published_work(
+            self.gh, self.spec, issue, WorkflowLabel(LABEL),
+            self.gh.read_pinned_state(issue),
+        )
+
+        self.assertFalse(held)
+        self.assertNotIn(KEY_PARK_REASON, self._pinned())
+
+
+class DeferredRecoveryTest(_ResumedRebaseCase, unittest.TestCase):
+    """A recovery the refresh could not take, and who owns the tick behind it.
+
+    The refresh reads the pull request before it will run a recovery -- a
+    terminal one belongs to the stage that finalizes it -- so a `get_pr` that
+    fails leaves the attempt exactly where the crash left it: the anchor
+    pinned, the replay on the branch, and the debt the gate recorded before
+    the push still standing. That debt is the same shape the reconciliation
+    ahead of every handler pays, and paying it there is the wrong owner
+    finishing the wrong half: the commit publishes and settles while the
+    anchor, the reviewer's round, and the route the recovery owes are left
+    exactly as the dead tick left them.
+    """
+
+    def test_an_unread_pull_request_holds_the_tick(self) -> None:
+        self._crashes_before_the_push()
+        with self._unreadable():
+            resumed = self._resumes()
+
+        pushed, held = self._reconciles()
+
+        # The refresh got no further than the read, so the attempt is whole.
+        self._assert_nothing_left(resumed)
+        self._assert_anchor(BEFORE_SHA)
+        self.assertEqual(self._pinned()[KEY_APPROVED_SHA], AFTER_SHA)
+        # And the tick stops rather than publishing it under another owner:
+        # the push that would settle the debt is never made, the round the
+        # recovery's own finish resets is left where the reviewer spent it,
+        # and nothing is parked for a read that will answer next tick.
+        self.assertTrue(held)
+        pushed.assert_not_called()
+        self.assertEqual(self._events_of(EVENT_BASE_REBASED), [])
+        self.assertEqual(self._pinned()[KEY_REVIEW_ROUND], SPENT_ROUNDS)
+        self.assertNotIn(KEY_PARK_REASON, self._pinned())
+
+    def _unreadable(self):
+        """A pull-request read no request on this tick can take."""
+        return patch.object(
+            self.gh, GET_PR,
+            MagicMock(side_effect=RuntimeError(UNREADABLE_PR)),
+        )
+
+    def _reconciles(self):
+        """Run the reconciliation every handler is dispatched behind.
+
+        The push seam answers as a remote that would TAKE it, so what stops
+        the publication is this owner standing down rather than a request
+        that failed.
+        """
+        issue = self._issue()
+        pushed = MagicMock(return_value=True)
+        with patch.object(_branch_transport, PUSH_BRANCH, pushed):
+            held = _reconcile._reconciles_published_work(
+                self.gh, self.spec, issue, WorkflowLabel(LABEL),
+                self.gh.read_pinned_state(issue),
+            )
+        return pushed, held
 
 
 class StrandedAttemptTest(_ResumedRebaseCase, unittest.TestCase):
