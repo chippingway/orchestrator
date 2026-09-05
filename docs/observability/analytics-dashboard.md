@@ -636,7 +636,10 @@ tautologically-false predicate (`FALSE`). The event multiselect maps straight th
 schema). The stage multiselect routes through `resolve_stage_filter(selected, available)` because `options.stages` only
 lists non-null stages: the all-selected default collapses to `None` so NULL-stage rows are included; an explicitly
 cleared selection still emits `[]`; a proper subset passes through verbatim. Without this asymmetry the default
-dashboard would silently exclude `stage_evaluation` rows on issues with no workflow label. The issue number acts as a
+dashboard would silently exclude `stage_evaluation` rows on issues with no workflow label — and two families that
+carry no `stage` at all: the repo-level `repo_skill_catalog` snapshot, and the `terminal_artifact_cleanup` result,
+which is about a finished issue's artifacts rather than a workflow state. A *narrowed* stage selection still drops
+all three, which is the filter working as asked rather than a gap. The issue number acts as a
 SQL-level filter when a specific repo is selected AND triggers the drill-down section; with the repo filter on "All" it
 stays inert (GitHub issue numbers are not unique across repos).
 
