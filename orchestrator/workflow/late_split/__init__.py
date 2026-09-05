@@ -19,12 +19,14 @@ vocabulary a restored spend is bounded by (``spends``), what a cycle's ending
 leaves behind past the clear (``endings``), the one commit an accepted
 candidate is let past the gate on, which deliberately outlives them
 (``exemption``), what authorized that commit to become the one a workflow
-rewrite replaced it with (``rewrites``), the terms a squash records before it
-destroys the evidence of itself (``collapses``), the two-phase restart marker
-over them (``restart``), what one event of its life may say (``events``), what a
-generation has to prove before any of it may be recorded (``validation``), the
-bounded record both observability sinks carry (``records``), and the dual
-emission that writes them (``telemetry``).
+rewrite replaced it with (``rewrites``), the terms an operator authorized an
+oversized candidate to publish on, which outlive a clear on the same footing
+(``overrides``), the terms a squash records before it destroys the evidence of
+itself (``collapses``), the two-phase restart marker over them (``restart``),
+what one event of its life may say (``events``), what a generation has to prove
+before any of it may be recorded (``validation``), the bounded record both
+observability sinks carry (``records``), and the dual emission that writes them
+(``telemetry``).
 
 Callers import the owner they need, so this initializer binds nothing: the
 state round-trip costs the GitHub pinned-state model and the telemetry costs

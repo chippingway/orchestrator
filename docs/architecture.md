@@ -586,7 +586,8 @@ representation is a different scheme rather than a silently different answer und
 published as `FINGERPRINT_FORMAT` on the record owner beside it, and it is what any caller persisting a digest records
 next to it: two ids taken under different rules are not comparable and nothing about the ids themselves would say so,
 so a stored fingerprint naming a scheme this build does not compute is one it declines to read rather than one it
-silently compares. The late-split exemption and the rewrite authorization beside it are both such callers
+silently compares. The late-split exemption, the rewrite authorization beside it, and the operator-authorized
+oversized publication are all such callers
 ([`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#late-generation-state)).
 
 The two endpoints decide what is fingerprinted and are deliberately not in the digest, so the same work over the same

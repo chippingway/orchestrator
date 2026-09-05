@@ -321,6 +321,23 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             that label itself; and the `auto_clean_rebase` to the four the base refresh drives,
                             since what its evidence names is whichever of them the issue was on when the base
                             moved
+    overrides.py            the one oversized candidate an OPERATOR authorized to publish as it stands, bound to the
+                            exact candidate SHA a human read: the frozen base it was read over, the canonical digest of
+                            the contribution between them and the scheme that digest was taken under, the measurement
+                            that made it oversized -- the additions counted and the ceiling they were counted against,
+                            both recorded here rather than referred to, since the generation carrying them is cleared
+                            and the ceiling is a knob an operator retunes -- and the trusted comment the authorization
+                            was made in, which is what makes a bypass of the size gate attributable to one gesture at
+                            one address. Deliberately outside the group a cleared generation drops, on the same terms as
+                            the exemption: it is what a generation is cleared AGAINST. Read whole or not at all and more
+                            strictly than that exemption, since here every member IS the authorization -- a missing or
+                            damaged member, a digest scheme this build does not compute, a comment that is no identity,
+                            and a reading at or under its own threshold, which describes a candidate the gate publishes
+                            untouched, each authorize nothing, and what that costs is the measurement the gate would
+                            have taken anyway. The write refuses the same terms rather than recording them and replaces
+                            the whole group in one statement, so a record is never half about one candidate and half
+                            about another; every other field on the pinned comment, an unknown one and a legacy
+                            exemption group included, is left verbatim by both the write and the clear
     collapses.py            the three terms a squash says it is about to collapse, written before the reset that
                             destroys them and deliberately outside the group a cleared generation drops: the head
                             being collapsed -- the rollback target, and the head the force-push behind it is leased
