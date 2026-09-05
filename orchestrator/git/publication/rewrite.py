@@ -3,8 +3,11 @@
 """The destructive half of a squash: reset, recommit, publish, roll back.
 
 Every step here runs after the branch has already been rewound, so each
-failure path restores `plan.original_head` before reporting -- the agent's
-commits stay on the branch and a human decides what to do next.
+failure path restores the head it was rewound from before reporting -- the
+agent's commits stay on the branch and a human decides what to do next. That
+head is handed in rather than read: the plan pinned it while the branch was
+intact, and the recovery beside this owner reads it off the record a squash
+wrote before it ran.
 
 The publish goes through the size gate's own push, because a squash is one of
 the pushes onto a pull request the remote already carries: named against the
@@ -31,6 +34,14 @@ from orchestrator.git.verification import probes as verification_probes
 # already point whichever owner here is the one emitting.
 log = logging.getLogger("orchestrator.branch_publication")
 
+# What a push that never left this host is reported as when the pull request
+# is already standing on the commit it would have sent.
+_UNCONFIRMED_PUBLICATION = (
+    "the pull request already carries `{squashed}` and the leased push that "
+    "would have confirmed it did not go out; the branch is left standing on "
+    "it rather than reset off work the remote has"
+)
+
 
 def _squash_failure(error: str) -> models._SquashOutcome:
     """Return the uniform failure result while leaving commits intact."""
@@ -54,12 +65,17 @@ def _squash_commit_env() -> dict[str, str]:
 
 def _rollback_squash(
     gate,
-    plan: planning._SquashPlan,
+    restored: str,
     reason: str,
     error: str,
     reported: models._SquashOutcome | None = None,
 ) -> models._SquashOutcome:
     """Restore the original branch after a post-reset failure or refusal.
+
+    `restored` is the head the collapsed commits are still reachable from,
+    which the caller holds and this owner could not read: a plan took it
+    before the reset, or a record wrote it down before the process that made
+    that plan died.
 
     `reported` is what the caller wants said about it, for the one road that
     restores the branch without a failure to park over: a publication the gate
@@ -98,7 +114,7 @@ def _rollback_squash(
     change it was, and the retry refuses on the same tree until it is settled.
     """
     rollback_result = commands._git_hardened(
-        "reset", "--mixed", plan.original_head, cwd=gate.worktree,
+        "reset", "--mixed", restored, cwd=gate.worktree,
     )
     if rollback_result.returncode != 0:
         log.error(
@@ -106,12 +122,12 @@ def _rollback_squash(
             "in an inconsistent state and the approved commit's debt is "
             "left standing for it: %s",
             gate.issue.number,
-            plan.original_head,
+            restored,
             reason,
             (rollback_result.stderr or "").strip(),
         )
         return reported or _squash_failure(error)
-    _gated_rewrite()._forgets_the_rollback(gate, plan.original_head)
+    _gated_rewrite()._forgets_the_rollback(gate, restored)
     return reported or _squash_failure(error)
 
 
@@ -169,11 +185,21 @@ def _rewrite_squash(
     pre-squash head would leave the record naming a commit that no longer
     exists here.
     """
+    collapsed = _gated_rewrite()._collapse_of(
+        head=plan.original_head,
+        base_sha=plan.base_sha,
+        count=plan.count,
+    )
     reset_result = commands._git_hardened(
         "reset", "--soft", plan.base_sha, cwd=gate.worktree,
     )
     if reset_result.returncode != 0:
         detail = (reset_result.stderr or "").strip()
+        # Nothing was rewritten, so the record of what this rewrite was about
+        # describes a collapse that did not happen. Left standing it would
+        # send the next tick's recovery at a branch still carrying every
+        # commit it names. The park the caller takes is what makes it durable.
+        _gated_rewrite()._forgets_the_collapse(gate.state)
         return _squash_failure(f"reset --soft failed: {detail}")
 
     commit_result = _create_squash_commit(gate.worktree, plan.message)
@@ -181,7 +207,7 @@ def _rewrite_squash(
         detail = (commit_result.stderr or "").strip()
         return _rollback_squash(
             gate,
-            plan,
+            collapsed.head,
             "squash commit",
             f"squash commit failed: {detail}",
         )
@@ -190,32 +216,47 @@ def _rewrite_squash(
     if not new_sha:
         return _rollback_squash(
             gate,
-            plan,
+            collapsed.head,
             "post-commit head read",
             "could not read new HEAD after squash",
         )
-    return _published_squash(gate, branch, plan, entry, new_sha)
+    return _published_squash(gate, branch, entry, new_sha, collapsed)
 
 
 def _published_squash(
     gate,
     branch: str,
-    plan: planning._SquashPlan,
     entry,
     new_sha: str,
+    collapsed,
 ) -> models._SquashOutcome:
     """Measure the squashed commit, publish it, or leave it to be adjudicated.
 
-    The base the plan was collapsed onto goes with the commit, and so does
-    the head it replaced, because the gate needs both ends of BOTH
+    `collapsed` is the base the commits were collapsed onto and the head they
+    were collapsed from, because the gate needs both ends of BOTH
     contributions to recognize a rewrite of a change a human already
-    adjudicated -- and the plan taken before the reset is the only thing that
-    still holds either. The pre-squash head is the plan's own rather than
-    whatever the pull request is standing on: the two are checked against each
-    other when the entry is frozen, but that check has a carve-out for a tip a
-    durable record says this issue's own push put there, so the remote head is
-    the head a push is LEASED against and only the plan says which commit was
-    collapsed.
+    adjudicated. Neither is derivable here: a plan took the pair while the
+    branch was still intact, or the pinned record wrote it down before the
+    process that made that plan died, and both hand it in for the same reason.
+    The pre-squash head is that pair's own rather than whatever the pull
+    request is standing on: the two are checked against each other when the
+    entry is frozen, but that check has a carve-out for a tip a durable record
+    says this issue's own push put there, so the remote head is the head a
+    push is LEASED against and only the pair says which commit was collapsed.
+
+    Its count is what the handoff behind a landed publication announces, and
+    it travels in the same record for the same reason: past the reset the
+    commits it counts are off the branch.
+
+    A push that lands does NOT end the collapse here, and the record of it is
+    deliberately left standing: the count it holds is what the handoff behind
+    this call still has to announce, and the notice, the watermarks, and the
+    relabel are all ahead of it. The stage that finishes the handoff is what
+    drops it, in the write it makes before the relabel -- so a tick that dies
+    anywhere between here and there comes back to a record still standing over
+    a branch the recovery reads again and answers the same way: the pull
+    request already carries the commit, so the republication is the leased
+    no-op it should be and the handoff finishes with the count it still holds.
 
     A hold is not one state, and only some of them leave the rewrite standing.
     Where the push landed, where the adjudication now owns the commit, or
@@ -230,30 +271,61 @@ def _published_squash(
     The refusal still reports `held`. The gate has already parked with the
     notice its own reading earned, and a squash-failed park on top of it would
     describe a failure that did not happen.
+
+    A push that did not go out is rolled back with ONE exception, and it is
+    the one where the remote is already standing on the commit. Such a push
+    sends nothing, so a request that fails there is a transport failure over
+    work the pull request has: reset, the checkout would come off a commit the
+    remote carries and the record would go with it -- taking the count the
+    handoff still owes a notice, and leaving the next tick a remote that moved
+    for reasons nothing on the comment explains.
+
+    Two readings say the remote is there and the ENTRY is the stronger of
+    them, because it is a reading of the pull request taken this tick: a tip
+    it froze equal to the commit about to be pushed is the pull request
+    already carrying it. The entry only admits such a tip where a durable
+    record accounts for it -- the approval that owes this commit a push, the
+    generation that names it, the receipt dated to this attempt -- so it is
+    the whole window a crash between a push and its receipt leaves, where the
+    receipt itself is exactly what is missing. That receipt is asked beside
+    it, for the road where nothing read the remote at all.
+
+    Neither can fire on a fresh squash, and that is what leaves the designed
+    rollback intact: the entry there was frozen before the commit existed, so
+    it names the head this rewrite replaced and never the object it produced.
+    The approval the gate wrote before the push, and the permission a transfer
+    held, are records a reset is SUPPOSED to drop, so neither of them is asked
+    here.
     """
     gated = _gated_rewrite()
     published = gated._publishes_rewrite(
         gate, branch, entry, new_sha,
-        gated._Collapsed(head=plan.original_head, base_sha=plan.base_sha),
+        gated._Collapsed(head=collapsed.head, base_sha=collapsed.base_sha),
     )
     if published.held:
         if gated._rewrite_stands(gate, new_sha):
             return models._SquashOutcome(held=True)
         return _rollback_squash(
             gate,
-            plan,
+            collapsed.head,
             "a publication the size gate refused",
             "the size gate refused this publication",
             models._SquashOutcome(held=True),
         )
     if not published.landed:
+        if entry.published_sha == new_sha or gated._already_published(
+            gate.state, collapsed.head, new_sha,
+        ):
+            return _squash_failure(_UNCONFIRMED_PUBLICATION.format(
+                squashed=new_sha,
+            ))
         return _rollback_squash(
             gate,
-            plan,
+            collapsed.head,
             "force-push",
             "force-push with lease rejected (concurrent update on the "
             "remote, or lease violation); see orchestrator logs",
         )
     return models._SquashOutcome(
-        success=True, sha=new_sha, count=len(plan.subjects),
+        success=True, sha=new_sha, count=collapsed.count,
     )

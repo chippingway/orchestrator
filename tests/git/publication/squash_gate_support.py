@@ -100,6 +100,11 @@ class SquashRun:
     def held(self) -> bool:
         return self.outcome.held
 
+    @property
+    def standing(self) -> str:
+        """Which of the three places this failure left the branch in."""
+        return self.outcome.standing
+
 
 @dataclass(frozen=True)
 class PublicationSeed:

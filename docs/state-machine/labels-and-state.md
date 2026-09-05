@@ -306,7 +306,11 @@ thing they describe (`discussion_round_open` and `discussion_publishing_sha`, wh
 standing with no park at all, and with the commit it died holding on the branch), the `read_only_baseline_sha` the
 guard writes in place of a park it clears, which stands until the dev run commits, and the two commits the late size
 gate is deciding about — `late_candidate_sha`, the pair it froze, and `late_approved_sha`, the commit an approval has
-still to publish, each dropped by the step that spends it. Two PARKS freeze the branch as well, and by the park
+still to publish, each dropped by the step that spends it. The `late_collapse_*` group joins them on stricter terms:
+a squash mid-rewrite is proved by the TREE the commit on the branch carries, which a rebase replaces with one
+carrying the base advance too, so any member of the group being on the comment at all — `null` included, since that
+is what the squash's own reader refuses to resume — holds the branch until whatever finishes or undoes the collapse
+drops it. Two PARKS freeze the branch as well, and by the park
 rather than by a record, because neither can leave one. A standing `late_measurement_failed` is the first: the
 sharpest of those refusals is taken before any commit could be named, so there is nothing on the pinned comment to
 freeze by — and rebased under it, the exact-pair retry has lost its commit and the refusal that substitutes nothing
@@ -1624,6 +1628,73 @@ rather than preserving.
   transfer is doing — the exemption moved on since, which dropped the identity and left this group describing a
   commit nothing exempts — so it is replaced without ceremony. Read as a claim it would refuse every transfer the
   issue could ever earn again.
+- **Pending collapse.** `late_collapse_head`, `late_collapse_base_sha`, and `late_collapse_count` are what a
+  squash-on-approval says it is about to do, written on the
+  [`collapses`](../../orchestrator/workflow/late_split/collapses.py) owner and outside `LATE_STATE_KEYS` on the same
+  terms as the three groups above — the gate retires the generation a squash is measured under the moment it
+  approves the commit, so a record cleared with one would be gone before the push it exists to recover ever
+  happened. They go down **before** the reset, and they have to: a squash collapses the approved commits into one
+  object with the same tree, so past that reset the head it replaced is off the branch, the base it was read over is
+  not derivable from the object that replaced it, and the count is gone with the commits it counted — while what is
+  left on the branch is indistinguishable from a branch nobody ever squashed. Read as the second, an interrupted
+  rotation takes the *nothing to squash* road and is reported as a success that measured nothing and pushed nothing,
+  with reviewer-approved work reaching the merge button neither counted nor on the remote.
+
+  Three fields and no more, because what a recovery may act on is what it can check: the pull request is re-read,
+  the checkout is re-proved, the contribution is re-fingerprinted, and the ceiling is this build's own. What the
+  record supplies is only what no reading taken afterwards could. The head is the rollback target and the head the
+  force-push is leased against; the base is the end both contributions are read from when
+  [`late_transfer`](../../orchestrator/workflow/stages/implementing/late_transfer.py) decides whether an
+  adjudication's exemption may move onto the rewrite; the count is what the handoff's `:package: squashed N commits`
+  notice is worded from.
+
+  Read whole or not at all, like every other late record: a missing member, an end that is not a whole object id,
+  and a count no squash collapses (one is the branch a squash *leaves*) each read back as no pending collapse. Being
+  unreadable is not being absent here either, and the caller asks both — a comment CARRYING one of those members is
+  claiming a collapse it cannot produce, and the branch behind that claim is exactly the one commit that reads as
+  having nothing to squash, so the squash refuses rather than reporting success.
+
+  Shape is not enough to ACT on either. Before a resumed publication runs, both recorded ends are peeled as objects
+  this host really holds, the base has to be a commit the head was really built on — a walk between two histories
+  that never met reports a number like any other, so the count is no ancestry proof — the history between them is
+  walked against the recorded count, and the commit on the branch has to carry both the tree the recorded head left
+  and that base as its one parent, which is what a squash produces by construction. The parent matters as much as
+  the tree: the same tree re-parented onto a base that has since advanced is a commit that *reverts* whatever that
+  base added. A record failing any of those is one somebody could have written and this repository never produced,
+  so the branch is left exactly where it was found and the tick refuses.
+
+  `late_collapse_count` is the number of commits the branch really carried, walked rather than counted from their
+  subjects: `git commit --allow-empty-message` makes a commit that contributes no subject, so a count taken from
+  the subjects is short by however many of those there are — and the recovery would then refuse a collapse this
+  workflow really made as miscounted.
+
+  The record is ended by the write that ends what it claims and by no other: the reset a rollback made, the reset
+  that never ran, and — for a push that landed — the approval handoff's own write, which is deliberately the write
+  taken **before** the relabel. The count is what the `:package: squashed N commits to 1` notice is worded from, so
+  a notice that was owed and did not post leaves it standing; and past the relabel the issue belongs to
+  `documenting`, which never runs the recovery that would answer a claim left there. A tick that dies before that
+  write comes back to the same branch and the same answer — an already-published collapse is finished as the leased
+  no-op it is, and an untouched branch is squashed afresh.
+- **Settled handoff.** `late_collapse_handoff_sha` is what that write leaves in the claim's place, and it exists for
+  the one boundary the group above cannot cover: the relabel is a second call, and an issue left on
+  `workflow:validating` with the record simply dropped is one the next tick runs a second reviewer on, over a branch
+  already approved, squashed, and published. It names the commit the move is owed over, which is the whole of what
+  the move needs and the only thing that says it is owed. The validating recovery route reads it ahead of the
+  reviewer, moves the label, and drops it in a write of its own behind that label — and spends it only while the
+  pull request is still standing on the commit it names, since anything that moved the publication on has moved the
+  work past the round the record was about, and the branch then goes to the reviewer rather than on to
+  `documenting` unread. It is deliberately NOT a member of the group above: nothing about the rewrite is
+  outstanding by then, so it freezes no branch out of base sync and refuses no resume. An approval that collapsed
+  nothing leaves none, and neither does one whose commit is not a whole object id: the value is spent on a
+  comparison against the head the pull request stands on, so one no commit could equal is one that comparison can
+  never catch — and on an issue with no pull request to read, nothing else stands between such a value and a label
+  moved past the reviewer. It is read for a usable value rather than for presence, the opposite of the group above
+  and for the opposite reason — the worst an unreadable one can cost is the reviewer round the route would have
+  saved, so it is dropped and that round runs.
+  The record left by a relabel that DID land is ended by `documenting`, at the top of its own tick, and that stage
+  is the only owner that can end one: having the issue is the proof the move happened, and the label history cannot
+  tell a move that never happened from one a drift unwind later reversed. Left standing there, the unwind's
+  re-review would be answered by relabelling the unchanged head straight back to `workflow:documenting`.
 - **Sealed consumer ledger.** `split_ledger_sealed` says the register of children a split recorded is FINAL. The
   count written before the first create (`expected_children_count`) is what tells a partial ledger from a whole one,
   and a loop a cancellation stopped can never reach it — so the ref its children were cut from would be held on a

@@ -1,6 +1,16 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The relabel to `in_review`, and the watermark and write before it.
+"""The relabel to `in_review`, and the handoff that brought the issue here.
+
+The one this stage was handed is the shorter story and it opens the tick. A
+`validating` approval settles a finished squash into `late_collapse_handoff_sha`
+and moves the label behind that write, so a record still standing when this
+stage runs is one whose relabel DID land and whose cleanup write did not. This
+stage running is the proof of that, and it is the only proof there is -- the
+label history cannot tell a move that never happened from one this stage later
+unwound -- so the record is ended here rather than left for a validating tick
+to read as a move it still owes and answer a re-review by relabelling the
+unchanged head straight back.
 
 Both docs outcomes -- a pushed commit and a confirmed no-change -- leave the
 approval, squash, and PR watermarks validating wrote untouched and advance to
@@ -35,6 +45,7 @@ from github.Issue import Issue
 
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.late_split import collapses as _collapses
 from orchestrator.workflow.stages.validating import watermarks as _validating_watermarks
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -98,6 +109,35 @@ def _ratchet_in_review_watermark_for_final_docs(
     if candidate is None:
         return
     state.set("pr_last_comment_id", candidate)
+
+
+def _ends_the_validating_handoff(
+    gh: GitHubClient, issue: Issue, state: PinnedState,
+) -> None:
+    """Drop the record of a handoff this stage having the issue proves landed.
+
+    The approval before this one ends its collapse claim and leaves the commit
+    the relabel is owed over in its place, then moves the label. A record
+    still here is that move having landed with the write that would have
+    dropped it having failed -- and the route that reads it back in
+    `validating` cannot tell such a record from one whose move never happened.
+    Left standing, a drift unwind that sends this issue back for a re-review
+    is answered by relabelling the unchanged head straight here again, and the
+    review that unwind exists to ask for never runs.
+
+    Its own write rather than a staged mutation, because most roads out of a
+    documenting tick return without one -- and there is nothing to compose it
+    with: the record is not this stage's to act on, only to end. A write that
+    fails ends the tick with everything else durable exactly as it was, and
+    the next documenting tick makes it.
+
+    Nothing is written for the ordinary issue, which carries no such record:
+    the approval that handed it here dropped its own.
+    """
+    if not _collapses.read_settled_handoff(state):
+        return
+    _collapses.clear_settled_handoff(state)
+    gh.write_pinned_state(issue, state)
 
 
 def _hand_off_to_in_review(

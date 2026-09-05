@@ -7,6 +7,11 @@ unanchored. Drift comes next, ahead of the parked-no-input fast path, so a body
 edit still unwinds an issue that is sitting parked -- the reverse order would
 leave a stale approval standing behind a park nobody replied to.
 
+The tick opens by ending the handoff record that brought the issue here, if
+one is still standing: the approval that moved the label drops it in a write
+behind that move, so a record this stage can see is that write having failed,
+and only this stage's having the issue proves the move itself landed.
+
 After the run the order matters just as much: the interruption and live-pause
 refusals both precede the disposition and both return WITHOUT writing pinned
 state, so the mutations the pass staged -- the advanced watermark, the
@@ -24,6 +29,7 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.workflow.engine import guards as _guards, usage as _usage
 from orchestrator.workflow.stages.documenting import (
     drift as _drift,
+    handoff as _handoff,
     models as _models,
     outcomes as _outcomes,
     preconditions as _preconditions,
@@ -99,6 +105,13 @@ def _documenting_run(ctx: _models._DocumentingContext, wt):
 def _handle_documenting(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> None:
     state = gh.read_pinned_state(issue)
     pr_number = state.get("pr_number")
+
+    # A handoff record `validating` left behind is one whose relabel landed --
+    # this stage has the issue -- and whose cleanup write did not. Ended here
+    # because nothing else can: the route that reads it back cannot tell that
+    # record from one whose relabel never happened, and would answer a drift
+    # unwind's re-review by relabelling the unchanged head straight back.
+    _handoff._ends_the_validating_handoff(gh, issue, state)
 
     if _preconditions._documenting_preconditions_handled(
         gh, spec, issue, state, pr_number,

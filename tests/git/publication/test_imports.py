@@ -16,7 +16,9 @@ from orchestrator.git import publication as _publication_package
 
 _PACKAGE = "orchestrator.git.publication"
 
-_OWNERS = ("models", "planning", "probes", "rewrite", "squash", "titles")
+_OWNERS = (
+    "models", "planning", "probes", "resume", "rewrite", "squash", "titles",
+)
 
 _MODULES = (_PACKAGE, *(f"{_PACKAGE}.{owner}" for owner in _OWNERS))
 
@@ -38,6 +40,7 @@ _DEFINED = MappingProxyType({
         "_SquashPreparationError",
         "_prepare_squash",
         "_squash_base_sha",
+        "_squash_commit_count",
         "_squash_message",
         "_squash_subjects",
     ),
@@ -58,6 +61,7 @@ _DEFINED = MappingProxyType({
         "_subject_prefix",
     ),
     "rewrite": (
+        "_UNCONFIRMED_PUBLICATION",
         "_create_squash_commit",
         "_gated_rewrite",
         "_published_squash",
@@ -67,7 +71,44 @@ _DEFINED = MappingProxyType({
         "_squash_failure",
         "log",
     ),
-    "squash": ("_squash_and_force_push",),
+    "resume": (
+        "_ABSENT_END",
+        "_MISCOUNTED_HISTORY",
+        "_UNEQUAL_COLLAPSE",
+        "_UNPROVABLE_TREE",
+        "_UNREADABLE_COLLAPSE",
+        "_VANISHED_COLLAPSE",
+        "_UNBURIED_COLLAPSE",
+        "_UNCOLLAPSED_BRANCH",
+        "_UNCOLLAPSED_PARENTS",
+        "_UNREADABLE_SHAPE",
+        "_UNRELATED_PAIR",
+        "_finished_collapse",
+        "_is_ancestor",
+        "_outstanding_collapse",
+        "_resumed_squash",
+        "_unaccountable_branch",
+        "_unprovable_claim",
+        "_unrecovered_collapse",
+    ),
+    "squash": (
+        "_DIRTIED_UNDER_THE_RECORD",
+        "_HEAD",
+        "_MOVED_UNDER_THE_READING",
+        "_MOVED_UNDER_THE_RECORD",
+        "_RACED_THE_RECORD",
+        "_UNRECORDED_COLLAPSE",
+        "_claims_a_collapse",
+        "_handed_back",
+        "_moved_under_the_reading",
+        "_raced_the_record",
+        "_rewrites_the_branch",
+        "_squash_and_force_push",
+        "_squashed_or_resumed",
+        "_still_the_planned_checkout",
+        "_tells_the_caller_where_the_branch_is",
+        "_where_the_branch_stands",
+    ),
     "titles": (
         "_infer_subject_prefix",
         "_pr_title_from_commit_or_issue",
@@ -133,11 +174,11 @@ class CleanProcessImportTest(unittest.TestCase):
 
     `probes` depends only on the config and git command owners, `titles` only
     on `probes`, `planning` on both of them plus the verification probes, and
-    `rewrite` / `squash` layer on top, so importing any one of them first must
-    not need a name a half-run module has not defined yet. A subprocess per
-    module gives each a clean `sys.modules` no other test has already
-    populated, exposing an import-order cycle a package-first suite run would
-    mask.
+    `rewrite` / `resume` / `squash` layer on top, so importing any one of them
+    first must not need a name a half-run module has not defined yet. A
+    subprocess per module gives each a clean `sys.modules` no other test has
+    already populated, exposing an import-order cycle a package-first suite
+    run would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:

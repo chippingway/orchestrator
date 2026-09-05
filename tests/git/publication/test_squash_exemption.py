@@ -23,14 +23,21 @@ either from a tick that lost one of them.
 from __future__ import annotations
 
 import unittest
-from unittest.mock import patch
 
-from orchestrator.git.measurement import fingerprint as _fingerprint
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     rewrites as _rewrites,
 )
 from tests.git.publication import squash_git_support as squash_support
+from tests.git.publication.squash_exemption_support import (
+    GRANT_WRITE,
+    LABEL_DECOMPOSING,
+    RECEIPT_WRITE,
+    UNRECORDED_DIGEST,
+    _AdjudicatedSquashMixin,
+    _RecordsEachWrite,
+    _RefusesOneWrite,
+)
 from tests.git.publication.squash_gate_support import (
     MOVED_HEAD,
     TRACKED_EDIT,
@@ -38,15 +45,6 @@ from tests.git.publication.squash_gate_support import (
     PublicationSeed,
     _squash_gate,
 )
-
-MAX_ADDED_LINES = "MAX_ADDED_LINES"
-
-# The fixture's topic branch adds one line per commit over three commits, so
-# a ceiling below that is what an adjudicated candidate was oversized against.
-ADDED_LINES = 3
-PAST_THE_CEILING = ADDED_LINES - 1
-
-LABEL_DECOMPOSING = "workflow:decomposing"
 
 KEY_CANDIDATE_SHA = "late_candidate_sha"
 # The receipt a landed gated push leaves, which is what the settlement that
@@ -56,132 +54,6 @@ KEY_PUBLISHED_SHA = "implementing_published_sha"
 # still owed a push, and the head that push is leased against.
 KEY_APPROVED_SHA = "late_approved_sha"
 KEY_APPROVED_LEASE = "late_approved_lease"
-
-# A whole digest that is not the one the accepted contribution really takes,
-# which is what a hand-edited or stale semantic record reads back as.
-DIGEST_LENGTH = 64
-UNRECORDED_DIGEST = "0" * DIGEST_LENGTH
-
-# The client call every durable record of this tick goes through, which is
-# what a case standing in for an outage replaces.
-PINNED_WRITE = "write_pinned_state"
-
-
-class _RecordsEachWrite:
-    """What the pinned comment said at each durable write of one squash.
-
-    The grant is the FIRST write a transferring squash makes, and what a crash
-    could take is everything a later one would have added -- so the question a
-    case has to be able to ask is what that write alone left behind, not what
-    the comment says once the tick has finished.
-    """
-
-    def __init__(self, gate) -> None:
-        self.durable: list[dict] = []
-        self._gate = gate
-        self._writes = gate.gh.write_pinned_state
-
-    def __call__(self, issue, state):
-        written = self._writes(issue, state)
-        self.durable.append(dict(self._gate.gh.pinned_data(issue.number)))
-        return written
-
-    def held(self):
-        """Record every write the client makes, for the duration of one run."""
-        return patch.object(self._gate.gh, PINNED_WRITE, self)
-
-
-class _RefusesOneWrite:
-    """A comment GitHub refuses at one point in the tick and takes otherwise.
-
-    The narrow outage, and the one that says WHERE a lost write is handled.
-    Refusing the FIRST loses only the transfer's grant, so a tick that carries
-    on has the ordinary size gate to fall back to and a tick that lets the
-    exception out has nothing. Refusing the SECOND loses the receipt behind a
-    push that already landed, which is the one window where the branch must be
-    left exactly where the rewrite put it.
-    """
-
-    def __init__(self, gate, ordinal: int = 1) -> None:
-        self.writes = 0
-        self._ordinal = ordinal
-        self._writes = gate.gh.write_pinned_state
-
-    def __call__(self, issue, state):
-        self.writes += 1
-        if self.writes == self._ordinal:
-            raise RuntimeError("pinned comment rejected")
-        return self._writes(issue, state)
-
-    def held(self, gate):
-        """Refuse the write at this point of one run, and take the rest."""
-        return patch.object(gate.gh, PINNED_WRITE, self)
-
-
-class _AdjudicatedSquashMixin:
-    """One issue whose exemption names the commit the squash is about to eat."""
-
-    def _adjudicated(
-        self, *, digest: str | None = None, base: str = "", accepted: str = "",
-    ):
-        """The gate for an issue whose exemption names the pre-squash head.
-
-        The pinned comment is exactly what a settled `single` verdict leaves:
-        the accepted commit, and the canonical digest of what it contributes
-        over the base the adjudication was measured from.
-
-        `base` replaces that end, which is the one field of the record a hand
-        edit can move without the reader refusing it: another commit in this
-        repository types exactly as the frozen base does.
-
-        `accepted` names an EARLIER commit than the tip, which is what an
-        issue that went on committing after its verdict looks like: the
-        publication is seeded on the tip the squash would collapse, and the
-        exemption on the one commit a human actually ruled on.
-        """
-        gate = _squash_gate(self, PublicationSeed())
-        accepted = accepted or self._head_sha()
-        _exemption.record_exemption(gate.state, accepted)
-        _exemption.record_semantic_identity(
-            gate.state,
-            base_sha=base or self._base_sha(),
-            candidate_sha=accepted,
-            fingerprint=digest or self._contribution(accepted),
-        )
-        gate.gh.write_pinned_state(gate.issue, gate.state)
-        return gate
-
-    def _one_commit_back(self) -> str:
-        """A real commit in this repository that is not the frozen base."""
-        return squash_support.run_git(
-            "rev-parse", "HEAD~1", cwd=self.work,
-        ).strip()
-
-    def _contribution(self, candidate: str) -> str:
-        """What that candidate really contributes over the frozen base."""
-        fingerprinted = _fingerprint._fingerprint_contribution(
-            self.work, self._base_sha(), candidate,
-        )
-        self.assertTrue(fingerprinted.is_fingerprinted)
-        return fingerprinted.digest
-
-    def _squashes(self, gate, **run_options):
-        """Squash under a ceiling the accepted candidate is already past."""
-        return self._squash(
-            publication=PublicationSeed(gate=gate),
-            **{MAX_ADDED_LINES: PAST_THE_CEILING},
-            **run_options,
-        )
-
-    def _pinned(self, gate) -> dict:
-        """The pinned comment as it durably stands."""
-        return gate.gh.pinned_data(gate.issue.number)
-
-    def _assert_exempts(self, gate, commit: str) -> None:
-        """The commit the comment durably exempts, whatever else moved."""
-        self.assertEqual(
-            self._pinned(gate)[_exemption.LATE_EXEMPT_SHA], commit,
-        )
 
 
 class SquashedExemptionRealGitTest(
@@ -223,7 +95,7 @@ class SquashedExemptionRealGitTest(
         with writes.held():
             self._squashes(gate)
 
-        granted = writes.durable[0]
+        granted = writes.nth(GRANT_WRITE)
         self.assertEqual(granted[_exemption.LATE_EXEMPT_SHA], accepted)
         self.assertEqual(
             granted[_rewrites.LATE_REWRITE_PHASE],
@@ -260,7 +132,7 @@ class SquashedExemptionRealGitTest(
         # stands for the reconciliation that republishes it as a leased no-op.
         gate = self._adjudicated()
         accepted = self._head_sha()
-        refusing = _RefusesOneWrite(gate, ordinal=2)
+        refusing = _RefusesOneWrite(gate, ordinal=RECEIPT_WRITE)
 
         with refusing.held(gate), self.assertRaises(RuntimeError):
             self._squashes(gate)
@@ -290,13 +162,11 @@ class SquashedExemptionRealGitTest(
             authorized.rewrite.kind, _rewrites.LateRewriteKind.SQUASH,
         )
 
-    def test_the_grants_first_write_owes_the_push(self) -> None:
-        # The crash boundary the grant opens, read at the only moment that
-        # settles it: the FIRST durable write the squash makes. By then the
-        # branch is one commit, so a comment that explains that commit and
-        # does not say a push is owed for it is one the next squash reads as
-        # nothing to squash -- reported as success, never measured, never
-        # pushed. Both halves land together or the window is real.
+    def test_the_grant_owes_the_push(self) -> None:
+        # The crash boundary the grant opens, read at the write that settles
+        # it: the permission that licenses the push and the debt that says one
+        # is owed for the commit it names go down together, so no tick comes
+        # back to a permission for a push nothing on the comment asks for.
         gate = self._adjudicated()
         accepted = self._head_sha()
         writes = _RecordsEachWrite(gate)
@@ -304,11 +174,11 @@ class SquashedExemptionRealGitTest(
         with writes.held():
             self._squashes(gate)
 
-        first = writes.durable[0]
-        self.assertEqual(first[KEY_APPROVED_SHA], self._head_sha())
-        self.assertEqual(first[KEY_APPROVED_LEASE], accepted)
+        granted = writes.nth(GRANT_WRITE)
+        self.assertEqual(granted[KEY_APPROVED_SHA], self._head_sha())
+        self.assertEqual(granted[KEY_APPROVED_LEASE], accepted)
         self.assertEqual(
-            first[_rewrites.LATE_REWRITE_PHASE],
+            granted[_rewrites.LATE_REWRITE_PHASE],
             str(_rewrites.LateRewritePhase.AUTHORIZED),
         )
 
@@ -486,7 +356,7 @@ class LostGrantRealGitTest(
         # the caller could not roll its rewrite back for.
         gate = self._adjudicated()
         accepted = self._head_sha()
-        refusing = _RefusesOneWrite(gate)
+        refusing = _RefusesOneWrite(gate, ordinal=GRANT_WRITE)
 
         with refusing.held(gate):
             squash_run = self._squashes(gate)

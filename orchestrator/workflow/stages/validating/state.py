@@ -52,6 +52,13 @@ _REASON_REVIEWER_FAILED = "reviewer_failed"
 
 _REASON_REVIEW_CAP = "review_cap"
 
+# What a squash that could not be finished is filed under. Durable rather than
+# event-only, because the recovery ahead of the reviewer retries it on every
+# tick -- a human told to reconcile the branch or repair the comment is
+# answered by the retry getting further, not by a reply -- and the reason is
+# what tells that park's own notice from one to post afresh.
+_REASON_SQUASH_FAILED = "squash_failed"
+
 _OUTCOME_PARKED = "parked"
 
 _OUTCOME_CLEARED = "cleared"

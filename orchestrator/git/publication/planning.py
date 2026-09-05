@@ -4,7 +4,12 @@
 
 Every probe here runs while the original branch is still intact, so a
 failure raises `_SquashPreparationError` and the caller aborts with nothing
-to undo. The plan also pins `original_head` -- the rollback target, the head
+to undo. How many commits are on the branch is one of them and is walked
+rather than derived from the subjects beside it: a commit written with no
+message contributes no subject and is still a commit, so a count taken from
+the subjects is short by however many of those there are -- which decides
+both whether there is anything to collapse and what a human is told their
+history was collapsed from. The plan also pins `original_head` -- the rollback target, the head
 the entry takes its lease from, and the commit the gate is told this rewrite
 collapsed -- so the rewrite never has to re-read a HEAD its own reset has
 already moved.
@@ -28,12 +33,24 @@ class _SquashPreparationError(RuntimeError):
 
 @dataclass(frozen=True)
 class _SquashPlan:
-    """Inputs that remain stable across the destructive squash rewrite."""
+    """Inputs that remain stable across the destructive squash rewrite.
+
+    `count` and `subjects` are not two spellings of one fact. The count is how
+    many commits are really on the branch over its base, and it is what says
+    whether there is anything to collapse and what a human is told their
+    history was collapsed from. The subjects are what the squash message is
+    BUILT from, and a commit with an empty message contributes none -- so a
+    branch of three where one was committed with no subject offers two
+    subjects and is still three commits. Counted from the subjects, that
+    branch reads as two, and a branch of two where one is blank reads as
+    nothing to squash at all.
+    """
 
     base_sha: str
     original_head: str
     subjects: tuple[str, ...]
     message: str
+    count: int = 0
 
 
 def _squash_base_sha(spec: config.RepoSpec, worktree: Path) -> str:
@@ -67,14 +84,48 @@ def _squash_subjects(worktree: Path, base_sha: str) -> tuple[str, ...]:
     )
 
 
+def _squash_commit_count(worktree: Path, base_sha: str) -> int:
+    """Return how many commits the branch carries over its base.
+
+    Walked rather than counted from the subjects beside it, because a commit
+    with an empty message is still a commit: it contributes no subject and it
+    contributes one to this. What turns on the answer is whether there is
+    anything to collapse at all and what the notice behind a landed squash
+    announces, and neither may be short by the number of commits somebody
+    wrote no message for.
+
+    A walk that did not happen, or one whose output is not a number, raises
+    rather than defaulting: a count nothing produced is not one this squash
+    may decide on, and reading it as zero would report a branch full of
+    approved work as having nothing to squash.
+    """
+    counted = commands._git(
+        "rev-list", "--count", f"{base_sha}..HEAD", cwd=worktree,
+    )
+    if counted.returncode != 0:
+        detail = (counted.stderr or "").strip()
+        raise _SquashPreparationError(f"rev-list failed: {detail}")
+    try:
+        return int((counted.stdout or "").strip())
+    except ValueError:
+        raise _SquashPreparationError(
+            "rev-list did not report a commit count",
+        ) from None
+
+
 def _squash_message(
     spec: config.RepoSpec,
     worktree: Path,
     issue: Issue,
     subjects: tuple[str, ...],
 ) -> str:
-    """Build the subject-only message for a multi-commit squash."""
-    first_subject = subjects[0]
+    """Build the subject-only message for a multi-commit squash.
+
+    A branch whose commits were all written with no subject at all offers
+    nothing to reuse, so the message is inferred from the issue exactly as it
+    is for a first subject carrying no reusable prefix.
+    """
+    first_subject = subjects[0] if subjects else ""
     if probes._is_prefixed_subject(first_subject):
         return f"{first_subject}\n"
     fallback_prefix = titles._infer_subject_prefix(spec, worktree, issue)
@@ -94,10 +145,9 @@ def _prepare_squash(
         raise _SquashPreparationError("could not read original HEAD")
     if verification_probes._worktree_dirty_files(worktree):
         raise _SquashPreparationError("worktree has uncommitted changes")
+    count = _squash_commit_count(worktree, base_sha)
     subjects = _squash_subjects(worktree, base_sha)
     message = (
-        _squash_message(spec, worktree, issue, subjects)
-        if len(subjects) > 1
-        else ""
+        _squash_message(spec, worktree, issue, subjects) if count > 1 else ""
     )
-    return _SquashPlan(base_sha, original_head, subjects, message)
+    return _SquashPlan(base_sha, original_head, subjects, message, count)

@@ -1,216 +1,35 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
+"""What the approval arc does with each shape a squash can hand it back."""
 from __future__ import annotations
 
 import unittest
-from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from orchestrator import config
+from orchestrator.git.publication import models as _publication
 from orchestrator.git.publication.models import _SquashOutcome
-from tests.support.fakes import (
-    FakeComment,
-    FakeGitHubClient,
-    FakeLabel,
-    FakePR,
-    FakePRRef,
-    FakeUser,
-    make_issue,
+from tests.support.fakes import FakePRRef
+from tests.workflow.fixtures import REVIEW_APPROVED_MESSAGE, _agent
+from tests.workflow.stages.validating.squash_approval_support import (
+    APPROVAL_ISSUE,
+    AWAITING_HUMAN,
+    LABEL_DOCUMENTING,
+    PARK_MEASUREMENT_FAILED,
+    PARK_REASON,
+    REVIEWED_SHA,
+    SQUASH_ON_APPROVAL,
+    SQUASHED_SHA,
+    _MeasurementPark,
+    _SquashApprovalFixtureMixin,
 )
-from tests.workflow.fixtures import (
-    REVIEW_APPROVED_MESSAGE,
-    _agent,
-    _PatchedWorkflowMixin,
-)
 
-APPROVAL_ISSUE = 5
+# The two sentences a notice about somewhere ELSE may not carry: the ordinary
+# failure's, which puts the approved commits at HEAD, and the collapse's,
+# which sends an operator to the head a record names.
+COMMITS_AT_HEAD = "the original commits are still on the branch"
 
-# The flags a size-gate park leaves in memory for its caller to persist, and
-# the reason it words them under.
-AWAITING_HUMAN = "awaiting_human"
-PARK_REASON = "park_reason"
-PARK_MEASUREMENT_FAILED = "late_measurement_failed"
-APPROVAL_PR = 31
-APPROVAL_BRANCH = "orchestrator/chippingway__orchestrator/issue-5"
-REVIEWED_SHA = "reviewedAA"
-SQUASHED_SHA = "squashedBB"
-PICKUP_COMMENT_ID = 900
-PR_OPEN_COMMENT_ID = 901
-REVIEW_DEBOUNCE_SECONDS = 600
-SQUASH_ON_APPROVAL = "SQUASH_ON_APPROVAL"
-LABEL_DOCUMENTING = "workflow:documenting"
-
-
-class _MeasurementPark:
-    """A squash the size gate held on a reading nobody could take.
-
-    The park's own shape: the notice is worded and the flags are set in
-    memory, and the caller is told the gate owns the issue. Nothing here
-    relabels, because a park is not the adjudication.
-    """
-
-    def __call__(self, gate, _branch) -> _SquashOutcome:
-        gate.state.set(AWAITING_HUMAN, True)
-        gate.state.set(PARK_REASON, PARK_MEASUREMENT_FAILED)
-        return _SquashOutcome(held=True)
-
-
-class _SquashApprovalFixtureMixin(_PatchedWorkflowMixin):
-    def _setup(self):
-        gh = FakeGitHubClient()
-        long_ago = datetime.now(UTC) - timedelta(hours=1)
-        issue = make_issue(
-            APPROVAL_ISSUE,
-            label="workflow:validating",
-            title="add a feature",
-            comments=[
-                FakeComment(
-                    id=PICKUP_COMMENT_ID,
-                    body=":robot: orchestrator picking this up.",
-                    user=FakeUser("orchestrator"),
-                    created_at=long_ago,
-                ),
-                FakeComment(
-                    id=PR_OPEN_COMMENT_ID,
-                    body=":sparkles: PR opened: #31",
-                    user=FakeUser("orchestrator"),
-                    created_at=long_ago,
-                ),
-            ],
-        )
-        gh.add_issue(issue)
-        # PR head SHA mirrors the post-squash remote head -- the force-push
-        # inside the squash helper updates the remote, so by the time the
-        # next gh.get_pr() is taken (inside _handle_validating's seeding
-        # block, AND on the next in_review tick) the remote head matches
-        # the new local SHA.
-        pr = FakePR(
-            number=APPROVAL_PR,
-            head_branch=APPROVAL_BRANCH,
-            head=FakePRRef(sha=SQUASHED_SHA),
-            mergeable=True,
-            check_state="success",
-        )
-        gh.add_pr(pr)
-        gh.seed_state(
-            APPROVAL_ISSUE,
-            pr_number=APPROVAL_PR,
-            branch=APPROVAL_BRANCH,
-            dev_agent="claude",
-            dev_session_id="dev-sess",
-            review_round=0,
-            orchestrator_comment_ids=[PICKUP_COMMENT_ID, PR_OPEN_COMMENT_ID],
-            pickup_comment_id=PICKUP_COMMENT_ID,
-        )
-        return gh, issue, pr
-
-    def _run_squash_approval(
-        self,
-        github,
-        issue,
-        squash_result,
-    ):
-        with patch.object(config, SQUASH_ON_APPROVAL, True):
-            return self._run_validating(
-                github,
-                issue,
-                run_agent=_agent(last_message=REVIEW_APPROVED_MESSAGE),
-                head_shas=(REVIEWED_SHA,),
-                squash_result=squash_result,
-            )
-
-    def _assert_squash_handoff(self, github, pr, mocks) -> None:
-        self.assertEqual(
-            mocks["_squash_and_force_push"].call_count,
-            1,
-        )
-        self.assertEqual(mocks["run_agent"].call_count, 1)
-        self.assertIn(
-            (APPROVAL_ISSUE, LABEL_DOCUMENTING),
-            github.label_history,
-        )
-        state = github.pinned_data(APPROVAL_ISSUE)
-        squash_notice_posted = any(
-            ":package: squashed 3 commits to 1" in body
-            for _, body in github.posted_pr_comments
-        )
-        self.assertTrue(
-            squash_notice_posted,
-            f"squash notice not posted; got: {github.posted_pr_comments}",
-        )
-        approval_and_squash_ids = [
-            comment.id
-            for comment in pr.issue_comments
-        ]
-        self.assertTrue(approval_and_squash_ids)
-        self.assertGreaterEqual(
-            state.get("pr_last_comment_id"),
-            max(approval_and_squash_ids),
-            "watermark must include approval and squash comments",
-        )
-
-    def _run_review_after_squash(self, github, issue, pr):
-        long_ago = datetime.now(UTC) - timedelta(hours=1)
-        for comment in list(issue.comments) + list(pr.issue_comments):
-            if comment.created_at is None:
-                comment.created_at = long_ago
-        pr.approved = True
-        if not any(label.name == "in_review" for label in issue.labels):
-            issue.labels = [FakeLabel("in_review")]
-        with patch.object(
-            config,
-            "IN_REVIEW_DEBOUNCE_SECONDS",
-            REVIEW_DEBOUNCE_SECONDS,
-        ):
-            return self._run_in_review(
-                github,
-                issue,
-                run_agent=_agent(),
-            )
-
-    def _assert_ready_ping(self, github, mocks) -> None:
-        mocks["run_agent"].assert_not_called()
-        self.assertEqual(github.merge_calls, [])
-        self.assertNotIn(
-            (APPROVAL_ISSUE, "done"),
-            github.label_history,
-        )
-        ping_comments = [
-            body
-            for _, body in github.posted_comments
-            if "ready for review/merge" in body
-        ]
-        self.assertEqual(len(ping_comments), 1)
-        self.assertEqual(
-            github.pinned_data(APPROVAL_ISSUE).get("ready_ping_sha"),
-            SQUASHED_SHA,
-        )
-
-    def _assert_squash_parked(self, github, mocks) -> None:
-        self.assertEqual(
-            mocks["_squash_and_force_push"].call_count,
-            1,
-        )
-        state = github.pinned_data(APPROVAL_ISSUE)
-        self.assertTrue(state.get("awaiting_human"))
-        park_posted = any(
-            "squash-on-approval failed" in body
-            for _, body in github.posted_comments
-        )
-        self.assertTrue(
-            park_posted,
-            f"HITL park message not posted; got: {github.posted_comments}",
-        )
-        self.assertNotIn(
-            (APPROVAL_ISSUE, "in_review"),
-            github.label_history,
-            "park must not relabel to in_review",
-        )
-        self.assertNotIn(
-            (APPROVAL_ISSUE, LABEL_DOCUMENTING),
-            github.label_history,
-            "park must not start the final-docs hop",
-        )
+FROM_THE_RECORDED_HEAD = "reachable from the head the record names"
 
 
 class SquashOnApprovalTest(
@@ -270,6 +89,12 @@ class SquashOnApprovalTest(
         # Park happened: awaiting_human flag set, HITL message posted to
         # the issue thread.
         self._assert_squash_parked(gh, mocks)
+        # And it says the approved commits are where a human squashing by
+        # hand will find them.
+        self.assertTrue(any(
+            COMMITS_AT_HEAD in body
+            for _, body in gh.posted_comments
+        ))
 
     def test_a_held_park_reaches_the_pinned_comment(self) -> None:
         # A hold is not always the adjudication. The gate also holds on a
@@ -291,8 +116,11 @@ class SquashOnApprovalTest(
         )
 
     def test_squash_off_preserves_legacy_behavior(self) -> None:
-        # Kill switch: with SQUASH_ON_APPROVAL=off the squash helper must
-        # NOT be called and no squash notice is posted.
+        # Kill switch: with SQUASH_ON_APPROVAL=off nothing is collapsed and no
+        # squash notice is posted. The switch itself is the squash owner's --
+        # a collapse an earlier tick already made has to be finished whichever
+        # way it is set -- so the stage still hands the issue over and acts on
+        # the nothing-squashed answer it gets back.
         gh, issue, pr = self._setup()
         # Make pr.head.sha match REVIEWED_SHA -- legacy path: the local
         # HEAD the reviewer saw is what the remote PR points at, since no
@@ -305,10 +133,10 @@ class SquashOnApprovalTest(
                 issue,
                 run_agent=_agent(last_message=REVIEW_APPROVED_MESSAGE),
                 head_shas=(REVIEWED_SHA,),
+                squash_result=(True, REVIEWED_SHA, 0, None),
             )
 
-        # Helper not called at all.
-        mocks["_squash_and_force_push"].assert_not_called()
+        mocks["_squash_and_force_push"].assert_called_once()
         # No squash notice posted.
         for _, body in gh.posted_pr_comments:
             self.assertNotIn(":package: squashed", body)
@@ -339,3 +167,75 @@ class SquashOnApprovalTest(
         # Approval still flips to `documenting` (the final-docs hop)
         # even when there's only one commit (so no squash notice).
         self.assertIn((APPROVAL_ISSUE, LABEL_DOCUMENTING), gh.label_history)
+
+
+class SquashParkNoticeTest(
+    unittest.TestCase,
+    _SquashApprovalFixtureMixin,
+):
+    """Which of the four places a failed squash says it left the branch.
+
+    The reading is the squash owner's; the sentence is this stage's. What
+    matters here is that no two of them are said in the same words, because
+    each sends an operator somewhere different -- to HEAD, to a reflog entry
+    the record names, into the branch's own history under later work, or
+    nowhere until they have looked for themselves.
+    """
+
+    def test_a_retained_collapse_says_so(self) -> None:
+        # A failure taken over a collapse this tick could not finish leaves
+        # the branch standing on the squash, not on the approved history. An
+        # operator told to squash it by hand would be looking for commits that
+        # are not at HEAD.
+        notice = self._parks_over(
+            "the record it left cannot be proved",
+            _publication.BRANCH_COLLAPSED,
+        )
+
+        self.assertNotIn(COMMITS_AT_HEAD, notice)
+        self.assertIn("records a squash it could not finish", notice)
+
+    def test_a_buried_record_is_not_called_collapsed(self) -> None:
+        # A branch that grew PAST the recorded head was never rewritten, so
+        # the approved commits are in its own history under the work on top of
+        # them. The collapse sentence would send an operator to the reflog,
+        # straight past the commits they are looking for -- and contradict the
+        # refusal it is posted beside.
+        notice = self._parks_over(
+            "the branch stands on a commit made on top of it",
+            _publication.BRANCH_BURIED,
+        )
+
+        self.assertNotIn(COMMITS_AT_HEAD, notice)
+        self.assertNotIn(FROM_THE_RECORDED_HEAD, notice)
+        self.assertIn("under whatever was committed on top of them", notice)
+
+    def test_an_unplaced_failure_says_neither(self) -> None:
+        # A failure the squash owner could not place -- a record it cannot
+        # read whole, a recorded head no object here answers to -- is none of
+        # the others. Worded as one, the notice sends an operator to a HEAD or
+        # a reflog entry nothing established.
+        notice = self._parks_over(
+            "the record of it is not one this build can read",
+            _publication.BRANCH_UNKNOWN,
+        )
+
+        self.assertNotIn(COMMITS_AT_HEAD, notice)
+        self.assertNotIn(FROM_THE_RECORDED_HEAD, notice)
+        self.assertIn("nothing here can say where that leaves the branch", notice)
+
+    def _parks_over(self, error: str, standing: str) -> str:
+        """The notice one failed squash leaves on the issue thread."""
+        gh, issue = self._setup()[:2]
+
+        self._run_squash_approval(
+            gh, issue, _SquashOutcome(error=error, standing=standing),
+        )
+
+        parked = [body for _, body in gh.posted_comments if "squash" in body]
+        self.assertTrue(parked)
+        return parked[-1]
+
+
+if __name__ == "__main__":
+    unittest.main()

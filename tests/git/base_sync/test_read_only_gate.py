@@ -51,6 +51,8 @@ _PUBLISHED_COMMIT_ISSUE_NUMBER = 1001
 _PARTIAL_RECORD_ISSUE_NUMBER = 1010
 _FALSEY_RECORD_ISSUE_NUMBER = 1015
 _LONE_LEASE_ISSUE_NUMBER = 1020
+_PENDING_COLLAPSE_ISSUE_NUMBER = 1025
+_PARTIAL_COLLAPSE_ISSUE_NUMBER = 1030
 _HANDED_ON_ISSUE_NUMBER = 1002
 _PUBLISHED_EXEMPTION_ISSUE_NUMBER = 1003
 _UNREAD_MEASUREMENT_ISSUE_NUMBER = 998
@@ -62,6 +64,8 @@ _ACCEPTED_COMMIT = MEASURED_CANDIDATE_SHA
 # commit it accepted, and the checkout has moved past it.
 _HEAD_PAST_THE_EXEMPTION = "f" * SHA_LENGTH
 _FROZEN_CANDIDATE = MEASURED_CANDIDATE_SHA
+# The head a squash recorded before it collapsed the branch onto one commit.
+_COLLAPSED_HEAD = "e" * SHA_LENGTH
 _WORKTREE_ROOT = "/tmp/read-only-issue-"
 _READ_ONLY_LABELS = (LABEL_QUESTION, LABEL_DISCUSSION)
 # Both the clean hand-back and the refusal have to hold the branch still: the
@@ -100,6 +104,22 @@ _PARTIAL_READINGS: tuple[dict, ...] = (
 # a marker reading `false` is what a hand edit leaves -- so a freeze asking
 # for truth covers none of them while the guard that refuses them asks only
 # whether the comment carries the key.
+# The terms a squash records before it rewrites the branch, one member at a
+# time. Every one of them is a claim that a collapse is outstanding, and the
+# squash's own reader refuses a comment carrying any of them -- including one
+# spelled `null`, which is what a hand edit or an older binary leaves. Read
+# for a value, this refresh would rebase a branch that owner then declines to
+# touch, and the collapse would be stranded on a checkout something rewrote
+# underneath it.
+_PARTIAL_COLLAPSES: tuple[dict, ...] = (
+    {"late_collapse_head": _COLLAPSED_HEAD},
+    {"late_collapse_base_sha": _ACCEPTED_COMMIT},
+    {"late_collapse_count": 3},
+    {"late_collapse_count": None},
+    {"late_collapse_head": ""},
+)
+
+
 _FALSEY_READINGS: tuple[dict, ...] = (
     {"late_additions": 0},
     {"late_threshold": 0},
@@ -246,6 +266,49 @@ class ReadOnlyLabelBaseRefreshSkipTest(_SkipCase, unittest.TestCase):
         self._assert_synced(
             _CONSUMED_PARK_ISSUE_NUMBER, awaiting_human=False, park_reason=None,
         )
+
+
+class PendingCollapseSkipTest(_SkipCase, unittest.TestCase):
+    """A squash mid-rewrite is the one record a rebase cannot be undone from.
+
+    Every other freeze here protects a commit a later reader has to find. This
+    one protects a RELATIONSHIP: the recovery proves the commit on the branch
+    carries the tree the recorded head left, which is what a squash produces
+    and what a rebase replaces with a commit carrying the base advance too.
+    """
+
+    def test_a_pending_collapse_holds_the_branch(self) -> None:
+        # A squash says what it is about to do before it does it, and the tick
+        # that comes back proves the commit on the branch carries the tree the
+        # recorded head left -- which is what a squash produces and what a
+        # rebase destroys. Rebased inside that window the collapse is gone,
+        # the recovery refuses instead of finishing it, and the pull request
+        # is left standing on the history the record says was collapsed with
+        # the rebase already force-pushed over it.
+        self._assert_skipped(
+            _PENDING_COLLAPSE_ISSUE_NUMBER,
+            LABEL_VALIDATING,
+            awaiting_human=False,
+            park_reason=None,
+            late_collapse_head=_COLLAPSED_HEAD,
+            late_collapse_base_sha=_ACCEPTED_COMMIT,
+            late_collapse_count=3,
+        )
+
+    def test_a_partial_collapse_holds_the_branch(self) -> None:
+        # Being unreadable is not being absent: the squash refuses a comment
+        # carrying any member of the group, so the freeze has to cover every
+        # one of them or it covers less than the refusal it exists to make
+        # reachable.
+        for offset, claimed in enumerate(_PARTIAL_COLLAPSES):
+            with self.subTest(record=claimed):
+                self._assert_skipped(
+                    _PARTIAL_COLLAPSE_ISSUE_NUMBER + offset,
+                    LABEL_VALIDATING,
+                    awaiting_human=False,
+                    park_reason=None,
+                    **claimed,
+                )
 
 
 class LateRecordBaseRefreshSkipTest(_SkipCase, unittest.TestCase):
