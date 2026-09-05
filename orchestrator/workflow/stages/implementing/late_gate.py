@@ -99,10 +99,10 @@ rewrite was entered from -- no unreadable authorization already standing for
 the exempt commit, and a rewritten contribution that fingerprints to the same
 digest. Refused, nothing moves and the candidate is measured like
 any other. Granted, one write carries the PERMISSION and the debt the push
-it licenses is still owed -- the exemption itself does not move, here or
-anywhere in this build, since a verdict rotated onto a commit no remote has is
-one a failed push would strand. What moves it is the write that receipts the
-landed push, and until that write exists a granted permission simply stands.
+it licenses is still owed -- the exemption itself does not move here, since a
+verdict rotated onto a commit no remote has is one a failed push would strand.
+What moves it is the write that receipts the landed push, one seam further on,
+and until then a granted permission simply stands.
 
 This owner is the order those questions are asked in and nothing else. What a
 tick is ABOUT is `late_records`, the pair it measures over is `late_freeze`,
@@ -250,18 +250,27 @@ def _decided(
     two fingerprints and a fresh owner read, and because a commit the record
     already calls decided has nothing left to earn. Refused, the candidate
     falls through to the measurement exactly as it always did.
+
+    The permit's answer is kept APART from the other three rather than folded
+    into the one reason, because the two license different things. All four
+    say the candidate may publish without a reading; only the permit says a
+    human's verdict may move onto it once that publication lands. A refusal
+    that fell through to the measurement, and a count the ceiling then let
+    through, publish the same commit under an answer nothing vouched for --
+    so the write past the push is handed this commit and not the record, and
+    a permit that refused rotates nothing however readable the permission
+    beside it still is.
     """
-    unmeasured = (
-        _needs_no_measuring(gate, recorded, candidate_sha)
-        or _transfer._carried_over(gate, candidate_sha)
-    )
-    if unmeasured:
+    decided = _needs_no_measuring(gate, recorded, candidate_sha)
+    permitted = decided or _transfer._carried_over(gate, candidate_sha)
+    if permitted:
         log.info(
             "issue=#%d candidate %s %s; publishing it without a reading",
-            gate.issue.number, candidate_sha, unmeasured,
+            gate.issue.number, candidate_sha, permitted,
         )
         return _verdict_owner._unmeasured_verdict(
             gate, recorded, candidate_sha,
+            permitted_sha="" if decided else candidate_sha,
         )
     answered = (
         recorded.candidate_sha == candidate_sha

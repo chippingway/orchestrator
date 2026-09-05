@@ -12,9 +12,10 @@ second time.
 
 This record is what says the move is earned. It is written before anything
 reaches the remote and it moves NOTHING -- the exemption stays on the commit a
-human ruled on until the write that receipts the landed push carries it over,
-since a verdict rotated onto an object no remote has is one a failed push
-strands. What it carries is the whole of the evidence the move was granted on:
+human ruled on until `record_rewrite_publication` carries it over on the write
+that receipts a landed push, since a verdict rotated onto an object no remote
+has is one a failed push strands. What it carries is the whole of the evidence
+the move was granted on:
 the
 commit and base the contribution came FROM, the commit and base it went TO,
 which rewrite produced it, the digest both pairs fingerprinted to and the
@@ -37,15 +38,21 @@ says `authorized`, and it moves NOTHING: the exemption is still the commit a
 human ruled on, because the object the rewrite produced is on no remote yet
 and a verdict rotated onto it there would be stranded by a push that failed or
 a process that died. What spends the permission is the write that receipts a
-landed push: it carries the exemption and its identity over and moves the
-phase to `published`, all beside the account of what the remote now holds, so
-the move and the receipt land together or not at all.
+landed push: `record_rewrite_publication` carries the exemption and its
+identity over and moves the phase to `published`, and the caller stages it
+alongside the account of what the remote now holds, so the move and the
+receipt land together or not at all.
 
-That write is not one this build makes. Nothing here spends a permission, so
-every record written here stands at `authorized` and `published` is a phase
-this owner reads and never writes -- which is exactly why it is read at all
-and read fail-closed: a group announcing itself finished can only have come
-from a hand edit or another build, and it is the one a reader may not act on
+Both writes are here rather than at the seam that decides, because the move
+and the evidence for it are one record: the exemption, the identity beside it,
+and the phase have to agree at every moment a reader could read them, and an
+owner that set the phase for itself would be free to announce a transfer whose
+exemption it never moved. So the reader is the writer's own gate -- a
+publication is recorded only over a permission this build can read back whole
+and still finds outstanding -- and `published` is a phase this owner writes
+exactly once per grant and reads fail-closed everywhere else: a group
+announcing itself finished over fields nothing else here understands came from
+a hand edit or another build, and it is the one a reader may not act on
 unchecked.
 
 That is also what binds this record to the exemption, and which end binds
@@ -118,6 +125,29 @@ class LateRewriteKind(StrEnum):
     SQUASH = "squash"
 
 
+class LateRewriteProof(StrEnum):
+    """Which reading proved the push a transfer was settled on had landed.
+
+    Beside the phase rather than with the record that reports it, because it
+    is the other half of what `PUBLISHED` means: an exemption moves only onto
+    a commit the remote holds, so a transfer that reached that phase reached
+    it by one of exactly two proofs. `PUSHED` is the ordinary one -- a leased
+    force-push moved the pull request off the head the permit was granted
+    against. `ALREADY_PUBLISHED` is the recovery -- a tick that pushed and
+    died before its receipt came back to a pull request standing there
+    already, and the leased no-op that found it so is what proved it this
+    time.
+
+    Closed at two, because a remote standing anywhere else is not a third
+    outcome: it is a permit that was refused, and a refused permit spends no
+    permission and reports nothing. It is reported and never recorded, so it
+    is not one of the authorization's own keys.
+    """
+
+    PUSHED = "pushed"
+    ALREADY_PUBLISHED = "already_published"
+
+
 class LateRewritePhase(StrEnum):
     """How far the transfer this record authorizes got.
 
@@ -125,8 +155,8 @@ class LateRewritePhase(StrEnum):
     is still the commit a human ruled on, and what the record says is that a
     push for the rewritten one is outstanding. `PUBLISHED` is what the write
     that receipts that landed push moves it to, and that write is where the
-    exemption is carried over -- a write no owner here makes yet, so this
-    member is one every reader accounts for and none writes.
+    exemption is carried over -- `record_rewrite_publication` makes both moves
+    at once, so no reader ever sees one without the other.
 
     So an outstanding permission says three things at once, and every reader
     here turns on one of them. A push is OWED for the commit it names, which
@@ -338,7 +368,9 @@ def outstanding_permission(state: PinnedState) -> bool:
     and the answer is deliberately asymmetric. A permission is recognized as
     SPENT only from a record this build can vouch for entirely -- every field
     at its shape, the phase-bound end the commit the exemption names, and that
-    phase `published`. Read off the raw phase instead, a group carrying
+    phase `published` -- which is exactly what the write that spends one
+    leaves, since it moves the exemption and the phase together. Read off the
+    raw phase instead, a group carrying
     nothing else this build understands would announce itself as finished, and
     the approval standing beside it would be spent on an object id with
     neither the permit nor a reading behind it.
@@ -366,7 +398,8 @@ def _bound_end(state: PinnedState) -> str | None:
     ruled on, so the accepted end is what binds the record to it. The write
     that receipts the landed push is what moves the exemption onto the object
     the rewrite produced, and past that boundary the rewritten end is what
-    binds.
+    binds -- which is why that write moves the two in one statement rather
+    than one after the other.
 
     None where the phase or the end it names is not one this build can read,
     which is not the same claim as "bound to some other commit": a record that
@@ -479,9 +512,9 @@ def record_rewrite_authorization(
     ruled on, and what goes down beside it is the permission for a later write
     to move it -- so a transfer whose push never lands leaves the verdict
     where the adjudication put it rather than on an object no branch carries.
-    The rotation belongs to the write that receipts the push, where it would
-    land with the receipt or not at all -- a write no owner here makes, so
-    what this records outlives the tick that granted it.
+    The rotation belongs to `record_rewrite_publication`, which the write that
+    receipts the push stages it into, so the move lands with that receipt or
+    not at all.
 
     Written beside that exemption and validated against it: the accepted end
     of the rewrite has to BE the commit this issue exempts, because the whole
@@ -566,6 +599,59 @@ def _unusable_terms(rewrite: LateRewrite, fingerprint: str) -> str:
         if not _formats.is_hex_of(given, lengths):
             return f"a rewrite authorization is not one ({type(given).__name__})"
     return ""
+
+
+def record_rewrite_publication(state: PinnedState) -> LateRewrite:
+    """Spend the permission standing here, carrying the exemption with it.
+
+    The one write in this domain that MOVES a verdict, and the three fields it
+    moves go down in one statement because a reader is entitled to find them
+    agreeing: the exemption becomes the commit the rewrite produced, the
+    identity beside it becomes what that commit contributes over its own base,
+    and the phase says the transfer is over. Split across writes, a crash
+    between any two leaves a comment whose phase and whose commit disagree --
+    which every reader here refuses, and rightly, since it cannot be told from
+    a hand edit.
+
+    Held to the RECORD rather than to the caller. The permission is read back
+    whole and has to still be outstanding, so what is spent is a transfer this
+    build granted and can still account for: a group missing a member, one
+    bound to a commit this issue does not exempt, one whose kind or phase came
+    from somewhere else, and one already `published` are each a record nothing
+    may move a human's verdict on, and each refuses rather than being
+    repaired. The digest is the record's own for the same reason -- it is what
+    the permit was granted over, re-derived and compared before the grant, and
+    a reading taken here would fingerprint a checkout that has been writable
+    since.
+
+    Staged rather than persisted, like every other writer in this domain: what
+    makes the move durable is the caller's own write, which is what lets the
+    exemption, the identity, and the account of what the remote now holds land
+    together or not at all.
+
+    Answers with the rewrite it spent, since the caller that has just moved a
+    verdict is the one that owes a record of the move and holds nothing else
+    to describe it from.
+    """
+    authorization = read_rewrite_authorization(state)
+    if authorization is None:
+        raise _formats.InvalidLateValue(
+            "a rewrite publication has no authorization to spend",
+        )
+    if authorization.phase != LateRewritePhase.AUTHORIZED:
+        raise _formats.InvalidLateValue(
+            "a rewrite publication is not one still outstanding",
+        )
+    rewrite = authorization.rewrite
+    _exemption.record_exemption(state, rewrite.to_sha)
+    _exemption.record_semantic_identity(
+        state,
+        base_sha=rewrite.to_base_sha,
+        candidate_sha=rewrite.to_sha,
+        fingerprint=authorization.fingerprint,
+    )
+    state.set(LATE_REWRITE_PHASE, str(LateRewritePhase.PUBLISHED))
+    return rewrite
 
 
 def clear_rewrite_authorization(state: PinnedState) -> None:

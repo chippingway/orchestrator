@@ -225,6 +225,63 @@ class RecordedAuthorizationTest(unittest.TestCase):
         )
 
 
+class SpentAuthorizationTest(unittest.TestCase):
+    """The write that carries the exemption over, and what it refuses to."""
+
+    def test_the_whole_move_lands_in_one_write(self) -> None:
+        # The exemption, what the commit it names contributes, and the phase
+        # that says the transfer is over are one record: a reader is entitled
+        # to find them agreeing, and any two of them apart is a comment no
+        # reader here can tell from a hand edit.
+        state = authorized_state()
+
+        spent = _rewrites.record_rewrite_publication(state)
+
+        self.assertEqual(spent, granted_rewrite())
+        self.assertEqual(_exemption.read_exemption(state), REWRITTEN_SHA)
+        identity = _exemption.read_semantic_identity(state)
+        self.assertEqual(identity.base_sha, MERGE_BASE_SHA)
+        self.assertEqual(identity.candidate_sha, REWRITTEN_SHA)
+        self.assertEqual(identity.fingerprint, CONTRIBUTION_DIGEST)
+        authorization = _rewrites.read_rewrite_authorization(state)
+        self.assertEqual(
+            authorization.phase, _rewrites.LateRewritePhase.PUBLISHED,
+        )
+        self.assertEqual(authorization.rewrite, granted_rewrite())
+
+    def test_a_spent_permission_is_not_outstanding(self) -> None:
+        state = authorized_state()
+
+        _rewrites.record_rewrite_publication(state)
+
+        self.assertFalse(_rewrites.outstanding_permission(state))
+
+    def test_it_refuses_a_record_it_cannot_vouch_for(self) -> None:
+        # Every way a permission fails to be one this build granted: nothing
+        # standing at all, a group damaged past reading, and one already
+        # spent. Each would move a human's verdict on evidence nobody checked.
+        refused = {
+            "no permission at all": PinnedState(data={}),
+            "a damaged permission": damaged_state({_LEASE: None}),
+            "a permission already spent": _published_state(),
+        }
+        for described, state in refused.items():
+            with self.subTest(standing=described):
+                before = dict(state.data)
+
+                with self.assertRaises(InvalidLateValue):
+                    _rewrites.record_rewrite_publication(state)
+
+                self.assertEqual(state.data, before)
+
+
+def _published_state() -> PinnedState:
+    """The comment one settled transfer leaves, through the write that makes it."""
+    state = authorized_state()
+    _rewrites.record_rewrite_publication(state)
+    return state
+
+
 class DamagedAuthorizationTest(unittest.TestCase):
     """A claim this domain cannot vouch for is a claim, and it is not read.
 

@@ -59,7 +59,7 @@ matching `ANALYTICS_LOG_PATH`.
   `TRACK_SKILL_TRIGGERS` is enabled, with no migration and no schema reapply. The `agent_run_budget` family's payload
   is another: `stage` and `agent_role` are already promoted columns, and `phase`, `configured`, `allowance`, `used`,
   `remaining`, `reservation_id`, and `reason` all land in `extras` unchanged
-  ([`event-streams.md`](event-streams.md#agent-run-budget-records-both-sinks)). The late size gate's seven families
+  ([`event-streams.md`](event-streams.md#agent-run-budget-records-both-sinks)). The late size gate's eight families
   are a third, and the one with a test standing over it: `stage` is promoted, and every field of the bounded late
   payload lands in `extras` — the correlating identities, the frozen commits, the measurement, and the per-family
   details, including the `measurement_failure` step and the `detail` line a refused size reading names

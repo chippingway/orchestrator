@@ -6,9 +6,12 @@ One frozen candidate described once: the state round trip writes it, the
 record builder correlates against it, and the dual emission carries it to both
 sinks, so a field added to the record is exercised by all three without three
 copies of the same fixture drifting apart. `family_cases` is the same idea for
-the seven event families -- one valid event per family, built where the
-family schema is spelled, so a test that walks them all cannot fall behind a
-family the schema gained.
+the event families whose record reads over that generation -- one valid event
+per family, built where the family schema is spelled. The transfer sits beside
+them in `transfer_event` rather than among them, because its record is only
+ever written past a publication and a generation entered before one could not
+carry it; `every_family` is the two together, so a walk over the vocabulary
+cannot fall behind a family the schema gained.
 """
 from __future__ import annotations
 
@@ -26,6 +29,10 @@ from orchestrator.workflow.late_split.models import (
     LateResourceKind,
     LateResourceState,
     LateVerdict,
+)
+from orchestrator.workflow.late_split.rewrites import (
+    LateRewriteKind,
+    LateRewriteProof,
 )
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -75,6 +82,12 @@ ENTERED_ON_PUBLICATION = MappingProxyType({
     "published_pr_number": PUBLISHED_PR_NUMBER,
     "published_sha": PUBLISHED_SHA,
 })
+# The pair a transfer moved a verdict OFF. The pair it moved onto is the
+# generation's own frozen pair, which is why only these two travel on the
+# event.
+TRANSFERRED_FROM_SHA = "1" * SHA_LENGTH
+TRANSFERRED_FROM_BASE_SHA = "2" * SHA_LENGTH
+
 SCOPE = "the declared slice this generation owns"
 SNAPSHOT_REF = "refs/orchestrator/snapshot/9"
 CANCELLED_AT = "2026-08-21T10:00:00+00:00"
@@ -137,8 +150,42 @@ def cleanup_event(resource: LateResource) -> _events.LateEvent:
     )
 
 
+def transfer_event(**fields) -> _events.LateEvent:
+    """One exemption carried onto the commit a rewrite produced."""
+    return _events.LateEvent(**{
+        "family": _events.LateEventFamily.TRANSFER,
+        "rewrite_kind": LateRewriteKind.SQUASH,
+        "transfer_proof": LateRewriteProof.PUSHED,
+        "transferred_from_sha": TRANSFERRED_FROM_SHA,
+        "transferred_from_base_sha": TRANSFERRED_FROM_BASE_SHA,
+        **fields,
+    })
+
+
+def transferred_generation(**fields) -> LateGeneration:
+    """The generation one transfer record is correlated by.
+
+    Entered on a publication by construction: a verdict moves only onto a
+    commit a pull request the remote already carries has been pushed to, so
+    the same record over a pre-publication generation would describe a move
+    nothing could be attributed to.
+    """
+    return measured_generation(**{**ENTERED_ON_PUBLICATION, **fields})
+
+
+def every_family() -> tuple:
+    """One valid event per family in the vocabulary, the transfer included."""
+    return (*family_cases(), transfer_event())
+
+
 def family_cases() -> tuple:
-    """One valid event per family, each carrying exactly what it owns."""
+    """One valid event per family whose record reads over any generation.
+
+    The transfer is deliberately not among them: its record is only written
+    past a publication, so a walk that built one over the pre-publication
+    generation beside this would be asserting on a record the contract
+    refuses. `every_family` is what a test covering the vocabulary walks.
+    """
     cases = [
         _events.LateEvent(family=_events.LateEventFamily.MEASUREMENT),
         _events.LateEvent(

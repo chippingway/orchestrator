@@ -19,6 +19,13 @@ request somebody pushed to in that same window rejects the push instead of
 being overwritten. Past the push the receipt and the debt are settled in one
 durable write, and the checkout is proved again -- what went out is right, and
 what can be wrong by then is the tree every stage behind this gate reads.
+
+That one write is also where a rewrite's exemption finally moves. The permit
+`late_transfer` granted licensed this push and rotated nothing, because the
+commit it is about was on no remote when it was granted; here it is, so the
+verdict, the identity beside it, and the phase that spends the permission go
+down with the receipt that says the remote has it -- `late_rotation` owns
+which of those the comment owes and this owner owns the write they ride.
 """
 from __future__ import annotations
 
@@ -31,6 +38,7 @@ from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
     late_publication as _publication_gate,
     late_records as _records,
+    late_rotation as _rotation,
     publication as _publication,
     state as _state,
 )
@@ -115,7 +123,7 @@ def _publishes(
     # so no window exists in which the branch is published and the record
     # owes the checkout nothing.
     unproven = _unproven_checkout(gate, published.revision)
-    _publication_paid(gate, published.revision, unproven)
+    _publication_paid(gate, published, unproven)
     if unproven:
         return _PushedCandidate(held=True)
     return _PushedCandidate(landed=True)
@@ -240,7 +248,9 @@ def _pushed(
 
 
 def _publication_paid(
-    gate: _records._Gate, published: str, unproven: bool,
+    gate: _records._Gate,
+    published: _publication_gate._PublishedCandidate,
+    unproven: bool,
 ) -> None:
     """Settle what a push that landed paid, and what it still owes.
 
@@ -311,11 +321,29 @@ A process that died in that window would leave a paid debt standing,
     on, re-proves it, and settles, with nothing re-run and nothing re-measured.
     A commit with no head to pin it against would be half a claim, which that
     owner refuses as damage and parks under a reason only a human clears.
+
+    The exemption a REWRITE earned rides the same write, and it is the one
+    thing here that is not about this issue's debt at all. `late_transfer`
+    granted a permission for this push and moved nothing, because the commit
+    it names was on no remote then; it is on one now, so the verdict, the
+    identity beside it, and the phase that spends the permission go down with
+    the receipt that says so. Settled one write later, a process dying in
+    between would leave the pull request carrying a commit no exemption covers
+    -- and the next push would measure a change a human already ruled on past
+    the same ceiling and route an approved branch back into adjudication.
+
+    That rotation is asked whether or not anything else here is owed, because
+    it is a different question with a different answer: a comment whose
+    receipt already names this commit still owes the move if the write that
+    should have carried it was lost, and a settlement that skipped it there
+    would never come back for it.
     """
-    if not published:
+    if not published.revision:
         return
-    settling = _owes_a_settlement(gate.state, published)
-    if not settling and not unproven:
+    landed = published.revision
+    rotation = _rotation._rotates_the_exemption(gate, published)
+    settling = _owes_a_settlement(gate.state, landed)
+    if not (settling or unproven or rotation.staged):
         return
     if settling:
         # Read before the drop below takes it: the accepted road keeps the
@@ -326,10 +354,11 @@ A process that died in that window would leave a paid debt standing,
         )
         _records._spend(gate.state, gate.spends)
         _parks._forget_approval(gate.state)
-        _parks._record_publication(gate.state, published, superseded)
+        _parks._record_publication(gate.state, landed, superseded)
     if unproven:
-        _parks._approve(gate.state, published, published)
+        _parks._approve(gate.state, landed, landed)
     gate.gh.write_pinned_state(gate.issue, gate.state)
+    _rotation._reports_the_transfer(gate, rotation)
 
 
 def _owes_a_settlement(state: PinnedState, published: str) -> bool:

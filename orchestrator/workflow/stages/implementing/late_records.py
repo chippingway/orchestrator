@@ -239,10 +239,27 @@ class _GateVerdict:
     published under. The publication resolves the checkout's own head there
     rather than pushing an unnamed branch -- the switch keeps candidates out
     of the measurement, not out of the record of what went out.
+
+    `permitted_sha` is the second commit and answers a different question: not
+    "may this publish" but "did a rewrite permit prove out for it on THIS
+    tick". It is empty for every road but one, the ordinary measurement's
+    included -- a permit that refused leaves the candidate to the cumulative
+    gate, and a candidate the gate then lets through publishes on the count
+    rather than on the exemption.
+
+    The two are separate because the write past the push turns on the second
+    and only the second. A permission standing on the comment is evidence a
+    permit was once granted, not that it still holds: a repointed pull
+    request, a relabelled issue, a moved remote, or a contribution that no
+    longer fingerprints alike each refuse it while the ordinary reading may
+    still publish the same commit. Read off the record instead, that
+    publication would rotate a human's verdict onto a rewrite this tick
+    declined to vouch for.
     """
 
     held: bool
     candidate_sha: str = ""
+    permitted_sha: str = ""
 
 
 # What every held answer is, since a hold names no commit: there is nothing

@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """What one late event is, and what its family is allowed to say.
 
-Seven families describe a late generation's whole life -- what a candidate
+Eight families describe a late generation's whole life -- what a candidate
 measured, what the adjudication decided, which typed step failed, what happened
-to a snapshot, what a cleanup reconciled, that the owner was cancelled, and
-that a restart was taken. Each carries the generation's own correlation, plus
+to a snapshot, what a cleanup reconciled, that the owner was cancelled, that a
+restart was taken, and that an adjudication's exemption was carried onto the
+commit a workflow rewrite replaced it with. Each carries the generation's own
+correlation, plus
 only the detail its family owns, and the record enforces that rather than
 trusting the emitter: `_FAMILY_FIELDS` says which fields a family requires and
 which it may carry, and anything else raises `InvalidLateValue` where the event
@@ -31,6 +33,18 @@ landed: it is required of a `question`, because a question that cannot say
 what it is asking about is not analyzable, and it is optional on the other two
 -- which is what makes the artifact-dominated `single` verdict a thing
 telemetry can count rather than a claim nobody can check.
+
+The transfer family is the one whose subject is a pair of commits rather than
+one, so the four ends it is read by are split between it and the generation
+under it: the rewritten commit and the base it was read over are that
+generation's own frozen pair, and the accepted commit the exemption came OFF
+-- with the base that one was read over -- are two fields the family adds.
+Both are held to the shape a commit takes rather than to a vocabulary, because
+an end that is not a whole object id is not one a reader could re-derive the
+equality from. It carries no verdict, and deliberately so: a transfer moves a
+decision a human already made onto the object that replaced the one they made
+it about, and a second `single` on the stream would read as a second
+adjudication of work nobody was asked about twice.
 
 `category` is a closed vocabulary, not a label an agent writes. The late
 decomposer's answer is mapped onto these members by `verdict_category`, which
@@ -79,6 +93,10 @@ from orchestrator.workflow.late_split.models import (
     LateResourceState,
     LateVerdict,
 )
+from orchestrator.workflow.late_split.rewrites import (
+    LateRewriteKind,
+    LateRewriteProof,
+)
 
 _REQUIRES = "requires"
 _NOT_CARRIED = "does not carry"
@@ -93,6 +111,10 @@ _MEASUREMENT_FAILURE = "measurement_failure"
 _DETAIL = "detail"
 _RESOURCE = "resource"
 _RESTART_STEP = "restart_step"
+_REWRITE_KIND = "rewrite_kind"
+_TRANSFER_PROOF = "transfer_proof"
+_TRANSFERRED_FROM_SHA = "transferred_from_sha"
+_TRANSFERRED_FROM_BASE_SHA = "transferred_from_base_sha"
 
 # Every detail field a family can own, in the order a refusal reports them.
 _DETAIL_FIELDS = (
@@ -104,6 +126,10 @@ _DETAIL_FIELDS = (
     _DETAIL,
     _RESOURCE,
     _RESTART_STEP,
+    _REWRITE_KIND,
+    _TRANSFER_PROOF,
+    _TRANSFERRED_FROM_SHA,
+    _TRANSFERRED_FROM_BASE_SHA,
 )
 
 # How much of a failed step's own line a record may carry. Long enough for the
@@ -123,6 +149,7 @@ class LateEventFamily(StrEnum):
     CLEANUP = "late_cleanup"
     CANCELLATION = "late_cancellation"
     RESTART = "late_restart"
+    TRANSFER = "late_transfer"
 
 
 class LateVerdictCategory(StrEnum):
@@ -159,9 +186,20 @@ _FAMILY_FIELDS = MappingProxyType({
     LateEventFamily.CLEANUP: ((_RESOURCE,), ()),
     LateEventFamily.CANCELLATION: ((), ()),
     LateEventFamily.RESTART: ((_RESTART_STEP,), ()),
+    LateEventFamily.TRANSFER: (
+        (
+            _REWRITE_KIND,
+            _TRANSFER_PROOF,
+            _TRANSFERRED_FROM_SHA,
+            _TRANSFERRED_FROM_BASE_SHA,
+        ),
+        (),
+    ),
 })
 
-# What each detail field has to be a member (or a real count) of.
+# What each detail field has to be: a member of one vocabulary, a real
+# count, one bounded line, or -- where the shape is a bound rather than a
+# class -- hex of exactly the lengths named here.
 _DETAIL_TYPES = MappingProxyType({
     _VERDICT: LateVerdict,
     _CATEGORY: LateVerdictCategory,
@@ -171,6 +209,10 @@ _DETAIL_TYPES = MappingProxyType({
     _DETAIL: str,
     _RESOURCE: LateResource,
     _RESTART_STEP: LateRestartStep,
+    _REWRITE_KIND: LateRewriteKind,
+    _TRANSFER_PROOF: LateRewriteProof,
+    _TRANSFERRED_FROM_SHA: _formats.COMMIT_LENGTHS,
+    _TRANSFERRED_FROM_BASE_SHA: _formats.COMMIT_LENGTHS,
 })
 
 # The verdict a child count belongs to and only to, and the one a category is
@@ -205,6 +247,10 @@ class LateEvent:
     detail: str | None = None
     resource: LateResource | None = None
     restart_step: LateRestartStep | None = None
+    rewrite_kind: LateRewriteKind | None = None
+    transfer_proof: LateRewriteProof | None = None
+    transferred_from_sha: str | None = None
+    transferred_from_base_sha: str | None = None
 
     def __post_init__(self) -> None:
         self.check()
@@ -348,8 +394,13 @@ def verdict_category(asked: str | None) -> LateVerdictCategory:
         return LateVerdictCategory.UNKNOWN
 
 
-def _is_typed(given: Any, wanted: type) -> bool:
-    """Whether one detail is the member, count, text, or resource it claims.
+def _is_typed(given: Any, wanted: Any) -> bool:
+    """Whether one detail is the member, count, text, commit, or resource it claims.
+
+    `wanted` is a class wherever membership is the whole test, and a set of
+    lengths where the shape is a bound instead: a commit is a bounded string
+    rather than a vocabulary, so what the table names for one is the lengths
+    the domain's own object-id reader holds it to.
 
     A resource is checked through to its own fields, because the kind is what
     a record reports: a `LateResource` built with a string for its kind would
@@ -361,16 +412,21 @@ def _is_typed(given: Any, wanted: type) -> bool:
     diagnostic that arrived as a transcript is refused here rather than
     written, which is why the emitters reduce theirs through
     `measurement_failure_event` instead of handing over what they were given.
+
+    A recorded end of a rewrite is bounded the same way one field over: a
+    commit is a whole object id and nothing else, so an abbreviation, a
+    branch name, or prose offered as the commit an exemption came off is
+    refused with the record it arrived on.
     """
     if wanted is int:
         return _formats.whole_number(given) and given >= 0
     if wanted is str:
         return _formats.is_bounded_text(given, MAX_FAILURE_DETAIL)
+    if isinstance(wanted, frozenset):
+        return _formats.is_hex_of(given, wanted)
     if not isinstance(given, wanted):
         return False
-    if wanted is not LateResource:
-        return True
-    return (
+    return wanted is not LateResource or (
         isinstance(given.kind, LateResourceKind)
         and isinstance(given.resource_state, LateResourceState)
         and _formats.is_bounded_text(given.target, MAX_RESOURCE_TARGET)

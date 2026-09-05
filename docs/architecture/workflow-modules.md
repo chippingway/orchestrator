@@ -294,11 +294,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             was made against, and the phase the transfer stands at. Written BEFORE the push it
                             licenses and moving nothing -- the exemption stays on the commit a human ruled on, since
                             the object the rewrite produced is on no remote yet and a verdict rotated onto it there
-                            would be stranded by a push that failed. What SPENDS a permission is the write that
-                            receipts the landed push, carrying the exemption over and moving the phase to `published`;
-                            no owner in this build makes that write, so every record written here stands at
-                            `authorized` and `published` is a phase this module reads and never writes -- which is
-                            why it is read fail-closed at all. The phase is what binds the group to the
+                            would be stranded by a push that failed. What SPENDS a permission is
+                            `record_rewrite_publication`, staged into the write that receipts the landed push: the
+                            exemption, the identity beside it, and the phase move to `published` in one statement,
+                            since a reader is entitled to find them agreeing. Both writes live here rather than at
+                            the seam that decides, so the reader is the writer's own gate -- a publication is
+                            recorded only over a permission this build can read back whole and still finds
+                            outstanding, and every other record is refused rather than repaired. The phase is what binds the group to the
                             exemption -- the accepted end while `authorized`, the rewritten one once `published` --
                             and what a rollback reads, since only an `authorized` permission may be dropped when a
                             refused force-push resets the branch back onto the commit the exemption never left. Read
@@ -309,7 +311,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             mints, the whole-marker check that decides whether the one a crash left may still be
                             believed, the settled-ledger precondition retirement refuses without, and the fresh
                             cycle it projects
-    events.py               the seven families, the per-family schema an event is refused against, the member each
+    events.py               the eight families, the per-family schema an event is refused against, the member each
                             detail has to actually be, the member each companion field has to sit BESIDE -- the
                             verdict a child count belongs to, and the one failure a measurement step and its line
                             belong to, since a field allowed beside every member describes none of them -- the
@@ -1075,7 +1077,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             its commit with no debt beside it, which is a retry of a publication already settled; a
                             push that MOVED the pull request settles whenever a pair the route owes is not already
                             the value on the comment, since the receipt is never cleared and on its own reads a
-                            branch pushed back onto an older published commit as a round nothing is left to close
+                            branch pushed back onto an older published commit as a round nothing is left to close.
+                            The exemption a rewrite earned rides that same write, staged by `late_rotation` and
+                            asked whether or not anything else is owed, so a comment whose receipt already names the
+                            commit still gets the move if the write that should have carried it was lost
       late_accepted.py      the push an adjudication already accepted, taken with no measurement -- a verdict read
                             this exact diff and said it ships as one change -- but still named against the commit
                             that was DECIDED, still pinned to the head the reading was taken over, and made only
@@ -1144,9 +1149,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             Granted, ONE durable write records the authorization and the debt the push is still
                             owed -- both before the push, because a comment that explains a one-commit branch and
                             does not say a push is outstanding is one the next squash reads as nothing to squash. The exemption
-                            itself does not move here, and no owner in this build moves it: the rotation belongs to
-                            the write that receipts a landed push, so a verdict is never left on a commit no remote
-                            carries. A write GitHub REFUSES is
+                            itself does not move here: the rotation belongs to `late_rotation`, on the write that
+                            receipts a landed push, so a verdict is never left on a commit no remote carries. A write GitHub REFUSES is
                             handled here rather than allowed out: the staged payload is put back exactly as it was
                             found and the permit is refused, so the tick falls through to the ordinary gate instead
                             of ending in an exception that would carry past every rollback the squash has. Refused,
@@ -1167,6 +1171,32 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             lost receipt recoverable: a remote already standing on the rewritten commit is this
                             permit's own push having landed, admitted as such rather than read as a moved remote,
                             which would remeasure a squash the pull request already carries
+      late_rotation.py      what the receipt of that landed push does with the permission behind it, staged into the
+                            push tail's own write so the exemption, the identity it carries, the phase that spends
+                            the permission, the account of what the remote holds, and the bookkeeping the landing
+                            closes land together or not at all. What licenses the move is the PERMIT `late_transfer`
+                            re-asked on this tick, handed down the tail beside the commit it proved out for, and not
+                            the permission on the comment: a refusal there is not a hold, so the rewritten commit
+                            falls through to the ordinary cumulative gate and a count under the ceiling publishes the
+                            same commit -- a settlement reading the record alone would rotate a human's verdict onto
+                            a rewrite nothing revalidated and write the very digest the permit declined. A permission
+                            no permit vouched for is therefore left exactly where it stands, neither spent nor
+                            dropped, since the remote is now on a head the permit accounts for and a later tick whose
+                            refusal has cleared can settle it. A permission naming the commit that just landed, where
+                            this tick's permit proved out for it, is
+                            SPENT -- the verdict moves onto it, since the pull request really carries it now -- and
+                            the record says which of the two readings proved that: a leased force-push that moved
+                            the publication off the head the permit was granted against, or the leased no-op a
+                            recovery makes over a pull request a tick that pushed and died had already left it
+                            standing on. There is no third, since a remote anywhere else is a permit `late_transfer`
+                            refused and a reading that could not be taken refuses the same way -- neither is read as
+                            equivalence, and neither is ever pushed for unleased. A permission the publication went
+                            PAST is dropped instead, on the rollback's own terms (an outstanding record this build
+                            can vouch for entirely), since the head it was granted against is gone and what is left
+                            is a claim about a push that cannot happen. What it reports is one `late_transfer` event
+                            -- both pairs, the pull request, the rewrite kind, and the proof -- and deliberately no
+                            second `late_verdict`, which would read as a second adjudication of work nobody was
+                            asked about twice
       late_reconcile.py     the reading the dispatcher takes for a pair frozen and never counted, scoped to the
                             stage the record names and taken with no run behind it: measured at or under the ceiling
                             the candidate is PUBLISHED before the stage runs -- nothing goes back for a push a

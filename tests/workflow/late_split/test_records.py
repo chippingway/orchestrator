@@ -17,6 +17,10 @@ _FAILURE = _support.family_cases()[2]
 _CLEANUP = _support.family_cases()[4]
 _MEASUREMENT_FAILURE = "measurement_failure"
 _DETAIL = "detail"
+# The pair every size-bearing record names, spelled once because three of the
+# assertions below read the same two fields off a payload.
+_SOURCE_SHA = "source_sha"
+_BASE_SHA = "base_sha"
 _CATEGORY = _support.CATEGORY
 # What a generation must never carry into a record: prose, a path, a quoted
 # secret -- offered through the fields that are typed only by annotation.
@@ -26,7 +30,7 @@ _PROSE = "rationale: inspect /srv/private/key before splitting"
 _MEASURED_CASES = tuple(
     (event, name)
     for event in _support.family_cases()[:2]
-    for name in ("candidate_sha", "base_sha", "threshold", "additions", "phase")
+    for name in ("candidate_sha", _BASE_SHA, "threshold", "additions", "phase")
 )
 _STRIPPED = _support.measured_generation(
     candidate_sha="", base_sha="", threshold=None, additions=None, phase=None,
@@ -284,7 +288,7 @@ class FamilyContextTest(unittest.TestCase):
         for event in _support.family_cases()[2:]:
             with self.subTest(family=str(event.family)):
                 self.assertNotIn(
-                    "source_sha",
+                    _SOURCE_SHA,
                     _records.build_late_payload(event, _STRIPPED),
                 )
 
@@ -293,6 +297,64 @@ class FamilyContextTest(unittest.TestCase):
             _records.build_late_payload(
                 event, _support.measured_generation(**generation_fields),
             )
+
+
+class TransferRecordTest(unittest.TestCase):
+    """What one settled transfer says, and what it may not be written over."""
+
+    def test_it_names_both_pairs_and_the_proof(self) -> None:
+        # The pair the verdict moved ONTO is the generation's own, since that
+        # is what a later measurement of the same work joins on; the pair it
+        # moved OFF is the family's, because nothing else on a record could
+        # name a commit the branch no longer carries.
+        recorded = _records.build_late_payload(
+            _support.transfer_event(), _support.transferred_generation(),
+        )
+
+        self.assertEqual(recorded[_SOURCE_SHA], _support.CANDIDATE_SHA)
+        self.assertEqual(recorded[_BASE_SHA], _support.BASE_SHA)
+        self.assertEqual(
+            recorded["transferred_from_sha"], _support.TRANSFERRED_FROM_SHA,
+        )
+        self.assertEqual(
+            recorded["transferred_from_base_sha"],
+            _support.TRANSFERRED_FROM_BASE_SHA,
+        )
+        self.assertEqual(recorded["rewrite_kind"], "squash")
+        self.assertEqual(recorded["transfer_proof"], "pushed")
+
+    def test_it_names_the_publication_it_happened_on(self) -> None:
+        recorded = _records.build_late_payload(
+            _support.transfer_event(), _support.transferred_generation(),
+        )
+
+        self.assertEqual(recorded[_PUBLICATION], _POST)
+        self.assertEqual(recorded[_SOURCE_STAGE], "in_review")
+        self.assertEqual(recorded[_PUBLISHED_PR], _support.PUBLISHED_PR_NUMBER)
+
+    def test_an_unattributable_move_is_refused(self) -> None:
+        # A verdict moves only onto a commit a pull request the remote already
+        # carries has been pushed to, so a transfer that cannot name that pull
+        # request is a move nothing could be attributed to.
+        unattributable = (
+            {"post_publication": False},
+            {_PUBLISHED_PR: None},
+            {_PUBLISHED_SHA: ""},
+        )
+        for fields in unattributable:
+            with self.subTest(**fields), self.assertRaises(_REFUSED):
+                _records.build_late_payload(
+                    _support.transfer_event(),
+                    _support.transferred_generation(**fields),
+                )
+
+    def test_it_is_still_held_to_the_commits(self) -> None:
+        for name in ("candidate_sha", _BASE_SHA):
+            with self.subTest(field=name), self.assertRaises(_REFUSED):
+                _records.build_late_payload(
+                    _support.transfer_event(),
+                    _support.transferred_generation(**{name: ""}),
+                )
 
 
 if __name__ == "__main__":

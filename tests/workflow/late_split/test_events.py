@@ -13,6 +13,7 @@ from orchestrator.workflow.late_split.models import (
     LateResourceState,
     LateVerdict,
 )
+from orchestrator.workflow.late_split.rewrites import LateRewriteProof
 from tests.workflow.late_split import generation_test_support as _support
 
 _FAMILY = _events.LateEventFamily
@@ -26,6 +27,7 @@ _NOT_TEXT = ("generated_artifacts",)
 # and a quoted secret, none of which may become a record.
 _PROSE = "rationale: inspect /srv/private/key before splitting"
 _MULTILINE = f"{_PROSE}\n"
+_PROOF = LateRewriteProof
 _STEP = _support.MEASUREMENT_STEP
 _SAID = _support.FAILURE_DETAIL
 _LIMIT = _events.MAX_FAILURE_DETAIL
@@ -53,9 +55,17 @@ class FamilySchemaTest(unittest.TestCase):
     """A family carries what it owns, all of it, and nothing else."""
 
     def test_every_family_builds_with_its_own_fields(self) -> None:
-        for event in _support.family_cases():
+        for event in _support.every_family():
             with self.subTest(family=str(event.family)):
                 self.assertIsInstance(event, _events.LateEvent)
+
+    def test_the_vocabulary_is_covered(self) -> None:
+        # The walk above is only worth what it covers, so a family the schema
+        # gains without a case is a family nothing here checks.
+        self.assertEqual(
+            {event.family for event in _support.every_family()},
+            set(_FAMILY),
+        )
 
     def test_a_field_the_family_lacks_is_refused(self) -> None:
         # A measurement claiming a verdict, a failure claiming a resource, a
@@ -74,6 +84,10 @@ class FamilySchemaTest(unittest.TestCase):
             },
             {_FAMILY_KEY: _FAMILY.MEASUREMENT, "measurement_failure": _STEP},
             {_FAMILY_KEY: _FAMILY.CANCELLATION, "detail": _SAID},
+            {
+                _FAMILY_KEY: _FAMILY.CANCELLATION,
+                "transfer_proof": _PROOF.PUSHED,
+            },
         )
         for fields in unowned:
             with self.subTest(family=str(fields[_FAMILY_KEY])), self.assertRaises(_REFUSED):
@@ -96,7 +110,7 @@ class FamilySchemaTest(unittest.TestCase):
     def test_a_missing_required_field_is_refused(self) -> None:
         for family in (
             _FAMILY.VERDICT, _FAMILY.FAILURE, _FAMILY.SNAPSHOT,
-            _FAMILY.CLEANUP, _FAMILY.RESTART,
+            _FAMILY.CLEANUP, _FAMILY.RESTART, _FAMILY.TRANSFER,
         ):
             with self.subTest(family=str(family)), self.assertRaises(_REFUSED):
                 _events.LateEvent(family=family)
@@ -249,6 +263,36 @@ class DetailTypeTest(unittest.TestCase):
             ),
         )
         self.assertIs(recorded.resource.kind, LateResourceKind.BRANCH)
+
+
+class TransferDetailTest(unittest.TestCase):
+    """A transfer names both ends it moved a verdict off, and what proved it."""
+
+    def test_all_four_are_required(self) -> None:
+        # A record short of any of them describes a move nobody could check:
+        # which change was carried, which rewrite carried it, and what proved
+        # the push behind it landed are the whole of what it says.
+        for name in (
+            "rewrite_kind",
+            "transfer_proof",
+            "transferred_from_sha",
+            "transferred_from_base_sha",
+        ):
+            with self.subTest(missing=name), self.assertRaises(_REFUSED):
+                _support.transfer_event(**{name: None})
+
+    def test_an_end_must_be_a_whole_commit(self) -> None:
+        # Bounded as a commit rather than as text: an abbreviation names no
+        # object a reader could re-derive the equality from, and prose offered
+        # through a field named for a SHA is exactly what the bound is for.
+        for given in (_support.CANDIDATE_SHA[:7], _PROSE, ""):
+            with self.subTest(given=given), self.assertRaises(_REFUSED):
+                _support.transfer_event(transferred_from_sha=given)
+
+    def test_its_vocabularies_are_closed(self) -> None:
+        for name in ("rewrite_kind", "transfer_proof"):
+            with self.subTest(field=name), self.assertRaises(_REFUSED):
+                _support.transfer_event(**{name: _PROSE})
 
 
 class MeasurementFailureEventTest(unittest.TestCase):

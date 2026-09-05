@@ -58,7 +58,8 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      issue re-read open. What goes down before
                                      the push is the PERMISSION; the exemption
                                      itself stays on the commit a human ruled
-                                     on
+                                     on, and the receipt of the landed push is
+                                     what carries it over
      DECOMPOSE=off, no generation ─► publish unmeasured; a candidate already
                                      recorded is measured with the switch
                                      either way

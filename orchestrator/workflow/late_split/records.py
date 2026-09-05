@@ -53,6 +53,17 @@ spells, the pull request an identity, and the head a whole object id. The
 pull request's own body is not any of them and is not here -- a record says
 which pull request overflowed, never what it says.
 
+The transfer family is the one whose record is about two contributions rather
+than one measurement. Which commit it moved a verdict ONTO is the generation's
+own `source_sha` and `base_sha`, since that is the pair a later measurement of
+the same work would be joined on; which commit it moved that verdict OFF is
+`transferred_from_sha` and `transferred_from_base_sha`, and those are the
+family's own because nothing else on a record could name a commit the branch
+no longer carries. `rewrite_kind` says which rewrite this workflow made to
+produce the first out of the second, and `transfer_proof` says what proved the
+push behind it landed -- the two readings a recovery has to tell apart, and
+the whole of what makes an exemption safe to move.
+
 `correlation_key` is the other half of the contract. Records are emitted
 before the step they describe is durable, so a crash can produce the same
 record twice; a consumer deduplicates on these fields rather than on delivery,
@@ -127,6 +138,10 @@ LATE_PAYLOAD_FIELDS = (
     "restart_step",
     "restart_target",
     "predecessor_cycle_id",
+    "rewrite_kind",
+    "transfer_proof",
+    "transferred_from_sha",
+    "transferred_from_base_sha",
 )
 
 # What a duplicate-tolerant consumer groups on: everything a record carries
@@ -216,6 +231,12 @@ def _details_of(event: _events.LateEvent) -> dict[str, Any]:
     the contract it was just re-checked against is what bounds them: the step
     is a member or absent, and the line beside it is one bounded single line
     or absent.
+
+    The transfer's own four read the same way, and the pair of them naming
+    commits is why the family's other pair is not here: the rewritten commit
+    and the base it was read over ARE the generation's frozen pair, so
+    recording them again would put the same two ids on one record under two
+    names and leave an analysis to work out which pair it was joining on.
     """
     resource = event.resource
     return {
@@ -234,6 +255,10 @@ def _details_of(event: _events.LateEvent) -> dict[str, Any]:
             None if resource is None else str(resource.resource_state)
         ),
         "restart_step": _name_of(event.restart_step),
+        "rewrite_kind": _name_of(event.rewrite_kind),
+        "transfer_proof": _name_of(event.transfer_proof),
+        "transferred_from_sha": event.transferred_from_sha,
+        "transferred_from_base_sha": event.transferred_from_base_sha,
     }
 
 

@@ -1440,8 +1440,9 @@ rather than preserving.
   thing that MOVES it is an authorized rewrite — a squash whose contribution fingerprints identically to the accepted
   one, granted by `late_transfer` and recorded by the `late_rewrite_*` group below — and that move is a write of its
   own rather than a widening of the match: it belongs to the receipt of the push that landed rather than to the grant
-  before it, so a verdict is never left on a commit no remote carries. No step in this build makes that write, so
-  what stands today is the permission and not the move. That
+  before it, so a verdict is never left on a commit no remote carries. `late_rotation` stages it into the push tail's
+  own write, so the exemption, the identity, the phase, and the account of what the remote holds land together or not
+  at all. That
   is also why the pre-tick base refresh reads the CHECKOUT and the LABEL before it decides whether this record
   freezes the branch: a rebase while the head is still the accepted commit, and the gate has still to act on it,
   would have the gate measure the rewrite past the ceiling and re-route a decision a human has already made — while
@@ -1521,9 +1522,22 @@ rather than preserving.
   and its identity stay on the commit a human ruled on, because the object the rewrite produced is on no remote yet
   and a verdict rotated onto it there would be stranded by a push that failed or a process that died. What this group
   records is the *permission* for a later write to move it — and that later write is the one that receipts the landed
-  push, where the exemption, the identity, and the account of what the remote holds would go down together or not at
-  all. No step in this build makes it, so every record written here stands at `authorized` and `published` is a phase
-  the readers account for and nothing writes. `late_approved_sha` and its lease ride the GRANT's own write instead,
+  push, where the exemption, the identity, and the account of what the remote holds go down together or not at
+  all. `record_rewrite_publication` is that write, staged by `late_rotation` into the push tail's settlement, and it
+  moves all three in one statement — a reader is entitled to find them agreeing, and any two of them apart is a
+  comment nothing here can tell from a hand edit. It is held to the record rather than to its caller: only a
+  permission this build can read back whole and still finds `authorized` is spent, so a damaged group, one bound to a
+  commit this issue does not exempt, and one already `published` each refuse instead of being repaired. Being
+  readable is not being *valid*, and the settlement is held to the second as well: what licenses the move is the
+  permit `late_transfer` re-asked on that same tick, carried down the push tail beside the commit it proved out for.
+  A refusal there is not a hold — the rewrite falls through to the ordinary cumulative gate, and a count under the
+  ceiling publishes the same commit — so a settlement reading this group alone would rotate a verdict onto a rewrite
+  nothing revalidated and install the digest the permit had just declined. A permission no permit vouched for is left
+  exactly where it stands: not spent, and not dropped either, since the remote is now on a head the permit accounts
+  for and a later tick whose refusal has cleared can still settle it. A permission
+  the publication went PAST — the push put some other commit on the pull request, so the head it was granted against
+  is gone — is dropped on the rollback's own terms instead, since what is left is a claim about a push that cannot
+  happen. `late_approved_sha` and its lease ride the GRANT's own write instead,
   and they have to: by then the rewrite has already replaced the branch's commits
   with one, so a comment that explains that commit and does not say a push is outstanding is one the next squash
   reads as *nothing to squash* — reported as success, never measured, never pushed. The kind is

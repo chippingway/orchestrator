@@ -87,12 +87,23 @@ class _PublishedCandidate:
     reading was taken over rather than the head the remote is on now -- and
     empty where the switch kept the candidate out, since nothing read that
     pull request to say where it stands.
+
+    `permitted_sha` is the fourth and is about the write PAST the push rather
+    than the push itself: it is the commit a rewrite permit proved out for on
+    this tick, and it is what licenses the receipt to carry a human's verdict
+    over. Empty on every other road, the ordinary measurement's included --
+    a permit that refused leaves the candidate to the cumulative gate, and a
+    count the ceiling lets through publishes on that count and earns no
+    exemption. Carried here rather than re-read from the comment, because a
+    permission standing there says a permit was once granted and not that it
+    still holds.
     """
 
     held: bool
     revision: str = ""
     lease: str = ""
     standing: str = ""
+    permitted_sha: str = ""
 
 
 # What every held answer is, since a hold publishes nothing and so names
@@ -206,6 +217,7 @@ def _unentered(
         held=verdict.held,
         revision=revision,
         lease=entered.head,
+        permitted_sha=verdict.permitted_sha,
     )
 
 
@@ -263,6 +275,7 @@ def _measured(
             revision=verdict.candidate_sha,
             lease=standing,
             standing=standing,
+            permitted_sha=verdict.permitted_sha,
         )
     lease = _parks._approved_lease(gate.state)
     if not lease and standing != verdict.candidate_sha:
@@ -272,6 +285,7 @@ def _measured(
         revision=verdict.candidate_sha,
         lease=lease or standing,
         standing=standing,
+        permitted_sha=verdict.permitted_sha,
     )
 
 

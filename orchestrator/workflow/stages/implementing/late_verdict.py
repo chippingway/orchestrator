@@ -369,7 +369,10 @@ def _routed(gate: _records._Gate, generation: LateGeneration) -> bool:
 
 
 def _unmeasured_verdict(
-    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str = "",
+    gate: _records._Gate,
+    recorded: LateGeneration,
+    candidate_sha: str = "",
+    permitted_sha: str = "",
 ) -> _records._GateVerdict:
     """Publish a candidate this gate did not measure -- unless a close beat it.
 
@@ -396,13 +399,24 @@ def _unmeasured_verdict(
     earlier reading could not answer about it is answered now. Carried past
     this, it reaches the stage the publication hands the issue to as a flag
     describing a question nobody is waiting on.
+
+    `permitted_sha` is handed straight back rather than derived, because only
+    the caller knows which of the roads past the measurement this is. A
+    transfer's is the one road whose publication may MOVE a human's verdict,
+    and the write past the push has to be able to tell it from every other
+    road that publishes the very same commit -- an exemption already naming
+    it, an approval owed a push for it, a receipt that already went out.
     """
     _parks._retire_spent_park(gate.state)
     _supersedes_approval(gate, candidate_sha)
     if _superseded(gate, recorded):
         return _records._HELD
     _owed_by_an_unmeasured_push(gate, candidate_sha, _frozen_lease(gate))
-    return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
+    return _records._GateVerdict(
+        held=False,
+        candidate_sha=candidate_sha,
+        permitted_sha=permitted_sha,
+    )
 
 
 def _owed_by_an_unmeasured_push(

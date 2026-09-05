@@ -479,9 +479,9 @@ caller claims — so the record proves itself, base included, instead of having 
 nothing checked — and the caller's own claim about what it replaced is held to that same digest, as is the digest
 any permission already standing there recorded: carried forward unchecked, a grant would write its own reading over
 it. Granted, one durable write records the **permission** and the debt the push is still owed, before anything is
-pushed — the exemption itself does not move there, and no step in this build moves it. That rotation belongs to the
+pushed — the exemption itself does not move there. That rotation belongs to `late_rotation.py`, on the
 write that receipts the landed push, where the exemption, the identity it carries, and the account of what the
-remote holds would go down together or not at all, so a verdict is never left on a commit no remote carries; a
+remote holds go down together or not at all, so a verdict is never left on a commit no remote carries; a
 force-push the remote refuses puts the branch back onto the commit the exemption never left, and what the rollback
 owes is dropping the permission it will never spend. Refused, nothing moves and the ordinary cumulative gate
 measures it like any other candidate.
@@ -494,10 +494,34 @@ commit it names, because the two go down in one write for one commit and a hand-
 the permit invisible and leave the approval looking ordinary. It is also what tells a lost receipt from a moved
 remote: a remote already standing on the rewritten commit, while the permission is still outstanding, is this
 permit's own push having landed rather than somebody else's move, and remeasuring there would re-adjudicate a
-squash the pull request already carries. Nothing in this build *spends* a permission, so that deferral outlives the
-push it licensed: a later approval on the same issue is re-asked through the permit too, refused — by then the
-exemption no longer names the commit the record came from — and measured by the ordinary gate instead of waved
-past. That is the same rule failing conservatively, and it costs a reading rather than a decision.
+squash the pull request already carries. The recovery republishes as the leased no-op it is, and the receipt behind
+it settles the transfer the first tick could not — recorded as `already_published` rather than `pushed`, since which
+reading proved the publication attributable is the one fact a local note can never supply. What ENDS the deferral is
+that same receipt: past it the permission is spent, and a later approval on the same issue is the ordinary one
+again. Until then the deferral holds, and where the permit refuses on the re-ask the ordinary gate measures the
+rewrite like any other candidate — the same rule failing conservatively, at the cost of a reading rather than a
+decision.
+
+What the settlement turns on is the permit's own answer, carried down the push tail beside the commit it was given
+for. The permission on the comment is not a substitute: a refusal is not a hold, so the rewritten commit falls
+through to the ordinary cumulative gate and a count under the ceiling pushes the same commit — and a settlement that
+read the record alone would rotate a human's verdict onto a rewrite nothing revalidated, under the very digest the
+permit declined. A permission this tick's permit did not vouch for is left exactly where it stands: not spent,
+because nothing licensed the move; not dropped either, because the remote is now on a head the permit accounts for
+and a later tick whose refusal has cleared can settle it in full.
+
+Given that permit, the settlement distinguishes three remotes and settles on two. **Standing where the permit was
+granted**, the
+leased force-push moves the publication and the receipt behind it carries the verdict over. **Standing on the
+rewritten commit already**, the leased no-op proves the pull request still has this permit's own push and the same
+receipt settles it. **Moved anywhere else**, the permit is refused before any of that, so nothing is spent and
+nothing is reported — a reading nobody could take refuses the same way, and neither is ever read as equivalence.
+A publication that went *past* an outstanding permission — some other commit reached the pull request — drops it
+instead of spending it, on the rollback's own terms, since the head it was granted against is gone and no later tick
+can be granted it. What a settled transfer leaves on both observability streams is one bounded `late_transfer`
+record — the issue, the pull request, both pairs, the rewrite kind, and which reading proved the push — and
+deliberately no second `late_verdict`, which would read as a second adjudication of work nobody was asked about
+twice.
 
 The approval holds the switch back for the commit it *names* and no other, which is why the switch is asked twice —
 once at the door, cheaply, and once past the proof. An approval is a claim about one object id, and nothing can say
@@ -755,7 +779,10 @@ says which COMMIT a human ruled on; the identity says which CHANGE they ruled on
 once the commit itself has been rebased, squashed, or made afresh. What lets a candidate publish unmeasured is
 still the exact-SHA comparison and only that; what the identity licenses is the exemption MOVING onto the commit an
 equivalent workflow rewrite produced, which `late_transfer.py` grants and records as its own pinned authorization
-before the push it licenses. Where the reading could not be taken, or where any field of the record cannot be
+before the push it licenses — and which `late_rotation.py` then carries over on the write that receipts that push,
+so the verdict never names a commit no remote has
+([the size gate's own section](#the-size-gate-a-committed-candidate-passes)).
+Where the reading could not be taken, or where any field of the record cannot be
 vouched for, there is simply no transferable identity, the exact-SHA exemption stands untouched, and the rewrite is
 measured as the fresh candidate it looks like. The record belongs to the
 commit on the exemption field, so moving that field to another commit drops it: a later verdict that records the
