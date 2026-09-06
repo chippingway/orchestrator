@@ -55,6 +55,7 @@ from orchestrator.workflow.engine import (
     usage as _usage,
 )
 from orchestrator.workflow.stages.decomposition import (
+    drift as _drift,
     handoff as _handoff,
     late_coordinator as _late_coordinator,
     outcomes as _outcomes,
@@ -137,7 +138,7 @@ def _prepare_decomposer_run(
     # User-content drift FIRST, so it runs BEFORE the half-finished recovery:
     # otherwise recovery could finalize against a stale manifest when the issue
     # was edited during a crash window.
-    _session._reset_decomposing_on_drift(gh, issue, state)
+    _drift._reset_decomposing_on_drift(gh, issue, state)
 
     if _recovery._recover_stale_manifest(gh, issue, state):
         return _DecomposerRunPlan(agent_result=None)
