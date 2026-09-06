@@ -30,6 +30,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     QUESTION_ASKED,
     QUESTION_REPLY,
     SINGLE_REPLY,
+    SPLIT_BLOCKER,
     SPLIT_REPLY,
     THRESHOLD,
     generation_state,
@@ -160,6 +161,9 @@ class DecidedOutcomeTest(LateCase, unittest.TestCase):
         self.assertEqual(outcome.adjudication.verdict, LateVerdict.SINGLE)
         self.assertEqual(self._pinned().get(KEYS.session_id), LATE_SESSION_ID)
         self.assertEqual(self._pinned().get(KEYS.verdict), LateVerdict.SINGLE)
+        self.assertEqual(
+            self._pinned().get(KEYS.split_blocker), SPLIT_BLOCKER,
+        )
         # What is reported is read back off pinned state, so a caller asking
         # the run for its session gets the one a later resume would land on.
         self.assertEqual(outcome.run.session_id, LATE_SESSION_ID)

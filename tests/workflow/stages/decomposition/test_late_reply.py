@@ -7,11 +7,16 @@ import unittest
 
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import LateVerdict
-from orchestrator.workflow.stages.decomposition import late_reply as _late_reply, manifest as _manifest
+from orchestrator.workflow.stages.decomposition import (
+    late_models as _models,
+    late_reply as _late_reply,
+    manifest as _manifest,
+)
 from tests.workflow.fixtures import _manifest as _initial_block
 from tests.workflow.stages.decomposition.late_test_support import (
     QUESTION_REPLY,
     SINGLE_REPLY,
+    SPLIT_BLOCKER,
     SPLIT_REPLY,
     late_block,
 )
@@ -50,6 +55,22 @@ _REFUSED_REPLIES = (
 )
 
 
+# What each outcome says stopped a split: the reply, and the pair of what the
+# adjudication carries and what a reader of the verdict is told. Only a
+# `single` is an answer about a split that did not happen, and one that
+# omitted the field is still an answer.
+_SPLIT_BLOCKERS = (
+    ("explained", SINGLE_REPLY, (SPLIT_BLOCKER, SPLIT_BLOCKER)),
+    (
+        "unexplained",
+        late_block(SINGLE_PAYLOAD),
+        ("", _models.UNRECORDED_SPLIT_BLOCKER),
+    ),
+    ("split", SPLIT_REPLY, ("", "")),
+    ("question", QUESTION_REPLY, ("", "")),
+)
+
+
 class LateReplyTest(unittest.TestCase):
     """What each of the three structured outcomes parses to."""
 
@@ -64,6 +85,25 @@ class LateReplyTest(unittest.TestCase):
         self.assertEqual(adjudication.rationale, "one coherent change")
         self.assertEqual(adjudication.children, ())
         self.assertIsNone(adjudication.child_count)
+
+    def test_what_each_verdict_says_stopped_a_split(self) -> None:
+        # A `single` carries the reason as a field rather than as prose around
+        # the block, which nothing keeps. One that omitted it still decides --
+        # refusing the outcome would buy a second agent run to recover prose
+        # -- and the reader is told there is no reason instead of being shown
+        # nothing.
+        for name, reply, expected in _SPLIT_BLOCKERS:
+            with self.subTest(case=name):
+                adjudication, refusal = _late_reply._parse_late_reply(reply)
+
+                self.assertIsNone(refusal)
+                self.assertEqual(
+                    (
+                        adjudication.split_blocker,
+                        adjudication.split_blocker_explanation,
+                    ),
+                    expected,
+                )
 
     def test_split_carries_the_children_it_proposed(self) -> None:
         adjudication, error = _late_reply._parse_late_reply(SPLIT_REPLY)

@@ -45,6 +45,8 @@ NEXT_CYCLE_ID = CYCLE_ID + 1
 
 QUESTION_VERDICT = "question"
 
+SINGLE_VERDICT = "single"
+
 HUMAN_REWRITE = "a human rewrote the description"
 
 EDIT_PR_BODY = "edit_pr_body"
@@ -55,6 +57,34 @@ REPEATS = 3
 HOLD_FAILED_FRAGMENT = "could not put the adjudication hold"
 
 WORKFLOW_LOG = "orchestrator.workflow"
+
+_TOO_LONG_TO_RECORD = "q" * _session.MAX_RECORDED_BODY
+
+# One reply per field of prose the comment budget covers, each past it on its
+# own. A `single` carries an explanation the way a `question` carries what it
+# asked, so the same refusal is reachable from either.
+_OVERSIZED_OUTCOMES = (
+    (
+        QUESTION_VERDICT,
+        late_block(
+            '{"decision": "question", "category": "unsafe_split", '
+            f'"question": "{_TOO_LONG_TO_RECORD}"}}'
+        ),
+    ),
+    (
+        SINGLE_VERDICT,
+        late_block(
+            '{"decision": "single", '
+            f'"split_blocker": "{_TOO_LONG_TO_RECORD}"}}'
+        ),
+    ),
+)
+
+# The refusal is one sentence for every outcome that overflows, so it has to
+# enumerate each field a comment could fail to hold. This is the one a
+# `single` adds; a notice that named only the other two would send a human
+# looking for a question nobody asked.
+_NAMES_THE_EXPLANATION = "an explanation of what stopped a split"
 
 
 class _CommentSnapshot:
@@ -181,19 +211,19 @@ class IncompleteRecordTest(LateCase, unittest.TestCase):
 
     def test_an_outcome_too_large_to_record_parks(self) -> None:
         # Nothing durable would stand behind it, so acting on it would leave
-        # the issue decided in a way no later tick could see.
-        asked = "q" * _session.MAX_RECORDED_BODY
-        oversized = late_block(
-            '{"decision": "question", "category": "unsafe_split", '
-            f'"question": "{asked}"}}'
-        )
+        # the issue decided in a way no later tick could see. Every field of
+        # prose the budget covers reaches the same refusal, and the one notice
+        # it leaves has to name each of them for the human it stops.
+        for verdict, oversized in _OVERSIZED_OUTCOMES:
+            with self.subTest(verdict=verdict):
+                with self.assertLogs(WORKFLOW_LOG, level="ERROR"):
+                    outcome, _ = self._adjudicate(agent_reply(oversized))
 
-        with self.assertLogs(WORKFLOW_LOG, level="ERROR"):
-            outcome, _ = self._adjudicate(agent_reply(oversized))
-
-        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
-        self.assertNotIn(KEYS.verdict, self._pinned())
-        self.assertIn("half an outcome", self.github.posted_comments[-1][1])
+                self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
+                self.assertNotIn(KEYS.verdict, self._pinned())
+                notice = self.github.posted_comments[-1][1]
+                self.assertIn("half an outcome", notice)
+                self.assertIn(_NAMES_THE_EXPLANATION, notice)
 
 
 class RetriedHoldTest(LateCase, unittest.TestCase):

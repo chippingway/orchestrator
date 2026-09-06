@@ -30,22 +30,30 @@ tick that crashes mid-run cannot read the last attempt's verdict back as this
 one's.
 
 What is recorded of the result is the whole of what the verdict decided: a
-`single` alone, a `question` with its category and the sentence it asked, and
-a `split` with the ordered child manifest that IS its decision. That is what
-lets a crashed tick recover an answer rather than pay for a second run that
-may not decide the same way. The one part deliberately not kept is the agent's
-rationale, which is prose and belongs on the issue thread rather than in the
-state every stage shares.
+`single` with the explanation of what stopped a split, a `question` with its
+category and the sentence it asked, and a `split` with the ordered child
+manifest that IS its decision. That is what lets a crashed tick recover an
+answer rather than pay for a second run that may not decide the same way. The
+part deliberately not kept is the agent's rationale for accepting the change,
+which is prose and belongs on the issue thread rather than in the state every
+stage shares.
+
+The explanation is the one of those a record may be missing and still be an
+answer. Results written before this domain kept one are on live issues, and
+the reply contract does not refuse an outcome that omitted it, so the absence
+reads back as the stand-in the carrier beside it spells rather than as an
+incomplete result -- because what re-running the adjudicator would recover is
+prose, at the price of a second run free to decide something else entirely.
 
 Both ends of that are bounded rather than trusted. What a recorded outcome is
 measured against is the whole comment the write would produce -- the preserved
 held-PR body and every other stage's keys included, since a result small on
 its own can still be the one that pushes the comment past what GitHub accepts
 -- and an outcome past that budget is refused whole, because shortening it
-would record a question nobody asked or children nobody proposed. On the way
-back, a recorded manifest is read through the same split rules the reply was
-held to, so a shape this binary would not have written is read as no manifest
-at all rather than as half a split to create.
+would record a question nobody asked, a reason nobody wrote, or children
+nobody proposed. On the way back, a recorded manifest is read through the same
+split rules the reply was held to, so a shape this binary would not have
+written is read as no manifest at all rather than as half a split to create.
 
 One late run in three resumes. A human answering the categorized question the
 adjudicator asked is answering an agent that ASKED it, so that run continues
@@ -110,6 +118,7 @@ _LATE_RUN_GENERATION = "late_run_generation"
 _LATE_RESULT_VERDICT = "late_result_verdict"
 _LATE_RESULT_CATEGORY = "late_result_category"
 _LATE_RESULT_QUESTION = "late_result_question"
+_LATE_RESULT_SPLIT_BLOCKER = "late_result_split_blocker"
 _LATE_RESULT_CHILDREN = "late_result_children"
 
 # What a completed run recorded, and therefore what a fresh one has to drop.
@@ -117,6 +126,7 @@ _RESULT_KEYS = (
     _LATE_RESULT_VERDICT,
     _LATE_RESULT_CATEGORY,
     _LATE_RESULT_QUESTION,
+    _LATE_RESULT_SPLIT_BLOCKER,
     _LATE_RESULT_CHILDREN,
 )
 
@@ -169,6 +179,9 @@ def _read_late_run(state: PinnedState) -> _LateRun:
             LateVerdictCategory, state.get(_LATE_RESULT_CATEGORY),
         ),
         question=_payloads.as_text(state.get(_LATE_RESULT_QUESTION)) or "",
+        split_blocker=_payloads.as_text(
+            state.get(_LATE_RESULT_SPLIT_BLOCKER),
+        ) or "",
         children=_recorded_children(state),
         spec=spec,
         backend=backend,
@@ -280,19 +293,20 @@ def _record_late_result(
 ) -> bool:
     """Record the whole of a completed adjudication, or record none of it.
 
-    What each verdict decided is what gets written: a `single` needs only
-    itself, a `question` its category and the sentence it asked, and a `split`
-    the ordered child manifest that IS its decision. Recording all of it is
-    what lets a crashed tick recover the answer instead of paying for a second
-    agent run that may not even decide the same way.
+    What each verdict decided is what gets written: a `single` the explanation
+    of what stopped a split, a `question` its category and the sentence it
+    asked, and a `split` the ordered child manifest that IS its decision.
+    Recording all of it is what lets a crashed tick recover the answer instead
+    of paying for a second agent run that may not even decide the same way.
 
     Returns whether it fit -- measured on the whole comment this write would
     produce, not on the outcome alone, because the comment is shared and what
     is already in it counts. An outcome past the budget is refused whole
-    rather than shortened: a truncated question asks something nobody said,
-    and a truncated manifest names children nobody proposed. A caller told
-    False has an outcome it cannot make durable, which is a human's problem
-    and not a thing to half-record.
+    rather than shortened: a truncated question asks something nobody said, a
+    truncated explanation gives a reason nobody wrote, and a truncated
+    manifest names children nobody proposed. A caller told False has an
+    outcome it cannot make durable, which is a human's problem and not a thing
+    to half-record.
     """
     recorded = _result_payload(adjudication)
     if not _fits_the_comment({**state.data, **recorded}, MAX_RECORDED_BODY):
@@ -322,12 +336,19 @@ def _result_payload(adjudication: _LateAdjudication) -> dict:
     The children are rewritten from the three fields a child issue is created
     out of rather than copied, so nothing an agent put beside them travels
     into the pinned comment a human reads and every other stage shares.
+
+    The explanation goes only where the reply gave one. What an absent field
+    means is settled on the way back, so writing the stand-in here would put
+    this binary's own sentence in the comment as though an agent had written
+    it, and spend the comment budget saying nothing.
     """
     recorded = {_LATE_RESULT_VERDICT: str(adjudication.verdict)}
     if adjudication.category is not None:
         recorded[_LATE_RESULT_CATEGORY] = str(adjudication.category)
     if adjudication.question:
         recorded[_LATE_RESULT_QUESTION] = adjudication.question
+    if adjudication.split_blocker:
+        recorded[_LATE_RESULT_SPLIT_BLOCKER] = adjudication.split_blocker
     if adjudication.children:
         recorded[_LATE_RESULT_CHILDREN] = [
             {
@@ -344,14 +365,21 @@ def _recovered_adjudication(run: _LateRun) -> _LateAdjudication:
     """Rebuild the adjudication a recorded outcome stands for.
 
     Everything a caller acts on comes back: the verdict, the category, the
-    question to announce, and the manifest to create children from. Only the
-    agent's rationale does not, because prose is the one part of a reply the
-    pinned comment deliberately never kept.
+    question to announce, the explanation a `single` gave for not splitting,
+    and the manifest to create children from. Only the agent's rationale for
+    accepting the change does not, because that prose is the part of a reply
+    the pinned comment deliberately never kept.
+
+    A record with no explanation is rebuilt with none, and the carrier answers
+    for the absence: what the record holds is what an agent wrote, and a
+    rebuilt outcome that manufactured a sentence would be indistinguishable
+    from one that had it all along.
     """
     return _LateAdjudication(
         verdict=run.verdict,
         category=run.category,
         question=run.question,
+        split_blocker=run.split_blocker,
         children=run.children,
     )
 

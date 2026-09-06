@@ -24,6 +24,14 @@ GitHub issues, and that is the same manifest either mode produces -- so a rule
 tightened there tightens here, and the number the late prompt states is still
 the number the reply is judged against.
 
+`single` carries one field the other two do not: the explanation of what
+stopped a split. The verdict says the committed work is one change, and the
+reason it could not be several is the thing an operator deciding whether to
+accept it needs -- so it is read off the reply as text rather than left in the
+prose around the block, which nothing keeps. It is optional here: a reply that
+declares the outcome and omits the sentence has still decided something, and
+refusing it would buy a second agent run to recover prose.
+
 What this owner does NOT decide is whether a `split` is allowed at all. The
 lineage bound is the record's invariant and is enforced where the generation
 is: a structurally perfect split proposed at the bound parses cleanly here and
@@ -53,6 +61,7 @@ _LATE_MANIFEST_RE = re.compile(
 _DECISION = "decision"
 _CATEGORY = "category"
 _QUESTION = "question"
+_SPLIT_BLOCKER = "split_blocker"
 
 _SINGLE_DECISION = "single"
 _SPLIT_DECISION = "split"
@@ -106,6 +115,7 @@ def _adjudication(
         verdict=LateVerdict.SINGLE,
         category=_category(late_manifest, required=False),
         rationale=_text(late_manifest, "rationale"),
+        split_blocker=_text(late_manifest, _SPLIT_BLOCKER),
     ), None
 
 

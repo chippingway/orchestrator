@@ -7,7 +7,8 @@ import unittest
 
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import MAX_LINEAGE_DEPTH
-from orchestrator.workflow.stages.decomposition import late_prompt as _prompt
+from orchestrator.workflow.stages.decomposition import late_prompt as _prompt, late_reply as _late_reply
+from orchestrator.workflow.stages.decomposition.late_reply import _SPLIT_BLOCKER
 from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
 from tests.support.fakes import make_issue
 from tests.workflow.fixtures import _TEST_SPEC
@@ -19,7 +20,9 @@ from tests.workflow.stages.decomposition.late_test_support import (
     LATE_ISSUE_NUMBER,
     ROOT_ISSUE,
     SCOPE,
+    SPLIT_BLOCKER,
     THRESHOLD,
+    late_block,
     late_generation,
 )
 
@@ -124,6 +127,23 @@ class LatePromptContractTest(unittest.TestCase):
 
         self.assertIn('`single` with `"category": "generated_artifacts"`', composed)
         self.assertIn("should NOT have been committed", composed)
+
+    def test_the_single_it_asks_for_reads_explained(self) -> None:
+        # The two halves of one contract: the key the prompt states is the
+        # key the parser reads, so a reply that did what it was asked carries
+        # its explanation rather than falling back to the stand-in a record
+        # with none answers with. Asking for a spelling nothing reads would
+        # leave every conforming `single` saying why it was not split and
+        # nobody keeping the sentence.
+        self.assertIn(f'`"{_SPLIT_BLOCKER}"`', _prompt_for())
+
+        adjudication, _refusal = _late_reply._parse_late_reply(late_block(
+            f'{{"decision": "single", "{_SPLIT_BLOCKER}": "{SPLIT_BLOCKER}"}}',
+        ))
+
+        self.assertEqual(
+            adjudication.split_blocker_explanation, SPLIT_BLOCKER,
+        )
 
     def test_the_split_rule_follows_the_lineage_depth(self) -> None:
         cases = (

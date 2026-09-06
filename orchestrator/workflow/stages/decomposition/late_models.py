@@ -22,8 +22,9 @@ was spawned against, and the result it completed with -- so a tick that
 crashed after a finished run reads the answer back rather than paying for a
 second one, which would not be free and would be free to decide differently.
 The result it records is the WHOLE of what the verdict decided, the child
-manifest of a split included; the one part deliberately left out is the
-agent's rationale, which is prose nothing acts on. An outcome the pinned
+manifest of a split and the explanation of what stopped a `single` from being
+one included; the part deliberately left out is the agent's rationale for
+accepting the change, which is prose nothing acts on. An outcome the pinned
 comment cannot hold is refused entire rather than shortened, because half an
 answer read back later is worse than none.
 
@@ -50,6 +51,16 @@ from orchestrator.workflow.late_split.models import LateGeneration, LateVerdict
 # beside the run rather than assumed, because the same coordinator owns the
 # developer revision a trusted answer earns, which records its own role.
 _DECOMPOSER_ROLE = "decomposer"
+
+# What a `single` with no explanation beside it answers with. Live issues
+# carry results recorded before this domain kept one, and the reply contract
+# does not refuse an outcome that omitted it either -- so the absence has a
+# sentence of its own rather than an empty string a reader would render as
+# nothing. Re-running the adjudicator to recover the prose is the one thing it
+# must not cost: a second run is not free and is free to decide differently.
+UNRECORDED_SPLIT_BLOCKER = (
+    "no explanation of what stopped a split was recorded with this verdict"
+)
 
 
 class _LateDisposition(Enum):
@@ -88,13 +99,35 @@ class _LateAdjudication:
     parse error and never becomes one of these -- and the rest is what that
     verdict is allowed to carry. `children` is the manifest a `split`
     proposes, held in memory for the tick that acts on it.
+
+    `split_blocker` is the `single` verdict's own: what the agent said made
+    splitting unsafe or unavailable, verbatim. It is what a reader shows
+    somebody deciding what to do about an oversized candidate, and it is kept
+    apart from `rationale` -- the prose arguing the change is acceptable as
+    one -- because they answer different questions and only this one survives
+    the pinned comment.
     """
 
     verdict: LateVerdict
     category: LateVerdictCategory | None = None
     rationale: str = ""
     question: str = ""
+    split_blocker: str = ""
     children: tuple[dict, ...] = ()
+
+    @property
+    def split_blocker_explanation(self) -> str:
+        """What this verdict says stopped a split, or that nothing says.
+
+        Asked instead of the field, so every reader of a `single` gets a
+        sentence: an outcome recorded before this domain kept one, and a
+        reply that declared the verdict without explaining it, both answer
+        with the stand-in rather than with nothing. Empty on the other two
+        verdicts, which are not answers about a split that did not happen.
+        """
+        if self.verdict != LateVerdict.SINGLE:
+            return ""
+        return self.split_blocker or UNRECORDED_SPLIT_BLOCKER
 
     @property
     def child_count(self) -> int | None:
@@ -119,7 +152,9 @@ class _LateRun:
     run must reproduce.
 
     The result is the whole of what the verdict decided, not a marker for it.
-    A `single` needs nothing beside itself; a `question` carries the category
+    A `single` carries the explanation of what stopped a split, because that
+    is the one thing a human deciding about an oversized candidate cannot get
+    from anywhere else once the run is over; a `question` carries the category
     it was asked under and the sentence it asked, because announcing it is the
     outcome's own external effect and a crash between recording and posting
     has to be able to finish it; a `split` carries the child manifest, because
@@ -138,6 +173,7 @@ class _LateRun:
     verdict: LateVerdict | None = None
     category: LateVerdictCategory | None = None
     question: str = ""
+    split_blocker: str = ""
     children: tuple[dict, ...] = ()
 
     @property
@@ -151,6 +187,12 @@ class _LateRun:
         no children to create. Either would leave the issue decided, silent,
         and going nowhere -- so an incomplete record is not an answer, and the
         adjudicator runs again.
+
+        A `single` is complete on its verdict alone, and the explanation
+        beside it does not change that: it is what a reader shows rather than
+        what a caller acts on, so a result recorded before this domain kept
+        one is still this candidate's answer. Reading it as incomplete would
+        buy a second agent run to recover prose.
         """
         if self.verdict == LateVerdict.SINGLE:
             return True
@@ -351,8 +393,9 @@ class _LateAdjudicationRun:
     `adjudication` is present on every `DECIDED` answer, whether this tick's
     own agent produced it or a crashed one already had: a recovered outcome is
     rebuilt from the record, which carries the whole of what each verdict
-    decided. Only the agent's own rationale is missing from a rebuilt one --
-    prose the pinned comment deliberately does not keep.
+    decided. Only the agent's rationale for accepting the change is missing
+    from a rebuilt one -- prose the pinned comment deliberately does not
+    keep.
 
     `guarded_split` is set on exactly one path: a `split` verdict that a fresh
     owner read found open. It is absent everywhere else, so a caller cannot
