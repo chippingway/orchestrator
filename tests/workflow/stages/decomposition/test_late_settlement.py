@@ -1,11 +1,16 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""What a verdict the owner read cleared actually earns, and what it does not.
+"""What settling an oversized candidate writes, and what it does not.
 
-A `single` is an exemption for one commit -- with the identity of what that
-commit contributes beside it -- and a hand-back to the ordinary publication; a
-`split` is a handoff to the transaction that creates its children; a
-`question` is neither. None of the three creates a snapshot here.
+The settlement is the road a decision to publish an oversized candidate
+unsplit licenses: an exemption for one commit, with the identity of what that
+commit contributes beside it, and a hand-back to the ordinary publication.
+What an adjudicator's own `single` earns instead is the park in
+`test_late_unsplit_park.py`, so the road is entered at the owner that owns it
+rather than through a reply. The other two verdicts are here for the contrast
+a guarded outcome draws: a `split` is a handoff to the transaction that
+creates its children, a `question` is neither, and none of the three creates a
+snapshot.
 
 The plan-PR hold is the other half of the same pull request, so what it left
 standing is asked here too: a notice a human removed is what stops a new agent
@@ -29,6 +34,7 @@ from tests.workflow.stages.decomposition.late_settlement_support import (
     HUMAN_ADDITION,
     HUMAN_REWRITE,
     PARK_HOLD_FAILED,
+    PARK_SINGLE_DECISION,
     QUESTION_RUN,
     SINGLE_RUN,
     SPLIT_CHILDREN,
@@ -37,7 +43,6 @@ from tests.workflow.stages.decomposition.late_settlement_support import (
     GuardedLateCase,
     HeldPlanPrCase,
     _ClosedDuringRun,
-    _RewrittenDuringRun,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     ADDITIONS,
@@ -77,7 +82,7 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
     """An accepted candidate publishes as itself, and only as itself."""
 
     def test_the_measured_commit_is_exempted(self) -> None:
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(self._pinned().get(KEYS.exempt_sha), CANDIDATE_SHA)
@@ -96,7 +101,7 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
         # rebuild the checkout from the base or the plan PR and publish that
         # head instead, or pay for a second developer over an implementation a
         # human has already ruled on.
-        self._decide(SINGLE_RUN)
+        self._settle()
 
         self.assertEqual(self._pinned().get(KEYS.approved_sha), CANDIDATE_SHA)
 
@@ -104,7 +109,7 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
         # Left standing, it would keep pinning the decomposing label and keep
         # reading as a candidate nobody has decided about. What the accepted
         # commit carries is written outside that group and stays.
-        self._decide(SINGLE_RUN)
+        self._settle()
 
         pinned = self._pinned()
         for retired in _RETIRED_KEYS:
@@ -117,7 +122,7 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
     def test_it_creates_no_snapshot_or_children(self) -> None:
         # A snapshot exists so children can be cut from a candidate about to
         # be superseded. An accepted candidate supersedes nothing.
-        self._decide(SINGLE_RUN)
+        self._settle()
 
         self.assertEqual(self._events_named(EVENT_LATE_SNAPSHOT), [])
         self.assertEqual(self.github.created_child_issues, [])
@@ -126,7 +131,7 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
     def test_only_the_measured_commit_is_exempt(self) -> None:
         # The invalidation rule, read where the gate reads it: anything
         # committed on top of the accepted candidate is a fresh candidate.
-        self._decide(SINGLE_RUN)
+        self._settle()
         state = self.github.read_pinned_state(self.issue)
 
         self.assertTrue(_exemption.is_exempt(state, CANDIDATE_SHA))
@@ -134,13 +139,12 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
 
     def test_a_half_finished_settlement_finishes(self) -> None:
         # The window a crash can land in: the exemption is durable and the
-        # hold is already off, but the label was never handed on. The retry
-        # reuses the recorded answer and settles the rest.
+        # hold is already off, but the label was never handed on. What the
+        # retry owes is the rest of the sequence, from the same record.
         self.github.seed_state(self.issue.number, **_half_settled_state())
 
-        outcome, spawn = self._adjudicate()
+        outcome = self._settle()
 
-        spawn.assert_not_called()
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(
             self.github.workflow_label(self.issue), LABEL_IMPLEMENTING,
@@ -173,13 +177,13 @@ class WithheldExemptionTest(GuardedLateCase, unittest.TestCase):
 
 
 class DisplacedHoldTest(HeldPlanPrCase, unittest.TestCase):
-    """A notice a human removed stops the next agent, not the settlement.
+    """A notice a human removed stops the next agent, not a recorded answer.
 
     Their words are left where they wrote them either way. What differs is
     what may run under the pull request afterwards: nothing new, since it is
     now open with nothing on it saying an adjudication is running, while an
-    answer already recorded may still be settled -- settling releases a hold
-    that is already gone.
+    answer already recorded is still acted on -- what it earns changes nothing
+    about a pull request whose hold is already gone.
     """
 
     def test_a_displaced_hold_spawns_nothing(self) -> None:
@@ -216,14 +220,17 @@ class DisplacedHoldTest(HeldPlanPrCase, unittest.TestCase):
         outcome, spawn = self._adjudicate(SINGLE_RUN)
 
         spawn.assert_called_once()
-        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
+        self.assertEqual(
+            self._pinned().get(KEYS.park_reason), PARK_SINGLE_DECISION,
+        )
 
 
 class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
     """The description a hold replaced goes back before anything publishes."""
 
     def test_the_preserved_description_is_restored(self) -> None:
-        self._decide(SINGLE_RUN)
+        self._settle()
 
         self.assertEqual(self.plan_pr.body, PLAN_PR_BODY)
         self.assertNotIn(HOLD_MARKER_PREFIX, self.plan_pr.body)
@@ -234,9 +241,9 @@ class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
     def test_a_rewritten_description_is_left_alone(self) -> None:
         # The preserved copy describes a body that is no longer there, and the
         # words that are there belong to whoever wrote them.
-        rewritten = _RewrittenDuringRun(self.plan_pr, SINGLE_RUN)
+        self.plan_pr.body = HUMAN_REWRITE
 
-        outcome = self._decide(rewritten)
+        outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(self.plan_pr.body, HUMAN_REWRITE)
@@ -245,11 +252,9 @@ class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
         # The marker is hidden, so a human editing one sentence of the notice
         # leaves it in place. Restoring on the strength of that would put the
         # preserved copy back over what they actually wrote.
-        edited = _RewrittenDuringRun(
-            self.plan_pr, SINGLE_RUN, self.plan_pr.body + HUMAN_ADDITION,
-        )
+        self.plan_pr.body += HUMAN_ADDITION
 
-        outcome = self._decide(edited)
+        outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertIn(HOLD_MARKER_PREFIX, self.plan_pr.body)
@@ -264,7 +269,7 @@ class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
         self.plan_pr.merged = True
         self.plan_pr.state = PR_CLOSED
 
-        self._decide(SINGLE_RUN)
+        self._settle()
 
         self.assertEqual(self.plan_pr.body, PLAN_PR_BODY)
         self.assertEqual(self._pinned().get(KEYS.exempt_sha), CANDIDATE_SHA)
@@ -281,7 +286,10 @@ class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
         outcome, spawn = self._adjudicate()
 
         spawn.assert_not_called()
-        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
+        self.assertEqual(
+            self._pinned().get(KEYS.park_reason), PARK_SINGLE_DECISION,
+        )
         self.assertEqual(self.plan_pr.body, HUMAN_REWRITE)
         self.assertEqual(self.github.edited_pr_bodies, [])
 
@@ -298,7 +306,7 @@ class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
         )
 
         with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
-            outcome = self._decide(SINGLE_RUN)
+            outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(self._pinned().get(KEYS.exempt_sha), CANDIDATE_SHA)
@@ -314,7 +322,7 @@ class ReleasedHoldTest(HeldPlanPrCase, unittest.TestCase):
         )
 
         with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
-            outcome = self._decide(SINGLE_RUN)
+            outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         pinned = self._pinned()

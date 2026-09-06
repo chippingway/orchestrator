@@ -605,8 +605,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             pays for, and needing no session retirement of its own, since the pre-spawn record
                             opens a fresh conversation for every run that is not answering a question
       late_session.py       the late run's pinned record -- role, locked spec, session, cycle, source commit,
-                            generation, and the whole of what a verdict decided -- the whole-comment budget it is
-                            refused past, the rules it is read back through, and the tracked spawn in the candidate's
+                            generation, and the whole of what a verdict decided -- the ONE whole-comment budget every
+                            verdict is refused past, since charging a `single` for the sentence it earns would buy a
+                            superseded refusal, another decomposer run, and a `single` short of the park a human's
+                            decision is owed on, while the sentence itself goes in the headroom that budget leaves
+                            under GitHub's limit -- the rules it is read back
+                            through, and the tracked spawn in the candidate's
                             own worktree, resuming the pinned session only for the run that carries a human's answer
                             to the question it asked
       late_hold.py          the cycle-marked hold a reusable open pull request wears: which one that is -- a hold
@@ -628,7 +632,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             three sentences a read reply hands the issue back under are worded here -- the
                             unusable reply, the outcome too large to record, and the question itself -- since the
                             reason is a shared value this mode's park owner is read against and the sentence is
-                            the failing step's own to say
+                            the failing step's own to say. Too large is asked of the COMMENT alone -- how an
+                            explanation will render is never grounds to refuse the verdict carrying it, since that
+                            park is superseded and the refusal would buy a second run and leave a `single` short of
+                            the durable park a human's decision is owed on
       late_outcome.py       what every completion leaves on the record: the write that closes one by carrying the
                             owner read it now owes -- under `owner_check` unless a split transaction was
                             interrupted, whose boundary the record itself refuses to let any pre-split write
@@ -657,7 +664,30 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       late_notice.py        the sentence a park owes the issue until it is actually on the thread: the durable
                             `{reason, message}` beside the flag, matched against the park it explains, the thread
                             read that discharges one a failed write left claiming the opposite of what GitHub holds,
-                            and the pinned budget a notice too long to write down is refused past
+                            and the pinned budget a notice too long to write down is refused past -- the reserve
+                            beside what the record ALREADY costs rather than a flat ceiling, since a record an older
+                            binary left, or one written before the payload escaped the wrapper's own terminator, can
+                            sit outside that ceiling on its own and a sentence refused for it is a human never told.
+                            A sentence
+                            explaining a RECORDED outcome names that record rather than copying it: a marker where
+                            the explanation goes, bounded by this orchestrator's wording rather than an agent's, put
+                            back on the way to the thread on the first post and on every redelivery alike -- since
+                            an explanation an outcome could be recorded with would otherwise be one its own
+                            obligation could not be written beside. What goes back in is the WHOLE of it, blocked off
+                            by whichever of markdown's two fence characters the quote leaves cheap; the one no fence
+                            answers -- a long LINE of each, since only a line that is a run and nothing else can
+                            close one -- is blocked off in PIECES instead, so the long lines land in blocks of their
+                            own and every HTML-comment opener between them stays inside a block where it is shown
+                            rather than obeyed; every fence width from the shortest up to the widest line is tried by
+                            doubling and the smallest rendering wins. Past what pieces hold, the quote goes in
+                            unblocked with its openers escaped a backslash apiece, and past what that holds it is cut
+                            and said to be cut -- unreachable for anything recorded here, and there because a comment
+                            GitHub refuses is rebuilt identically on every poll
+                            The thread read that finds a delivered one
+                            names the pinned comment by ID rather than by the marker in a body, since a sentence
+                            quoting that marker reads as the pinned comment to the body test -- and rewriting the
+                            marker out of the sentence instead would grow it per occurrence, past what GitHub
+                            accepts
       late_owner.py         the fresh tri-state read EVERY completed run passes before anything acts on what it
                             left: the latch consulted ahead of GitHub, since a close a poll saw while this worker
                             held the issue is the one reading a request cannot give back, the standing claim it is
@@ -673,7 +703,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             for the steps whose own moment is too tight for a request and where a claim would name
                             `owner_check` over the boundary the tick actually reached: the create, the spawn, the
                             developer revision on both sides of its run and against the resume itself, and each
-                            step of the `single` publication
+                            step of an authorized settlement's publication
                             share one, and the activation past a retirement already standing at `cleaning_up` has
                             its own
       late_snapshot.py      the immutable copy every child of a split is cut from: the ref this generation's
@@ -874,15 +904,25 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             stand between the first ask and the terminal; and the `rejected` terminal, written last,
                             only for a closed owner, and only once nothing is owed -- which is what takes the issue
                             out of the sweep for good
+      late_unsplit.py       the park a `single` hands the issue to a human under: the sentence naming the frozen
+                            candidate, the reading that stopped it, and what the verdict said stopped a split --
+                            NAMED rather than copied, since a park nothing supersedes whose notice could not be
+                            recorded beside the record it came from is one no later tick would ever say, and quoted
+                            LAST and fenced, since an explanation opening an HTML comment would swallow the
+                            instruction after it -- with the candidate, the generation, the publication it was
+                            measured against, the hold, the session and the recorded verdict all left where they
+                            were, and a park already standing rewritten by no tick
       late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the split
-                            passed on to the transaction that creates its children, and the ORDER a `single` is
-                            settled in -- the hold and the pull request reconciled first, then the exemption naming
-                            the measured commit written with the identity of what that commit contributes and the
-                            commit a push is still owed for beside it, then the handoff -- with the latch asked
-                            between every one of those steps, and never a snapshot, since an accepted candidate is
-                            superseded by nothing and publishes as itself. The identity is fingerprinted over the
-                            frozen pair the adjudication was run against rather than over a checkout that stayed
-                            writable throughout, and a reading nobody could take leaves the exact exemption alone
+                            passed on to the transaction that creates its children, the park beside it a
+                            `single` earns, and the ORDER a decision to publish an oversized candidate unsplit
+                            would be settled in -- the hold and the pull request reconciled first, then the
+                            exemption naming the measured commit written with the identity of what that commit
+                            contributes and the commit a push is still owed for beside it, then the handoff --
+                            with the latch asked between every one of those steps, and never a snapshot, since
+                            an accepted candidate is superseded by nothing and publishes as itself. The identity
+                            is fingerprinted over the frozen pair the adjudication was run against rather than
+                            over a checkout that stayed writable throughout, and a reading nobody could take
+                            leaves the exact exemption alone
       late_reconcile.py     the two reconciliations that order opens with, shared with the handoff of a candidate a
                             remeasurement put back under the ceiling: the hold RESTORED rather than rewritten, and
                             the pull request settled against the measured commit in any state -- searched for by
@@ -897,22 +937,24 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             which is the settlement's own push having landed before the tick died, and is finished
                             rather than refused (that same head on a fresh pass, ahead of both writes, is something
                             else's push and refuses with every other moved one)
-      late_verdict_push.py  the push a verdict taken past publication earns, made HERE because only this tick still
-                            holds the evidence -- named against the accepted commit and leased to the head the
-                            reading was taken over -- plus the checkout proved on the road out, since every stage
-                            the label hands the issue to works from it and one carrying loose edits or an unmeasured
-                            descendant would reach a review, a squash, and a merge with nobody having read it
-      late_handback.py      the effects that record licenses, in the order a crash in them is safe in: the push,
-                            the label handed to the stage the record names rather than to implementing -- a
-                            pre-publication candidate goes back to the ordinary publication -- the accepted notice,
-                            and the retirement behind them answered by REINSTATING the cycle rather than refusing,
-                            since past that write there is none left to end, with the write and that barrier held
-                            inside the observations owner's retirement window so a poll reading the record between
-                            them is not told there is nothing to end, and the cycle that retirement dropped
-                            recorded outside the group the write clears, so a process that dies before its own
-                            barrier leaves a receipt something can still be adopted against
+      late_verdict_push.py  the push an authorized settlement of a candidate taken past publication makes --
+                            what an adjudicator's own `single` earns is the park beside it -- made HERE because
+                            this tick still holds the evidence -- named against the accepted commit and leased
+                            to the head the reading was taken over -- plus the checkout proved on the road out,
+                            since every stage the label hands the issue to works from it and one carrying loose
+                            edits or an unmeasured descendant would reach a review, a squash, and a merge with
+                            nobody having read it
+      late_handback.py      the effects a settled decision licenses, in the order a crash in them is safe in:
+                            the push, the label handed to the stage the record names rather than to implementing
+                            -- a pre-publication candidate goes back to the ordinary publication -- the accepted
+                            notice, and the retirement behind them answered by REINSTATING the cycle rather than
+                            refusing, since past that write there is none left to end, with the write and that
+                            barrier held inside the observations owner's retirement window so a poll reading the
+                            record between them is not told there is nothing to end, and the cycle that
+                            retirement dropped recorded outside the group the write clears, so a process that
+                            dies before its own barrier leaves a receipt something can still be adopted against
       late_publication.py   the pull request a verdict taken PAST the first push was measured on, read once for
-                            both roads out of the adjudication: a `single` publishes onto it and a `split` closes
+                            both roads out of the adjudication: a settlement publishes onto it and a `split` closes
                             it over a supersession, and neither may look it up -- the entry the gate froze names
                             it and the head it was standing on. One reading, because a fetched pull request is
                             lazy and the reads behind the lookup are what talk, so a caller guarding only the
@@ -1087,9 +1129,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             a consumed batch advances those watermarks by
       bookmarks.py          the `pending_fix_*` ids a replay rebuilds the triggering batch from, and the clear each
                             round earns
-      resume.py             the dev run, the ACK fast path, the `workflow:validating` relabel a pushed fix earns,
-                            and the round a fix the size gate sent to adjudication spends here -- no later tick of
-                            this stage can, since a settled verdict publishes before handing the issue back
+      resume.py             the dev run, the ACK fast path, the `workflow:validating` relabel a pushed fix earns, and
+                            the round a fix the size gate sent to adjudication spends here -- no later tick of this
+                            stage can, since the head the reviewer rejected is superseded whether that adjudication
+                            parks its `single` for a human or an authorized settlement publishes before handing the
+                            issue back
       parked.py             the four answers an `awaiting_human` tick can reach and the order they are asked in
       continue_command.py   `/orchestrator continue` on a parked fix: the replay and what it may hand the dev --
                             guidance, never the command itself -- plus the two refusals and the guidance passthrough

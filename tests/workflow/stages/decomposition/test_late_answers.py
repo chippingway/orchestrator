@@ -13,6 +13,7 @@ from tests.workflow.stages.decomposition.late_content_support import (
     EDITED_TITLE,
     LATE_SESSION,
     PARK_QUESTION,
+    PARK_SINGLE_DECISION,
     LateContentCase,
     guidance_comment,
     reply,
@@ -44,11 +45,13 @@ class RecordedQuestionTest(LateContentCase):
 
         outcome, spawn = self._run(SINGLE_REPLY)
 
-        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         spawn.assert_called_once()
         pinned = self._pinned()
         self.assertEqual(pinned[KEYS.verdict], str(LateVerdict.SINGLE))
-        self.assertFalse(pinned[KEYS.awaiting])
+        # The question this answered is gone: what the issue waits on now is
+        # the decision the fresh verdict earned, not the one it replaced.
+        self.assertEqual(pinned[KEYS.park_reason], PARK_SINGLE_DECISION)
 
     def test_the_answer_reaches_the_agent_that_asked(self) -> None:
         # A question is a conversation, and the pin exists so the answer can
@@ -125,7 +128,7 @@ class RecordedQuestionTest(LateContentCase):
 
         outcome, spawn = self._run(SINGLE_REPLY)
 
-        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         spawn.assert_called_once()
         self.assertEqual(
             self._pinned()[KEYS.verdict], str(LateVerdict.SINGLE),

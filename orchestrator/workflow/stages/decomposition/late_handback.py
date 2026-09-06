@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The effects a recorded verdict licenses, in the order a crash is safe in.
+"""The effects a settled decision licenses, in the order a crash is safe in.
 
 The second half of the settlement, split from the first so each is one
 crash-ordered sequence rather than one long one: what is durable before this

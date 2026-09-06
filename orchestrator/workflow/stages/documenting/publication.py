@@ -192,7 +192,7 @@ def _finished_settled_docs(
 
     The receipt says the pass is over: an agent ran, it committed, and the
     only thing left between that commit and `in_review` is the handoff. The
-    gate HELD the commit, and a settled `single` verdict publishes it from the
+    gate HELD the commit, and an authorized settlement publishes it from the
     adjudication and hands the label back here. Or the gate ALLOWED the push,
     it landed, and the tick died before this stage could record it -- the
     receipt goes down in the gate's own write either way, which is ahead of

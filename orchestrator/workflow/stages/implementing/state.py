@@ -85,7 +85,8 @@ _CANDIDATE_MOVED = "late_candidate_moved"
 
 # The commit this issue owes a publication and no push has carried yet. It
 # goes down in the same write that APPROVES one -- the retirement a small
-# candidate earns, and the exemption a `single` verdict records -- because
+# candidate earns, and the exemption an authorized settlement records --
+# because
 # both of those writes drop the record that used to name the commit, and the
 # push they license runs after them. Without it a tick that died in that
 # window would leave nothing on the issue naming the work: a replacement host

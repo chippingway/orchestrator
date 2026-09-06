@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """The one oversized candidate an operator authorized to publish as it stands.
 
-An oversized candidate has two ways past the size gate. The first is the
-workflow's own: an adjudication rules it one coherent change, and the
-`exemption` owner beside this records the commit that verdict was reached
-about. The second is a human's. An operator who has read the change can say,
+An oversized candidate has two ways past the size gate, and both are a
+human's. The first is a settlement somebody authorized, whose commit the
+`exemption` owner beside this records; an adjudicator ruling the change one
+coherent whole is not itself one of them, since a `single` verdict parks for
+that decision rather than making it. The second is this record. An operator
+who has read the change can say,
 in a comment on the issue, that it publishes unsplit -- and that gesture has
 to outlive the process that read it, the generation it was made under, and the
 tick that would act on it, or the gate measures the same candidate past the

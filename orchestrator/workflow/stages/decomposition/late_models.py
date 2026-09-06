@@ -331,9 +331,9 @@ class _LateContext:
     `answering` does -- a tick that dies before releasing it leaves the park
     itself standing, and whatever re-takes that park announces it then.
 
-    `already_published` is the sixth, and it is the answer to the one window a
-    settled `single` verdict cannot repair from the record alone. The push
-    that verdict earns happens before the relabel and the retirement, so a
+    `already_published` is the sixth, and it is the answer to the one window an
+    authorized settlement cannot repair from the record alone. The push that
+    decision licenses happens before the relabel and the retirement, so a
     tick that died in between comes back to a live generation whose pull
     request is standing on the accepted candidate rather than on the head the
     reading was frozen at. That is this settlement's own push having landed,

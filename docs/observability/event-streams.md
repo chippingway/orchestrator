@@ -706,19 +706,19 @@ family describing two different steps. That answer is the `publication` field be
 **What a stream carries.** Four producers write to these families. The first is the publication seam itself
 ([`../workflow/roles.md`](../workflow/roles.md#the-size-gate-a-committed-candidate-passes)), which is where a
 candidate is measured at all: it writes one `late_measurement` per clean committed candidate — small and oversized
-alike, since a threshold study needs the candidates that *passed* as much as the ones that did not. `stage` is the
-one the reading was taken in rather than this package's own name: `implementing` for the push that opens the pull
-request, and `validating` / `documenting` / `in_review` / `fixing` / `resolving_conflict` for a push onto one the
-remote already carries, so a measurement is never filed under a stage no developer of it ran in. Beside them it writes
-a `late_failure` carrying `measurement_failed` for **every** reading it could not take: a base the remote would not
+alike, since a threshold study needs the candidates that *passed* as much as the ones that did not. `stage` is the one
+the reading was taken in rather than this package's own name: `implementing` for the push that opens the pull request,
+and `validating` / `documenting` / `in_review` / `fixing` / `resolving_conflict` for a push onto one the remote
+already carries, so a measurement is never filed under a stage no developer of it ran in. Beside them it writes a
+`late_failure` carrying `measurement_failed` for **every** reading it could not take: a base the remote would not
 name, a base or candidate object this host does not hold, a diff nothing could pin, and a recorded candidate a reaped
 worktree took with it. Which of those it was is on the record rather than left to the reader — `measurement_failure`
 names the step, and `detail` carries the line that step wrote — so a run of these can be counted by cause without
 reading the issue thread back. Every one of them is recorded whether or not a human is told about it — the two
 transport steps are retried quietly, three consecutive misses on one pair before the fourth parks the issue, and the
 stream is where those misses are visible at all. A quiet miss and the park that ends the run write the same record:
-the same `late_failure`, the same `measurement_failed`, the same step and line, since a reading that did not happen
-is the thing being counted and a stream counting causes may not lose the ones nobody was told about. What tells them
+the same `late_failure`, the same `measurement_failed`, the same step and line, since a reading that did not happen is
+the thing being counted and a stream counting causes may not lose the ones nobody was told about. What tells them
 apart is the `park_awaiting_human` record beside them, carrying `reason="late_measurement_failed"` — and it dates an
 ANNOUNCEMENT rather than the state of the bound. One goes down where the fourth miss parks, again where a reading
 stops at a member the thread has not been told about, and again where a human's own reply has spent the park before
@@ -726,41 +726,38 @@ it: a bare `/orchestrator continue` clears the latch and the reason ahead of the
 announced whatever it stops at, the member the last notice named included. The readings between those — the ones
 inside the bound, and the ones a standing park holds silently — write their `late_failure` with no park record beside
 them and read alike here. What a run of them is takes the records before it under the same cycle and CANDIDATE
-(`source_sha`) rather than the same generation: a base the remote would not name records no base at all, so each
-retry of that pair freezes afresh and mints the next generation under the one cycle. Or it takes the pinned
-`late_measurement_miss_count` and `late_measurement_failure`, which no payload field carries. What that
-park bounds is the MENTIONS rather
-than the readings: on the five stages that publish onto a pull request the remote already carries, the
-reconciliation ahead of every handler goes on
-re-reading the parked pair once a poll, and every one of those
+(`source_sha`) rather than the same generation: a base the remote would not name records no base at all, so each retry
+of that pair freezes afresh and mints the next generation under the one cycle. Or it takes the pinned
+`late_measurement_miss_count` and `late_measurement_failure`, which no payload field carries. What that park bounds is
+the MENTIONS rather than the readings: on the five stages that publish onto a pull request the remote already carries,
+the reconciliation ahead of every handler goes on re-reading the parked pair once a poll, and every one of those
 readings reports again. So a single unreachable base can carry an unbounded run of `late_failure` records under one
-cycle and generation while the thread stays silent, and it is the reading that finally lands — not a human — that
-ends the run. The silence is scoped to the STEP the park's notice named, which the pinned
-`late_measurement_failure` records: a run of readings that go on stopping there is silent however long it is, while
-one that starts stopping somewhere else — a remote that has come back far enough to name the base while a fetch
-still brings nothing — breaks it exactly once, and the records go on either way. A candidate refused before either
-end of the diff was frozen has no generation of its own to be correlated by, so the identity is *minted* for the
-record — derived from what the pinned comment already says, so a reading that keeps failing reports the same
-attempt rather than a fresh cycle per tick — and deliberately not persisted, since a pinned cycle with no
-candidate under it freezes nothing and would be read as a live cycle by the guard that ends one when the issue
-closes. A candidate the gate skips emits nothing, and five do. Three are commits this workflow has already decided
-about, each named exactly and only by its own record: the one an adjudication accepted (`late_exempt_sha`), the one
-the gate itself approved and has still to push (`late_approved_sha`, brought back by a crash between the write that
-approves a candidate and the push it licenses), and the one this stage already pushed
-(`implementing_published_sha`, brought back by a relabel to `workflow:validating` that did not land). The fourth is
-a NEW candidate while `DECOMPOSE=off`, and the fifth is a workflow rewrite that EARNED the exemption of the commit
-it replaced — a squash on approval, or the clean base rebase the per-tick refresh publishes (`late_rewrite_*`,
-granted only over two recomputed fingerprints that agree). So a reading that
-never happened is not always a reading that failed: an issue whose branch is published, or whose commit a verdict
-settled, reaches the seam again and leaves no `late_measurement` behind, which is the shape a threshold study sees
-for a candidate that was counted once and acted on twice. The switch is not silence either — a candidate this issue
-already has a recorded generation for is still measured with it off, and so is a reconciliation answering a reading
-a previous tick recorded, so a repository running with the switch off still writes these families for the work
+cycle and generation while the thread stays silent, and it is the reading that finally lands — not a human — that ends
+the run. The silence is scoped to the STEP the park's notice named, which the pinned `late_measurement_failure`
+records: a run of readings that go on stopping there is silent however long it is, while one that starts stopping
+somewhere else — a remote that has come back far enough to name the base while a fetch still brings nothing — breaks
+it exactly once, and the records go on either way. A candidate refused before either end of the diff was frozen has no
+generation of its own to be correlated by, so the identity is *minted* for the record — derived from what the pinned
+comment already says, so a reading that keeps failing reports the same attempt rather than a fresh cycle per tick —
+and deliberately not persisted, since a pinned cycle with no candidate under it freezes nothing and would be read as a
+live cycle by the guard that ends one when the issue closes. A candidate the gate skips emits nothing, and five do.
+Three are commits this workflow has already decided about, each named exactly and only by its own record: the one an
+authorized settlement accepted (`late_exempt_sha`), the one the gate itself approved and has still to push
+(`late_approved_sha`, brought back by a crash between the write that approves a candidate and the push it licenses),
+and the one this stage already pushed (`implementing_published_sha`, brought back by a relabel to
+`workflow:validating` that did not land). The fourth is a NEW candidate while `DECOMPOSE=off`, and the fifth is a
+workflow rewrite that EARNED the exemption of the commit it replaced — a squash on approval, or the clean base rebase
+the per-tick refresh publishes (`late_rewrite_*`, granted only over two recomputed fingerprints that agree). So a
+reading that never happened is not always a reading that failed: an issue whose branch is published, or whose commit a
+verdict settled, reaches the seam again and leaves no `late_measurement` behind, which is the shape a threshold study
+sees for a candidate that was counted once and acted on twice. The switch is not silence either — a candidate this
+issue already has a recorded generation for is still measured with it off, and so is a reconciliation answering a
+reading a previous tick recorded, so a repository running with the switch off still writes these families for the work
 already in the gate. What it stops is records for work that never enters it. The seam writes one more family, and
-rarely: a `late_cancellation` — under the same entry stage — where a close a poll latched reaches the retirement
-that runs ahead of a publication — asked before that write and again on the window it is held inside, so a close
-arriving as the record stops naming its cycle is reported rather than lost. It is the same family and the same
-shape the adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended.
+rarely: a `late_cancellation` — under the same entry stage — where a close a poll latched reaches the retirement that
+runs ahead of a publication — asked before that write and again on the window it is held inside, so a close arriving
+as the record stops naming its cycle is reported rather than lost. It is the same family and the same shape the
+adjudication's own barriers emit, so a cancelled cycle reads alike wherever it was ended.
 
 The seam writes one family more still, and it is the only one on this page that reports a decision MOVING rather
 than being taken: `late_transfer`, one record per exemption carried onto the commit a workflow rewrite replaced the

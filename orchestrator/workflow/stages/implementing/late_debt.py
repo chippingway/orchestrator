@@ -117,7 +117,7 @@ def _owes_a_published_push(
     owns it.
 
     Neither is an issue under the adjudication, whatever it records. An
-    accepted `single` verdict approves the commit it publishes and settles it
+    authorized settlement approves the commit it publishes and settles it
     from there, holding the evidence for exactly as long as that takes; a
     reconciliation stepping in front of that would push under a lease the
     settlement is still reconciling.

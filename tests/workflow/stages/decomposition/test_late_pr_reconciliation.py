@@ -28,7 +28,6 @@ from tests.workflow.stages.decomposition.late_settlement_support import (
     KEY_PR_NUMBER,
     PARK_PR_UNRECONCILED,
     SETTLED_PR_NUMBER,
-    SINGLE_RUN,
     WORKFLOW_LOG,
     GuardedLateCase,
 )
@@ -46,25 +45,6 @@ GET_PR = "get_pr"
 PR_CLOSED = "closed"
 
 PR_OPEN = "open"
-
-
-class _SecondReadFails:
-    """A pull-request read that answers once and then dies.
-
-    The hold reconciliation reads the recorded pull request at the top of the
-    tick and the settlement reads it again at the bottom. Only the second one
-    is the read under test, so the first is allowed through.
-    """
-
-    def __init__(self, github) -> None:
-        self._get_pr = github.get_pr
-        self._answered = False
-
-    def __call__(self, pr_number):
-        if self._answered:
-            raise RuntimeError("could not read it this time")
-        self._answered = True
-        return self._get_pr(pr_number)
 
 
 class _PrStateCase(GuardedLateCase):
@@ -106,7 +86,7 @@ class ExactCommitReconciliationTest(_PrStateCase, unittest.TestCase):
         # second time.
         self._add_pr(CARRYING_PR_NUMBER, merged=True, carries=CANDIDATE_SHA)
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(self._pinned().get(KEY_PR_NUMBER), CARRYING_PR_NUMBER)
@@ -118,7 +98,7 @@ class ExactCommitReconciliationTest(_PrStateCase, unittest.TestCase):
         self._seed_recording(SETTLED_PR_NUMBER)
         self._add_pr(SETTLED_PR_NUMBER, merged=True, carries=OTHER_SHA)
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertIsNone(self._pinned().get(KEY_PR_NUMBER))
@@ -132,7 +112,7 @@ class ExactCommitReconciliationTest(_PrStateCase, unittest.TestCase):
         self._seed_recording(SETTLED_PR_NUMBER)
         self._add_pr(SETTLED_PR_NUMBER, merged=False, carries=OTHER_SHA)
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(self._pinned().get(KEY_PR_NUMBER), SETTLED_PR_NUMBER)
@@ -150,7 +130,7 @@ class UnreconciledPrTest(_PrStateCase, unittest.TestCase):
     def test_an_unreadable_lookup_publishes_nothing(self) -> None:
         self.github.unreadable_pr_lookups.add(CANDIDATE_BRANCH)
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self._assert_unreconciled(outcome)
 
@@ -158,11 +138,11 @@ class UnreconciledPrTest(_PrStateCase, unittest.TestCase):
         self._seed_recording(SETTLED_PR_NUMBER)
         self._add_pr(SETTLED_PR_NUMBER, merged=True, carries=OTHER_SHA)
         refused = patch.object(
-            self.github, GET_PR, _SecondReadFails(self.github),
+            self.github, GET_PR, side_effect=RuntimeError,
         )
 
         with refused, self.assertLogs(WORKFLOW_LOG, level=ERROR):
-            outcome = self._decide(SINGLE_RUN)
+            outcome = self._settle()
 
         self._assert_unreconciled(outcome)
 

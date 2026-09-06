@@ -78,6 +78,17 @@ class LatePromptContextTest(unittest.TestCase):
         self.assertNotIn(f"{BASE_SHA}..{CANDIDATE_SHA}`", composed)
         self.assertIn("THREE dots, not two", composed)
 
+    def test_a_single_is_not_offered_as_a_publication(self) -> None:
+        # What the verdict earns is the park a human's decision to publish an
+        # oversized change unsplit is owed on. Told the orchestrator publishes
+        # on its word, the agent would be weighing a consequence the workflow
+        # does not give it -- and weighing it on every classification.
+        composed = _prompt_for()
+
+        self.assertIn("does NOT publish it", composed)
+        self.assertIn("handed to a human", composed)
+        self.assertNotIn("the orchestrator publishes it as it stands", composed)
+
     def test_it_places_the_issue_in_its_lineage(self) -> None:
         composed = _prompt_for()
 

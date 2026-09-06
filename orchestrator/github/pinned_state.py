@@ -41,6 +41,15 @@ PINNED_STATE_BODY_RE = re.compile(
 )
 PINNED_STATE_TEMPLATE = "<!--orchestrator-state {payload}-->"
 
+# What ends the comment the payload is wrapped in, and what it is written as
+# inside that payload. The replacement is the JSON escape for `>`, so a reader
+# decodes it back to the terminator it stands for without knowing anything
+# about this: what is escaped is the SERIALIZED form, never the value. It can
+# introduce no terminator of its own, since it carries no `>` at all.
+_COMMENT_CLOSE = "-->"
+
+_ESCAPED_COMMENT_CLOSE = r"--\u003e"
+
 # How long a comment body GitHub accepts. A write past it is refused, so a
 # caller about to add something large to the pinned state -- a preserved pull
 # request body, a recorded child manifest -- asks `pinned_state_body` what the
@@ -115,15 +124,55 @@ class PinnedState:
         self.state_data[key] = state_value
 
 
+def _is_state_comment(
+    issue_comment: IssueComment, state_comment_id: int | None,
+) -> bool:
+    """Whether this comment is the pinned one, by identity or by marker.
+
+    Identity where the caller can name it. The marker is the stand-in for a
+    caller that cannot, and it answers a wider question than it looks: every
+    comment that merely QUOTES the marker reads as the state comment too.
+    """
+    if state_comment_id is None:
+        return PINNED_STATE_MARKER in (issue_comment.body or "")
+    return issue_comment.id == state_comment_id
+
+
 def pinned_state_body(state_data: dict) -> str:
     """Return the comment body one pinned state is written as.
 
     The one rendering of it, so a caller measuring what a write would produce
     measures the write rather than an approximation of it.
+
+    The payload is wrapped in an HTML comment, so a value carrying that
+    comment's terminator would close it early and leave everything after it --
+    the rest of the record, whatever a stage happens to have written -- as
+    visible issue text. Values are not this owner's to sanitize: an agent's
+    explanation, a preserved pull-request body, a human's own words all reach
+    here as somebody wrote them. So the terminator is escaped in the SERIALIZED
+    form and nowhere else, as the JSON escape for its last character, which
+    every reader decodes back to exactly what was stored. Nothing else about
+    the payload changes, and a body written before this reads back the same.
+
+    That escape is five characters an occurrence, and a record already on an
+    issue never paid them. One accepted at the ceiling with terminators in it
+    -- a preserved pull-request body is where they come by the thousand --
+    escapes into a comment GitHub refuses, and the write that would carry it
+    is the write a stage's park, its notice, or its recorded outcome rides out
+    on. Losing those to a rendering is the worse trade of the two: the record
+    is what a later tick reads, while the escape only decides how the comment
+    LOOKS. So a payload the escape puts past the limit is written exactly as
+    it was stored, which is the rendering the binary that accepted it gave it,
+    and which every reader here still parses -- the object form spans the
+    terminator on the way back.
     """
-    return PINNED_STATE_TEMPLATE.format(
-        payload=json.dumps(state_data, sort_keys=True),
+    payload = json.dumps(state_data, sort_keys=True)
+    escaped = PINNED_STATE_TEMPLATE.format(
+        payload=payload.replace(_COMMENT_CLOSE, _ESCAPED_COMMENT_CLOSE),
     )
+    if len(escaped) <= MAX_PINNED_BODY:
+        return escaped
+    return PINNED_STATE_TEMPLATE.format(payload=payload)
 
 
 def pinned_state_from_comment(
@@ -228,15 +277,26 @@ class GitHubStateMixin(GitHubIssueMixin):
         self,
         issue: Issue,
         after_id: int | None,
+        *,
+        state_comment_id: int | None = None,
     ) -> list[IssueComment]:
-        """Return non-state issue comments newer than the watermark."""
-        issue_comments: list[IssueComment] = []
-        for issue_comment in issue.get_comments():
-            if PINNED_STATE_MARKER in (issue_comment.body or ""):
-                continue
-            if after_id is None or issue_comment.id > after_id:
-                issue_comments.append(issue_comment)
-        return issue_comments
+        """Return non-state issue comments newer than the watermark.
+
+        Which comment is the state one is answered by IDENTITY where the
+        caller can name it, and by the marker in the body otherwise. The two
+        are not the same question. The body test also hides every comment that
+        merely quotes the marker -- an adjudicator explaining itself, a human
+        pasting a payload back -- which is right for a reader looking for
+        conversation and wrong for one looking for a receipt this orchestrator
+        posted: a sentence carrying somebody else's copy of the marker would
+        be invisible to the only read that could tell it had been said.
+        """
+        return [
+            issue_comment
+            for issue_comment in issue.get_comments()
+            if not _is_state_comment(issue_comment, state_comment_id)
+            and (after_id is None or issue_comment.id > after_id)
+        ]
 
     def latest_comment_id(self, issue: Issue) -> int | None:
         """Return the largest issue-comment id, when any comment exists."""

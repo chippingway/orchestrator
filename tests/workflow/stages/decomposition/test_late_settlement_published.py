@@ -56,25 +56,6 @@ def _CRASHES(*_called, **_options):
     raise RuntimeError(LABEL_WRITE_REJECTED)
 
 
-class _RefusingMidRun:
-    """A finished run that leaves the publication refusing one lazy read.
-
-    Installed from inside the spawn rather than from the seed, because the
-    hold this tick takes reads the same pull request before the agent starts:
-    a fixture refusing from the first request would stop the tick there and
-    never reach the settlement at all.
-    """
-
-    def __init__(self, github, failing: str) -> None:
-        self._github = github
-        self._failing = failing
-
-    def __call__(self, *_called, **_options):
-        self._github.add_pr(LazyPullRequest(
-            self._github.get_pr(PUBLISHED_PR_NUMBER), failing=self._failing,
-        ))
-        return SINGLE_RUN
-
 ACCEPTED_NOTICE = "one coherent change"
 
 # What a settled generation leaves behind on the pinned comment: none of it.
@@ -107,6 +88,26 @@ class _PublishedVerdictMixin:
     def _label(self):
         """The workflow label this issue is wearing now."""
         return self.github.workflow_label(self.issue)
+
+    def _seed_held(self) -> None:
+        """Leave the frozen publication wearing this cycle's own hold.
+
+        Taken by an adjudication tick rather than seeded, because what the
+        release meets is the marked description that tick actually wrote.
+        """
+        self._seed_published()
+        self._decide(SINGLE_RUN)
+
+    def _refuse_read(self, failing: str) -> None:
+        """Leave the frozen publication refusing one of its lazy reads.
+
+        A fetched pull request has asked GitHub nothing, so the request that
+        can fail is an attribute read behind the lookup rather than the lookup
+        itself.
+        """
+        self.github.add_pr(LazyPullRequest(
+            self.github.get_pr(PUBLISHED_PR_NUMBER), failing=failing,
+        ))
 
     def _seed_published(self, *, stage=None, **pr_fields) -> None:
         """Re-seed this issue as one whose verdict was taken past publication."""
@@ -145,7 +146,7 @@ class PublishedSingleReconciliationTest(
         # so away. Landed, the debt it was recorded under is paid.
         self._seed_published()
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         pinned = self._pinned()
@@ -161,7 +162,7 @@ class PublishedSingleReconciliationTest(
         # already passed.
         self._seed_published()
 
-        self._decide(SINGLE_RUN)
+        self._settle()
 
         self.assertEqual(self._label(), PUBLISHED_SOURCE_STAGE)
 
@@ -174,7 +175,7 @@ class PublishedSingleReconciliationTest(
                 self.setUp()
                 self._seed_published(stage=stage)
 
-                self._decide(SINGLE_RUN)
+                self._settle()
 
                 self.assertEqual(self._label(), stage)
 
@@ -185,14 +186,13 @@ class PublishedSingleReconciliationTest(
         # publication refused forever would be the one this verdict made.
         self._seed_published()
         with patch.object(self.github, SET_WORKFLOW_LABEL, _CRASHES), self.assertRaises(RuntimeError):
-            self._decide(SINGLE_RUN)
+            self._settle()
         # The push landed before the label write died, so the pull request is
         # standing on the accepted candidate when the retry looks.
         self.github.get_pr(PUBLISHED_PR_NUMBER).head.sha = CANDIDATE_SHA
 
-        outcome, spawn = self._adjudicate(worktree=WorktreeSeed(push=False))
+        outcome = self._settle(worktree=WorktreeSeed(push=False))
 
-        spawn.assert_not_called()
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(self._label(), PUBLISHED_SOURCE_STAGE)
         pinned = self._pinned()
@@ -208,7 +208,7 @@ class PublishedSingleReconciliationTest(
         # head rather than handing a stage a pull request that never got it.
         self._seed_published()
 
-        outcome = self._decide(SINGLE_RUN, worktree=WorktreeSeed(push=False))
+        outcome = self._settle(worktree=WorktreeSeed(push=False))
 
         self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(self._label(), LABEL_DECOMPOSING)
@@ -224,7 +224,7 @@ class PublishedSingleReconciliationTest(
         # adjudicated against the first.
         self._seed_published(pr_state=PR_CLOSED)
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self._assert_unpublished(outcome)
 
@@ -257,9 +257,8 @@ class PublishedCheckoutProofTest(
                 self.setUp()
                 self._seed_settled()
 
-                outcome, spawn = self._adjudicate(worktree=mutation)
+                outcome = self._settle(worktree=mutation)
 
-                spawn.assert_not_called()
                 self._assert_unpublished(outcome)
 
     def test_a_push_that_moved_it_holds_the_handoff(self) -> None:
@@ -277,7 +276,7 @@ class PublishedCheckoutProofTest(
                 self.setUp()
                 self._seed_published()
 
-                outcome = self._decide(SINGLE_RUN, worktree=mutation)
+                outcome = self._settle(worktree=mutation)
 
                 self._assert_unpublished(outcome)
 
@@ -295,16 +294,15 @@ class PublishedCheckoutProofTest(
                 self.setUp()
                 self._seed_landed_push()
 
-                outcome, spawn = self._adjudicate(worktree=mutation)
+                outcome = self._settle(worktree=mutation)
 
-                spawn.assert_not_called()
                 self._assert_unpublished(outcome)
 
     def _seed_landed_push(self) -> None:
         """Leave the settlement whose own push landed and whose tick died."""
         self._seed_published()
         with patch.object(self.github, SET_WORKFLOW_LABEL, _CRASHES), self.assertRaises(RuntimeError):
-            self._decide(SINGLE_RUN)
+            self._settle()
         self.github.get_pr(PUBLISHED_PR_NUMBER).head.sha = CANDIDATE_SHA
 
 
@@ -327,9 +325,10 @@ class PublishedVerdictRefusalTest(
         # one step ahead of the proof. Left to raise, the tick would end with
         # the branch still carrying the accepted candidate and nothing on the
         # thread saying why.
-        self._seed_published()
+        self._seed_held()
+        self._refuse_read("state")
 
-        outcome = self._decide(_RefusingMidRun(self.github, "state"))
+        outcome = self._settle()
 
         self._assert_unreleased(outcome)
 
@@ -337,9 +336,10 @@ class PublishedVerdictRefusalTest(
         # The other lazy read, refused for the same reason: neither the
         # description this generation displaced nor the candidate it accepted
         # may be acted on through a pull request nobody could read.
-        self._seed_published()
+        self._seed_held()
+        self._refuse_read("head")
 
-        outcome = self._decide(_RefusingMidRun(self.github, "head"))
+        outcome = self._settle()
 
         self._assert_unreleased(outcome)
 
@@ -348,7 +348,7 @@ class PublishedVerdictRefusalTest(
         # was taken over is not what the branch would come to.
         self._seed_published(head=OTHER_SHA)
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self._assert_unpublished(outcome)
 
@@ -356,7 +356,7 @@ class PublishedVerdictRefusalTest(
         # A verdict taken before anything was published names no pull
         # request to have been measured against, so its push reads the remote
         # for itself rather than being pinned to a frozen head.
-        self._decide(SINGLE_RUN)
+        self._settle()
 
         self.assertIsNone(self._pinned().get(KEYS.approved_lease))
 
@@ -392,7 +392,7 @@ class PublishedOwnPushTest(
         # publication nobody proved.
         self._seed_published(head=CANDIDATE_SHA)
 
-        outcome = self._decide(SINGLE_RUN)
+        outcome = self._settle()
 
         self._assert_unpublished(outcome)
 
@@ -414,7 +414,7 @@ class PublishedOwnPushTest(
                     KEYS.receipt_lease: lease,
                 })
 
-                outcome = self._decide(SINGLE_RUN)
+                outcome = self._settle()
 
                 self._assert_unpublished(outcome)
 
@@ -430,7 +430,7 @@ class PublishedOwnPushTest(
             KEYS.receipt_lease: PUBLISHED_HEAD_SHA,
         })
 
-        outcome = self._decide(SINGLE_RUN, worktree=WorktreeSeed(push=False))
+        outcome = self._settle(worktree=WorktreeSeed(push=False))
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         self.assertEqual(self._label(), PUBLISHED_SOURCE_STAGE)

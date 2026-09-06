@@ -274,7 +274,7 @@ def _settles_the_held_round(outcome: str, sha: str | None):
 
     A hold ends the tick: the resolution is committed, the issue is on
     `workflow:decomposing`, and the tail above never runs. But the round IS
-    resolved -- a settled `single` verdict publishes the accepted commit from
+    resolved -- an authorized settlement publishes the accepted commit from
     the adjudication -- and the resumed tick could not work out which of the
     four content updates it was: the branch it comes back to already carries
     its base, which is the no-op flip's own reading and the one exit that

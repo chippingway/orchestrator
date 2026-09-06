@@ -157,7 +157,7 @@ class DecidedOutcomeTest(LateCase, unittest.TestCase):
         )
 
         spawn.assert_called_once()
-        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self.assertEqual(outcome.adjudication.verdict, LateVerdict.SINGLE)
         self.assertEqual(self._pinned().get(KEYS.session_id), LATE_SESSION_ID)
         self.assertEqual(self._pinned().get(KEYS.verdict), LateVerdict.SINGLE)

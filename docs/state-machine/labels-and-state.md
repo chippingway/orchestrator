@@ -123,14 +123,19 @@ already carries: a commit joining a branch a pull request is open on is measured
 TO, and one past the ceiling is held off it and adjudicated from whichever of the five states that push was reached
 under. The pre-PR states own no such edge — nothing there has a publication to be measured against.
 The same five own the edge BACK — `workflow:decomposing → workflow:validating` / `workflow:documenting` /
-`in_review` / `workflow:fixing` / `workflow:resolving_conflict` — because a settled `single` verdict returns the
+`in_review` / `workflow:fixing` / `workflow:resolving_conflict` — because a settlement returns the
 issue to the stage it was taken out of rather than to `workflow:implementing`: that stage is the only owner of the
 completion the candidate still owes, and the record names which one it was
 ([below](#late-generation-state)). Both directions are declared from one set, so the way in and the way back cannot
 drift apart.
-The existing `workflow:decomposing → workflow:implementing` edge beside it is the way back a verdict on work nothing
-had published takes, carrying the exemption naming the adjudicated commit, so the ordinary publication reconciles
-that exact commit the way it does for any other change.
+The existing `workflow:decomposing → workflow:implementing` edge beside it is the way back a settlement of work
+nothing had published takes, carrying the exemption naming the adjudicated commit, so the ordinary publication
+reconciles that exact commit the way it does for any other change.
+An adjudicator's own `single` walks neither: what a verdict earns is the park a human's decision to publish the
+candidate unsplit is owed on, and the settlement those edges belong to is what such a decision would license
+([`../workflow/roles.md`](../workflow/roles.md#what-a-verdict-the-read-cleared-earns)). The edges are declared all
+the same, because a generation entered from one of the five is a generation that still names which state it would
+be settled back into.
 `workflow:decomposing → rejected` and `workflow:umbrella → rejected` are the one terminal a late generation whose
 owner was closed mid-adjudication reaches, once its external cleanup is reconciled, under whichever of the two labels
 it had reached; they are also the only way a pre-PR state reaches a terminal at all. `done → rejected` is the last of
@@ -459,6 +464,12 @@ orchestrator's token AND its whole body is the marker, so neither a third party'
 bot-authored comment that embeds the marker in prose can preempt state (see
 [pinned-state authentication](../security.md#pinned-state-authentication)).
 
+The payload is written with the wrapper's own terminator escaped — `-->` inside it is serialized as `--\u003e`, the
+JSON escape every reader decodes back to what was stored. Values reaching the record are not the writer's to
+sanitize: an agent's explanation, a preserved pull-request body, a human's own words all arrive as somebody wrote
+them, and one carrying `-->` would close the comment early and leave the rest of the record as visible issue text.
+What is escaped is the serialized form and never the value, and a body written before this reads back the same.
+
 A comment that passes both checks is the state comment whatever its payload turns out to be. One that will not parse,
 or that parses into anything but a JSON object — `[]`, `7`, `null`, from a truncated write or a hand edit — is refused
 rather than handed on: the state reads back empty and flagged unparsed, so a reader deciding on the absence of a
@@ -579,8 +590,9 @@ The keys that matter for the state machine fall into a few groups:
   `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,
   `late_manifest_invalid`, `late_result_unrecordable`, `late_owner_unreadable`, `late_pr_unreconciled`,
   `late_snapshot_failed`, `late_children_failed`, `late_supersession_failed`, `late_content_drift`,
-  `late_revision_dirty`, `late_revision_unmeasured`, `late_revision_unanswered`, and `late_question` — see
-  [the late run](#the-late-run) for which of them the next attempt retires. A late tick can also hand the issue back
+  `late_revision_dirty`, `late_revision_unmeasured`, `late_revision_unanswered`, `late_question`, and
+  `late_single_decision` — see [the late run](#the-late-run) for which of them the next attempt
+  retires. A late tick can also hand the issue back
   under the shared `retry_cap`, which is not one of its own: the adjudication is charged to the same per-issue spawn
   budget every other agent run is, and a refusal there means the issue's day of tokens is spent rather than anything
   about its candidate. It is staged through the same late owner all the same, so the generation and the hold ride
@@ -641,26 +653,67 @@ The keys that matter for the state machine fall into a few groups:
   never counted as a repeat and is re-said at the top of the next eligible tick. It is matched against the standing
   `park_reason` (a notice for a park something has replaced or answered is dropped rather than said), left to the
   fresh attempt for the reasons that attempt supersedes, dropped when the cycle is cancelled, and refused whole —
-  loudly — when it would not fit the pinned comment, the same budget a recorded outcome is refused past. Not one of
-  `LATE_STATE_KEYS`: a park outlives the generation that took it. It carries the shared spawn budget's `retry_cap`
-  sentence too when a late adjudication is what ran out — that park is taken by this mode's owner, so it is this field
-  rather than `retry_cap_notice` that holds what it owes, and the entry replay under `workflow:decomposing` finds
-  nothing to say for it because the redelivery below is what says it. The converse is the one an old record leaves: an
-  issue parked on `retry_cap_notice` under this label — by the shared parking form, before it entered the size gate or
-  before this owner existed — is said by that entry replay instead, so the late spent-budget hold treats an obligation
-  on **either** field as a park the thread has not been told about. Owned by
+  loudly — when it would not fit the pinned comment: the reserve beside what that record actually costs, never below
+  the standing ceiling (`MAX_NOTICE_COMMENT`) and never past the size a write really fails at. Held to the standing
+  ceiling alone it would be refused for a record it did not write — one an older binary recorded against the whole
+  outcome budget, or one written before the payload escaped the wrapper's own terminator and so rendering five
+  characters longer per `-->` today than on the tick that accepted it, up to the point where the escape itself would
+  put the comment past what GitHub takes and the payload goes as it was stored instead — and for a park nothing
+  supersedes, a sentence refused for somebody else's record is a human never told. A sentence explaining a
+  **recorded** outcome names that
+  record rather than copying it: the explanation a `single` gave is
+  already in this comment, so a notice repeating it would put the same agent prose there twice and an explanation an
+  outcome could be recorded with would be one its own obligation could not be written beside — which for a park
+  nothing supersedes is a human never told at all. The stored `message` therefore holds a marker where the explanation
+  goes, bounded by this orchestrator's own wording — a bracketed token rather than an HTML comment, since this one is
+  stored INSIDE the pinned comment and a marker carrying `-->` would close that comment early and leave GitHub
+  rendering the rest of the payload as visible issue text — and the delivery puts the recorded explanation back on the
+  way to the thread, in a fenced block at the end of the sentence: a thread is markdown, so an explanation opening an
+  HTML comment anywhere in it would swallow everything after it and leave a human told neither what the agent said nor
+  what to do, while a fence is shown rather than obeyed and costs the same few characters however long the quote is
+  (escaping every opener instead grows the comment per occurrence, which an explanation the record can hold is enough
+  of to push past what GitHub accepts). A fence is longer than the longest run of its OWN character the quote carries,
+  or the quote would close it early — and only a LINE that is a run of the fence character and nothing else can close
+  one, so a run in the middle of a line closes nothing. It is built out of whichever character the quote's own lines
+  leave cheap, since a line of backticks cannot close a tilde fence, and an explanation that is ITSELF a long run of
+  fences reaches the thread whole at three characters an end. The quote carrying a long line of EACH is blocked off in
+  PIECES: a fence is two characters per character of width and a further block is a fixed handful, so the long lines
+  land in blocks of their own and every HTML-comment opener between them stays inside a block, where it is shown
+  rather than obeyed. Which way round is not something a rule of thumb gets right, so every width from the shortest
+  fence up to the widest line is tried by doubling and the smallest rendering wins. Past what any pieces can hold the
+  quote goes in UNBLOCKED with its openers escaped a backslash apiece, since unblocked is where an opener is obeyed
+  again; past what that holds it is cut and said to be cut, which nothing this orchestrator records can reach and
+  which exists because a comment GitHub refuses is rebuilt identically on every poll — the park would stand with its
+  sentence owed and the human told nothing at all. Nothing is stood in for, and no verdict is refused for how its
+  explanation renders: `late_result_unrecordable` is superseded, so such a refusal would buy another decomposer run
+  and leave the `single` short of its own park. The
+  substitution happens identically on the first post and on every redelivery, since the already-posted reconciliation
+  below matches what was actually said. The room that write needs is reserved where the
+  outcome is accepted, so a notice named this way is one the comment can always hold. Not one of `LATE_STATE_KEYS`: a
+  park outlives the generation that took it. It carries the shared spawn budget's `retry_cap` sentence too when a late
+  adjudication is what ran out — that park is taken by this mode's owner, so it is this field rather than
+  `retry_cap_notice` that holds what it owes, and the entry replay under `workflow:decomposing` finds nothing to say
+  for it because the redelivery below is what says it. The converse is the one an old record leaves: an issue parked
+  on `retry_cap_notice` under this label — by the shared parking form, before it entered the size gate or before this
+  owner existed — is said by that entry replay instead, so the late spent-budget hold treats an obligation on
+  **either** field as a park the thread has not been told about. Owned by
   [`late_notice`](../../orchestrator/workflow/stages/decomposition/late_notice.py). It is a claim about the thread, so
   the thread settles a disagreement with it. The post and the write recording it cannot be one operation, so a write
   that failed after a post that landed leaves the field claiming a sentence is owed to an issue that already has it —
   and the first thing a tick does is look for that sentence among the comments above `last_action_comment_id` (the
   mark a park's own mention ratchets, and only on a write that landed, which is what scopes the search to this
-  episode). One found there discharges the obligation and repairs the watermark to it. Without that step the
-  redelivery would repeat a comment, and — worse — the owner guard would read the standing obligation as proof nobody
-  was told and clear its park without the recovery follow-up it promises. A read that could not be TAKEN answers here
-  exactly as an empty one does, which is the opposite of the shared field's reading and is this mode's own choice: the
-  sentence is said again, costing one repeated comment rather than risking a park that stands unexplained for as long
-  as the read keeps failing. What that buys is the property every late park hangs on — the notice reaches the thread
-  before anything on that thread is read as an answer to it.
+  episode). That read names the pinned comment by its own id rather than skipping whatever carries the state marker,
+  which is what the body test elsewhere stands in for: a notice quoting an agent who wrote that marker reads as a
+  state comment to the body test, so the one comment being looked for would be the one comment invisible to it.
+  Rewriting the marker out of the sentence instead is what the search deliberately does not do — it grows the comment
+  per occurrence, and an explanation the record can hold is enough of them to push the notice past what GitHub
+  accepts, which is a sentence no tick could ever deliver. One found there discharges the obligation and repairs the
+  watermark to it. Without that step the redelivery would repeat a comment, and — worse — the owner guard would read
+  the standing obligation as proof nobody was told and clear its park without the recovery follow-up it promises. A
+  read that could not be TAKEN answers here exactly as an empty one does, which is the opposite of the shared field's
+  reading and is this mode's own choice: the sentence is said again, costing one repeated comment rather than risking
+  a park that stands unexplained for as long as the read keeps failing. What that buys is the property every late park
+  hangs on — the notice reaches the thread before anything on that thread is read as an answer to it.
 - **In-review watermarks.** `pr_last_comment_id` (issue thread + PR conversation, shared IssueComment id space),
   `pr_last_review_comment_id` (inline PR review comments), `pr_last_review_summary_id` (PR review summary bodies). Only
   non-empty `CHANGES_REQUESTED` or `COMMENTED` review IDs ever advance the summary watermark; `APPROVED`, `DISMISSED`,
@@ -1350,8 +1403,8 @@ rather than preserving.
   `workflow:blocked`, and `workflow:umbrella` each own an edge to the adjudication for reasons of their own and have
   no pull request behind them, and `workflow:implementing`'s own push is what *opens* the pull request — so a group
   naming one of them is refused at the write and reads back as no publication context, rather than sending a later
-  reconciliation to measure and push a candidate no post-publication stage committed. It is also where a settled
-  `single` verdict puts the issue BACK, which is what the five `workflow:decomposing → <published state>` edges
+  reconciliation to measure and push a candidate no post-publication stage committed. It is also where an authorized
+  settlement puts the issue BACK, which is what the five `workflow:decomposing → <published state>` edges
   exist for: that stage is the only owner of the completion the candidate still owes — a docs watermark and its
   `in_review` handoff, a conflict round, another reviewer look — and returning every one of them to `implementing`
   instead would walk the issue back to a point it had already passed.
@@ -1364,7 +1417,7 @@ rather than preserving.
   entry like every other late SHA because the branch moves under a reconciliation that re-read it. It is the late
   group's own copy rather than a reading of `implementing_published_sha` above: that key is the publishing stage's
   live record and is overwritten by the next push, while this one is evidence one generation is reconciled against.
-  Which generation drops it matters: a settled `single` retires the whole record, and so does an umbrella's own
+  Which generation drops it matters: an authorized settlement retires the whole record, and so does an umbrella's own
   terminal, but the **split's** retirement onto `workflow:umbrella` keeps the group where it drops the measurement.
   Everything that supersession licensed is still to come at that point — the children the umbrella's walk releases
   and the branch its terminal reclaims, both on later ticks — and this group is the only thing left on the issue
@@ -1483,8 +1536,11 @@ rather than preserving.
   carries whatever else the completion staged, which is how the
   durable half of a park gets out ahead of the comment announcing it. See
   [`../workflow/roles.md`](../workflow/roles.md#the-owner-read-a-finished-run-has-to-pass).
-- **Accepted candidate.** `late_exempt_sha` is the one commit a `single` verdict let past the size gate, and it is
-  the whole of what that verdict is worth durably: the gate measures whatever a stage is about to publish, so a
+- **Accepted candidate.** `late_exempt_sha` is the one commit an authorized settlement let past the size gate — an
+  adjudicator's own `single` writes nothing here, since what a verdict earns is the
+  [`late_single_decision` park](#the-late-run) a human's decision to publish the candidate unsplit is owed on, and
+  the settlement is what such a decision would license. It is
+  the whole of what that settlement is worth durably: the gate measures whatever a stage is about to publish, so a
   candidate handed back with its generation cleared and nothing else would be measured past the ceiling again and
   adjudicated again. It names exactly the commit that was measured, which is also the whole invalidation rule —
   anything committed on top of it is work nobody adjudicated, does not match, and is measured as the fresh candidate
@@ -1638,16 +1694,17 @@ rather than preserving.
 - **Operator-authorized publication.** `late_override_candidate_sha`, `late_override_base_sha`,
   `late_override_fingerprint`, `late_override_fingerprint_format`, `late_override_additions`,
   `late_override_threshold`, and `late_override_comment_id` are the terms an operator authorized one oversized
-  candidate to publish on, written on the [`overrides`](../../orchestrator/workflow/late_split/overrides.py) owner
-  and outside `LATE_STATE_KEYS` on the same terms as the groups above. An oversized candidate has two ways past the
-  size gate. The first is the workflow's own — an adjudication rules it one coherent change, which `late_exempt_sha`
-  records. The second is a human's: an operator who has read the change says in a comment on the issue that it
-  publishes unsplit, and that gesture has to outlive the process that read it, the generation it was made under, and
-  the tick that would act on it, or the gate measures the same candidate past the same ceiling on the next poll and
-  asks the same question again. What does end the group is what ends the exemption above it — a restart's
-  projection, which keeps a whitelist of what is true about the ISSUE rather than about the attempt, so these keys
-  go the way the branch and the candidate they name do. A fresh cycle that inherited one would carry a bypass
-  nobody granted it, over work no operator ever read.
+  candidate to publish on, written on the [`overrides`](../../orchestrator/workflow/late_split/overrides.py) owner and
+  outside `LATE_STATE_KEYS` on the same terms as the groups above. An oversized candidate has two ways past the size
+  gate, and both are a human's. The first is an authorized settlement, which `late_exempt_sha` records — an
+  adjudicator ruling the change one coherent whole is not itself one of them, since a `single` verdict parks for the
+  decision rather than making it. The second is this group: an operator who has read the change says in a comment on
+  the issue that it publishes unsplit, and that gesture has to outlive the process that read it, the generation it was
+  made under, and the tick that would act on it, or the gate measures the same candidate past the same ceiling on the
+  next poll and asks the same question again. What does end the group is what ends the exemption above it — a
+  restart's projection, which keeps a whitelist of what is true about the ISSUE rather than about the attempt, so
+  these keys go the way the branch and the candidate they name do. A fresh cycle that inherited one would carry a
+  bypass nobody granted it, over work no operator ever read.
 
   Every term follows from what the record IS — a bypass of the one gate that stops unreviewed bulk reaching a pull
   request. A bypass may license exactly what a human looked at, so it is bound to the candidate rather than declared
@@ -1819,8 +1876,9 @@ rather than preserving.
   Both fields are read fail-closed (a hand-edited identity, or a `"true"` string, is no proof at all) and both
   are dropped by a restart's projection, with the fresh cycle's own ending writing them again.
 - **Approved commit.** `late_approved_sha` is the commit this issue owes a publication and no push has carried yet. It
-  goes down in the same write that approves one — the retirement a small candidate earns, the exemption a `single`
-  verdict records, and the grant that authorizes a rewrite to carry one of those exemptions over, where the
+  goes down in the same write that approves one — the retirement a small candidate earns, the exemption an
+  authorized settlement records, and the grant that authorizes a rewrite to carry one of those exemptions over,
+  where the
   permission and the debt have to be one write or neither — and is dropped by whichever handoff spends it (the
   recovery that republishes, or the ordinary
   `validating` advance, which writes the drop durably ahead of the relabel), by an adjudication that supersedes it,
@@ -1886,49 +1944,48 @@ rather than preserving.
   against has just stopped naming a cycle, so a process that dies before its own post-write barrier would strand the
   observation with nothing left to correlate it to. A record carrying the stamp and no generation is asked once per
   owner per process whether the thread has that cycle's receipt; one that does gets the cycle put back, cancelled,
-  with the ledgers the retirement carried across, and the ordinary ending runs from there.
-  Every retirement that drops a cycle records it — the `single` publication's, the umbrella terminal's, and the size
-  gate's own drop of a candidate it measured at or below the ceiling, which needs it for the same reason: the barrier
-  behind each write belongs to the process that made it. All three take the same window around that write, and the
-  gate's is the one with the most to lose behind it: past its retirement come a pushed branch, an opened pull
-  request, and a relabel to `workflow:validating`, so a close dropped in that interval would hand a closed issue to
-  review. The latch is asked ahead of the write and the window's own answer behind it, and a close either side of it
-  ends the cycle instead — cancelled, from the generation still in the call's own memory, with nothing published to
-  take back. It is also what the next candidate on the issue mints its
-  cycle after, so a measurement taken after one that published cannot answer to the number that one did.
-  It names **one** window and outlives no other, because the receipt it reads is a comment and comments are
-  append-only: a correlation left standing would let a cycle-scoped receipt be adopted against a record whose cycle
-  is two generations newer, moving a completed owner from `done` to `rejected`. Two rules end it. A generation
-  written with an *identity* supersedes it — which is both the adoption consuming its own marker (the mark it writes
-  puts the cycle back) and an operator's authorized restart superseding it. So a terminal that retires cycle N names
-  N and nothing else, and a receipt for any earlier cycle on the same thread matches nothing an adoption would read.
-- **Cancellation.** `late_cancelled`, `late_cancelled_at`, and `late_cancelled_phase` are irreversible within a
-  cycle: once the owner has been observed closed, a later tick that sees it reopened re-marks the same cancellation
-  and moves none of the three. Two passes observe it. The post-agent owner guard is one — a fresh read taken after
-  every completed late run, before anything it earns happens, and taken again inside the split transaction before
-  every step the remote keeps: each child it creates, and the announcement, supersession, and activation behind
-  them. A child is the one thing created here that nothing takes back, and a close a poll saw while that worker
-  held the issue reaches no other pass on the tick it happened. The closed-owner cleanup sweep is the other, and it
-  is what catches a close at any of the boundaries no agent was running at — a measurement, a hold, and
-  everything past the transaction — as well as one the scheduler could admit no worker for, which the dispatcher
-  holds and this sweep takes on a later tick. Either writes the mark durably *before* any external effect and
-  emits `late_cancellation` from that write, so the record is one per cycle rather than one per visit. What the
-  remote is still owed stays on the two ledgers for the
-  [cleanup path](delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own) to settle, and only once it has
-  does the owner reach `rejected`. A cancelled cycle is nobody's to adjudicate, relabel, or route, so a reopened
-  issue does not get this cycle back. The dispatcher's own pinned-state guard catches a reopened owner, runs the same
-  cleanup, hands it to no stage handler, and writes the same `rejected`
+  with the ledgers the retirement carried across, and the ordinary ending runs from there. Every retirement that drops
+  a cycle records it — an authorized settlement's publication, the umbrella terminal's, and the size gate's own drop
+  of a candidate it measured at or below the ceiling, which needs it for the same reason: the barrier behind each
+  write belongs to the process that made it. All three take the same window around that write, and the gate's is the
+  one with the most to lose behind it: past its retirement come a pushed branch, an opened pull request, and a relabel
+  to `workflow:validating`, so a close dropped in that interval would hand a closed issue to review. The latch is
+  asked ahead of the write and the window's own answer behind it, and a close either side of it ends the cycle instead
+  — cancelled, from the generation still in the call's own memory, with nothing published to take back. It is also
+  what the next candidate on the issue mints its cycle after, so a measurement taken after one that published cannot
+  answer to the number that one did. It names **one** window and outlives no other, because the receipt it reads is a
+  comment and comments are append-only: a correlation left standing would let a cycle-scoped receipt be adopted
+  against a record whose cycle is two generations newer, moving a completed owner from `done` to `rejected`. Two rules
+  end it. A generation written with an *identity* supersedes it — which is both the adoption consuming its own marker
+  (the mark it writes puts the cycle back) and an operator's authorized restart superseding it. So a terminal that
+  retires cycle N names N and nothing else, and a receipt for any earlier cycle on the same thread matches nothing an
+  adoption would read. - **Cancellation.** `late_cancelled`, `late_cancelled_at`, and `late_cancelled_phase` are
+  irreversible within a cycle: once the owner has been observed closed, a later tick that sees it reopened re-marks
+  the same cancellation and moves none of the three. Two passes observe it. The post-agent owner guard is one — a
+  fresh read taken after every completed late run, before anything it earns happens, and taken again inside the split
+  transaction before every step the remote keeps: each child it creates, and the announcement, supersession, and
+  activation behind them. A child is the one thing created here that nothing takes back, and a close a poll saw while
+  that worker held the issue reaches no other pass on the tick it happened. The closed-owner cleanup sweep is the
+  other, and it is what catches a close at any of the boundaries no agent was running at — a measurement, a hold, and
+  everything past the transaction — as well as one the scheduler could admit no worker for, which the dispatcher holds
+  and this sweep takes on a later tick. Either writes the mark durably *before* any external effect and emits
+  `late_cancellation` from that write, so the record is one per cycle rather than one per visit. What the remote is
+  still owed stays on the two ledgers for the [cleanup
+  path](delivery-stages.md#closed-owner-cleanup-sweep-no-label-of-its-own) to settle, and only once it has does the
+  owner reach `rejected`. A cancelled cycle is nobody's to adjudicate, relabel, or route, so a reopened issue does not
+  get this cycle back. The dispatcher's own pinned-state guard catches a reopened owner, runs the same cleanup, hands
+  it to no stage handler, and writes the same `rejected`
   ([delivery-stages.md](delivery-stages.md#the-reuse-guard-every-dispatch-ahead-of-every-handler)) — reaching that
-  terminal is the only way back into ordinary work, and what authorizes the fresh attempt is an operator removing
-  the label rather than a human reopening the issue. That guard refuses a cancelled cycle under *every* label it can
-  be wearing, since each one names a handler that would act on the issue rather than end it, and it writes the
-  terminal wherever the graph declares the edge from — plus `ready` and `blocked`, which the cycle's own decomposer
-  writes as its ordinary outcome and which no query would ever bring a tick back to. The unlabeled state is refused
-  with the rest of them: the [restart](#late-generation-state) is asked one guard ahead, so an issue reaching the
-  refusal with no label is one the restart already declined — and letting it fall through would hand a cancelled
-  cycle to the pickup path, which greets it as new. That ordering is also what keeps a restart between its label
-  write and its retirement safe: it wears a live-looking label over a record that still says cancelled, and the
-  refusal would answer that by handing the issue `rejected` again.
+  terminal is the only way back into ordinary work, and what authorizes the fresh attempt is an operator removing the
+  label rather than a human reopening the issue. That guard refuses a cancelled cycle under *every* label it can be
+  wearing, since each one names a handler that would act on the issue rather than end it, and it writes the terminal
+  wherever the graph declares the edge from — plus `ready` and `blocked`, which the cycle's own decomposer writes as
+  its ordinary outcome and which no query would ever bring a tick back to. The unlabeled state is refused with the
+  rest of them: the [restart](#late-generation-state) is asked one guard ahead, so an issue reaching the refusal with
+  no label is one the restart already declined — and letting it fall through would hand a cancelled cycle to the
+  pickup path, which greets it as new. That ordering is also what keeps a restart between its label write and its
+  retirement safe: it wears a live-looking label over a record that still says cancelled, and the refusal would answer
+  that by handing the issue `rejected` again.
 
   What the unlabeled state still decides is whether the terminal may be written from it, and the RECORD answers
   rather than the label, because three different issues wear the same nothing. One is the handshake — an operator
@@ -2109,19 +2166,24 @@ an empty string, and the `single` stays actionable: reading it as incomplete wou
 to recover prose, at the price of a second run free to decide something else entirely. Nothing writes the stand-in
 into the comment, so a record that never had an explanation stays distinguishable from one that does.
 
-Half of an outcome is not one, in either direction. On the way in, what is measured is the whole comment the write would
-produce — the preserved held-PR body and every other stage's keys included, since a result small on its own can still
-be
-the one that pushes the comment past what GitHub accepts — and an outcome past that budget (`MAX_RECORDED_BODY`,
-GitHub's limit less headroom for the keys other stages still write) is refused *whole* rather than shortened: a
-truncated question asks something nobody said, a truncated explanation gives a reason nobody wrote, and a truncated
-manifest names children nobody proposed. The issue parks
-instead of being left decided in a way no later tick could see, and learning the same thing from a failed write would
-mean the agent had already been paid for. On the way out, an incomplete record reads back unanswered: a `question` with
-no sentence or no category, and a `split` with no manifest or one the split validator refuses, would each suppress the
-next spawn and then have nothing to announce or create. Every field is read through the same defensive readers the
-domain's are, so a damaged `late_result_verdict` reads back the same way — unanswered — because publishing on a verdict
-nobody recorded is not recoverable.
+Half of an outcome is not one, in either direction. On the way in, what is measured is the whole comment the write
+would produce — the preserved held-PR body and every other stage's keys included, since a result small on its own can
+still be the one that pushes the comment past what GitHub accepts — and an outcome past that budget
+(`MAX_RECORDED_BODY`: GitHub's limit, less headroom for the keys other stages still write) is refused *whole* rather
+than shortened: a truncated question asks something nobody said, a truncated explanation gives a reason nobody wrote,
+and a truncated manifest names children nobody proposed. Every verdict is held to that one budget, and what a verdict
+goes on to OWE the thread is not taken out of it. A `single` earns the park a human's decision to publish the
+candidate unsplit is owed on; the refusal a smaller budget would produce is one the next attempt supersedes, so
+charging it for its own sentence would buy another decomposer run against a candidate already adjudicated and leave
+that `single` short of the park it earns. Its durable obligation is written into the headroom this budget leaves under
+GitHub's limit afterwards (`MAX_NOTICE_BODY`, a fixed figure because that sentence NAMES the recorded explanation
+rather than copying it), and what the sentence quotes is bounded by the delivery rather than by the record. The issue
+parks instead of being left decided in a way no later tick
+could see, and learning the same thing from a failed write would mean the agent had already been paid for. On the way
+out, an incomplete record reads back unanswered: a `question` with no sentence or no category, and a `split` with no
+manifest or one the split validator refuses, would each suppress the next spawn and then have nothing to announce or
+create. Every field is read through the same defensive readers the domain's are, so a damaged `late_result_verdict`
+reads back the same way — unanswered — because publishing on a verdict nobody recorded is not recoverable.
 
 A park this mode leaves is attributed durably, because the next attempt has to tell its own park from another stage's.
 Most of them are *superseded* by the attempt that follows: a hold that failed has been reconciled by the time the
@@ -2133,13 +2195,17 @@ are
 retired — `awaiting_human` and `park_reason` cleared — the moment the hold reconciles, ahead of both the spawn and the
 reuse of a recorded answer, because `awaiting_human` is exactly what suppresses the announcement a question verdict
 earns. A stale one would silence a question durably recorded and never said out loud — whether this attempt produced it
-or a crashed run recorded one whose comment never reached the issue. Six are not retired, because none of them is a
+or a crashed run recorded one whose comment never reached the issue. Eight are not retired, because none of them is a
 step that failed. `late_question` is the announcement itself, and the issue really is waiting on the human it names;
 `late_content_drift`, `late_revision_dirty`, `late_revision_unmeasured`, and `late_revision_unanswered` are the
 workflow waiting to be told what an edited scope, a worktree the developer left changed, a candidate nobody could
 measure, or a developer that changed nothing and vouched for nothing now means. Retiring one of
 those would drop the very state the next tick reads to tell a human's answer from the silence before it.
-The shared `retry_cap` is the sixth and the plainest: a retry is exactly what it refuses, so an attempt that
+`late_single_decision` is the sixth, and the attempt that would supersede it does not exist: the verdict is
+recorded, so every later tick reuses the same answer and reaches the same park at no agent's cost. Retiring it would
+clear the flag and re-take it one step later, saying the same sentence to the same thread once a poll while the human
+it is addressed to reads it.
+The shared `retry_cap` is the seventh and the plainest: a retry is exactly what it refuses, so an attempt that
 superseded it would clear the flag and meet the same spent budget one step later — saying the same sentence once a
 poll and taking down, in between, the park a human has to answer. It is held at the top of the adjudication instead,
 behind only the reconciliations an earlier tick left owed and the live-generation gate, and while it stands the tick
@@ -2147,21 +2213,19 @@ ends there having proved no evidence, re-marked no pull request, read no thread 
 written nothing. What lifts it is a trusted `/orchestrator continue` and nothing else — not an edited body, not the
 clock reaching the end of the window, not an untrusted account's copy of the command, and not a `paused` tick, which
 never reaches a handler at all.
-`late_owner_unreadable` is left out for a different reason again: it IS answered by a retry, but by the pending-check
-reconciliation that runs ahead of all of this, and that step reads the standing reason to decide whether it owes the
-thread a follow-up — so retiring it here would erase the only durable evidence that this mode had said anything to
-retire — and what
-each of those answers earns is in
-[`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen).
-The same attribution is what keeps a park idempotent: reconciliation is retried on every eligible tick, so a park
-already standing for the reason being taken again — including one this tick retired and is re-taking unchanged — is
-written but not announced a second time. What is suppressed is the notice, not the park. "Unchanged" is the whole
-claim, so the two things that could change it end the suppression: an agent RUN, after which a second categorized
-question or a second unusable reply says something the first notice did not, and a human's ANSWER, after which
-whatever parks next is news even under the same reason. Only the reconciliation retries that spawn nothing and find
-the same wall stay quiet — suppressing the others would leave an outcome recorded, durable, and never said out
-loud. A retirement is a state
-change like any other, so the one branch that would otherwise return without writing — the reuse of a recorded
+`late_owner_unreadable` is the eighth and is left out for a different reason again: it IS answered by a retry, but by
+the pending-check reconciliation that runs ahead of all of this, and that step reads the standing reason to decide
+whether it owes the thread a follow-up — so retiring it here would erase the only durable evidence that this mode had
+said anything to retire — and what each of those answers earns is in
+[`../workflow/roles.md`](../workflow/roles.md#what-the-humans-can-still-change-while-a-candidate-is-frozen). The same
+attribution is what keeps a park idempotent: reconciliation is retried on every eligible tick, so a park already
+standing for the reason being taken again — including one this tick retired and is re-taking unchanged — is written
+but not announced a second time. What is suppressed is the notice, not the park. "Unchanged" is the whole claim, so
+the two things that could change it end the suppression: an agent RUN, after which a second categorized question or a
+second unusable reply says something the first notice did not, and a human's ANSWER, after which whatever parks next
+is news even under the same reason. Only the reconciliation retries that spawn nothing and find the same wall stay
+quiet — suppressing the others would leave an outcome recorded, durable, and never said out loud. A retirement is a
+state change like any other, so the one branch that would otherwise return without writing — the reuse of a recorded
 answer that owes no announcement — persists it rather than clearing a park only in memory.
 
 A revised candidate nobody could measure is this mode's own reading, and it parks on the FIRST miss whatever step it

@@ -97,6 +97,7 @@ PARK_REVISION_DIRTY = "late_revision_dirty"
 PARK_REVISION_UNMEASURED = "late_revision_unmeasured"
 PARK_REVISION_UNANSWERED = "late_revision_unanswered"
 PARK_QUESTION = "late_question"
+PARK_SINGLE_DECISION = "late_single_decision"
 
 # What a refused comment fails with. GitHub's own refusals are typed, but what
 # every caller here does with one is let it out, so the type is not the point.

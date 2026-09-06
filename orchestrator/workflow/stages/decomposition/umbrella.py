@@ -258,7 +258,7 @@ def _retired_cycle(state: PinnedState) -> LateGeneration:
     """Drop the identity of a cycle that finished, keeping what it recorded.
 
     The two ledgers are the only thing carried across, exactly as the
-    `single` publication's own retirement carries them: an obligation does
+    authorized settlement's own retirement carries them: an obligation does
     not stop being owed because the identity written beside it was cleared,
     and the receipts naming the children this split made are what a restart
     reads. What goes is the cycle a close would have ended -- which is the

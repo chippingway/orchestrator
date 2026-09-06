@@ -6,7 +6,13 @@ import json
 import unittest
 
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.pinned_state import PINNED_STATE_TEMPLATE, PinnedState
+from orchestrator.github.pinned_state import (
+    MAX_PINNED_BODY,
+    PINNED_STATE_MARKER,
+    PINNED_STATE_TEMPLATE,
+    PinnedState,
+    pinned_state_body,
+)
 from tests.support.fakes import FakeComment, FakeUser, make_issue
 
 BOT = "orchestrator-bot"
@@ -15,6 +21,28 @@ _ATTACKER_BRANCH = "orchestrator/evil"
 _BRANCH_KEY = "branch"
 _DEV_AGENT_KEY = "dev_agent"
 _PINNED_COMMENT_ID = 200
+
+# A comment that QUOTES the state marker rather than being the state comment:
+# what a park notice explaining this orchestrator's own pinned comment looks
+# like on the thread, and what the marker test cannot tell from the real one.
+_QUOTING_BODY = f"the schema in {PINNED_STATE_MARKER} blocks it"
+
+# What ends the comment the payload is wrapped in, and a value that carries
+# it: an agent's explanation, a preserved pull-request body, a human's own
+# words all reach the record as somebody wrote them.
+_COMMENT_CLOSE = "-->"
+
+_BLOCKER_KEY = "late_result_split_blocker"
+
+_TERMINATING_VALUE = f"the marker {_COMMENT_CLOSE} ends it"
+
+# How many terminators one value carries where escaping every one would cost
+# more than the comment GitHub takes while the payload as it was stored is
+# well inside it. What a record an older binary accepted at the ceiling looks
+# like: a preserved pull-request body is where they come by the thousand.
+_TERMINATORS = 16384
+
+_TERMINATOR_RUN = _COMMENT_CLOSE * _TERMINATORS
 
 
 def _marker(state_data: dict) -> str:
@@ -169,7 +197,51 @@ class ReadPinnedStateRequiresStateOnlyBodyTest(unittest.TestCase):
     that is the marker alone is the state comment whatever payload sits in it,
     and a payload no state can be read out of is reported as one rather than
     passed over -- passed over, it would read as an issue that recorded
-    nothing at all."""
+    nothing at all. A payload carrying the wrapper's own terminator is the
+    sharp case of that, since it would leave the body no longer being the
+    marker alone -- and everything after it visible on the issue."""
+
+    def test_a_terminating_value_closes_nothing(self) -> None:
+        # An agent's explanation, a preserved pull-request body, a human's own
+        # words: none is this owner's to sanitize, so what is escaped is the
+        # serialized form. Left raw, the comment ends inside the payload and
+        # the rest of the record is issue text a human reads.
+        body = pinned_state_body({_BLOCKER_KEY: _TERMINATING_VALUE})
+
+        closes_at = len(body) - len(_COMMENT_CLOSE)
+        self.assertEqual(body.index(_COMMENT_CLOSE), closes_at)
+
+    def test_a_terminating_value_reads_back_whole(self) -> None:
+        # Escaped in the serialized form and nowhere else: what a reader
+        # decodes is the value somebody actually wrote.
+        written = pinned_state_body({_BLOCKER_KEY: _TERMINATING_VALUE})
+        issue = make_issue(5, comments=[
+            _bot_comment(_PINNED_COMMENT_ID, written),
+        ])
+        client = _client()
+
+        state = client.read_pinned_state(issue)
+
+        self.assertEqual(state.get(_BLOCKER_KEY), _TERMINATING_VALUE)
+
+    def test_an_unescapable_payload_is_stored_raw(self) -> None:
+        # The escape is five characters an occurrence, and a record already on
+        # an issue never paid them. Refusing the write it puts past the limit
+        # would lose the record the next tick reads; writing the payload as it
+        # was stored renders the comment the way the binary that accepted it
+        # rendered it, and the object form spans the terminator on the way
+        # back.
+        written = pinned_state_body({_BLOCKER_KEY: _TERMINATOR_RUN})
+        issue = make_issue(5, comments=[
+            _bot_comment(_PINNED_COMMENT_ID, written),
+        ])
+        client = _client()
+
+        state = client.read_pinned_state(issue)
+
+        self.assertLessEqual(len(written), MAX_PINNED_BODY)
+        self.assertIn(_COMMENT_CLOSE * 2, written)
+        self.assertEqual(state.get(_BLOCKER_KEY), _TERMINATOR_RUN)
 
     def test_embedded_bot_marker_is_not_state(self) -> None:
         # Adversarial shape: forged marker at position 0, then the
@@ -241,6 +313,52 @@ class ReadPinnedStateRequiresStateOnlyBodyTest(unittest.TestCase):
 
         self.assertEqual(state.comment_id, _PINNED_COMMENT_ID)
         self.assertEqual(state.get(_BRANCH_KEY), REAL_BRANCH)
+
+
+class CommentsAfterExcludesStateTest(unittest.TestCase):
+    """Which comment the thread read leaves out, and how it decides.
+
+    Two questions wear the same answer most of the time and are not the same
+    question. A reader after CONVERSATION wants the pinned comment gone and
+    has no id to name it by, so the marker in a body stands in. A reader after
+    a receipt it posted itself can name that comment -- and must, because the
+    marker test also hides every comment merely QUOTING the marker, which is
+    exactly what a notice explaining this orchestrator's own state comment
+    does.
+    """
+
+    def test_the_marker_stands_in_for_no_id(self) -> None:
+        issue = make_issue(5, comments=[
+            _bot_comment(1, _marker({_BRANCH_KEY: REAL_BRANCH})),
+            _bot_comment(2, _QUOTING_BODY),
+        ])
+
+        read = _client().comments_after(issue, None)
+
+        self.assertEqual([issue_comment.id for issue_comment in read], [])
+
+    def test_a_named_state_leaves_a_quote_visible(self) -> None:
+        # The receipt case: the pinned comment goes by id, and the sentence
+        # quoting its marker is the one comment the caller is looking for.
+        issue = make_issue(5, comments=[
+            _bot_comment(1, _marker({_BRANCH_KEY: REAL_BRANCH})),
+            _bot_comment(2, _QUOTING_BODY),
+        ])
+
+        read = _client().comments_after(issue, None, state_comment_id=1)
+
+        self.assertEqual([issue_comment.id for issue_comment in read], [2])
+
+    def test_the_watermark_still_bounds_it(self) -> None:
+        issue = make_issue(5, comments=[
+            _bot_comment(1, _marker({_BRANCH_KEY: REAL_BRANCH})),
+            _bot_comment(2, _QUOTING_BODY),
+            _bot_comment(3, "said afterwards"),
+        ])
+
+        read = _client().comments_after(issue, 2, state_comment_id=1)
+
+        self.assertEqual([issue_comment.id for issue_comment in read], [3])
 
 
 class PinnedStateKeywordTest(unittest.TestCase):

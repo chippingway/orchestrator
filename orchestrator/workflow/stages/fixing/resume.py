@@ -55,8 +55,8 @@ def _spends_fix_round(state, pending_fix_at_was_set: bool):
     """What a HELD fix closes for this route, handed to the gate up front.
 
     The gate holding a candidate is not a park: the commit is on the branch,
-    the issue is on `workflow:decomposing`, and a `single` verdict publishes
-    it from there. So the round IS spent -- the head the reviewer rejected is
+    the issue is on `workflow:decomposing`, and an authorized settlement
+    publishes it from there. So the round IS spent -- the head the reviewer rejected is
     superseded either way -- and the bookkeeping that says so cannot wait for
     a later fixing tick. The bounce that would otherwise do it applies the
     round only when it pushes a stranded commit itself, and a settled

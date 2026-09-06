@@ -5,15 +5,16 @@
 `review_round` is what `MAX_REVIEW_ROUNDS` counts, and every route through the
 fix loop advances it on exactly one event: a head the reviewer has not seen
 reaching the pull request. Landed, the push is that event. HELD, the gate has
-sent the candidate to the adjudication -- the commit is on the branch, a
-`single` verdict publishes it from there, and the head the reviewer rejected
-is superseded either way -- so the round is spent just the same.
+sent the candidate to the adjudication -- the commit is on the branch, and the
+head the reviewer rejected is superseded either way, whether that adjudication
+ends in a settlement publishing the commit from there or in the park an
+oversized `single` waits for a human on -- so the round is spent just the same.
 
 Either form is handed to the gate rather than applied on the way out. The
 hold's last act is the relabel, and a caller that counted afterwards would
 lose the count to any crash in that window -- nothing goes back for it, since
-the settlement publishes the accepted commit itself and the resumed route
-finds nothing left to push. A landed push has the same window one step over:
+a settlement publishes the accepted commit itself and the resumed route finds
+nothing left to push. A landed push has the same window one step over:
 past the write that records it, the approval and the generation are both gone,
 so nothing is left on the comment for a later tick to count a round from.
 

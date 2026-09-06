@@ -126,6 +126,15 @@ def _recorded(
     instead, and the park is staged BEFORE the write rather than after it, so
     the one write carries whichever of the two this run produced.
 
+    Size is the only thing asked, and it is asked of the COMMENT. How an
+    explanation will render on the thread is not a reason to refuse the
+    verdict that carries it: this park is superseded by the next attempt, so a
+    refusal here buys another agent run against a candidate that has already
+    been adjudicated -- and a `single` refused that way never reaches the
+    durable park a human's decision is owed on. What the sentence does with an
+    explanation it cannot block off is `late_notice`'s own answer, and it
+    keeps every word of it.
+
     What it deliberately does NOT do is announce. The announcement is an
     external effect on the issue, and whether the issue is still there is the
     owner guard's question -- which is asked between this write and anything

@@ -181,7 +181,7 @@ def _rewrite_squash(
 
     A held candidate is not a failure and is deliberately NOT rolled back. The
     gate has taken the issue to the adjudication and the squashed commit is
-    what a settled verdict publishes from this branch, so restoring the
+    what an authorized settlement publishes from this branch, so restoring the
     pre-squash head would leave the record naming a commit that no longer
     exists here.
     """

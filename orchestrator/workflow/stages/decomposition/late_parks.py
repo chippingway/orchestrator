@@ -110,6 +110,11 @@ PARK_CONTENT_DRIFT = "late_content_drift"
 PARK_REVISION_DIRTY = "late_revision_dirty"
 PARK_REVISION_UNMEASURED = "late_revision_unmeasured"
 PARK_REVISION_UNANSWERED = "late_revision_unanswered"
+# What an adjudication that could not split the candidate hands back under.
+# The agent has answered the question it was asked and the answer is that this
+# oversized change stays one change, which is a thing only a human may
+# license: the park is the workflow saying so and waiting.
+PARK_SINGLE_DECISION = "late_single_decision"
 
 # The shared spawn budget's own park, spelled by the engine that decides it
 # rather than again here. A late adjudication is charged to the same per-issue
@@ -125,7 +130,7 @@ PARK_RETRY_CAP = _retry_budget.PARK_RETRY_CAP
 # request lookup nobody could take is about to be taken again, and each of the
 # three transaction steps -- the snapshot, the children, the supersession -- is
 # about to be reconciled again from the same recorded verdict, at no agent's
-# cost. The seven left out are the ones no retry answers. `PARK_QUESTION` is the announcement
+# cost. The eight left out are the ones no retry answers. `PARK_QUESTION` is the announcement
 # itself, and the four content
 # parks are the workflow waiting to be told what an edited scope, a worktree
 # the developer left changed, a candidate nobody could measure, or a developer
@@ -133,7 +138,13 @@ PARK_RETRY_CAP = _retry_budget.PARK_RETRY_CAP
 # would drop the very state the next tick reads to tell a human's answer from
 # the silence before it.
 #
-# `PARK_RETRY_CAP` is left out for the plainest reason of the seven: a retry is
+# `PARK_SINGLE_DECISION` is left out because the attempt that would supersede
+# it does not exist: the verdict is recorded, so every later tick reuses the
+# same answer and reaches the same park at no agent's cost. Retiring it would
+# clear the flag and re-take it one step later, saying the same sentence to
+# the same thread once a poll while the human it is addressed to reads it.
+#
+# `PARK_RETRY_CAP` is left out for the plainest reason of the eight: a retry is
 # exactly what it refuses. The attempt that would supersede it is the one the
 # budget has no room for, so retiring it here would clear the flag and then
 # meet the same spent budget one step later -- announcing the same sentence
@@ -270,6 +281,11 @@ def _release_staged_park(context: _LateContext) -> None:
     sentence owed by a thread that already has it, so the next tick repeats
     one comment -- the same window every park in this repository has -- rather
     than dropping one nobody ever said.
+
+    What goes out is the sentence with whatever it NAMES put back, so a notice
+    that leaves the recorded explanation on the record rather than copying it
+    reaches the thread whole -- and reaches it identically here and on a
+    redelivery, which is what the reconciliation that looks for it depends on.
     """
     staged = context.staged_park
     if staged is None:
@@ -279,7 +295,7 @@ def _release_staged_park(context: _LateContext) -> None:
         context.gh,
         context.issue,
         context.state,
-        f"{config.HITL_MENTIONS} {staged.message}",
+        f"{config.HITL_MENTIONS} {_late_notice._filled(context, staged)}",
         reason=staged.reason,
     )
     context.state.set(_PARK_REASON, staged.reason)
@@ -384,7 +400,7 @@ def _reconcile_notice_delivery(context: _LateContext) -> None:
     owed = _late_notice._owed_notice(context)
     if owed is None:
         return
-    delivered = _late_notice._delivered_id(context, owed.message)
+    delivered = _late_notice._delivered_id(context, owed)
     if delivered is None:
         return
     log.info(

@@ -194,7 +194,7 @@ def _superseded(gate: _records._Gate, recorded: LateGeneration) -> bool:
     Two roads reach it and they are the same fact. With the switch off a fresh
     candidate does not enter the gate, so the record it supersedes describes a
     commit nothing is going to publish. And an exemption is the same shape one
-    step over: the commit an adjudication accepted publishes without being
+    step over: the commit an authorized settlement accepted publishes without being
     measured, so a generation recorded over some OTHER candidate is a record
     about work this issue has moved past.
 
@@ -342,7 +342,7 @@ def _routed(gate: _records._Gate, generation: LateGeneration) -> bool:
 
     Nothing is pushed and no pull request is opened. The commit stays in the
     developer's worktree, which is where the adjudicator reads it and where a
-    `single` verdict publishes it from.
+    settlement that publishes it unsplit would publish it from.
     """
     log.warning(
         "issue=#%d candidate %s adds %d lines against a ceiling of %d; "
@@ -506,7 +506,7 @@ def _spent(gate: _records._Gate) -> None:
     Written here rather than by the caller because of what comes next: the
     relabel below hands the issue to the adjudication, and a caller that
     counted afterwards would lose the count to any crash in that window --
-    with nothing going back for it, since a settled verdict publishes the
+    with nothing going back for it, since an authorized settlement publishes the
     accepted commit and the resumed stage finds nothing left to push.
 
     Only the ROUTED hold spends. A reading nobody could take also stops the

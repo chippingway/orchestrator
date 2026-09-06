@@ -145,6 +145,46 @@ _COMMENT_HEADROOM = 4096
 
 MAX_RECORDED_BODY = _pinned_state.MAX_PINNED_BODY - _COMMENT_HEADROOM
 
+# What a park's own sentence is measured at, once it has earned one. The
+# obligation NAMES the recorded explanation rather than copying it
+# (`late_notice`), so what has to fit is this mode's own wording rather than
+# anything an agent wrote -- which is what makes a fixed figure enough.
+#
+# It is NOT taken out of what an outcome may record. Every verdict is held to
+# the one outcome budget, and the headroom that budget leaves under GitHub's
+# limit is where a park's sentence is written afterwards. Charging a `single`
+# for the sentence it earns would refuse a verdict this comment can hold --
+# and that refusal is one the next attempt supersedes, so it would buy another
+# decomposer run against a candidate already adjudicated and leave the
+# `single` short of the durable park a human's decision is owed on.
+MAX_NOTICE_BODY = 1024
+
+# What the sentence around a quote, the mention the shared park prefixes, and
+# the marker it appends need of the comment they all go in, and so what the
+# quote itself may take of a delivered notice.
+_DELIVERY_HEADROOM = 2048
+
+MAX_QUOTED_BLOCK = _pinned_state.MAX_PINNED_BODY - _DELIVERY_HEADROOM
+
+# What a notice itself is measured against, which is the reserve ON TOP of the
+# outcome budget rather than inside it. The headroom under GitHub's limit is
+# for the keys other stages write into the comment AFTER an outcome is
+# recorded, and a park's own sentence is one of them -- so measuring it inside
+# the outcome's budget charges it twice.
+#
+# What that buys is the record an older binary left. Such a record was written
+# against the whole outcome budget and never reserved anything, so a park it
+# earns today would find no room and drop the retry its sentence depends on --
+# and this park is one nothing supersedes, so the human would never be told.
+# The reserve cannot be taken out of a record already on the issue; it can be
+# left beside it.
+#
+# It is the standing answer rather than the only one, because a record can sit
+# outside it without ever having broken it. `late_notice` owns that reading:
+# the reserve is granted on top of whatever the comment actually costs today,
+# and this is the floor it never drops below.
+MAX_NOTICE_COMMENT = MAX_RECORDED_BODY + MAX_NOTICE_BODY
+
 # How long a session id this record will pin. Every backend issues a bounded
 # token, so an id past this is not one -- and pinning it would put the comment
 # past the room a hold measured for it. The resume such an id would have
@@ -307,6 +347,15 @@ def _record_late_result(
     manifest names children nobody proposed. A caller told False has an
     outcome it cannot make durable, which is a human's problem and not a thing
     to half-record.
+
+    One budget, and every verdict is held to it. What a verdict goes on to
+    owe the thread is not taken out of what it may record: the park a `single`
+    earns is one nothing supersedes, while the refusal a smaller budget would
+    produce IS superseded -- so charging it for its own sentence would buy
+    another decomposer run against a candidate already adjudicated and leave
+    that `single` short of the park a human's decision is owed on. The
+    sentence is written into the headroom this budget leaves under GitHub's
+    limit, afterwards.
     """
     recorded = _result_payload(adjudication)
     if not _fits_the_comment({**state.data, **recorded}, MAX_RECORDED_BODY):

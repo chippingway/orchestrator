@@ -193,7 +193,7 @@ def _finish_requested_fix(
         stage=WorkflowLabel.FIXING,
         # The round this route counts on a landed fix, handed to the gate for
         # the exit where this caller never reaches the line below: a hold
-        # relabels to the adjudication, and a settled verdict publishes the
+        # relabels to the adjudication, and an authorized settlement publishes the
         # accepted commit itself, so nothing behind here counts it.
         spends=_late_records._Spends(fields=(
             (_state._REVIEW_ROUND, context.decision.run.round_n + 1),
