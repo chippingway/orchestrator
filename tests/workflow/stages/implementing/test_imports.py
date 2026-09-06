@@ -28,6 +28,7 @@ _OWNERS = (
     "drift",
     "drift_preflight",
     "execution",
+    "handoff",
     _HANDLER_OWNER,
     "late_accepted",
     "late_claims",

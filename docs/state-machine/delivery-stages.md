@@ -1358,7 +1358,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        session, the agent's closing message); one that does name it is left as it stands, human annotations included.
        Without the rewrite the PR would keep claiming the branch is one Markdown file that changes nothing else, under
        the decomposer's session, and would close no issue when it merged. Persists `pr_number` / `branch` and
-       resets `review_round=0` and `retry_count=0` via `_reset_implementing_counters`.
+       resets `review_round=0` and `retry_count=0` via `handoff._reset_implementing_counters`.
      - new commits + dirty files → `_on_dirty_worktree`: park; refuse to publish a partial branch.
      - new commits + a tree `git status` could not report on → `_on_unreadable_worktree`: park under
        `unreadable_worktree`. An unreadable tree is not a clean one: the list form of that read maps its own failure

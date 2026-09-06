@@ -728,7 +728,7 @@ The keys that matter for the state machine fall into a few groups:
   on a HEAD that was READ — `_head_sha` reports its own failure as `""`, which differs from the certified tip exactly
   as a commit does, and a baseline retired on that reading would skip the implementer and republish the design's
   predecessor as the work the discussion just agreed to. An unread head leaves the key standing and the dev runs, the
-  same as a head still on it. `publication._advance_to_validating`
+  same as a head still on it. `handoff._advance_to_validating`
   spends it too, since an issue leaving for `validating` has published and would otherwise carry the key — and
   everything the key holds — out of this stage with it.
   Standing beside `discussion_plan_sha`, it is also the record that says a handoff was ACCEPTED and nothing here has
@@ -749,7 +749,7 @@ The keys that matter for the state machine fall into a few groups:
   past the baseline — which the reading above would call a developer's commit, handing their amendment to the
   recovered-work shortcut to push with no agent having run. A marker still standing says the branch is where this
   stage was putting it, so the move is simply made again; nothing is spawned between the two writes, so no developer
-  can have committed under one. `publication._advance_to_validating` clears it beside the baseline.
+  can have committed under one. `handoff._advance_to_validating` clears it beside the baseline.
   `disposition._run_left_commits` reads the
   same floor at the other end of the tick, so a dev that answers with a question instead of committing parks on it
   rather than having the inherited commits published as its work. Both the cleared park and this key are written
@@ -979,12 +979,12 @@ the budget never sees, which is the late adjudication and its live generation.
   no cap is read, and a grant with nothing left refuses like any other exhausted budget, so the next attempt is a
   human's word again. Until it is spent, the stage's other roads to an agent stand down for the gate — on
   `workflow:implementing`, the body-edit resume — since a resume passes no gate and would run the attempt while
-  leaving it on the issue to be bought again. The count is dropped where the rest of the budget is — the publication
-  that moves the issue on (`_reset_implementing_counters`) — and refunded with the counters by the one write that goes
-  out before an agent starts: the late adjudication's pre-spawn record (`_ACCOUNTING_FIELDS`), so a run the close
-  latch, a pause, or a shutdown declines leaves the attempt there to be taken again. The two initial-spawn `retry_cap`
-  owners need no refund for that case: the grant is written before the spawn and the spend rides the tick's own later
-  write, which a mid-run `paused` or a shutdown never makes.
+  leaving it on the issue to be bought again. The count is dropped where the rest of the budget is — the handoff the
+  publication reaches once the issue moves on (`handoff._reset_implementing_counters`) — and refunded with the
+  counters by the one write that goes out before an agent starts: the late adjudication's pre-spawn record
+  (`_ACCOUNTING_FIELDS`), so a run the close latch, a pause, or a shutdown declines leaves the attempt there to be
+  taken again. The two initial-spawn `retry_cap` owners need no refund for that case: the grant is written before the
+  spawn and the spend rides the tick's own later write, which a mid-run `paused` or a shutdown never makes.
 - **The audit.** One `retry_cap` event per step, `phase` distinguishing them — see
   [`observability/event-streams.md`](../observability/event-streams.md#audit-event-log-event_log_path).
 
@@ -992,7 +992,7 @@ the budget never sees, which is the late adjudication and its live generation.
 before they existed, or hand-edited into a shape none of them fits, reads back as no park stage, nothing owed, and no
 spawn handed out — never as a tick that raises. The grant is the strictest of the three, since it is the one field
 that hands out a spawn, and it is the one whose ABSENCE is the safe reading rather than its content. Absent — never
-continued, or cleared back to null by the publication reset — the issue is answered by the configured budget, as
+continued, or cleared back to null by the handoff reset — the issue is answered by the configured budget, as
 every issue that never hit the cap is. Present, it governs: a number is read into the range a continuation writes (a
 bigger one buys the same single attempt, a negative buys nothing), and a value that is not a number at all proves no
 attempt and hands out none, which parks the issue and asks a human rather than falling through to a whole window's
