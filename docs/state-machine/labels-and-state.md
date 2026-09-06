@@ -680,7 +680,11 @@ The keys that matter for the state machine fall into a few groups:
   PIECES: a fence is two characters per character of width and a further block is a fixed handful, so the long lines
   land in blocks of their own and every HTML-comment opener between them stays inside a block, where it is shown
   rather than obeyed. Which way round is not something a rule of thumb gets right, so every width from the shortest
-  fence up to the widest line is tried by doubling and the smallest rendering wins. Past what any pieces can hold the
+  fence up to the widest line is tried by doubling and the smallest rendering wins. What ends a LINE is markdown's
+  answer rather than this orchestrator's — a newline, a carriage return, or the pair — so the quote is split on all
+  three and rejoined by the terminators it arrived with: an explanation written with carriage returns reaches the
+  thread as its author wrote it, and its fence lines are recognized rather than blocked off at three characters they
+  could close. Past what any pieces can hold the
   quote goes in UNBLOCKED with its openers escaped a backslash apiece, since unblocked is where an opener is obeyed
   again; past what that holds it is cut and said to be cut, which nothing this orchestrator records can reach and
   which exists because a comment GitHub refuses is rebuilt identically on every poll — the park would stand with its
