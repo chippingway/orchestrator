@@ -2231,7 +2231,10 @@ recorded, so every later tick reuses the same answer and reaches the same park a
 clear the flag and re-take it one step later, saying the same sentence to the same thread once a poll while the human
 it is addressed to reads it. What clears it is that human answering — guidance, which resumes the developer, or the
 trusted `/orchestrator authorize-oversized <commit>` that publishes the candidate as it stands, whose record is the
-`late_override_*` group below.
+`late_override_*` group below. One refusal clears it too, and has to: an authorization arriving over an adjudication
+the record can no longer show is answered and the park retired together, since what the issue stops for next is
+whatever the replacement run decides — a flag left standing over that run would suppress the announcement its
+`late_question` earns and would have a `split` create children under a claim that the issue is waiting.
 The shared `retry_cap` is the seventh and the plainest: a retry is exactly what it refuses, so an attempt that
 superseded it would clear the flag and meet the same spent budget one step later — saying the same sentence once a
 poll and taking down, in between, the park a human has to answer. It is held at the top of the adjudication instead,

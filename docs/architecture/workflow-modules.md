@@ -618,7 +618,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             under GitHub's limit -- the rules it is read back
                             through, and the tracked spawn in the candidate's
                             own worktree, resuming the pinned session only for the run that carries a human's answer
-                            to the question it asked
+                            to the question it asked. The drop that ends a recorded outcome is here too, and it takes
+                            the operator's authorization to publish that outcome with it -- one statement, reached by
+                            every road that ends an answer, since the run being recorded is by definition the one
+                            replacing it and every term of that authorization survives the same candidate being
+                            adjudicated twice
       late_hold.py          the cycle-marked hold a reusable open pull request wears: which one that is -- a hold
                             already recorded (released first and re-taken where the publication entry has since
                             named another, since the record holds one identity and one preserved body), then that
@@ -1033,7 +1037,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             is the same step a spawn is and the run takes hours -- the refusal a candidate whose
                             split already created children
                             earns instead, and the clean tree, re-frozen commit, and fresh measurement its result is
-                            reconciled through (which carries none of the last generation's split receipts), with
+                            reconciled through (which carries none of the last generation's split receipts, and
+                            none of the authorization an operator gave the answer this re-freeze retires -- an
+                            acknowledged unchanged candidate comes back matching every term of it), with
                             the `ACK:` marker an UNCHANGED commit needs before it counts as an answer
       late_relabel.py       the `workflow:decomposing` label a live generation pins -- one still oversized, or one
                             whose owner read is still owed: the kill-switch route it refuses, and the dispatch it
