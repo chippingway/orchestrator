@@ -44,7 +44,10 @@ from orchestrator.workflow.engine import (
     run_circuit as _run_circuit,
     usage as _usage,
 )
-from orchestrator.workflow.stages.implementing import session_read as _dev_session_read
+from orchestrator.workflow.stages.implementing import (
+    late_records as _late_records,
+    session_read as _dev_session_read,
+)
 from orchestrator.workflow.stages.validating import (
     approval as _approval,
     models as _models,
@@ -166,8 +169,13 @@ def _dispatch_reviewer_result(
     )
 
     if decision.verdict == "approved":
+        # The subject the size gate decides about is built on the road that
+        # holds every part of it -- this run's checkout included -- rather
+        # than rebuilt a layer down from the pieces.
         _approval._finalize_validating_approval(
-            gh, spec, issue, state, reviewer_run,
+            _late_records._gate(gh, spec, issue, state, reviewer_run.wt),
+            reviewer_run,
+            _worktree_paths._resolve_branch_name(state, spec, issue.number),
         )
         return
 

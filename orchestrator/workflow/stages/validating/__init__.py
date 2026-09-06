@@ -11,16 +11,18 @@ spawn is one the reviewer's own output would make unanswerable.
 
 One verdict fans out three ways. `approval` owns the approved arc, and the
 local verify gate at the head of it is the last thing standing between a
-branch that does not build and `in_review`; the optional squash, the
-watermarks seeded so neither the docs hop nor in_review replays the
-orchestrator's own comments as human feedback, and the relabel to
-`documenting` follow it. `verify` holds the other side of that gate -- how a
-non-ok result reads and the park it earns -- and `watermarks` holds the seed
-walk `approval` hands the PR to, which stops at the first comment the dev has
-not consumed rather than at the first one the orchestrator did not write.
-`requested_changes` owns the remaining two verdicts: the feedback posted on
-the PR and the dev fix run under the `fixing` label, plus the park a reviewer
-that emitted no VERDICT line earns.
+branch that does not build and `in_review`; the optional squash, the notice
+its count is worded from, the end of the collapse record, and the relabel to
+`documenting` follow it, in that order. `verify` holds the other side of that
+gate -- how a non-ok result reads and the park it earns. `handoff` owns what
+that arc leaves on the pull request for its own sake: the approval comment,
+and the watermark seed `approval` runs behind its notice so neither the docs
+hop nor in_review replays the orchestrator's own comments as human feedback.
+`watermarks` holds the seed walk `handoff` hands the PR to, which stops at the
+first comment the dev has not consumed rather than at the first one the
+orchestrator did not write. `requested_changes` owns the remaining two
+verdicts: the feedback posted on the PR and the dev fix run under the `fixing`
+label, plus the park a reviewer that emitted no VERDICT line earns.
 
 Between rounds the stage is a dev-fix driver, and `dev_fix` owns what one
 finished dev run leaves behind -- the stranded-commit probe that keeps a

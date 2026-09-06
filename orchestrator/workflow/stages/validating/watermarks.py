@@ -1,10 +1,14 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Where the in_review watermarks are parked when an approval hands off.
+"""The walk an approval's in_review watermarks are seeded off.
+
+`handoff` is what writes them; this owner answers the one question that write
+is made from -- how far past the leading run of the orchestrator's own
+comments a watermark may go.
 
 in_review wakes on "PR feedback newer than the watermark" and pings a human
-that the PR is ready for merge. So the seed written here decides two ways to
-be wrong: too low replays the orchestrator's own pickup ping, "PR opened",
+that the PR is ready for merge. So the value answered here decides two ways
+to be wrong: too low replays the orchestrator's own pickup ping, "PR opened",
 approval, and squash notices as human feedback and resumes the dev on them;
 too high advertises the PR as ready over a human comment nobody read. The
 walk therefore advances only through the leading run of orchestrator-authored
@@ -21,7 +25,8 @@ absence is answered by refusing to advance at all.
 `_ratchet_watermark` closes the loop with the value already persisted: an
 earlier in_review tick may have advanced past feedback the dev has since
 fixed, and the seed walk deliberately stops short of it, so the two are
-combined by max rather than overwritten.
+combined by max rather than overwritten. It answers rather than writes too --
+the caller in `handoff` is what puts the result on the pinned comment.
 """
 from __future__ import annotations
 
@@ -171,9 +176,9 @@ def _latest_pr_comment_ids(
     against the PullRequestComment namespace would falsely treat a human
     inline comment whose numeric id collides with a recorded bot id as
     self-authored, advancing the watermark past the human's feedback. The
-    `_handle_validating` caller defaults the inline-review watermark to 0
-    when this returns None so the in_review legacy migration cannot then
-    advance past human inline feedback either.
+    `handoff` caller defaults the inline-review watermark to 0 when this
+    returns None so the in_review legacy migration cannot then advance past
+    human inline feedback either.
     """
     orchestrator_ids = _comments._orchestrator_ids(state)
     # `last_action_comment_id` doubles as a "consumed through" marker:

@@ -29,6 +29,7 @@ _OWNERS = (
     "dev_fix",
     "drift",
     "drift_outcomes",
+    "handoff",
     _HANDLER_OWNER,
     "models",
     "recovery",
