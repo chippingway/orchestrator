@@ -82,7 +82,11 @@ from orchestrator.workflow.engine import (
     run_circuit as _run_circuit,
     usage as _usage,
 )
-from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads
+from orchestrator.workflow.late_split import (
+    formats as _formats,
+    overrides as _overrides,
+    payloads as _payloads,
+)
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import (
     LateGeneration,
@@ -280,6 +284,12 @@ def _record_late_spawn(state: PinnedState, run: _LateRun) -> None:
     surfaces none of its own cannot leave the next tick resuming the run this
     one replaced. The result is dropped either way -- what a new run decides
     replaces what the last one did, and a half-read record is not an answer.
+
+    The drop is the same one a human's answer takes, reached through the same
+    owner, and that is what makes it the statement of the rule no road gets
+    around: whatever made the last answer stop being the answer, the run
+    recorded here is the one replacing it, so the operator's authorization to
+    publish that answer goes with it.
     """
     state.set(_LATE_AGENT_ROLE, run.role)
     state.set(_LATE_AGENT, run.spec)
@@ -290,21 +300,32 @@ def _record_late_spawn(state: PinnedState, run: _LateRun) -> None:
         state.set(_LATE_SESSION_ID, run.session_id)
     else:
         state.data.pop(_LATE_SESSION_ID, None)
-    for recorded in _RESULT_KEYS:
-        state.data.pop(recorded, None)
+    _drop_late_result(state)
 
 
 def _drop_late_result(state: PinnedState) -> None:
     """Forget the outcome a completed run recorded, keeping its identity.
 
-    What a human's answer to a categorized question earns. The record is what
-    suppresses the next spawn, so a question the human has now answered has to
-    stop being an answer before the adjudicator will run again -- and only the
-    result goes, because the spec this issue is locked to and the session it
-    opened are not what the human replied to.
+    What a human's answer to a categorized question earns, what a certificate
+    over edited requirements earns, and what the run replacing an outcome
+    records on its way past. The record is what suppresses the next spawn, so
+    an answer nothing holds any more has to stop being an answer before the
+    adjudicator will run again -- and only the result goes, because the spec
+    this issue is locked to and the session it opened are not what the human
+    replied to.
+
+    An operator's authorization to publish goes with it, and that is not a
+    courtesy: what they authorized was ONE answer, taken against the
+    requirements as they then read. The terms that record carries -- the
+    frozen pair, the measurement, the digest -- all survive an answer being
+    thrown away and re-earned, so a record left standing here would let the
+    NEXT adjudication's `single` publish on a permission nobody granted it.
+    The two are one fact, so every road that ends an answer reaches this one
+    owner rather than remembering to drop the permission beside it.
     """
     for recorded in _RESULT_KEYS:
         state.data.pop(recorded, None)
+    _overrides.clear_publication_override(state)
 
 
 def _record_late_session(state: PinnedState, agent_result: AgentResult) -> None:

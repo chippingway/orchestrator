@@ -26,6 +26,7 @@ _OWNERS = (
     _BLOCKED,
     "drift",
     "handoff",
+    "late_authorize",
     "late_cancellation",
     "late_children",
     "late_cleanup",

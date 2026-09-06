@@ -6,7 +6,8 @@ What a `single` verdict earns, split from the settlement beside it because
 they are opposite answers to the same reading. A settlement is what a decision
 to publish an oversized candidate unsplit licenses; this is what the workflow
 does when nobody has made that decision, which is every verdict an adjudicator
-reaches on its own.
+reaches on its own. The command that makes it is `late_authorize`'s, and this
+park's own sentence is where a human is told the command exists.
 
 The whole of it is a durable claim and the sentence that claim owes the
 thread. Nothing is published and nothing is taken back, so the wait costs the
@@ -45,6 +46,12 @@ log = logging.getLogger("orchestrator.workflow")
 # the sentence promises a human that whichever of those this issue has is
 # untouched, rather than telling them about one they do not have.
 #
+# It names both ways out, because they are the two answers and a human owed a
+# decision is owed the shape of each: words that change the work, and the one
+# command that publishes the change as it stands. The command is spelled
+# against this candidate rather than left abstract, since what an
+# authorization may license is exactly what somebody read.
+#
 # The quote comes LAST and on lines of its own, because what fills it is an
 # agent's prose and a thread is markdown: text opening an HTML comment
 # swallows everything after it, so a quote in the middle of this sentence
@@ -58,7 +65,9 @@ _UNSPLIT_PARK = (
     "the commit, the worktree it is in, any held or existing pull request, "
     "and the recorded adjudication are all left exactly as they are, and no "
     "further decomposer is spawned against them. Reply with the change to "
-    "make and the developer is resumed against it."
+    "make and the developer is resumed against it, or post "
+    "`/orchestrator authorize-oversized {candidate}` as the entire comment "
+    "and it publishes as it stands."
     "\n\nWhat it said stopped a split:\n\n{blocker}"
 )
 
@@ -88,8 +97,10 @@ def _parked_single(
     The verdict IS the answer, which is why the park is not one a fresh
     attempt supersedes: there is no retry that could decide differently
     without an agent, and no agent runs against a candidate this issue has
-    already adjudicated. What ends it is a human -- guidance that changes the
-    work, which resumes the developer and re-measures whatever comes back.
+    already adjudicated. What ends it is a human, either way they can answer:
+    guidance that changes the work, which resumes the developer and
+    re-measures whatever comes back, or the authorization that publishes this
+    candidate as it stands, which is `late_authorize`'s.
 
     What travels back is the outcome exactly as it was decided, wearing the
     disposition the park gave it. A park is not an absence of an answer, and

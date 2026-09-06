@@ -139,6 +139,7 @@ examples.
   `user_content_hash` drift signal, so an outsider on a public repo cannot inject workflow-driving instructions into
   an agent, resume an awaiting-human session, retry a parked auto-rebase, reset the review-round cap via
   `/orchestrator add-review-rounds`, widen a spent lifetime agent-run allowance via `/orchestrator add-agent-runs N`,
+  publish an oversized committed candidate unsplit via `/orchestrator authorize-oversized <commit>`,
   route `in_review` to `workflow:fixing` (or set its pending-fix bookmark), or
   shift the hash to re-trigger drift. Login comparison is case-insensitive; an empty allowlist trusts every author
   (legacy single-user behavior), so on these prompt / resume / PR-feedback surfaces a Bot/App login is gated like any

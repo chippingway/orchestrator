@@ -131,8 +131,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             once-per-owner-per-process claim that bounds the thread scan recovering an observation
                             a DEAD process was holding, held for the length of the walk and handed back where it
                             raised
-    drift.py                the user-content hash and the seven filters that keep content nobody wrote out of it --
-                            the two bare operator commands among them, since answering one edits nothing -- the dev
+    drift.py                the user-content hash and the eight filters that keep content nobody wrote out of it --
+                            the three whole-comment operator commands among them, since answering one edits nothing
+                            and the tick that answers it hands the same issue on to a stage handler -- the dev
                             resume a drift earns, and the decomposition reset the pre-implementation route takes
                             -- manifest, session, and every claim that manifest made about the children it created
     guards.py               what a finished agent run may leave behind: the never-invoked, shutdown-interruption,
@@ -140,8 +141,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             of the second wherever a stage reads the worktree before it asks whether the run
                             happened -- what a killed run left there is the operator's to see, and what a launch
                             that never started left is nothing
-    messages.py             the markers read out of an agent's last message, and the redact-before-truncate stderr
-                            diagnostics a park carries when there was none
+    messages.py             the markers read out of an agent's last message, the redact-before-truncate stderr
+                            diagnostics a park carries when there was none, and the two commands a HUMAN writes:
+                            `/orchestrator continue` with the refusal a park needing real guidance owes it, and the
+                            SYNTAX alone of `/orchestrator authorize-oversized <commit>` -- read from the whole
+                            comment and nowhere else, with the argument captured as written, since a malformed one
+                            is a command the workflow owes an answer to. What that second command MEANS is the
+                            late-split stage owner's, which is the only place the pair it names exists
     pickup.py               an unlabeled issue's first tick: the author allowlist, the `DECOMPOSE` route, and the
                             greeting / hash / label / state order a start publishes in
     prompts.py              the prompt builders the stages share, the header, notes, and placeholders they are
@@ -908,8 +914,36 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             stand between the first ask and the terminal; and the `rejected` terminal, written last,
                             only for a closed owner, and only once nothing is owed -- which is what takes the issue
                             out of the sweep for good
+      late_authorize.py     the one decision that ends that park: a trusted whole-comment
+                            `/orchestrator authorize-oversized <commit>`, read only while the park stands and only
+                            as a reply to its notice -- prose around it is guidance the developer is resumed
+                            against, guidance in the same batch outranks it, `/orchestrator continue` is refused as
+                            the non-decision it is, and an untrusted author is not in the reading at all. What a
+                            proved command earns is the contribution RECOMPUTED between the frozen pair (never a
+                            digest a caller handed in) and the `late_split/overrides` group written with the park
+                            cleared and the reply consumed in ONE write, since either half alone is a state the next
+                            tick reads wrong. The commit has to be the frozen candidate and the `single` has to
+                            still answer this cycle, generation and commit; both refusals are said once per READING
+                            -- under a receipt scoped to it, since the sentence and the write that consumes it are
+                            two operations -- and a contribution this host cannot fingerprint is not answered at
+                            all, so the operator is never asked to decide twice for a store an operator repairs. The
+                            predicate the settlement enters that road on is here too, asked of the RECORD: every
+                            frozen term compared against the generation in hand, and then the contribution
+                            fingerprinted AGAIN and held to the recorded digest, since the terms alone are the
+                            pinned comment agreeing with itself and the publication may be reached on a later
+                            process and a host that never held the content between the pair. WHICH answer was
+                            authorized is the one thing no term can say -- a candidate can be adjudicated twice and
+                            an acknowledged unchanged one matches every field -- so the record is bound to its
+                            answer by being dropped with it, by `late_session` where a result is discarded AND where
+                            the run replacing it is recorded, which is the statement no road gets around, and by
+                            `late_revision` where a re-freeze mints a fresh generation one step earlier. The
+                            no-verdict refusal retires the park on its way out, since the issue stops next for
+                            whatever the replacement adjudication answers and a standing `awaiting_human` would
+                            silence the question it might ask
       late_unsplit.py       the park a `single` hands the issue to a human under: the sentence naming the frozen
-                            candidate, the reading that stopped it, and what the verdict said stopped a split --
+                            candidate, the reading that stopped it, the two replies that end it -- words that change
+                            the work, and the command spelled out against this candidate -- and what the verdict
+                            said stopped a split --
                             NAMED rather than copied, since a park nothing supersedes whose notice could not be
                             recorded beside the record it came from is one no later tick would ever say, and quoted
                             LAST and fenced, since an explanation opening an HTML comment would swallow the
@@ -918,8 +952,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             were, and a park already standing rewritten by no tick
       late_settlement.py    what a guarded verdict earns: the announcement a question owes the issue, the split
                             passed on to the transaction that creates its children, the park beside it a
-                            `single` earns, and the ORDER a decision to publish an oversized candidate unsplit
-                            would be settled in -- the hold and the pull request reconciled first, then the
+                            `single` earns where no operator has authorized one, and the ORDER a candidate an
+                            operator HAS authorized is settled in -- the hold and the pull request reconciled first,
+                            then the
                             exemption naming the measured commit written with the identity of what that commit
                             contributes and the commit a push is still owed for beside it, then the handoff --
                             with the latch asked between every one of those steps, and never a snapshot, since
@@ -951,7 +986,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       late_handback.py      the effects a settled decision licenses, in the order a crash in them is safe in:
                             the push, the label handed to the stage the record names rather than to implementing
                             -- a pre-publication candidate goes back to the ordinary publication -- the accepted
-                            notice, and the retirement behind them answered by REINSTATING the cycle rather than
+                            notice, worded on the operator whose authorization is the only road here, and the
+                            retirement behind them answered by REINSTATING the cycle rather than
                             refusing, since past that write there is none left to end, with the write and that
                             barrier held inside the observations owner's retirement window so a poll reading the
                             record between them is not told there is nothing to end, and the cycle that
@@ -983,12 +1019,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             it borrows from the initial mode
       late_content.py       WHICH content the two late-local fingerprints are taken over -- the title and body, and
                             the trusted-thread run the ratcheting watermark covers -- what a comparison against a
-                            recorded baseline says moved, and the floor a comment has to clear to be a REPLY rather
-                            than conversation the issue was already carrying. The digests themselves are the
-                            `late_split/identity` owner's
+                            recorded baseline says moved, the floor a comment has to clear to be a REPLY rather
+                            than conversation the issue was already carrying, and the two whole-comment operator
+                            controls reported apart from the guidance, since neither is a requirement a developer
+                            could be resumed against. The digests themselves are the `late_split/identity` owner's
       late_guidance.py      what that comparison earns: the baseline a first tick takes, the park an edit wins over
                             every concurrent answer, the certificate a bare continue writes, the question a real
-                            answer reopens, and the continue that answers none
+                            answer reopens, the continue that answers none, and the routing of the `single` park to
+                            the owner that ends it -- routed rather than answered, since what ends that one is a
+                            decision to publish past the size gate rather than a reading of what the humans said
       late_revision.py      the developer run guidance buys -- the locked session resumed under `agent_role=developer`
                             and `stage=decomposing`, with a latched close asked on BOTH sides of it, since a resume
                             is the same step a spawn is and the run takes hours -- the refusal a candidate whose

@@ -432,6 +432,25 @@ class _LateFingerprint:
 
 
 @dataclass(frozen=True)
+class _LateAuthorization:
+    """One operator command authorizing an oversized candidate to publish.
+
+    The commit as the human WROTE it rather than one this domain has vouched
+    for: what a malformed argument earns is an answer on the thread, and a
+    reader handed nothing at all could not tell that request from a line
+    nobody typed.
+
+    The comment is carried beside it because it is half of what the durable
+    record is: a bypass of the size gate is licensed by one gesture at one
+    address anybody can go and read, so what is recorded is which comment was
+    acted on rather than a copy of a judgement about its author.
+    """
+
+    candidate_sha: str
+    comment_id: int
+
+
+@dataclass(frozen=True)
 class _LateContentSignal:
     """What the human's content says about a candidate under adjudication.
 
@@ -444,6 +463,13 @@ class _LateContentSignal:
     Untrusted authors, bots, and the orchestrator's own comments are not here
     at all: they are filtered out where the thread is read, so nothing an
     outsider posts becomes guidance, moves the watermark, or shifts a digest.
+
+    `authorization` is the operator command that publishes an oversized
+    candidate as it stands, reported apart from the guidance for the same
+    reason the bare continue is: it is a control rather than a requirement,
+    and handing it to a developer would answer a question about scope with a
+    commit id. The last one a batch carries is the one reported -- a human who
+    wrote it twice meant the second -- and only the whole comment is ever one.
 
     `baselined` is what keeps "nothing to compare against" apart from "the
     requirements moved". A generation whose baseline has still to be taken
@@ -458,6 +484,7 @@ class _LateContentSignal:
     conversation_drifted: bool = False
     guidance: tuple = ()
     bare_continue: bool = False
+    authorization: _LateAuthorization | None = None
 
     @property
     def drifted(self) -> bool:

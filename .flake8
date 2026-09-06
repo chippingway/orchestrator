@@ -48,6 +48,8 @@ per-file-ignores =
     orchestrator/workflow/stages/conflicts/transitions.py:WPS202
     orchestrator/workflow/stages/decomposition/run.py:WPS201
     orchestrator/workflow/stages/decomposition/late_coordinator.py:WPS201,WPS202
+    orchestrator/workflow/stages/decomposition/late_authorize.py:WPS202
+    orchestrator/workflow/stages/decomposition/late_content.py:WPS202
     orchestrator/workflow/stages/decomposition/late_guidance.py:WPS202
     orchestrator/workflow/stages/decomposition/late_hold.py:WPS202,WPS204
     orchestrator/workflow/stages/decomposition/late_models.py:WPS202
@@ -133,3 +135,5 @@ per-file-ignores =
     tests/workflow/stages/decomposition/test_late_cleanup_publication.py:WPS201
     tests/workflow/stages/implementing/test_late_gate_retry.py:WPS202
     tests/workflow/stages/decomposition/test_late_unsplit_notice.py:WPS202,WPS204
+    tests/workflow/stages/decomposition/late_content_support.py:WPS202
+    tests/workflow/stages/decomposition/test_late_authorize.py:WPS201,WPS202,WPS204

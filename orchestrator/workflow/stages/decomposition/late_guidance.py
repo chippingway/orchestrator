@@ -42,6 +42,14 @@ a step that failed and "proceed" is not an answer to "which half of this is in
 scope" -- it is refused, and the issue stays parked on the question it is
 really waiting on.
 
+The last park it routes is the one an adjudicator's `single` leaves, and it
+is routed rather than answered: what ends that park is a decision to publish
+an oversized change unsplit, which is a third kind of reply entirely and whose
+proof, record, and refusals are `late_authorize`'s beside this. Guidance means
+there what it means everywhere -- the work has to change, so the developer is
+resumed and the candidate is re-measured -- which is why that owner is handed
+the whole reply rather than only the command in it.
+
 Everything this owner stages, it persists. The parks are external effects
 that go out after the durable write, and the one branch that stages nothing --
 an unchanged, un-answered park -- deliberately writes nothing at all, so an
@@ -53,6 +61,7 @@ import logging
 
 from orchestrator.workflow.engine import comments as _comments, messages as _messages
 from orchestrator.workflow.stages.decomposition import (
+    late_authorize as _late_authorize,
     late_content as _late_content,
     late_parks as _late_parks,
     late_revision as _late_revision,
@@ -197,6 +206,11 @@ def _park_answer(standing: str | None):
 
     None for an issue standing on nothing of this mode's -- including a park
     another stage left, which is not this owner's to answer.
+
+    The `single` park's answer is the one owned elsewhere. Ending it is a
+    decision to publish past the size gate rather than a reading of what the
+    humans have said, so what is here is the routing and what is there is the
+    proof the decision costs.
     """
     if standing == _late_parks.PARK_CONTENT_DRIFT:
         return _reverted
@@ -204,6 +218,8 @@ def _park_answer(standing: str | None):
         return _late_revision._retry_revision
     if standing == _late_parks.PARK_QUESTION:
         return _answered_question
+    if standing == _late_parks.PARK_SINGLE_DECISION:
+        return _late_authorize._answered_single
     return None
 
 

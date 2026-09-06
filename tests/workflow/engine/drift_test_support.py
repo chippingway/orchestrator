@@ -36,8 +36,22 @@ STALE_HASH = "stale-hash"
 SAME_SHA = "same-sha"
 SHA_AFTER = "after"
 
+# What a whole git object id is written at, so the authorization below names
+# one rather than an abbreviation the command refuses.
+_SHA_LENGTH = 40
+
 CONTINUE_COMMAND = "/orchestrator continue"
 ADD_AGENT_RUNS_COMMAND = "/orchestrator add-agent-runs 3"
+AUTHORIZED_COMMIT = "a" * _SHA_LENGTH
+AUTHORIZE_OVERSIZED_COMMAND = (
+    f"/orchestrator authorize-oversized {AUTHORIZED_COMMIT}"
+)
+
+# The two whole-comment operator commands the hash leaves out. Both are
+# answered by the tick that reads them and then hand the SAME issue on to a
+# stage handler, so a hash counting either would meet that handler as a body
+# edit nobody made.
+OPERATOR_COMMANDS = (ADD_AGENT_RUNS_COMMAND, AUTHORIZE_OVERSIZED_COMMAND)
 REVIEW_APPROVED_MESSAGE = _helpers.REVIEW_APPROVED_MESSAGE
 RUN_AGENT = "run_agent"
 NEW_BODY = "new body"

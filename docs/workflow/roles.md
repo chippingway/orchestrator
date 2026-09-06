@@ -822,9 +822,11 @@ A **single** earns a PARK (`late_unsplit.py`, `late_single_decision`, with the s
 `late_notice.py`). It is the adjudicator answering that this change stays one change, and that is the one answer this
 mode may not act on: the ceiling exists so unreviewed bulk does not reach a pull request, so an agent proposing to
 publish past it is the thing being guarded against rather than grounds for waiving the guard. What ends the park is a
-human: guidance saying what to change, which resumes the developer and re-measures whatever comes back. Publishing an
-oversized candidate unsplit is a human's decision, and the issue waits for one. Every category lands there,
-`unsafe_split` included — what decides it is the verdict rather than the reason offered for it.
+human, either of the two ways they can answer: guidance saying what to change, which resumes the developer and
+re-measures whatever comes back, or the authorization that publishes this candidate as it stands
+([the section below](#authorizing-one-oversized-candidate-to-publish)). Publishing an oversized candidate unsplit is a
+human's decision, and the issue waits for one. Every category lands there, `unsafe_split` included — what decides it
+is the verdict rather than the reason offered for it.
 
 The notice names what a human deciding cannot get anywhere else once the run is over: the frozen candidate, the
 additions counted and the ceiling they were counted against, and the recorded explanation of what stopped a split —
@@ -842,9 +844,81 @@ tick reads the recorded verdict back, finds the park it would take already stand
 died between the record and the park, and a notice a refused comment stranded, are both answered by the redelivery
 every standing park's notice gets — once, and by the next tick.
 
-What a decision to publish an oversized candidate unsplit would license is the SETTLEMENT below, which
+### Authorizing one oversized candidate to publish
+
+`/orchestrator authorize-oversized <commit>` is the operator command that ends that park, and `late_authorize.py`
+owns everything it means. Its SYNTAX is `engine/messages.py`'s beside `/orchestrator continue`, because the drift
+hash has to leave both out — the tick that reads one answers it and hands the same issue on to a stage handler, so a
+hash counting it would meet that handler as a body edit nobody made.
+
+Every term of the command follows from what it licenses. It names the exact commit, because a bare "yes" would
+authorize whatever the worktree ends on next. It has to be the WHOLE comment: a line of it under a paragraph is prose
+that mentions the command, and prose about an oversized candidate is guidance, which resumes the developer against it.
+`/orchestrator continue` is refused rather than absorbed — "do that step again" is not a decision about a change
+anybody read. Who may say it is the allowlist every other workflow-driving comment goes through, applied where the
+thread is read, so an outsider's comment is not in the reading this owner is handed at all. And WHEN they may say it
+is bounded like every other reply: a comment below the park's own notice was written before the question was put, so
+it goes stale rather than authorizing the candidate it happens to name.
+
+A command that is all of those things is proved and then recorded. The commit it names has to be the generation's
+frozen candidate; the adjudication it publishes has to still be on the record as a `single` for this cycle,
+generation and commit; and the contribution between the frozen pair is **recomputed** in the developer's own worktree
+rather than taken from anything stored — a digest a caller handed in proves only that a caller had one. What that
+earns is the `late_override_*` group ([`../state-machine/labels-and-state.md#late-generation-state`][late-state]):
+the candidate, the frozen base, that digest and the scheme it was taken under, the additions and the ceiling they
+were counted against, and the id of the comment the authorization was made in. The record, the park coming down and
+the reply being consumed are ONE write — a park cleared without the record would send the candidate straight back
+into the adjudication a human just answered, and a record without the consumed watermark would let the same comment
+authorize a second candidate later.
+
+Everything the command does not prove is answered on the thread and consumed — the human asked for something this
+park cannot do and is owed the sentence saying so, with the command that would have worked spelled out in it. Once,
+under a receipt scoped to the reading it answers: the sentence and the write that consumes it are two operations, so
+a tick that says it and then fails to record it reads the same command again, and the receipt already on the thread
+is what stops it saying the same thing twice. A reply written after that failed write moves the scope and earns an
+answer of its own, because a second request is a second decision.
+
+What those answers leave standing differs. A commit that is not the parked one leaves the park exactly where it is:
+the same decision is owed, and the notice explaining it is still the last word above the refusal. An authorization
+arriving over an adjudication the record can no longer show **retires** it, and has to — there is nothing to be owed
+until something adjudicates the candidate again, and `awaiting_human` is the flag that suppresses the announcement a
+categorized question earns, so a park left standing over the replacement run would cost a human the one sentence
+nothing else will ever say and would have a split create children under a claim that the issue is waiting. The tick
+carries straight on to that adjudication.
+
+A contribution this host cannot fingerprint is not answered at all: nothing about it is the operator's
+doing, so the next tick takes the same reading again rather than asking them to decide twice. And drift outranks the
+command entirely — an edited title, body or counted comment parks the issue on the edit first, consuming nothing, so
+the decision is made again against the requirements as they now read.
+
+Past that write the tick carries straight on to the answer it already had, and the settlement below runs on the same
+poll. The question it asks is of the RECORD rather than of the reply. It compares every frozen term — the commit, the
+base, the additions and the threshold — so a generation that has moved under any of them is a different question from
+the one that was answered, and then it **fingerprints the contribution again** and holds it to the digest the record
+carries. That last comparison is why a digest is recorded at all: the terms above are the pinned comment agreeing
+with itself, which a hand edit, an older binary and a record half-written by a crash can each arrange, while the
+digest is the one term answered by the objects. It is re-taken rather than trusted from the tick that wrote it
+because the two need not be the same tick — the publication can be reached by a later poll, on a later process, and
+on a host that never held the content between the frozen pair. A reading nobody could take and one that disagrees are
+refused alike: the candidate stays where it is with the authorization still on the record, so a store somebody
+repairs publishes what they authorized without asking them to authorize it twice. A process that died between the
+write and the publication finishes from what the write left, without asking the human or an agent anything.
+
+What no term of the record can say is WHICH answer was authorized, and that is the last thing the road has to hold.
+A candidate can be adjudicated more than once — a certificate over edited requirements discards the recorded verdict
+and buys a fresh one, and a developer revision re-freezes and buys another — and an acknowledged, unchanged
+candidate comes back over the same base at the same size, so every term above still matches. So the record is bound
+to its answer by being dropped **with** it: `late_session` drops it wherever a recorded result is discarded *and*
+wherever the run replacing that result is recorded — which is the statement of the rule no road gets around, since
+every one of them ends at a fresh spawn — and `late_revision` drops it wherever a re-freeze mints a fresh generation
+one step earlier, so the pinned comment never shows a permission for an answer the issue no longer holds. A record
+still readable at the settlement is
+therefore one whose answer nothing has replaced, and an operator whose decision was overtaken is asked again rather
+than having the next adjudication publish on their name.
+
+What that decision licenses is the SETTLEMENT below, which
 `late_settlement.py` owns the order of and writes the exemption itself in. Nothing in this mode makes that decision —
-a verdict is not one — so what follows describes that road rather than one a reply takes. The candidate is already
+a verdict is not one — so it is the only road into what follows. The candidate is already
 committed in the developer's own worktree, and the ordinary implementing publication is what pushes it and hands it to
 review — so what the settlement owes is a durable record that this exact commit has been adjudicated, or the gate
 would measure the same candidate past the same ceiling and adjudicate it again forever. `late_exempt_sha` names the

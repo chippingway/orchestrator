@@ -34,7 +34,8 @@ this path:
    that reuse the work already committed; adjudicated as *one* change, nothing is published and the issue waits for
    you, because publishing an oversized change unsplit is a decision the orchestrator does not make for itself. The
    commit, its worktree and any pull request it stands under are left exactly as they are, no further decomposer is
-   spawned against them, and replying with what to change resumes the dev agent and re-measures what comes back. With
+   spawned against them, and replying with what to change resumes the dev agent and re-measures what comes back —
+   or [`/orchestrator authorize-oversized <commit>`](#holding-and-unsticking-an-issue) publishes it as it stands. With
    `DECOMPOSE=off` a *new* candidate skips that measurement and publishes as it always did — but one already recorded
    goes on being measured and adjudicated, so flipping the switch never publishes work nobody looked at.
 3. `workflow:validating` — a fresh reviewer checks the diff. Requested changes enter `workflow:fixing` and return
@@ -43,7 +44,8 @@ this path:
    small fix at a time; one that would goes back to `workflow:decomposing` with nothing pushed. Adjudicated as a
    split there, the open pull request is closed over a notice naming the children it was handed to and the
    immutable ref the committed work is preserved on, and the issue becomes an umbrella; adjudicated as one change,
-   it waits for you there with the pull request left open and nothing pushed.
+   it waits for you there with the pull request left open and nothing pushed, and authorizing it puts the commit on
+   that pull request and hands the issue back to the stage it came from.
 4. `workflow:documenting` — the dev agent makes the final documentation pass after reviewer approval.
 5. `in_review` — the orchestrator pings you once for each PR head that becomes ready; you merge by hand.
 6. `done` / `rejected` — the terminal result after the PR is merged or closed without merging.
@@ -232,6 +234,24 @@ where you put it rather than greeted a second time, so nothing runs again until 
   run on a fresh conversation, and it counts even when your comment carries guidance beside it. It buys that one run
   and no more: once the attempt is spent, the next fresh agent this issue needs is refused again, and buying it
   is another command.
+- `/orchestrator authorize-oversized <commit>` — post this as the entire comment on an issue parked under
+  `workflow:decomposing` because the late decomposer read its committed candidate as one change it could not split.
+  That park is the orchestrator refusing to publish past `MAX_ADDED_LINES` on an agent's say-so; this command is you
+  deciding it may, and it is the only reply that does. `<commit>` is the candidate's full git object id — an
+  abbreviation is refused, since nothing here ever writes one. The park comment names the commit, and spells the whole
+  command out ready to copy. Nothing else authorizes a publication:
+  `/orchestrator continue` is refused, prose is guidance (which resumes the dev agent against it and re-measures what
+  comes back, so a comment carrying the command *and* words is guidance too), a comment posted before the park
+  comment is not an answer to it, and an account outside `ALLOWED_ISSUE_AUTHORS` is not read at all.
+
+  The tick that reads a valid one recomputes what the frozen commit contributes over its frozen base, records that
+  digest with the candidate, the base, the added-line count, the ceiling it was counted against and the id of your
+  comment, and then publishes: the commit is exempted from the ceiling, the branch is pushed (onto the existing pull
+  request where the candidate already had one), and the issue goes back to the stage it came from. Only that commit
+  is exempt — anything committed on top of it is measured again. A command naming any other commit gets one reply
+  saying so and changes nothing, and an edit to the issue title, body or earlier comments outranks the command
+  entirely: the issue parks on the edit first, and the decision has to be made again against the requirements as they
+  now read.
 - `/orchestrator add-review-rounds N` — post this on its own line with a positive `N` on an issue parked at
   `MAX_REVIEW_ROUNDS`. It grants up to `N` more reviewer rounds, capped at the configured maximum.
 - `/orchestrator add-agent-runs N` — post this on its own line with a positive `N` on an issue that has spent its

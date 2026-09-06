@@ -1543,7 +1543,7 @@ rather than preserving.
 - **Accepted candidate.** `late_exempt_sha` is the one commit an authorized settlement let past the size gate — an
   adjudicator's own `single` writes nothing here, since what a verdict earns is the
   [`late_single_decision` park](#the-late-run) a human's decision to publish the candidate unsplit is owed on, and
-  the settlement is what such a decision would license. It is
+  the settlement is what an operator's `/orchestrator authorize-oversized <commit>` on that park licenses. It is
   the whole of what that settlement is worth durably: the gate measures whatever a stage is about to publish, so a
   candidate handed back with its generation cleared and nothing else would be measured past the ceiling again and
   adjudicated again. It names exactly the commit that was measured, which is also the whole invalidation rule —
@@ -1705,10 +1705,25 @@ rather than preserving.
   decision rather than making it. The second is this group: an operator who has read the change says in a comment on
   the issue that it publishes unsplit, and that gesture has to outlive the process that read it, the generation it was
   made under, and the tick that would act on it, or the gate measures the same candidate past the same ceiling on the
-  next poll and asks the same question again. What does end the group is what ends the exemption above it — a
-  restart's projection, which keeps a whitelist of what is true about the ISSUE rather than about the attempt, so
-  these keys go the way the branch and the candidate they name do. A fresh cycle that inherited one would carry a
-  bypass nobody granted it, over work no operator ever read.
+  next poll and asks the same question again. What writes it is
+  [`late_authorize`](../../orchestrator/workflow/stages/decomposition/late_authorize.py), from a trusted
+  whole-comment `/orchestrator authorize-oversized <commit>` posted while the `late_single_decision` park stands —
+  proved against the frozen candidate and the recorded `single`, with the digest recomputed between the frozen pair
+  rather than taken from anything stored, and written in the same statement as that park coming down and the reply
+  being consumed. What ends the group is the answer it was given for ending. What an operator authorized was ONE
+  adjudication, taken against the requirements as they then read, and no term of the record can say which — the
+  frozen pair, the measurement and the digest all survive an answer being thrown away and re-earned. So the group is
+  dropped wherever that answer stops being the answer: with the recorded result, which a certificate over an edited
+  scope and a real answer to a question both discard, and again with the run that REPLACES that result — the
+  statement no road gets around, since every way an answer can stop being the answer ends at a fresh spawn
+  ([`late_session`](../../orchestrator/workflow/stages/decomposition/late_session.py)) — and one step earlier with
+  the re-freeze a developer revision makes, which mints a fresh generation an acknowledged-but-unchanged candidate
+  would otherwise match every term of
+  ([`late_revision`](../../orchestrator/workflow/stages/decomposition/late_revision.py)). A record outliving either
+  would license the NEXT adjudication's `single` on a permission nobody granted it. Beyond those it ends the way the
+  exemption above it does — a restart's projection, which keeps a whitelist of what is true about the ISSUE rather
+  than about the attempt, so these keys go the way the branch and the candidate they name do. A fresh cycle that
+  inherited one would carry a bypass nobody granted it, over work no operator ever read.
 
   Every term follows from what the record IS — a bypass of the one gate that stops unreviewed bulk reaching a pull
   request. A bypass may license exactly what a human looked at, so it is bound to the candidate rather than declared
@@ -1740,7 +1755,13 @@ rather than preserving.
 
   The record is durable evidence and nothing more: what a candidate publishes under is decided by the gate and by
   `late_exempt_sha` beside this group, and what recording an authorization buys is that a human's gesture survives a
-  crash, a cleared generation, and a fresh process.
+  crash, a cleared generation, and a fresh process. The settlement that publishes reads it back, compares every
+  frozen term — the candidate, the base, the additions and the threshold — against the generation in hand, and then
+  fingerprints the contribution AGAIN and holds it to `late_override_fingerprint`. That last comparison is what the
+  digest is recorded for: the other terms are the pinned comment agreeing with itself, while the digest is answered
+  by the objects, and the publication can be reached by a later poll on a host that never held the content between
+  the pair. A record the candidate has moved under, a digest that disagrees, and a reading nobody could take each
+  authorize nothing, and the issue goes on waiting on its park with the record intact.
 - **Pending collapse.** `late_collapse_head`, `late_collapse_base_sha`, and `late_collapse_count` are what a
   squash-on-approval says it is about to do, written on the
   [`collapses`](../../orchestrator/workflow/late_split/collapses.py) owner and outside `LATE_STATE_KEYS` on the same
@@ -2208,7 +2229,9 @@ those would drop the very state the next tick reads to tell a human's answer fro
 `late_single_decision` is the sixth, and the attempt that would supersede it does not exist: the verdict is
 recorded, so every later tick reuses the same answer and reaches the same park at no agent's cost. Retiring it would
 clear the flag and re-take it one step later, saying the same sentence to the same thread once a poll while the human
-it is addressed to reads it.
+it is addressed to reads it. What clears it is that human answering — guidance, which resumes the developer, or the
+trusted `/orchestrator authorize-oversized <commit>` that publishes the candidate as it stands, whose record is the
+`late_override_*` group below.
 The shared `retry_cap` is the seventh and the plainest: a retry is exactly what it refuses, so an attempt that
 superseded it would clear the flag and meet the same spent budget one step later — saying the same sentence once a
 poll and taking down, in between, the park a human has to answer. It is held at the top of the adjudication instead,

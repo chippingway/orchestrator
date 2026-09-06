@@ -97,40 +97,47 @@ class HashFiltersBotUsersTest(unittest.TestCase):
 
 
 class HashFiltersBareOperatorCommandTest(unittest.TestCase):
-    """A bare `/orchestrator add-agent-runs N` is a control, not requirements.
+    """A whole-comment operator command is a control, not requirements.
 
-    It is written on an issue the dispatcher is about to hand straight to a
-    stage handler, so a hash that counted it would report a body edit nobody
-    made -- on the one tick where the issue is going back to work.
+    Each is written on an issue the tick that answers it is about to hand
+    straight to a stage handler -- the stage below on a run grant, the stage
+    an authorized publication continues at on the other -- so a hash that
+    counted one would report a body edit nobody made, on the one tick where
+    the issue is going back to work.
     """
 
     def test_the_bare_command_leaves_the_hash_alone(self) -> None:
         # In both modes: the legacy algorithm the flag reproduces predates
-        # this command, so a baseline recomputed WITH it would fail to
+        # both commands, so a baseline recomputed WITH one would fail to
         # recognize itself and report the control as an edit.
         silent = support.make_issue(1)
-        commanded = self._issue_with(support.ADD_AGENT_RUNS_COMMAND)
-        for legacy in (False, True):
-            with self.subTest(include_bare_continue=legacy):
-                self.assertEqual(
-                    drift._compute_user_content_hash(
-                        silent, set(), include_bare_continue=legacy,
-                    ),
-                    drift._compute_user_content_hash(
-                        commanded, set(), include_bare_continue=legacy,
-                    ),
-                )
+        for command in support.OPERATOR_COMMANDS:
+            commanded = self._issue_with(command)
+            for legacy in (False, True):
+                with self.subTest(command=command, legacy=legacy):
+                    self.assertEqual(
+                        drift._compute_user_content_hash(
+                            silent, set(), include_bare_continue=legacy,
+                        ),
+                        drift._compute_user_content_hash(
+                            commanded, set(), include_bare_continue=legacy,
+                        ),
+                    )
 
     def test_guidance_beside_the_command_still_counts(self) -> None:
         # Words beside the command are requirements, and the drift road they
         # open is how they reach the agent that has to act on them.
-        guided = self._issue_with(
-            f"{support.ADD_AGENT_RUNS_COMMAND}\n\nalso handle empty input",
-        )
-        self.assertNotEqual(
-            drift._compute_user_content_hash(support.make_issue(1), set()),
-            drift._compute_user_content_hash(guided, set()),
-        )
+        for command in support.OPERATOR_COMMANDS:
+            with self.subTest(command=command):
+                guided = self._issue_with(
+                    f"{command}\n\nalso handle empty input",
+                )
+                self.assertNotEqual(
+                    drift._compute_user_content_hash(
+                        support.make_issue(1), set(),
+                    ),
+                    drift._compute_user_content_hash(guided, set()),
+                )
 
     def _issue_with(self, body: str):
         return support.make_issue(1, comments=[support.FakeComment(

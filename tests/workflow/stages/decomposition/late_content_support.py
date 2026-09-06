@@ -70,6 +70,7 @@ GUIDANCE_BODY = "the migration is a separate change; take it out of this one"
 OTHER_GUIDANCE = "and leave the CLI flags alone"
 BARE_CONTINUE = "/orchestrator continue"
 CONTINUE_WITH_GUIDANCE = f"{BARE_CONTINUE}\n\nalso drop the retry loop"
+AUTHORIZE_COMMAND = "/orchestrator authorize-oversized"
 
 GUIDANCE_ID = 11
 CONTINUE_ID = 12
@@ -122,6 +123,17 @@ def human_comment(
     return FakeComment(
         id=comment_id, body=body, user=FakeUser(login, user_type),
     )
+
+
+def authorization(named: str = CANDIDATE_SHA) -> str:
+    """The whole comment that authorizes one candidate to publish unsplit.
+
+    Built against a commit rather than fixed, because half of what these tests
+    are about is which commit was named: the parked candidate, one it has been
+    replaced by, and an argument that is no commit at all all arrive as the
+    same command.
+    """
+    return f"{AUTHORIZE_COMMAND} {named}"
 
 
 def guidance_comment(comment_id: int = GUIDANCE_ID) -> FakeComment:
@@ -269,6 +281,16 @@ ASKED_STATE = MappingProxyType({
 DRIFT_PARKED = MappingProxyType({
     KEYS.awaiting: True,
     KEYS.park_reason: PARK_CONTENT_DRIFT,
+    KEY_LAST_ACTION_COMMENT_ID: PARK_NOTICE_ID,
+})
+
+# An adjudication that answered `single` and the park it earned: the state
+# every authorization these tests make is written against, since the command
+# is read only while that park stands and settles only the verdict behind it.
+SINGLE_PARKED = MappingProxyType({
+    **RECORDED_SINGLE,
+    KEYS.awaiting: True,
+    KEYS.park_reason: PARK_SINGLE_DECISION,
     KEY_LAST_ACTION_COMMENT_ID: PARK_NOTICE_ID,
 })
 
