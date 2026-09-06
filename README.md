@@ -252,6 +252,13 @@ where you put it rather than greeted a second time, so nothing runs again until 
   saying so and changes nothing, and an edit to the issue title, body or earlier comments outranks the command
   entirely: the issue parks on the edit first, and the decision has to be made again against the requirements as they
   now read.
+
+  What you authorize is one *adjudication* of one commit, not the issue. Anything that sends the candidate back to be
+  adjudicated spends it — an edit you then certify with `/orchestrator continue`, guidance that resumes the dev agent
+  (even where the agent answers that the committed work already covers it), or a record the orchestrator can no
+  longer read the verdict off. Each of those sends the candidate back through adjudication, and the issue then stops
+  for whatever *that* answers; there is no standing permission for a commit, so an authorization can never be spent
+  on a verdict you did not see.
 - `/orchestrator add-review-rounds N` — post this on its own line with a positive `N` on an issue parked at
   `MAX_REVIEW_ROUNDS`. It grants up to `N` more reviewer rounds, capped at the configured maximum.
 - `/orchestrator add-agent-runs N` — post this on its own line with a positive `N` on an issue that has spent its
