@@ -1,10 +1,17 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The three watermarks this stage scans forward from and ratchets back to.
+"""What this stage reads as unread feedback, and when that batch has settled.
 
 The rescan reads the in_review watermarks, never the `pending_fix_*`
 bookmarks: the bookmarks are the replay source a `/orchestrator continue`
 needs, and consuming them here would spend them on the ordinary tick.
+
+The quiet window sits between the scan and the advance because it is the same
+batch it measures: a human mid-thought posts three comments in a minute, and
+resuming on the first would spend the session on a fragment. Each rescan
+re-reads the freshest timestamp, so a later comment extends the wait rather
+than racing it -- and an accepted `/orchestrator continue` skips it outright,
+because that is a deliberate operator signal rather than chatter.
 
 The advance is deliberately the narrower half of that pair. Each surface moves
 only to the max id actually fed to the dev on that surface, ratcheted against
@@ -23,12 +30,16 @@ extend the quiet window; an empty allowlist trusts everyone.
 """
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from github.Issue import Issue
 
+from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.comments import filter_trusted
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.fixing import models as _models
+from orchestrator.workflow.stages.in_review import watermarks as _in_review_watermarks
 
 
 def _new_issue_space_feedback(gh: GitHubClient, issue: Issue, pr, state) -> list:
@@ -110,6 +121,36 @@ def _rescan_fixing_feedback(
         review_comments=review_comments,
         review_summaries=review_summaries,
         all_items=issue_space + review_comments + review_summaries,
+    )
+
+
+def _fixing_debounce_open(
+    feedback: _models._FixingFeedback, replay_batch,
+) -> bool:
+    """True while the quiet window is still open: hold the resume until no
+    comment has landed for `IN_REVIEW_DEBOUNCE_SECONDS`.
+
+    A newer comment arriving on a later tick is naturally picked up by the
+    rescan, which extends the wait because the freshest timestamp controls
+    the gate. Comments without a usable timestamp (older fakes, PyGithub
+    edge cases) do not block the resume; in production `created_at` /
+    `submitted_at` are always set. An accepted `/orchestrator continue`
+    (`replay_batch` set) skips the wait entirely -- it is a deliberate
+    operator signal, not chatter to debounce.
+    """
+    if replay_batch is not None:
+        return False
+    now = datetime.now(UTC)
+    latest_ts: datetime | None = None
+    for feedback_item in feedback.all_items:
+        ts = _in_review_watermarks._comment_created_at(feedback_item)
+        if ts is None:
+            continue
+        if latest_ts is None or ts > latest_ts:
+            latest_ts = ts
+    return (
+        latest_ts is not None
+        and (now - latest_ts).total_seconds() < config.IN_REVIEW_DEBOUNCE_SECONDS
     )
 
 

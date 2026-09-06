@@ -290,7 +290,7 @@ def _handle_fixing(gh: GitHubClient, spec: config.RepoSpec, issue: Issue) -> Non
         _bounce_without_feedback(gh, spec, issue, state)
         return
 
-    if _resume._fixing_debounce_open(feedback, replay_batch):
+    if _feedback._fixing_debounce_open(feedback, replay_batch):
         return
 
     _resume._resume_fixing_and_dispatch_result(
