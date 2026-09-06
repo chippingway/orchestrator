@@ -31,7 +31,7 @@ _HEAD = "HEAD"
 
 
 def _publishes_approved(gate: _records._Gate, branch: str) -> bool:
-    """Push a commit an adjudication accepted onto the publication it names.
+    """Push a commit an authorized settlement accepted onto the publication it names.
 
     No measurement, because there is nothing left to measure: a human read
     this exact diff and said it ships as one change, and the record that said

@@ -1369,8 +1369,8 @@ def _refused_submit(
 
     A cleanup route already says a late owner was observed closed, so the
     reading is latched on the strength of the route alone. A closed issue on
-    any OTHER label may be carrying the same reading and no label says so:
-    the `single` verdict hands its issue to `implementing` a moment before it
+    any OTHER label may be carrying the same reading and no label says so: an
+    authorized settlement hands its issue to `implementing` a moment before it
     retires the cycle, and a close landing in that window wears a label whose
     handler is an ordinary terminal.
 

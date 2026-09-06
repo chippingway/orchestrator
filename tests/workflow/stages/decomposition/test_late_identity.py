@@ -23,7 +23,6 @@ from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
 from tests.workflow.stages.decomposition.late_settlement_support import (
-    SINGLE_RUN,
     UNFINGERPRINTED,
     GuardedLateCase,
 )
@@ -62,7 +61,7 @@ class AcceptedIdentityTest(GuardedLateCase, unittest.TestCase):
         # between whatever the checkout stands on and a base read now: the
         # worktree is writable for the whole of an adjudication, and the seam
         # answers naming the pair it was handed.
-        self._decide(SINGLE_RUN)
+        self._settle()
 
         pinned = self._pinned()
         recorded = {key: pinned.get(key) for key in IDENTITY_KEYS}
@@ -83,7 +82,7 @@ class AcceptedIdentityTest(GuardedLateCase, unittest.TestCase):
         )
 
         with stopped, self.assertRaises(KeyboardInterrupt):
-            self._decide(SINGLE_RUN)
+            self._settle()
 
         pinned = self._pinned()
         self.assertEqual(pinned.get(KEYS.exempt_sha), CANDIDATE_SHA)
@@ -95,7 +94,7 @@ class AcceptedIdentityTest(GuardedLateCase, unittest.TestCase):
         # A store that cannot hand back the content between the two commits
         # leaves nothing transferable, and takes nothing away: the exact
         # commit is exempt and the candidate is handed on as it would be.
-        outcome = self._decide(SINGLE_RUN, worktree=UNFINGERPRINTED)
+        outcome = self._settle(worktree=UNFINGERPRINTED)
 
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
         pinned = self._pinned()
@@ -116,7 +115,7 @@ class AcceptedIdentityTest(GuardedLateCase, unittest.TestCase):
             **_EARLIER_IDENTITY,
         )
 
-        self._decide(SINGLE_RUN, worktree=UNFINGERPRINTED)
+        self._settle(worktree=UNFINGERPRINTED)
 
         pinned = self._pinned()
         self.assertEqual(pinned.get(KEYS.exempt_sha), CANDIDATE_SHA)

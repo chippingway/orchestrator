@@ -118,7 +118,7 @@ def _reset_clear_and_park(
     follows it rather than the intent.
 
     The permission a transfer granted goes in the same write and for the same
-    reason: a rebase of a commit an adjudication accepted may be licensed to
+    reason: a rebase of a commit an authorized settlement accepted may be licensed to
     carry that verdict over, and the reset puts the branch back onto the
     commit the exemption never left. The exemption itself needs no repair --
     the grant moved nothing -- so what is left over is a claim about a push

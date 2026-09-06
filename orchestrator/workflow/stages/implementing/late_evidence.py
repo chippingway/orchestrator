@@ -296,9 +296,9 @@ def _holds_unpublished_commit(
     """Prove the commit this issue owes a publication is here, or park.
 
     The last window the recorded pair cannot cover, and the one every
-    approval opens. A verdict that lets a candidate publish drops the record
+    approval opens. Anything that lets a candidate publish drops the record
     that named it -- the retirement a small candidate earns, and the
-    exemption a `single` verdict is settled by -- and the push comes after
+    exemption an authorized settlement writes -- and the push comes after
     that write. A tick that died in between leaves committed work on the
     branch with nothing on the issue waiting for anything, so the ordinary
     flow runs: on a replacement host the checkout is rebuilt from the base or

@@ -253,14 +253,17 @@ class RetriedHoldTest(LateCase, unittest.TestCase):
         self.assertEqual(self._pinned().get(KEYS.park_reason), _parks.PARK_QUESTION)
 
     def test_a_retried_hold_leaves_no_stale_park(self) -> None:
-        # A verdict that asks nobody anything leaves an issue nobody is
-        # waiting on, whatever the attempt before it recorded.
+        # The reason a failed hold left is not the one an issue whose verdict
+        # landed is waiting on, so the retry replaces it rather than leaving
+        # a human to answer a step that has since been reconciled.
         self._fail_the_hold()
 
         adjudicate(self.github, self.issue, agent_reply(SINGLE_REPLY))
 
-        self.assertFalse(self._pinned().get(KEYS.awaiting))
-        self.assertIsNone(self._pinned().get(KEYS.park_reason))
+        self.assertEqual(
+            self._pinned().get(KEYS.park_reason),
+            _parks.PARK_SINGLE_DECISION,
+        )
 
     def test_a_reused_answer_persists_the_retirement(self) -> None:
         # The branch that reuses a recorded answer is the one that would

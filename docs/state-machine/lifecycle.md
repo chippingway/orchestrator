@@ -40,8 +40,12 @@ than a second source of truth: where the two disagree, the handler pages are aut
      additions >  MAX_ADDED_LINES ─► NOTHING pushed, no PR opened;
                                      label=workflow:decomposing, where the
                                      late coordinator owns every later tick
+                                     and an adjudicator's `single` parks the
+                                     candidate for a human's decision rather
+                                     than publishing it unsplit
      candidate == late_exempt_sha ─► publish unmeasured (the one commit an
-                                     adjudication accepted, and only it)
+                                     authorized settlement accepted, and only
+                                     it)
      candidate == late_approved_sha ► publish unmeasured, named against it:
                                      the commit this gate approved and has
                                      still to push, brought back by a crash
@@ -307,10 +311,12 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                       owed and the head it produced are
                                       recorded as conflict_settled_outcome
                                       / conflict_settled_sha)
-     settled `single` handed back  ─► workflow:validating for the recorded
+     settlement handed back        ─► workflow:validating for the recorded
                                       round (++conflict_round, receipt
-                                      dropped); a `split` closes the PR and
-                                      never re-enters this label
+                                      dropped); an adjudicator's own `single`
+                                      parks for a human's decision and hands
+                                      nothing back, and a `split` closes the
+                                      PR and never re-enters this label
      drift ACK / drift _on_question park ─► no relabel; rebase still
                                             unfinished, next tick
                                             re-enters the same label

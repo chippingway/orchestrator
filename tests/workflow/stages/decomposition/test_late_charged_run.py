@@ -76,7 +76,7 @@ class ChargedLateAdjudicationTest(unittest.TestCase):
         )
 
         spawn.assert_called_once()
-        self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         self._assert_charged()
 
     def test_a_paused_run_keeps_the_slot_held_out(self) -> None:

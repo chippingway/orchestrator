@@ -56,7 +56,8 @@ from orchestrator.github import pinned_state as _pinned_state
 #
 # The approved commit picks the candidate's freeze up exactly where it ends. It
 # is written by the same write that APPROVES a candidate for publication -- the
-# retirement a small one earns, and the exemption a `single` verdict records --
+# retirement a small one earns, and the exemption an authorized settlement
+# records --
 # and the push it licenses runs after that write, so without this the one gap
 # left open would be the one where nothing else on the issue names the work at
 # all. Past the push its freeze is also the remedy for the park that refuses an
@@ -158,7 +159,7 @@ _LATE_COLLAPSE_KEYS: tuple[str, ...] = (
 )
 
 # The two records the list above cannot cover, because no write is guaranteed
-# to end either. `late_exempt_sha` names the commit a `single` verdict
+# to end either. `late_exempt_sha` names the commit an authorized settlement
 # accepted -- it says that commit needs no measuring EVER, which is what stops
 # the gate reading it past the same ceiling and adjudicating it again forever
 # -- and it is deliberately never cleared at all. `implementing_published_sha`

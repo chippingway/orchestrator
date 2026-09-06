@@ -494,7 +494,7 @@ def _ending_cycle(
 
     The record's own answer, and -- for the one window where the record has
     none -- the cycle a worker on this very issue is retiring RIGHT NOW. That
-    window is a `single` publication's last write: the identity comes off the
+    window is an authorized settlement's last write: the identity comes off the
     record and the barrier that would answer a latched close stands behind
     it, so a reading taken in between would be called spent against a record
     whose worker is still holding the question open.
@@ -572,8 +572,8 @@ def _closed_under_a_label(
 
     The cleanup route takes a closed owner on either label an adjudication
     runs under, so what reaches HERE closed is one whose label names an
-    ordinary terminal instead: the `implementing` a `single` verdict hands
-    the issue to a moment before it retires the cycle. A close landing in
+    ordinary terminal instead: the `implementing` an authorized settlement
+    hands the issue to a moment before it retires the cycle. A close landing in
     that window is one nothing else would ever end -- the terminal arc that
     label names drains a merged pull request or a human close and writes the
     late record off nowhere, and the relabel guard beside it merely puts

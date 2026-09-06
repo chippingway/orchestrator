@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """The close a poll takes while a worker is retiring the cycle it names.
 
-A published `single` ends by dropping its generation, and that write takes the
+A settled `single` ends by dropping its generation, and that write takes the
 one thing every reader of a close consults: the cycle identity. A poll running
 beside it asks the record whether there is a cycle a close would end, and a
 poll that asks a moment too late is told there is not -- so it would drop the
@@ -32,15 +32,14 @@ from orchestrator.workflow.stages.decomposition.late_models import (
 )
 from tests.workflow.fixtures import _TEST_SPEC
 from tests.workflow.observation_support import ObservedCloseCase, receipt_for
-from tests.workflow.stages.decomposition.late_run_support import (
-    LateCase,
-    agent_reply,
+from tests.workflow.stages.decomposition.late_run_support import LateCase
+from tests.workflow.stages.decomposition.late_settlement_support import (
+    settle_single,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CYCLE_ID,
     KEYS,
     LATE_ISSUE_NUMBER,
-    SINGLE_REPLY,
     late_generation,
 )
 
@@ -111,18 +110,24 @@ class _PollsAfterTheRetirement:
         )
 
 
-class PollRacingTheRetirementTest(
-    ObservedCloseCase, LateCase, unittest.TestCase,
-):
-    """A poll that reads the record on the far side of the retirement."""
+class _SettledSingleCase(ObservedCloseCase, LateCase):
+    """One owner whose candidate is settled through to the retirement."""
 
     def setUp(self) -> None:
         super().setUp()
         self._fresh_process()
 
+    def _settled(self):
+        """Take the settlement road, which ends by retiring the cycle."""
+        return settle_single(self.github, self.issue)
+
+
+class PollRacingTheRetirementTest(_SettledSingleCase, unittest.TestCase):
+    """A poll that reads the record on the far side of the retirement."""
+
     def test_the_reading_is_not_dropped(self) -> None:
         with self.assertLogs(_WORKFLOW_LOG), self._racing():
-            self._adjudicate(agent_reply(SINGLE_REPLY))
+            self._settled()
 
         self.assertEqual(
             self._observed(_REPO_SLUG), frozenset((LATE_ISSUE_NUMBER,)),
@@ -133,7 +138,7 @@ class PollRacingTheRetirementTest(
         # latch, puts the generation it was carrying back, and ends it -- so
         # the ending has a cycle to be entered from at all.
         with self.assertLogs(_WORKFLOW_LOG), self._racing():
-            outcome, _ = self._adjudicate(agent_reply(SINGLE_REPLY))
+            outcome = self._settled()
 
         pinned = self._pinned()
         self.assertEqual(outcome.disposition, _LateDisposition.CANCELLED)
@@ -145,14 +150,14 @@ class PollRacingTheRetirementTest(
         # is scoped to a cycle and the record it was written from had none,
         # so the cycle the worker is retiring is where the scope comes from.
         with self.assertLogs(_WORKFLOW_LOG), self._racing():
-            self._adjudicate(agent_reply(SINGLE_REPLY))
+            self._settled()
 
         self.assertEqual(len(self._receipts()), 1)
 
     def test_a_retirement_nobody_raced_still_ends_it(self) -> None:
         # The baseline the window is measured against: with no poll beside
         # it, a published `single` retires its cycle and keeps nothing.
-        self._adjudicate(agent_reply(SINGLE_REPLY))
+        self._settled()
 
         self.assertIsNone(self._pinned().get(_KEY_CYCLE_ID))
         self.assertEqual(self._observed(_REPO_SLUG), frozenset())
@@ -172,19 +177,15 @@ class PollRacingTheRetirementTest(
         ]
 
 
-class _RetiredRecordCase(ObservedCloseCase, LateCase):
+class _RetiredRecordCase(_SettledSingleCase):
     """One owner whose cycle a retirement dropped, and what reads it back."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        self._fresh_process()
 
     def _died(self) -> None:
         """Retire the cycle, poll behind the write, and end the process."""
         with self.assertLogs(_WORKFLOW_LOG), _PollsAfterTheRetirement(
             self.github, LATE_ISSUE_NUMBER, dying=True,
         ).answering(), self.assertRaises(RuntimeError):
-            self._adjudicate(agent_reply(SINGLE_REPLY))
+            self._settled()
 
     def _guarded(self) -> bool:
         """Ask the dispatcher's own cancelled-cycle guard about this owner."""
@@ -272,7 +273,7 @@ class RestartAfterTheRetirementTest(_RetiredRecordCase, unittest.TestCase):
         # The baseline that keeps the adoption narrow: a retirement nobody
         # observed is a publication that completed, and the issue goes back
         # to the ordinary work its label names.
-        self._adjudicate(agent_reply(SINGLE_REPLY))
+        self._settled()
         self._fresh_process()
 
         self.assertFalse(self._guarded())

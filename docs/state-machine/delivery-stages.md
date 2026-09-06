@@ -282,7 +282,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      after a continuation routes it here as usual. An issue carrying a live late generation — recorded, not
      cancelled, and either oversized or still owing the post-agent owner read — takes neither branch: the tick
      returns leaving it exactly where it is, because the legacy route would publish a committed candidate measured
-     past the ceiling as though a `single` verdict had been recorded for it. The owed
+     past the ceiling as though a human had authorized publishing it unsplit. The owed
      read is the half a size-keyed gate misses: a revision that came back UNDER the ceiling is no longer oversized,
      and nobody has established that the issue it belongs to is still open. The same issue relabelled by hand never
      reaches this handler — or any other — at all: the dispatcher puts the label back first. See
@@ -716,15 +716,16 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
     comes back, which stops the remeasure that would write a fresh candidate over a cycle a close already ended.
     The poisoned-session retry inside the shared resume is guarded with them, since that is a *second* agent and an
     issue somebody closed is owed neither;
-  - **the `single` publication** (`late_settlement`, and `late_handback` behind it), asked between *each* of its own
-    steps — the reconciliations, the exemption write (which carries the identity of the accepted contribution beside
-    it, since the retirement below takes the frozen pair it was read over off the record), the handoff label, and the
-    accepted notice — because these are
-    the barriers protecting the *record* rather than an effect: the last write drops the generation entirely, and
-    both the sweep and a receipt adopted from the thread read that generation to decide there is anything to end.
-    Past that write a refusal is too late, so the answer there is a **reinstatement**: the generation is still in
-    the call's own memory, and it is written back and cancelled from there. What was published stays published —
-    the exemption, the notice, and the handoff label are none of them this owner's to take back;
+  - **an authorized settlement's publication** (`late_settlement`, and `late_handback` behind it) — the road a human's
+    decision to publish an oversized candidate unsplit licenses, since an adjudicator's own `single` parks and
+    publishes nothing — asked between *each* of its own steps — the reconciliations, the exemption write (which
+    carries the identity of the accepted contribution beside it, since the retirement below takes the frozen pair it
+    was read over off the record), the handoff label, and the accepted notice — because these are the barriers
+    protecting the *record* rather than an effect: the last write drops the generation entirely, and both the sweep
+    and a receipt adopted from the thread read that generation to decide there is anything to end. Past that write a
+    refusal is too late, so the answer there is a **reinstatement**: the generation is still in the call's own memory,
+    and it is written back and cancelled from there. What was published stays published — the exemption, the notice,
+    and the handoff label are none of them this owner's to take back;
   - **the reclamation itself** (`late_cleanup.py`), between every obligation it settles, between every two of the
     receipts a reclaimed ref owes its children — each is a comment on somebody *else's* issue, so a close observed
     after the first is one the second may not be written over — between the fresh consumer
@@ -792,28 +793,28 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   read can be the thing that fails — so a pass that raises anywhere latches the reading again. A task that never
   runs at all — a scheduler shutdown, or a process that dies between the submit and the worker taking it — leaves the
   latch standing, which is the point: the next tick routes the issue to the sweep on the strength of it.
-- **The cycle a retirement drops is recorded outside the group that write clears.** The window above is memory and
-  the barrier behind the write is this process's, so a process that dies between them leaves a receipt naming a
-  cycle and a record that no longer names one — and the guard below returns on a record with no cycle, so nothing
-  would ever look at that receipt. `late_retired_cycle_id` is the one fact about the dropped generation that
-  outlives the drop (like `late_exempt_sha`, deliberately outside `LATE_STATE_KEYS`): a record carrying it is asked
-  once per owner per process whether the thread has that cycle's close receipt, and one that does gets the cycle put
-  back — cancelled, with the ledgers the retirement carried across — so the ending has something to run from. The
-  correlation ends where its window does, and only there: any generation written with an identity supersedes it (the
-  adoption's own mark included, which is what consumes it, and an operator's authorized restart with it). Both
-  retirements that drop a cycle record one — the `single` publication's and the umbrella terminal's — because what
-  the correlation is for is the process that dies before its own barrier, and that barrier belongs to whichever
-  process made the write. A terminal retiring cycle N names N and nothing else, so a receipt for any earlier cycle
-  on the same thread matches nothing an adoption would read.
-- **A retirement in flight is a record that answers for a cycle it no longer names.** A published `single` drops its
-  generation and then asks the latch, and between those two the record carries no cycle identity at all — which is
-  the one thing every reader of a close consults. A poll reading it there would answer "nothing to end", drop the
-  observation, and leave the barrier behind the write asking a latch nobody is holding any more. So the worker holds
-  `observations.retiring_cycle` across its own write and that barrier: inside the window the record's silence proves
-  nothing, the reading is kept, and the receipt the poll leaves on the thread is scoped to the cycle the window names
-  — which is the only place that cycle can still be read, and what makes the durable half survive the retirement at
-  all. Outside the window the same reading IS dropped, and correctly: the publication completed, and the ordinary
-  terminal arc the issue's label names owns the closed issue from there.
+- **The cycle a retirement drops is recorded outside the group that write clears.** The window above is memory and the
+  barrier behind the write is this process's, so a process that dies between them leaves a receipt naming a cycle and
+  a record that no longer names one — and the guard below returns on a record with no cycle, so nothing would ever
+  look at that receipt. `late_retired_cycle_id` is the one fact about the dropped generation that outlives the drop
+  (like `late_exempt_sha`, deliberately outside `LATE_STATE_KEYS`): a record carrying it is asked once per owner per
+  process whether the thread has that cycle's close receipt, and one that does gets the cycle put back — cancelled,
+  with the ledgers the retirement carried across — so the ending has something to run from. The correlation ends where
+  its window does, and only there: any generation written with an identity supersedes it (the adoption's own mark
+  included, which is what consumes it, and an operator's authorized restart with it). Both retirements that drop a
+  cycle record one — an authorized settlement's publication and the umbrella terminal's — because what the correlation
+  is for is the process that dies before its own barrier, and that barrier belongs to whichever process made the
+  write. A terminal retiring cycle N names N and nothing else, so a receipt for any earlier cycle on the same thread
+  matches nothing an adoption would read.
+- **A retirement in flight is a record that answers for a cycle it no longer names.** A settlement that published the
+  accepted candidate drops its generation and then asks the latch, and between those two the record carries no cycle
+  identity at all — which is the one thing every reader of a close consults. A poll reading it there would answer
+  "nothing to end", drop the observation, and leave the barrier behind the write asking a latch nobody is holding any
+  more. So the worker holds `observations.retiring_cycle` across its own write and that barrier: inside the window the
+  record's silence proves nothing, the reading is kept, and the receipt the poll leaves on the thread is scoped to the
+  cycle the window names — which is the only place that cycle can still be read, and what makes the durable half
+  survive the retirement at all. Outside the window the same reading IS dropped, and correctly: the publication
+  completed, and the ordinary terminal arc the issue's label names owns the closed issue from there.
 - **The probe and the receipt are one read.** Whether the reading is still owed and what the receipt should say are
   the same question about the same record, and two reads of a record a worker is writing can disagree — one seeing a
   cycle and keeping the observation while the other sees the retirement behind it and leaves the thread saying
@@ -862,8 +863,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   the uncancelled cycle.
 - **A closed owner whose label names an ordinary terminal is still cancelled.** The cleanup route takes a closed
   owner on either label an adjudication runs under; what reaches the dispatcher's own guard closed is the one window
-  no label covers — a `single` verdict hands its issue to `workflow:implementing` a moment before it retires the
-  cycle. Nothing else would end that cycle: the terminal arc that label names drains a merged pull request or a
+  no label covers — an authorized settlement hands its issue to `workflow:implementing` a moment before it retires
+  the cycle. Nothing else would end that cycle: the terminal arc that label names drains a merged pull request or a
   human close and writes the late record off nowhere, and the relabel guard beside it merely puts `decomposing`
   back, which a reopen before the next tick takes away again. So the guard marks it from the reading it already has
   — the closed issue it was handed and the record it already read — and the ending runs from the mark.
@@ -1227,7 +1228,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        `workflow:decomposing` with nothing pushed and no pull request opened; at or below it publishes as below and
        the generation is dropped, leaving `late_retired_cycle_id` so the next candidate cannot answer to the same
        cycle number. Three commits skip the measurement because this workflow already decided about them, each
-       named exactly and only by its own record: the one an adjudication accepted (`late_exempt_sha`), the one the
+       named exactly and only by its own record: the one an authorized settlement accepted (`late_exempt_sha`,
+       which an adjudicator's own `single` never writes -- that parks for the decision), the one the
        gate approved and has still to push (`late_approved_sha`), and the one this stage already pushed
        (`implementing_published_sha`). So does every candidate while `DECOMPOSE=off` — except
        one this issue has a recorded generation for *that same commit*, one it owes a push for, and
@@ -1444,19 +1446,19 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   8. **A pass whose commit the pull request already carries** (`_finished_settled_docs`), asked between the reading
      above and the run below. A `docs_settled_sha` receipt is left by any tick that published and did not finish. The
      size gate in step 12 **held** an oversized docs commit off the pull request and handed the issue to the late
-     coordinator, and a settled `single` verdict publishes that commit from there and hands the label back here with
-     only the handoff owed. Or the gate **allowed** the push, it landed, and the tick died before this stage could
-     record it — the receipt rides the gate's own write either way, which is ahead of everything this stage does with
-     a landed push, and it is the write RECORDING the pass that drops it, so a receipt read here is one no handoff
-     has been made for. So the receipt is read back, and where the branch is in sync AND the checkout is standing on
-     that exact commit this tick stamps `docs_checked_sha` / `docs_verdict="updated"`, announces the handoff, and
-     advances to `in_review`, with no agent run and no push.
+     coordinator, where an adjudicator's `single` parks for a human's decision and an authorized settlement publishes
+     that commit from there and hands the label back here with only the handoff owed. Or the gate **allowed** the
+     push, it landed, and the tick died before this stage could record it — the receipt rides the gate's own write
+     either way, which is ahead of everything this stage does with a landed push, and it is the write RECORDING the
+     pass that drops it, so a receipt read here is one no handoff has been made for. So the receipt is read back, and
+     where the branch is in sync AND the checkout is standing on that exact commit this tick stamps `docs_checked_sha`
+     / `docs_verdict="updated"`, announces the handoff, and advances to `in_review`, with no agent run and no push.
      Without that receipt the tick would read a branch in sync with its remote as an issue no docs pass has run for
-     and spawn a second agent over work that is already published. Ahead of the remote the receipt stands and
-     the `ahead > 0` road republishes it through the gate, which is the one road that measures it again; a receipt
-     that is not a whole object id, or a head this host cannot peel, likewise leaves it for a tick that can prove it —
-     in sync is not the same claim as CARRYING it, since a replacement host rebuilt from a pull request that has moved
-     on reads level with its remote too.
+     and spawn a second agent over work that is already published. Ahead of the remote the receipt stands and the
+     `ahead > 0` road republishes it through the gate, which is the one road that measures it again; a receipt that is
+     not a whole object id, or a head this host cannot peel, likewise leaves it for a tick that can prove it — in sync
+     is not the same claim as CARRYING it, since a replacement host rebuilt from a pull request that has moved on
+     reads level with its remote too.
   9. Whichever shape runs below, the `docs_verdict` an EARLIER pass left is dropped as this one begins. Every shape
      re-anchors `docs_checked_sha` to the head it is about — the resumed dev that adds nothing to a commit already
      waiting anchors on that very head — so a stale verdict beside it would say a pass has FINISHED for the head this
@@ -1575,30 +1577,28 @@ publishes from the branch, so restoring the pre-squash head would leave the reco
 longer has — and the approval handoff stops without parking, since the gate owns the issue from there.
 
 One squash is not counted at all, and it is the one the exemption would otherwise punish. Where the head being
-rewritten is the exact commit an adjudication accepted, the squash hands the gate its own before-state — the head
-it replaced, the merge base both sides are read over, and the publication it was entered on — and `late_transfer`
+rewritten is the exact commit an authorized settlement accepted, the squash hands the gate its own before-state — the
+head it replaced, the merge base both sides are read over, and the publication it was entered on — and `late_transfer`
 may carry the exemption onto the object it produced. Only over the whole of the evidence: a semantic record whose
-exempt commit is the one being rewritten and which proves itself when re-fingerprinted over its own recorded pair,
-no authorization this build cannot read already standing for that exemption, a publication this call itself froze
-and the issue still records, a provably clean checkout on the squash, an issue re-read open, unpaused and still on the
-stage the rewrite was entered from, and a rewritten
-contribution that fingerprints to the same digest. The PERMISSION is durable before the push, in ONE write that
-also records the debt that push is owed — split in two, a crash between them leaves a one-commit branch the next
-squash reports success on without pushing. The exemption does not move there: that rotation belongs to the receipt
-of the landed push, which `late_rotation` stages into the push tail's own settlement, so a verdict is never left on
-a commit no remote carries — and only where the permit itself proved out on that tick, since a refusal sends the
-rewrite to the ordinary gate, which publishes it whenever the count is under the ceiling. What that receipt leaves
-on both observability streams is one bounded `late_transfer`
-record naming both pairs, the pull request, the rewrite kind, and which reading proved the publication — the leased
-force-push that moved it, or the leased no-op a recovery finds it already standing on.
-A digest the standing permission already recorded is held to the reading the permit just took, since a grant that
-carried on would write its own answer over evidence nobody checked. Refused, nothing changes and the squash is
-measured exactly as above. And the permission is droppable in exactly one window — a force-push the remote refuses
-resets the branch back onto the commit the exemption never left, so the rollback takes the permission back and
-nothing else, while past the receipt the pull request carries the rewritten commit and there is nothing to take
-back. The squash is not the only rewrite decided on those terms: the per-tick base refresh publishes a clean rebase
-of the same branch once this stage has handed the issue on, and it hands the same gate the same evidence
-([`labels-and-state.md#base-refresh`](labels-and-state.md#base-refresh)).
+exempt commit is the one being rewritten and which proves itself when re-fingerprinted over its own recorded pair, no
+authorization this build cannot read already standing for that exemption, a publication this call itself froze and the
+issue still records, a provably clean checkout on the squash, an issue re-read open, unpaused and still on the stage
+the rewrite was entered from, and a rewritten contribution that fingerprints to the same digest. The PERMISSION is
+durable before the push, in ONE write that also records the debt that push is owed — split in two, a crash between
+them leaves a one-commit branch the next squash reports success on without pushing. The exemption does not move there:
+that rotation belongs to the receipt of the landed push, which `late_rotation` stages into the push tail's own
+settlement, so a verdict is never left on a commit no remote carries — and only where the permit itself proved out on
+that tick, since a refusal sends the rewrite to the ordinary gate, which publishes it whenever the count is under the
+ceiling. What that receipt leaves on both observability streams is one bounded `late_transfer` record naming both
+pairs, the pull request, the rewrite kind, and which reading proved the publication — the leased force-push that moved
+it, or the leased no-op a recovery finds it already standing on. A digest the standing permission already recorded is
+held to the reading the permit just took, since a grant that carried on would write its own answer over evidence
+nobody checked. Refused, nothing changes and the squash is measured exactly as above. And the permission is droppable
+in exactly one window — a force-push the remote refuses resets the branch back onto the commit the exemption never
+left, so the rollback takes the permission back and nothing else, while past the receipt the pull request carries the
+rewritten commit and there is nothing to take back. The squash is not the only rewrite decided on those terms: the
+per-tick base refresh publishes a clean rebase of the same branch once this stage has handed the issue on, and it
+hands the same gate the same evidence ([`labels-and-state.md#base-refresh`](labels-and-state.md#base-refresh)).
 
 The conflict stage's clean rebase is the third rewrite an exemption may ride, and it reaches it from the other end.
 That refresh does not drive `workflow:resolving_conflict`, so the replay a branch which has stopped merging cleanly
@@ -1899,12 +1899,12 @@ the two makes the switch measure exactly the fresh work it exists to leave alone
 head it froze goes with it — while the push that approval licenses has not run yet. So the head is carried on the
 approval as `late_approved_lease`, and it is what every later push for that commit is pinned to: the retry after a
 failed push, which skips the measurement because the commit is already approved, and the ordinary implementing
-publication a settled `single` verdict hands the candidate back to. Without it both would read the pull request's
+publication an authorized settlement hands the candidate back to. Without it both would read the pull request's
 CURRENT head and adopt it as the lease, force-overwriting whoever pushed in between with work measured against the
 head it used to be on. It is dropped by the same write that drops the approval — the push that lands, an approval
 superseded, or a hold that routes the issue to adjudication instead.
 
-**A settled `single` verdict publishes, then continues at the stage it came from.** The checkout is re-proved first
+**An authorized settlement publishes, then continues at the stage it came from.** The checkout is re-proved first
 — provably clean, and standing on the accepted commit — because an adjudication is a human reading a diff over hours
 with the worktree writable the whole time, and a verdict settled from a recorded answer has no run behind it for the
 read-only proof to run against. Naming the accepted id would put the right commit on the remote either way, and that
@@ -1950,7 +1950,7 @@ receipt is read with its head for the same reason it is at the gate: it is never
 published in an earlier round is one it goes on naming, and a pull request rewound onto that commit would otherwise
 read as this settlement's push having landed. The head it replaced has to be the head this verdict was measured over.
 
-**A settled `single` verdict proves its publication before it hands the candidate back.** A pre-publication verdict
+**An authorized settlement proves its publication before it hands the candidate back.** A pre-publication verdict
 searches for the pull request its commit is on and drops a recorded pointer that turns out settled, because losing it
 costs nothing: the publication opens the pull request the work needs. A post-publication verdict knows which pull
 request the reading was about, so it checks rather than searches — the pull request must still be open and still be
@@ -2053,14 +2053,14 @@ publication context at all.
   leaves the member alone, since reaching the base is not the last step a reading can stop at; the verdict a reading
   that HAPPENED settles clears both, and retires the park with them.
 - **A hold closes the caller's own bookkeeping.** The gate holding a candidate is not a park — the commit is on the
-  branch and a `single` verdict publishes it from there — so what the caller's tick was in the middle of is finished
-  even though its tail never ran, and no later tick of that stage can do it: a settled adjudication publishes before
-  handing the issue back, so the resumed stage finds nothing left to push. Each caller therefore says up front what
-  its hold owes, as pinned fields written inside the routed hold's own durable write, *ahead* of the relabel; applied
-  afterwards they would be lost to any crash in exactly the window the relabel opens. The fix loop spends the reviewer
-  round the rejected head superseded. The docs pass leaves `docs_settled_sha`, the head it produced, because the pass
-  itself is over and only the `in_review` handoff is still owed. A conflict resolution leaves
-  `conflict_settled_outcome` / `conflict_settled_sha`, because the resumed tick reads a published resolution as a
+  branch and an authorized settlement publishes it from there — so what the caller's tick was in the middle of is
+  finished even though its tail never ran, and no later tick of that stage can do it: a settled adjudication
+  publishes before handing the issue back, so the resumed stage finds nothing left to push. Each caller therefore
+  says up front what its hold owes, as pinned fields written inside the routed hold's own durable write, *ahead* of
+  the relabel; applied afterwards they would be lost to any crash in exactly the window the relabel opens. The fix
+  loop spends the reviewer round the rejected head superseded. The docs pass leaves `docs_settled_sha`, the head it
+  produced, because the pass itself is over and only the `in_review` handoff is still owed. A conflict resolution
+  leaves `conflict_settled_outcome` / `conflict_settled_sha`, because the resumed tick reads a published resolution as a
   branch already standing on its base — the no-op flip, which emits `base_up_to_date`, resolves nothing, and stamps no
   `last_conflict_resolved_at`. Each receipt is read back only when the branch is in sync with its remote AND standing
   on the commit the receipt names, since a verdict that parked or a label a human moved leaves the same receipt over
@@ -2751,7 +2751,7 @@ measurement exists to prevent.
   the hand back to `workflow:validating` nor the rebase behind a held recovered push is this tick's to make. What the
   round would have been is written inside the gate's own durable write, ahead of the relabel, as
   `conflict_settled_outcome` / `conflict_settled_sha` — `base_rebased_clean`, `agent_resolved`, `recovered_push`, or
-  `drift_resolved`, with the head it produced. The resumed tick cannot re-derive either: a settled `single` verdict
+  `drift_resolved`, with the head it produced. The resumed tick cannot re-derive either: an authorized settlement
   publishes the accepted commit, so the branch the label comes back to already carries its base, which is the no-op
   flip's own reading. A recovered push that leaves the branch still *behind* base records nothing — it is the preamble
   to a rebase that owns the round and leaves its own receipt.
@@ -2809,7 +2809,8 @@ measurement exists to prevent.
   the remote it declines too, and there the recovered-commit push carries the commit back through the gate.
 - **`single` and `split` settle through the shared protocols, and they do not settle alike.** Nothing about the
   adjudication is this stage's: the hold, the verdict, and what each earns belong to `workflow:decomposing`. A
-  **`single`** publishes the accepted commit and settles at the stage the record names, which puts
+  **`single`** parks there for a human's decision, and an authorized settlement publishes the accepted
+  commit and settles at the stage the record names, which puts
   `workflow:resolving_conflict` back — and `_finished_settled_round` is the whole of what this stage then does with
   the answer. Asked before the rebase, over a branch in sync with its remote AND standing on the head the receipt
   names, it runs the tail its own tick never reached and drops the receipt. Ahead of the remote the receipt stands

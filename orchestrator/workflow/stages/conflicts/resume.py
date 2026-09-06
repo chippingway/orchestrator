@@ -27,7 +27,7 @@ conflict and the reply behind it through the shared conflict disposition, the
 body edit through the shared fix publication. All three hand the gate the
 round they would have counted, because a held candidate ends the tick on
 `workflow:decomposing` and the tail that counts one never runs -- and no later
-tick of this stage counts it either, since a settled verdict publishes the
+tick of this stage counts it either, since an authorized settlement publishes the
 accepted commit and the resumed tick finds a branch already standing on its
 base.
 """

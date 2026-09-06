@@ -58,7 +58,7 @@ class _Spends:
     the issue is on `workflow:decomposing`, and the caller returns without
     pushing, relabelling, or counting anything. But the round IS spent -- the
     head a reviewer rejected is superseded either way -- and no later tick of
-    that stage can count it, because a settled `single` verdict publishes the
+    that stage can count it, because an authorized settlement publishes the
     accepted commit itself and the resumed stage finds nothing left to push.
 
     So the caller says up front what its hold owes, and the hold writes it in

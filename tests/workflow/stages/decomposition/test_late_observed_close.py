@@ -38,12 +38,14 @@ from tests.workflow.stages.decomposition.late_run_support import (
     LateCase,
     agent_reply,
 )
+from tests.workflow.stages.decomposition.late_settlement_support import (
+    settle_single,
+)
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     CYCLE_ID,
     KEYS,
     LATE_ISSUE_NUMBER,
-    SINGLE_REPLY,
     late_generation,
     seed_late_issue,
 )
@@ -167,10 +169,20 @@ class LatchedInsideTheSpawnRecordTest(
         )
 
 
-class LatchedInsideSettlementTest(
-    ObservedCloseCase, LateCase, unittest.TestCase,
-):
-    """A `single` verdict may not erase the cycle a close just ended.
+class _SettledSingleCase(ObservedCloseCase, LateCase):
+    """One owner whose candidate is settled through to the retirement."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._fresh_process()
+
+    def _settled(self):
+        """Take the settlement road the decision on this candidate licenses."""
+        return settle_single(self.github, self.issue)
+
+
+class LatchedInsideSettlementTest(_SettledSingleCase, unittest.TestCase):
+    """A settlement may not erase the cycle a close just ended.
 
     Publishing an accepted candidate drops the generation entirely -- the
     identity, the measurement, the verdict, all of it -- and the sweep that
@@ -186,7 +198,7 @@ class LatchedInsideSettlementTest(
 
     def test_the_cycle_is_marked_rather_than_dropped(self) -> None:
         with self.assertLogs(_WORKFLOW_LOG), self._closing():
-            outcome, _ = self._adjudicate(agent_reply(SINGLE_REPLY))
+            outcome = self._settled()
 
         pinned = self._pinned()
         self.assertEqual(outcome.disposition, _LateDisposition.CANCELLED)
@@ -197,7 +209,7 @@ class LatchedInsideSettlementTest(
         # `implementing` is what makes another stage read the candidate as
         # publishable, and an issue somebody closed is not one to publish.
         with self.assertLogs(_WORKFLOW_LOG), self._closing():
-            self._adjudicate(agent_reply(SINGLE_REPLY))
+            self._settled()
 
         self.assertEqual(self.github.label_history, [])
 
@@ -207,7 +219,7 @@ class LatchedInsideSettlementTest(
         # label. A close that got through either would erase the generation a
         # receipt adopted from the thread has to be adopted AGAINST.
         with self.assertLogs(_WORKFLOW_LOG), self._closing_on_exemption():
-            outcome, _ = self._adjudicate(agent_reply(SINGLE_REPLY))
+            outcome = self._settled()
 
         pinned = self._pinned()
         self.assertEqual(outcome.disposition, _LateDisposition.CANCELLED)
@@ -218,9 +230,9 @@ class LatchedInsideSettlementTest(
     def _closing(self):
         """Latch the close inside the pull-request search this run makes.
 
-        Past the coordinator's own owner read on purpose: what this pins is
-        the barrier the SETTLEMENT takes, and a latch already standing when
-        the run finished would be caught by that earlier read instead.
+        Inside the settlement rather than ahead of it, because what this pins
+        is the barrier the SETTLEMENT takes: a latch already standing when the
+        adjudication finished is caught by the owner read in front of it.
         """
         return latches_on_call(
             self.github, REPO_SLUG, LATE_ISSUE_NUMBER, PR_SEARCH,
@@ -233,10 +245,8 @@ class LatchedInsideSettlementTest(
         )
 
 
-class LatchedInsideThePublicationTest(
-    ObservedCloseCase, LateCase, unittest.TestCase,
-):
-    """The last two windows a `single` has, and the one with no refusal left.
+class LatchedInsideThePublicationTest(_SettledSingleCase, unittest.TestCase):
+    """The last two windows a settlement has, and the one with no refusal left.
 
     The publication says what was decided and then retires the cycle that
     decided it. Both are requests; only the first can still be refused. Past
@@ -245,13 +255,9 @@ class LatchedInsideThePublicationTest(
     there is a reinstatement, from the generation still in this call's memory.
     """
 
-    def setUp(self) -> None:
-        super().setUp()
-        self._fresh_process()
-
     def test_a_close_at_the_notice_stops_it(self) -> None:
         with self.assertLogs(_WORKFLOW_LOG), self._closing(ISSUE_COMMENT):
-            outcome, _ = self._adjudicate(agent_reply(SINGLE_REPLY))
+            outcome = self._settled()
 
         pinned = self._pinned()
         self.assertEqual(outcome.disposition, _LateDisposition.CANCELLED)
@@ -260,7 +266,7 @@ class LatchedInsideThePublicationTest(
 
     def test_a_close_at_the_retirement_reinstates_it(self) -> None:
         with self.assertLogs(_WORKFLOW_LOG), self._retiring():
-            outcome, _ = self._adjudicate(agent_reply(SINGLE_REPLY))
+            outcome = self._settled()
 
         pinned = self._pinned()
         self.assertEqual(outcome.disposition, _LateDisposition.CANCELLED)
@@ -273,7 +279,7 @@ class LatchedInsideThePublicationTest(
         # retirement write has landed, the cycle is still advertised, and a
         # poll can still latch a close and receipt it against that cycle.
         with self.assertLogs(_WORKFLOW_LOG), self._retiring(after=True):
-            outcome, _ = self._adjudicate(agent_reply(SINGLE_REPLY))
+            outcome = self._settled()
 
         pinned = self._pinned()
         self.assertEqual(outcome.disposition, _LateDisposition.CANCELLED)
@@ -284,7 +290,7 @@ class LatchedInsideThePublicationTest(
         # The baseline every window here is measured against: an accepted
         # candidate publishes and its cycle is dropped, which is the whole
         # point of a `single`.
-        outcome, _ = self._adjudicate(agent_reply(SINGLE_REPLY))
+        outcome = self._settled()
 
         pinned = self._pinned()
         self.assertEqual(outcome.disposition, _LateDisposition.SETTLED)

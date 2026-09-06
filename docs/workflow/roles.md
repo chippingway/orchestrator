@@ -272,7 +272,7 @@ checkout has to be *on* that commit too, because no developer ran on that path: 
 developer's new work only where a developer was resumed, and everywhere else it is a checkout somebody moved.
 
 And one step *after* the verdict, where the same window opens with the record already gone. Every approval — the
-retirement a small candidate earns, and the exemption a `single` verdict is settled by — drops the record that named
+retirement a small candidate earns, and the exemption an authorized settlement writes — drops the record that named
 the commit and licenses a push that has not run yet, so `late_approved_sha` goes down in that same write and the
 commit it names is proved before anything spawns. What is proved is the **head**, not the object: holding the object
 says only that the store was never pruned, and the store outlives the branch — a worktree rebuilt or reset on the very
@@ -346,8 +346,9 @@ What the number earns:
   goes back from the call's own memory and is cancelled from there, with nothing published to take back.
 - **Strictly past it** — nothing is pushed, no pull request is opened, and the label moves to `workflow:decomposing`
   with the measurement durable ahead of it. The commit stays exactly where the developer left it, which is where the
-  adjudicator reads it and where a `single` verdict publishes it from. A tick that dies between the write and the
-  label leaves a live generation under `workflow:implementing`, which the dispatcher's relabel guard puts back.
+  adjudicator reads it and where a settlement that publishes it unsplit would publish it from. A tick that dies
+  between the write and the label leaves a live generation under `workflow:implementing`, which the dispatcher's
+  relabel guard puts back.
 
 The same three answers stand one seam later, where a pull request already carries the work. Every push onto one is
 measured first — the reviewer's requested changes, a human's reply, a body edit, a stranded commit a bounce
@@ -376,24 +377,25 @@ is the same contract the implementing recovery keeps, asked one seam later. A ch
 all stops the tick rather than letting the stage carry on: the commit is on a machine this one is not, so the pair
 keeps the branch and the record exactly as they are and a human is asked once.
 
-A verdict taken past publication publishes the candidate itself and then continues at the stage the record names,
-rather than sending every one of them back to `implementing`: that stage is the only owner of the completion the
-candidate still owes, and the settlement is the last tick holding the head the reading was taken over. It proves its
-pull request before either — and a pull request already standing on the accepted candidate is that proof answering
-"this settlement's own push landed and the tick died before the label", not "somebody moved it", but only where a
-durable record vouches for the push: the approval written in the write ahead of it, or the receipt the push itself
-leaves read with the head that receipt replaced. On a fresh pass neither is written and nothing of this workflow's
-has reached the remote, so that same head is something ELSE having pushed — an agent that published its own commit
-is the plain case — and it refuses with every other moved head. The receipt needs its head because it is never
-cleared: an accepted candidate published in an earlier round is one it goes on naming, and a pull request rewound
-onto that commit would otherwise agree with every local fact there is. Vouched for, the retry finishes
-what it never reached instead of refusing the publication this verdict made. A pre-publication one
+None of what follows is what an adjudicator's `single` earns — that parks — so read it as the road a human's decision
+to publish the candidate unsplit would license. A settlement of a candidate taken past publication publishes it itself
+and then continues at the stage the record names, rather than sending every one of them back to `implementing`: that
+stage is the only owner of the completion the candidate still owes, and the settlement is the last tick holding the
+head the reading was taken over. It proves its pull request before either — and a pull request already standing on the
+accepted candidate is that proof answering "this settlement's own push landed and the tick died before the label", not
+"somebody moved it", but only where a durable record vouches for the push: the approval written in the write ahead of
+it, or the receipt the push itself leaves read with the head that receipt replaced. On a fresh pass neither is written
+and nothing of this workflow's has reached the remote, so that same head is something ELSE having pushed — an agent
+that published its own commit is the plain case — and it refuses with every other moved head. The receipt needs its
+head because it is never cleared: an accepted candidate published in an earlier round is one it goes on naming, and a
+pull request rewound onto that commit would otherwise agree with every local fact there is. Vouched for, the retry
+finishes what it never reached instead of refusing the publication this settlement made. A pre-publication one
 searches for the pull request its commit is on and drops a recorded pointer that turns out settled, because losing it
 costs nothing — the publication opens the pull request the work needs. This one already knows which pull request the
-reading was about, so it checks instead: still open, and still standing where the reading found it. A check that
-fails parks. Dropping the number there would push onto a branch whose pull request a human settled and open a second
-one for a change adjudicated against the first, and publishing over a head that moved would publish on a reading the
-branch has already overtaken.
+reading was about, so it checks instead: still open, and still standing where the reading found it. A check that fails
+parks. Dropping the number there would push onto a branch whose pull request a human settled and open a second one for
+a change adjudicated against the first, and publishing over a head that moved would publish on a reading the branch
+has already overtaken.
 
 - **Answered small after a revision** — the one record that wears `workflow:decomposing` with nothing left to
   decompose. A developer revision guidance bought comes back re-frozen and re-measured, and a candidate now at or
@@ -444,11 +446,12 @@ branch has already overtaken.
 
 Five candidates skip the measurement and none is a bypass. Three are commits this workflow has already *decided*
 about, and each names one commit and only it, so work committed on top of any of them is measured as the fresh
-candidate it is. `late_exempt_sha` names the commit an adjudication accepted; between the verdict and the publication
-it also holds the branch out of the base refresh — but on two conditions, since the record is never cleared and
-freezing on its presence would take every issue that ever earned a verdict out of the refresh for good. The head has
-to still be that commit, and the stage that has to act on it has to still have the issue: past the handoff the branch
-is review's, and keeping a pushed branch in step with base is the PR-aware sync's job.
+candidate it is. `late_exempt_sha` names the commit an authorized settlement accepted — never an adjudicator's own
+`single`, which parks for that decision rather than making it; between the settlement and the publication it also
+holds the branch out of the base refresh — but on two conditions, since the record is never cleared and freezing on
+its presence would take every issue that ever earned a verdict out of the refresh for good. The head has to still be
+that commit, and the stage that has to act on it has to still have the issue: past the handoff the branch is review's,
+and keeping a pushed branch in step with base is the PR-aware sync's job.
 
 `late_approved_sha` names the commit the gate itself approved and has still to push, which a crash
 in that window brings back here with its generation already retired: re-deciding it there would measure a settled
@@ -462,41 +465,40 @@ about what is already in it or already through it. Bypassing an approved commit 
 publication is handed a candidate the gate never looked at while the record beside it names a different commit as the
 one still owed a push.
 
-The fifth is the only one no record names in advance, and the only one that has to *earn* its way past the reading:
-a workflow rewrite of the exact commit an adjudication accepted. Three of them replace that commit with an object
-carrying the identical contribution: a squash on approval, on the last push before the merge button; the clean base
-rebase the per-tick refresh force-pushes once the stage that had to act on the exempt commit has handed the issue
+The fifth is the only one no record names in advance, and the only one that has to *earn* its way past the reading: a
+workflow rewrite of the exact commit an authorized settlement accepted. Three of them replace that commit with an
+object carrying the identical contribution: a squash on approval, on the last push before the merge button; the clean
+base rebase the per-tick refresh force-pushes once the stage that had to act on the exempt commit has handed the issue
 on; and the replay `workflow:resolving_conflict` runs when a branch has stopped merging cleanly, which is the one
-rebase that refresh never drives because it does not own that label. The one-commit rule that makes the exemption
-safe is exactly what stops it answering for any of the three — so the same change would be measured past the same
-ceiling with a pull request already open over it. Only the owner that RAN a rewrite may describe one: a resolution
-an agent wrote over conflicted files, a developer's fix, a reviewer-fix round, the documentation pass, and whatever
-an earlier tick left for the conflict stage's ahead-only recovery to find are all commits made by somebody other
-than the caller pushing them, and no reading off the branch tells those from a replay. So the conflict rebase writes
-down what it is about to replace -- that head, its fork point, and the pull request it is being made against,
-recorded before the replay, and the commit it produced, stamped on before the size gate is entered -- and the
-recovery is answered from that record or measured, never from a probe. `late_transfer.py` is what it is earned on: a
-whole semantic record whose exempt commit is the one the rewrite came from, evidence naming a bounded rewrite kind
-from a stage that really makes that kind — the two are one claim, and a `conflict_rebase` offered from `validating`
-types in both halves while naming a rewrite that stage does not make — and both pre- and post-rewrite pairs, no
-authorization this build cannot read already standing for that exemption, the publication this call itself froze and
-the one the issue still records, a provably clean checkout standing on the rewritten commit, a leased head that
-peels to a commit this host holds — the one end nothing else here reads as an object, since the lease may name a
-different commit from the accepted one — an issue re-read and found *unchanged* — open, carrying no `paused` or
-`backlog`, and still on the stage the rewrite recorded, since the entry read that stage off the issue the tick
-opened with and a relabel during the rewrite is invisible to every other reading — and canonical fingerprints that
-agree. The accepted one is re-taken over the pair the **record** names rather than the pair the caller claims — so
-the record proves itself, base included, instead of having its digest read back against an end nothing checked — and
-the caller's own claim about what it replaced is held to that same digest, as is the digest any permission already
-standing there recorded: carried forward unchecked, a grant would write its own reading over it. Granted, one
-durable write records the **permission** and the debt the push is still owed, before anything is pushed — the
-exemption itself does not move there. That rotation belongs to `late_rotation.py`, on the write that receipts the
-landed push, where the exemption, the identity it carries, and the account of what the remote holds go down together
-or not at all, so a verdict is never left on a commit no remote carries; a force-push the remote refuses puts the
-branch back onto the head the rewrite found it on — the accepted commit where a squash collapsed it, the leased
-anchor where a rebase read it for itself — and what the rollback owes is dropping the permission it will never
-spend, since the exemption never moved. Refused, nothing moves and the ordinary cumulative gate measures it like any
-other candidate.
+rebase that refresh never drives because it does not own that label. The one-commit rule that makes the exemption safe
+is exactly what stops it answering for any of the three — so the same change would be measured past the same ceiling
+with a pull request already open over it. Only the owner that RAN a rewrite may describe one: a resolution an agent
+wrote over conflicted files, a developer's fix, a reviewer-fix round, the documentation pass, and whatever an earlier
+tick left for the conflict stage's ahead-only recovery to find are all commits made by somebody other than the caller
+pushing them, and no reading off the branch tells those from a replay. So the conflict rebase writes down what it is
+about to replace -- that head, its fork point, and the pull request it is being made against, recorded before the
+replay, and the commit it produced, stamped on before the size gate is entered -- and the recovery is answered from
+that record or measured, never from a probe. `late_transfer.py` is what it is earned on: a whole semantic record whose
+exempt commit is the one the rewrite came from, evidence naming a bounded rewrite kind from a stage that really makes
+that kind — the two are one claim, and a `conflict_rebase` offered from `validating` types in both halves while naming
+a rewrite that stage does not make — and both pre- and post-rewrite pairs, no authorization this build cannot read
+already standing for that exemption, the publication this call itself froze and the one the issue still records, a
+provably clean checkout standing on the rewritten commit, a leased head that peels to a commit this host holds — the
+one end nothing else here reads as an object, since the lease may name a different commit from the accepted one — an
+issue re-read and found *unchanged* — open, carrying no `paused` or `backlog`, and still on the stage the rewrite
+recorded, since the entry read that stage off the issue the tick opened with and a relabel during the rewrite is
+invisible to every other reading — and canonical fingerprints that agree. The accepted one is re-taken over the pair
+the **record** names rather than the pair the caller claims — so the record proves itself, base included, instead of
+having its digest read back against an end nothing checked — and the caller's own claim about what it replaced is held
+to that same digest, as is the digest any permission already standing there recorded: carried forward unchecked, a
+grant would write its own reading over it. Granted, one durable write records the **permission** and the debt the push
+is still owed, before anything is pushed — the exemption itself does not move there. That rotation belongs to
+`late_rotation.py`, on the write that receipts the landed push, where the exemption, the identity it carries, and the
+account of what the remote holds go down together or not at all, so a verdict is never left on a commit no remote
+carries; a force-push the remote refuses puts the branch back onto the head the rewrite found it on — the accepted
+commit where a squash collapsed it, the leased anchor where a rebase read it for itself — and what the rollback owes
+is dropping the permission it will never spend, since the exemption never moved. Refused, nothing moves and the
+ordinary cumulative gate measures it like any other candidate.
 
 A crash between that grant and the push it licenses leaves the one approval that was never a reading this gate
 took, and it is read as exactly that: an approval standing beside an outstanding permission defers back to the
@@ -583,15 +585,22 @@ is free to decide differently. What "whole" means is per verdict: a `single` car
 split, a `question` carries its category and the sentence it asked, and a `split` carries the ordered child manifest
 that *is* its decision. The explanation is the one of the three a record may lack and still be an answer, since
 results predating the key are on live issues and the reply contract does not refuse an outcome that omitted it.
-Whether it fits is measured on the whole comment the write would produce — the preserved held-PR body and
-every other stage's keys included — because a result small on its own can still be the one that pushes the comment
-past what GitHub accepts, and learning that from the failed write means the agent has already been paid for. An
-outcome past that budget is refused entire rather than shortened, and the issue parks for a human; an incomplete one
-read back later is not an answer at all and the adjudicator runs again. The record goes
-out before the question it announces does, so the narrow crash window between them costs a repeated comment rather
-than a repeated agent run, and the next tick posts the recorded question instead of earning it again. Which keys carry
-that, why a recorded answer names its cycle as well as its generation and commit, and why the pre-spawn write leaves
-the retry counter alone are in [`../state-machine/labels-and-state.md#the-late-run`][late-run].
+Whether it fits is measured on the whole comment the write would produce — the preserved held-PR body and every other
+stage's keys included — because a result small on its own can still be the one that pushes the comment past what
+GitHub accepts, and learning that from the failed write means the agent has already been paid for. The budget is
+**one, and every verdict is held to it**. What a verdict goes on to owe the thread is not taken out of what it may
+record: a `single` earns the park a human's decision is owed on, and the refusal a smaller budget would produce is one
+the next attempt supersedes — so charging it for the sentence it owes would buy another decomposer run against a
+candidate already adjudicated and leave that `single` short of its own park. The obligation that makes the sentence
+retryable is written into the headroom this budget leaves under GitHub's own limit, afterwards, and a fixed figure
+covers it because that sentence names the recorded explanation rather than copying it. An outcome past the budget is
+refused entire rather
+than shortened, and the issue parks for a human; an incomplete one read back later is not an answer at all and the
+adjudicator runs again. The record goes out before the question it announces does, so the narrow crash window between
+them costs a repeated comment rather than a repeated agent run, and the next tick posts the recorded question instead
+of earning it again. Which keys carry that, why a recorded answer names its cycle as well as its generation and
+commit, and why the pre-spawn write leaves the retry counter alone are in
+[`../state-machine/labels-and-state.md#the-late-run`][late-run].
 
 The read-only promise the prompt makes is proved rather than trusted. The late adjudicator runs in the developer's own
 worktree — the frozen candidate is not on any remote yet — and the CLI it runs under can write there whatever the
@@ -767,7 +776,30 @@ what the issue is waiting on. So the sentence is written down beside the flag (`
 the post that discharges it: a park whose sentence is still owed never counts as a repeat, is re-said at the top of
 the next eligible tick — ahead of every gate a parked issue routes past — and, on the guard's own park, rides out on
 whichever answer the owed read gets. A notice too long for the pinned comment is refused whole and loudly, since a
-record that broke the write would take the park it explains down with it.
+record that broke the write would take the park it explains down with it. Which is why a sentence explaining a
+**recorded** outcome names that record rather than copying it: the explanation a `single` gave is already in this
+comment, so a notice repeating it would put the same agent prose there twice and an explanation an outcome could be
+recorded with would be one its own obligation could not be written beside. The obligation holds a marker where the
+explanation goes — sized by this orchestrator's wording rather than by anything an agent wrote — and what reaches
+the thread has it put back in a fenced block at the end of the sentence, identically on the first post and on every
+redelivery, which is what lets the already-posted reconciliation recognize its own comment. Fenced because a thread
+is markdown: an explanation opening an HTML comment would swallow the rest of the sentence, and a human would read as
+far as the quote and be told neither what the agent said nor what to do about it. Only a LINE that is a run of the
+fence character and nothing else can close a block, and a line of backticks cannot close a tilde fence — so the fence
+is built out of whichever character the quote's own lines leave cheap, and an explanation that is itself a long run of
+fences reaches the thread whole at three characters an end. The quote carrying a long line of EACH is blocked off in
+**pieces**: a fence is two characters per character of width and a further block is a fixed handful, so the long lines
+land in blocks of their own and every HTML-comment opener between them stays inside a block, where it is shown rather
+than obeyed. How wide to let a fence grow before paying for a block instead is answered by trying every width from the
+shortest up to the widest line, doubling, and taking the smallest rendering.
+
+Past what any pieces can hold the quote goes in unblocked, with its openers escaped a backslash apiece — unblocked is
+exactly where an opener is obeyed again, and GitHub renders nothing from it onwards. Past what that holds it is cut
+and said to be cut, which nothing this orchestrator records can reach and which exists because the alternative has no
+recovery: a comment GitHub refuses is rebuilt identically on every poll, so the park would stand with its sentence
+owed and the human told nothing at all. No verdict is refused for how its explanation renders, and no `single` is
+charged for the sentence it owes — that refusal is superseded, so it would buy another decomposer run against a
+candidate already adjudicated and leave the `single` short of its own park.
 
 ## What a verdict the read cleared earns
 
@@ -781,13 +813,37 @@ superseding the pull request its work is on are one transaction; what the guard 
 check for itself, that the outcome was re-checked against an owner read taken after the agent finished. Nothing is
 created here. What that transaction then does is [the section below](#what-a-cleared-split-actually-does).
 
-A **single** is reconciled as an EXEMPTION for the measured commit (`late_settlement.py`, which owns the order the
-steps below run in and writes the exemption itself). The candidate is already committed in the developer's own
-worktree, and the ordinary implementing publication is what pushes it and hands it to review — so what this step
-owes is a durable record that this exact commit has been adjudicated, or the gate would measure the same candidate
-past the same ceiling and adjudicate it again forever. `late_exempt_sha` names the measured commit and only it, which
-is the whole invalidation rule: work committed on top of an accepted candidate is work nobody adjudicated, and it is
-measured as the fresh candidate it is
+A **single** earns a PARK (`late_settlement.py`, `late_single_decision`). It is the adjudicator answering that this
+change stays one change, and that is the one answer this mode may not act on: the ceiling exists so unreviewed bulk
+does not reach a pull request, so an agent proposing to publish past it is the thing being guarded against rather
+than grounds for waiving the guard. Publishing an oversized candidate unsplit is a human's decision, and the issue
+waits for one. Every category lands there, `unsafe_split` included — what decides it is the verdict rather than the
+reason offered for it.
+
+The notice names what a human deciding cannot get anywhere else once the run is over: the frozen candidate, the
+additions counted and the ceiling they were counted against, and the recorded explanation of what stopped a split —
+the stand-in sentence where a result kept none. The explanation is **named** rather than copied — the durable
+obligation holds a marker the delivery replaces with a fenced block at the end of the sentence, so what a human reads
+is the whole of it however long it is and whatever it says, and what the comment has to hold twice is nothing. Nothing
+is taken back, and the only thing written is the park: the durable claim that this issue is waiting on a human, with
+the sentence it still owes the thread beside it. The committed candidate, the live generation, the hold on the pull
+request it stands on, the session, the publication the candidate was measured against, the stage the gate took the
+issue out of, and the recorded verdict all stay exactly where the adjudication put them, and the exemption, the
+publication approval, the push, and the handback are all withheld — so the label stays on the adjudication and no
+other stage reads the candidate as publishable. The park is one no attempt supersedes: a retry cannot decide
+differently without an agent, and no agent runs against a candidate this issue has already adjudicated, so every later
+tick reads the recorded verdict back, finds the park it would take already standing, and says nothing. A tick that
+died between the record and the park, and a notice a refused comment stranded, are both answered by the redelivery
+every standing park's notice gets — once, and by the next tick.
+
+What a decision to publish an oversized candidate unsplit would license is the SETTLEMENT below, which
+`late_settlement.py` owns the order of and writes the exemption itself in. Nothing in this mode makes that decision —
+a verdict is not one — so what follows describes that road rather than one a reply takes. The candidate is already
+committed in the developer's own worktree, and the ordinary implementing publication is what pushes it and hands it to
+review — so what the settlement owes is a durable record that this exact commit has been adjudicated, or the gate
+would measure the same candidate past the same ceiling and adjudicate it again forever. `late_exempt_sha` names the
+measured commit and only it, which is the whole invalidation rule: work committed on top of an accepted candidate is
+work nobody adjudicated, and it is measured as the fresh candidate it is
 ([`../state-machine/labels-and-state.md#late-generation-state`][late-state]).
 
 Beside that commit goes the **identity of what it contributes**: the generation's frozen base, the accepted
@@ -926,7 +982,7 @@ transaction asks again behind the walk, because the walk holds children but does
 **The spawn**, asked last of all, because a worktree probe, a retry-budget write and a hold to reconcile stand
 between a tick's own gates and the one step that puts an agent on somebody's repository. **Both sides of a
 developer revision**, which is the same step under another name, with the poisoned-session retry inside the shared
-resume guarded alongside it. **Each step of the `single` publication**,
+resume guarded alongside it. **Each step of an authorized settlement's publication**,
 which is where the barriers protect the record rather than an effect: the last write drops the generation entirely,
 and both the sweep and a receipt adopted from the thread read that generation to decide there is anything to end —
 so past that write the answer is a *reinstatement* rather than a refusal, from the generation still in the call's
@@ -942,7 +998,7 @@ since everything after those acts — it reclaims a remote, hands the issue `don
 takes the issue off every label the closed-owner sweep queries and closes it. What makes that label safe is the
 write ahead of it: one pinned write that stamps the resolution and **retires the cycle** together, so a close
 arriving past it finds nothing left to cancel. One landing *inside* it is answered behind it, from the generation
-still in the call's own memory — a reinstatement rather than a refusal, exactly as the `single` publication's own
+still in the call's own memory — a reinstatement rather than a refusal, exactly as an authorized settlement's own
 retirement and the size gate's drop of a small candidate both take one: the cycle goes back cancelled, no terminal is
 written, and the owner keeps `workflow:umbrella`, where the ending is reached. Every one of those retirements reads
 that answer off the *window* rather than asking the latch, and the window decides it as it closes, under the lock that

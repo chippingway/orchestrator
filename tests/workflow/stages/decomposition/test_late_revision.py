@@ -350,15 +350,15 @@ class UnparkedGuidanceTest(RevisionCase):
         self.assertEqual(pinned[KEYS.candidate_sha], REVISED_SHA)
 
     def test_a_continue_with_no_park_does_nothing(self) -> None:
-        # The one reply that lands here with nothing to do: no park is waiting
-        # on it and no candidate needs certifying.
+        # The one reply that lands here with nothing to answer: no park was
+        # waiting on it and no candidate needs certifying.
         self._seed(**RECORDED_SINGLE, **DEV_PIN)
         reply(self.issue, BARE_CONTINUE)
 
         reused, resumed = self._revise()
 
-        self.assertEqual(reused.disposition, _LateDisposition.SETTLED)
+        self.assertEqual(reused.disposition, _LateDisposition.PARKED)
         resumed.assert_not_called()
-        # The exemption names the candidate the record was taken against, so
-        # nothing re-froze and no second developer run was paid for.
-        self.assertEqual(self._pinned()[KEYS.exempt_sha], CANDIDATE_SHA)
+        # The recorded verdict is what the tick reaches, so nothing re-froze
+        # and no second developer run was paid for.
+        self.assertEqual(self._pinned()[KEYS.candidate_sha], CANDIDATE_SHA)

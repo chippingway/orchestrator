@@ -22,13 +22,24 @@ one transaction and belong together; what this owner owes it is the guarantee
 it cannot check for itself -- that the outcome it is given was re-checked
 against an owner read taken after the agent finished.
 
-A `single` is reconciled here, and this owner keeps the ORDER of that
-reconciliation while the steps themselves are owned beside it: `late_reconcile`
-takes the hold off and settles which pull request the issue records,
-`late_verdict_push` makes the push a candidate measured past publication
-earns, and `late_handback` hands the label on and retires the cycle.
+A `single` earns a PARK, and that park is `late_unsplit`'s beside this. It is
+the adjudicator answering that this change stays one change, which is the one
+answer this mode may not act on: the ceiling exists so unreviewed bulk does
+not reach a pull request, and an agent proposing to publish past it is the
+thing being guarded against rather than the grounds for waiving the guard. So
+the issue stops, and everything a human would decide against is left exactly
+where the adjudication put it.
 
-Every one of them earns an EXEMPTION: a durable record that this exact commit
+What a decision to publish an oversized candidate unsplit would license is the
+SETTLEMENT below, and this owner keeps the ORDER of it while the steps
+themselves are owned beside it: `late_reconcile` takes the hold off and settles
+which pull request the issue records, `late_verdict_push` makes the push a
+candidate measured past publication earns, and `late_handback` hands the label
+on and retires the cycle. Nothing in this mode makes that decision -- a verdict
+is not one -- so what follows describes the road rather than a road a reply
+takes.
+
+The settlement writes an EXEMPTION: a durable record that this exact commit
 has been adjudicated, or the gate would measure the same candidate past the
 same ceiling and adjudicate it again forever. The exemption names the measured
 commit and only it -- work committed after the verdict is work nobody
@@ -78,6 +89,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_owner as _late_owner,
     late_parks as _late_parks,
     late_reconcile as _late_reconcile,
+    late_unsplit as _late_unsplit,
     late_verdict as _late_verdict,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
@@ -114,7 +126,7 @@ def _settle_adjudication(
         return finished
     if adjudication.verdict == LateVerdict.SPLIT:
         return _handed_split(context, finished)
-    return _reconcile_single(context, finished)
+    return _late_unsplit._parked_single(context, finished)
 
 
 def _handed_split(

@@ -135,6 +135,7 @@ class _StateKeys:
     exempt_fingerprint: str = "late_exempt_fingerprint"
     exempt_fingerprint_format: str = "late_exempt_fingerprint_format"
     post_publication: str = "late_post_publication"
+    source_stage: str = "late_source_stage"
     published_pr_number: str = "late_published_pr_number"
     published_sha: str = "late_published_sha"
     approved_sha: str = "late_approved_sha"

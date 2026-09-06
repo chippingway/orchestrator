@@ -262,7 +262,7 @@ def _squashed_and_handed_off(gate, branch: str) -> None:
     if squashed.held:
         # The gate owns the issue from here, and it owns it in one of two
         # shapes. Routed, the squashed commit is on the branch, the label is
-        # the adjudication's, and a settled verdict publishes it -- so a
+        # the adjudication's, and an authorized settlement publishes it -- so a
         # `_park_squash_failure` over that would post a notice about a failure
         # that did not happen and put `awaiting_human` on an issue an agent is
         # about to run for. PARKED, the gate has already worded the notice its

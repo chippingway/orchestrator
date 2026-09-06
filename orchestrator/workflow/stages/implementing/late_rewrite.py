@@ -19,8 +19,9 @@ ceiling since anyone looked would otherwise reach the merge button
 unadjudicated.
 
 A candidate the RECORD names ends the tick without a rollback. Past the
-ceiling the gate has moved the issue to `workflow:decomposing` and a settled
-`single` verdict publishes the squash from the branch; short of a count the
+ceiling the gate has moved the issue to `workflow:decomposing` and an
+authorized settlement publishes the squash from the branch; short of a count
+the
 pair is one the reconciliation ahead of the next handler owes a reading, and
 that reading can only be taken in the checkout it was frozen on. Either way
 restoring the pre-squash head would leave a record naming a commit this branch
@@ -343,7 +344,7 @@ def _rewrite_stands(gate: _records._Gate, squashed: str) -> bool:
       for work only the reflog still has;
     * the RECORD names it -- any live generation whose candidate is the
       squash, not merely an oversized one. Past the ceiling the adjudication
-      owns it and a settled `single` verdict publishes it from this branch;
+      owns it and an authorized settlement publishes it from this branch;
       short of a count the pair is one the reconciliation ahead of the next
       handler owes a reading, and that reading can only be taken in the
       checkout it was frozen on -- put back, the record names a commit the

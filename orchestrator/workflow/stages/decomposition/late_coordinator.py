@@ -60,8 +60,10 @@ generation, which is why the very first thing this call does is reconcile one
 an earlier tick left owed -- ahead of the live-generation gate, because the
 state that gate routes past is exactly where such a read gets stranded. What
 the read costs each of the three answers is the `late_owner` owner's; what a
-verdict past it EARNS is `late_settlement`'s, whose order runs through the
-reconciliation, proof, push, and handback owners beside it; and the transaction
+verdict past it EARNS is `late_settlement`'s -- a `single` the park a human's
+decision is owed on, and the settlement such a decision would license runs
+through the reconciliation, proof, push, and handback owners beside it; and the
+transaction
 a cleared `split` becomes -- the snapshot every child is cut from, the children
 themselves, the supersession of the pull request the candidate stands on, and
 the cleanup obligation left behind -- is `late_transaction`'s, which this owner

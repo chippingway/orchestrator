@@ -6,8 +6,9 @@ Both roads out of an adjudication entered on the published side have to ask
 the same question before they act, and neither can look it up: the entry the
 gate froze names the pull request the work is already on and the head it was
 standing on, so what a settlement or a split owes is a PROOF that those two
-are still what they were rather than a search. A `single` publishes onto that
-pull request; a `split` closes it over a supersession and hands the work to
+are still what they were rather than a search. A settlement publishes onto
+that pull request; a `split` closes it over a supersession and hands the work
+to
 children. Both are irreversible on the remote, and both are wrong if somebody
 moved or settled the publication while the adjudication was open.
 

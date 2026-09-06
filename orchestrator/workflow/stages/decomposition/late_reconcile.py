@@ -8,12 +8,12 @@ generation marked, and the pull request the issue RECORDS is settled against
 the measured commit, so what the handoff names is a change that commit is
 actually in.
 
-Both roads out of the gate reach this owner: the verdict a `single` earned, and
-the handoff of a candidate a remeasurement put back under the ceiling without
-any adjudication at all. Neither may hand the issue on with a "do not merge"
-notice nobody will reclaim, or with `pr_number` naming a change the candidate
-is not in -- the retirement a moment later reads a record about SIZE and knows
-nothing about either.
+Two roads out of the gate reach this owner: the settlement a decision to
+publish an oversized candidate unsplit licenses, and the handoff of a candidate
+a remeasurement put back under the ceiling without any adjudication at all.
+Neither may hand the issue on with a "do not merge" notice nobody will reclaim,
+or with `pr_number` naming a change the candidate is not in -- the retirement a
+moment later reads a record about SIZE and knows nothing about either.
 
 The hold is RESTORED rather than rewritten: the held pull request gets back the
 description this generation replaced, and what happens to it afterwards is the

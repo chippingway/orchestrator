@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """The one commit an accepted candidate is let past the size gate on.
 
-A `single` verdict says an oversized candidate is one coherent change after
-all, and the whole of what that decision is worth has to outlive the
-generation that earned it: the gate re-measures whatever a stage is about to
+A settlement somebody authorized publishes an oversized candidate as one
+coherent change after all -- what an adjudicator's own `single` earns is the
+park that decision is owed on -- and the whole of what such a decision is
+worth has to outlive the generation that earned it: the gate re-measures whatever a stage is about to
 publish, so a candidate handed back with its generation cleared and nothing
 else would be measured past the ceiling again and adjudicated again, forever.
 The exemption is what breaks that loop, and it is a commit rather than a flag
@@ -61,7 +62,7 @@ from orchestrator.git.measurement.models import FINGERPRINT_FORMAT
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads
 
-# The commit a decided `single` verdict published under. Spelled here because
+# The commit an authorized settlement published under. Spelled here because
 # this is the field's owner, and it is deliberately not one of the keys
 # `clear_late_generation` drops.
 LATE_EXEMPT_SHA = "late_exempt_sha"

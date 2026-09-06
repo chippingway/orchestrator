@@ -283,11 +283,13 @@ class _IssueCommentService:
         self,
         issue: FakeIssue,
         after_id: int | None,
+        *,
+        state_comment_id: int | None = None,
     ) -> list[FakeComment]:
         return [
             comment
             for comment in issue.comments
-            if PINNED_STATE_MARKER not in (comment.body or "")
+            if not self._is_state_comment(comment, state_comment_id)
             and (after_id is None or comment.id > after_id)
         ]
 
@@ -296,3 +298,11 @@ class _IssueCommentService:
             (comment.id for comment in issue.comments),
             default=None,
         )
+
+    def _is_state_comment(
+        self, comment: FakeComment, state_comment_id: int | None,
+    ) -> bool:
+        """Whether this is the pinned comment, by identity or by marker."""
+        if state_comment_id is None:
+            return PINNED_STATE_MARKER in (comment.body or "")
+        return comment.id == state_comment_id

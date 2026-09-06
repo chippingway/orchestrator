@@ -355,7 +355,7 @@ def _push_branch(
     them do. The `discussion` stage's plan publication reads a branch and
     proves it carries the agreed plan and nothing else; the `implementing`
     stage's publication decides on one commit ahead of the push -- the one the
-    size gate measured or an adjudication accepted, or the one the checkout is
+    size gate measured or an authorized settlement accepted, or the one the checkout is
     standing on where the gate proved none -- and names the push, the receipt
     it records, and the proof it takes once the pull request is open against
     that same commit. Every push onto a pull request the remote ALREADY

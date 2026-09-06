@@ -34,6 +34,13 @@ reply, so a prompt asking for one key while the reply is read for another
 would leave every conforming answer with nothing recorded about why a split
 was not proposed -- which is the whole of what that field exists to carry.
 
+What a `single` EARNS is named too, because the prompt must not tell an agent
+it is deciding something it is not. That verdict publishes nothing: the ceiling
+exists so unreviewed bulk does not reach a pull request, so an oversized change
+is published unsplit only on a human's decision, and the verdict is what hands
+the issue to them. An agent told the orchestrator would publish on its word is
+one weighing a consequence the workflow does not give it.
+
 The false positives are named out loud because the gate is a size gate and
 size is not the question. A diff dominated by legitimate generated or data
 artifacts is a small change with a large diff and gets a fast `single`; the
@@ -165,9 +172,11 @@ def _outcome_rules() -> str:
     return (
         "Decide EXACTLY ONE of three outcomes.\n\n"
         "`single` -- the committed work is one coherent change despite its "
-        "size, and the orchestrator publishes it as it stands. Size alone is "
-        "not a reason to split. A diff dominated by legitimate generated or "
-        "data artifacts -- a lockfile, a regenerated schema or client, a "
+        "size, and splitting it is not available. This does NOT publish it: "
+        "the issue is handed to a human, who decides whether an oversized "
+        "change may be published unsplit. Size alone is not a reason to "
+        "split. A diff dominated by legitimate generated or data "
+        "artifacts -- a lockfile, a regenerated schema or client, a "
         "golden fixture, a vendored tree, a data or message catalog, a "
         "migration -- is a small change with a large diff, and the fast "
         'answer is `single` with `"category": "generated_artifacts"`.\n\n'

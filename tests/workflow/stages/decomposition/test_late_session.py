@@ -8,7 +8,7 @@ from dataclasses import replace
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.github.pinned_state import PinnedState
+from orchestrator.github.pinned_state import MAX_PINNED_BODY, PinnedState
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.stages.decomposition import (
@@ -46,6 +46,11 @@ SPLIT_CHILDREN = (
     {TITLE: FIRST_TITLE, BODY: FIRST_BODY},
     {TITLE: SECOND_TITLE, BODY: SECOND_BODY, DEPENDS_ON: [0]},
 )
+
+# What the comment has left over in the boundary case below: less than the
+# sentence a `single` goes on to owe the thread, so a padded comment that
+# takes every verdict is one that would refuse a `single` charged for it.
+_ROOM_LEFT = 512
 
 
 def recorded_child(title: str = FIRST_TITLE, body: str = FIRST_BODY) -> dict:
@@ -185,47 +190,6 @@ class LateResultRecordTest(unittest.TestCase):
             },
         )
 
-    def test_an_outcome_past_the_budget_is_refused(self) -> None:
-        # Shortening it would record a question nobody asked or an
-        # explanation nobody wrote; the caller is told it did not fit rather
-        # than handed half an outcome.
-        oversized = "x" * _session.MAX_RECORDED_BODY
-        cases = (
-            _models._LateAdjudication(
-                verdict=LateVerdict.QUESTION,
-                category=LateVerdictCategory.UNKNOWN,
-                question=oversized,
-            ),
-            _models._LateAdjudication(
-                verdict=LateVerdict.SINGLE, split_blocker=oversized,
-            ),
-        )
-        for adjudication in cases:
-            with self.subTest(verdict=adjudication.verdict):
-                state = PinnedState()
-
-                kept = _session._record_late_result(state, adjudication)
-
-                self.assertFalse(kept)
-                self.assertEqual(state.data, {})
-
-    def test_what_the_comment_already_holds_counts(self) -> None:
-        # A result small on its own can still be the one that pushes the
-        # comment past what GitHub accepts, and finding that out from the
-        # failed write means the agent has already been paid for.
-        held = PinnedState(data={
-            KEYS.plan_pr_body: "p" * (_session.MAX_RECORDED_BODY - 100),
-        })
-        modest = _models._LateAdjudication(
-            verdict=LateVerdict.SPLIT, children=SPLIT_CHILDREN,
-        )
-
-        self.assertTrue(
-            _session._record_late_result(PinnedState(), modest),
-        )
-        self.assertFalse(_session._record_late_result(held, modest))
-        self.assertNotIn(KEYS.verdict, held.data)
-
     def test_a_recovered_outcome_is_whole(self) -> None:
         state = PinnedState()
         _session._record_late_result(state, _models._LateAdjudication(
@@ -269,6 +233,89 @@ class LateResultRecordTest(unittest.TestCase):
                     ).split_blocker_explanation,
                     expected,
                 )
+
+
+class LateResultBudgetTest(unittest.TestCase):
+    """What an outcome may take of the comment it is written into.
+
+    The comment is shared and bounded, so what is measured is the whole of
+    what the write would produce -- and what it leaves behind matters as much,
+    since the sentence the outcome earns has to be recorded there too.
+    """
+
+    def test_an_outcome_past_the_budget_is_refused(self) -> None:
+        # Shortening it would record a question nobody asked or an
+        # explanation nobody wrote; the caller is told it did not fit rather
+        # than handed half an outcome.
+        oversized = "x" * _session.MAX_RECORDED_BODY
+        cases = (
+            _models._LateAdjudication(
+                verdict=LateVerdict.QUESTION,
+                category=LateVerdictCategory.UNKNOWN,
+                question=oversized,
+            ),
+            _models._LateAdjudication(
+                verdict=LateVerdict.SINGLE, split_blocker=oversized,
+            ),
+        )
+        for adjudication in cases:
+            with self.subTest(verdict=adjudication.verdict):
+                state = PinnedState()
+
+                kept = _session._record_late_result(state, adjudication)
+
+                self.assertFalse(kept)
+                self.assertEqual(state.data, {})
+
+    def test_what_the_comment_already_holds_counts(self) -> None:
+        # A result small on its own can still be the one that pushes the
+        # comment past what GitHub accepts, and finding that out from the
+        # failed write means the agent has already been paid for.
+        held = PinnedState(data={
+            KEYS.plan_pr_body: "p" * (_session.MAX_RECORDED_BODY - 100),
+        })
+        modest = _models._LateAdjudication(
+            verdict=LateVerdict.SPLIT, children=SPLIT_CHILDREN,
+        )
+
+        self.assertTrue(
+            _session._record_late_result(PinnedState(), modest),
+        )
+        self.assertFalse(_session._record_late_result(held, modest))
+        self.assertNotIn(KEYS.verdict, held.data)
+
+    def test_no_verdict_pays_for_the_sentence_it_owes(self) -> None:
+        # One budget, and every verdict is held to it. The park a `single`
+        # earns is one nothing supersedes, while the refusal a smaller budget
+        # would produce IS superseded -- so charging it for the sentence it
+        # owes would buy another decomposer run against a candidate already
+        # adjudicated and leave that `single` short of the park a human's
+        # decision is owed on.
+        crowded = {
+            KEYS.plan_pr_body: "p" * (_session.MAX_RECORDED_BODY - _ROOM_LEFT),
+        }
+        verdicts = (
+            ("single", _models._LateAdjudication(verdict=LateVerdict.SINGLE)),
+            ("split", _models._LateAdjudication(
+                verdict=LateVerdict.SPLIT, children=SPLIT_CHILDREN,
+            )),
+        )
+
+        for named, adjudication in verdicts:
+            with self.subTest(verdict=named):
+                self.assertTrue(_session._record_late_result(
+                    PinnedState(data=dict(crowded)), adjudication,
+                ))
+
+    def test_a_park_sentence_has_room_left_over(self) -> None:
+        # What that costs nothing, because it is written into the headroom the
+        # outcome budget leaves under GitHub's own limit rather than out of
+        # the budget itself.
+        self.assertLessEqual(
+            _session.MAX_RECORDED_BODY + _session.MAX_NOTICE_BODY,
+            MAX_PINNED_BODY,
+        )
+
 
 class LateSessionLockTest(unittest.TestCase):
     """Which backend a later run lands on, and what it falls back to."""

@@ -184,11 +184,19 @@ orchestrator/
                         write of this orchestrator's; control labels are excluded, and no account, no
                         evidence, and an unreadable walk all answer alike
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
-    pinned_state.py     the pinned durable-state model, the comment body it is written as and the length GitHub
-                        takes, its parser -- which identifies a state-only comment whatever payload it carries
+    pinned_state.py     the pinned durable-state model, the comment body it is written as -- with the wrapper's own
+                        terminator escaped in the SERIALIZED payload and never in the value, since a recorded
+                        explanation or a preserved pull-request body carrying `-->` would close that comment early
+                        and leave the rest of the record as visible issue text, and with that escape stood down for a
+                        payload it would put past the limit, since the record is what a later tick reads while the
+                        escape only decides how the comment LOOKS, and a write refused for a rendering takes whatever
+                        park, notice or outcome it was carrying with it -- and the length GitHub takes, its parser -- which identifies a state-only comment whatever payload it carries
                         and keeps the one carrying no readable state, whether it would not parse or parsed
                         into anything but an object, apart from an issue that recorded nothing, since both read
-                        back as `{}` -- and the comment watermarks beside it
+                        back as `{}` -- and the comment watermarks beside it, whose thread read tells the pinned
+                        comment by the ID a caller can name where it has one and by the marker in a body
+                        otherwise: the marker also hides every comment merely QUOTING it, which is right for a
+                        reader after conversation and wrong for one after a receipt it posted itself
     pull_requests.py    PR lookup by open state, by commit, and when GitHub could not be asked at all -- either
                         search narrowed to one base for a caller choosing the thread it would push onto, or asked of
                         every base by one asking only whether anybody is still standing on this branch -- plus
@@ -273,7 +281,7 @@ orchestrator/
                         gate's own refuses rather than publishing one commit while the notice, the event, and the
                         `validating` route name another -- the lease-pinned force-push, and what an accepted push
                         writes; and the rewrite evidence handed to that gate beside the candidate, since a clean
-                        replay of a commit an adjudication accepted may carry the exemption over: the pair the
+                        replay of a commit an authorized settlement accepted may carry the exemption over: the pair the
                         pinned record already holds, the pair the replay produced -- over a base frozen from what
                         the REMOTE says the branch is at, never off the local ref the rebase named, which any
                         worktree sharing the store can repoint after this tick's fetch -- and the pull request,
@@ -330,7 +338,7 @@ orchestrator/
       rewrite.py        the soft reset, the orchestrator-identity commit, the gated publication of the commit it
                         just made -- measured, then named against it and pinned to the head the entry froze, with
                         the plan's pre-squash head and merge base handed over beside it, since a rewrite of the
-                        exact commit an adjudication accepted may carry that exemption over and both ends of both
+                        exact commit an authorized settlement accepted may carry that exemption over and both ends of both
                         contributions are what says so -- and
                         the rollback a post-reset failure takes -- the ref and the index, never the working tree,
                         since a squash has the same tree as the head it replaces and the only thing taking the
