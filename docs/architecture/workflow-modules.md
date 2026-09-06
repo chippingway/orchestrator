@@ -1477,13 +1477,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             push for with the head it is pinned to, and the one this stage made
       publication.py        the push -- named against the commit the gate decided and pinned to the head a
                             published approval was frozen against, where there is one -- the pull request opened
-                            or reused for it, and the validating handoff with its counter resets and the commit
-                            the push carried (decided once ahead of the push -- the one that passed the gate, or
-                            the checkout's own head where the switch named none -- and made durable there),
-                            written durably ahead of the relabel so nothing this line spends is stranded on an
-                            issue that has moved on and a relabel that fails leaves the branch recognizable --
-                            refused, recoverably, on a checkout that has left the approved commit or stopped
-                            being provably clean around it -- both asked before the push and again once the pull
+                            or reused for it, and the commit the push carried (decided once ahead of the push --
+                            the one that passed the gate, or the checkout's own head where the switch named none
+                            -- and made durable there), with the handoff below reached last -- refused,
+                            recoverably, on a checkout that has left the approved commit or stopped being
+                            provably clean around it -- both asked before the push and again once the pull
                             request is open, since the worktree is writable while those requests run -- and
                             spending the record of that commit once the handoff it was owed lands
       dev_pr.py             what that pull request says and whose work it says it carries: the title taken from
@@ -1497,6 +1495,17 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             as it stands, human annotations included, and one that does not (an operator's, or
                             the `discussion` stage's plan PR sitting on the very ref the dev commits went to) is
                             re-bodied to the implementation's
+      handoff.py            the one write and the one relabel a finished publication is handed on by: the pull
+                            request and the branch recorded together, since a state that arrived without a
+                            branch would leave the next tick resolving the legacy name while the live pull
+                            request sits on the slug-namespaced one; the plan SHA, the certified baseline, the
+                            handoff anchor, and the commit an approval said was still owed a push all spent
+                            beside them; the review round, the retry budget, the granted attempts, the
+                            silent-park streak, and the timeout watermark all reset, since the issue moved
+                            forward and any of them left behind would mis-fire a later hop back into
+                            implementing -- and every one of those written durably AHEAD of the
+                            `workflow:validating` label, so nothing this line spends is stranded on an issue
+                            that has moved on and a relabel that fails leaves the branch recognizable
       parks.py              the session-limit, provider-unavailable, question, silent-failure, dirty-tree, and
                             unreadable-tree parks, the last two behind one seam so the caller asks whether the
                             tree is PROVABLY clean
