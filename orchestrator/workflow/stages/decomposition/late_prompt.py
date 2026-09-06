@@ -28,6 +28,12 @@ the category vocabulary from the closed set a verdict is recorded under -- so a
 category widened in review reaches the prompt with it, and one an agent
 invents still records as `unknown`.
 
+The one field NAME in it is read the same way and for the same reason. The
+explanation a `single` is asked for is spelled by the parser that reads the
+reply, so a prompt asking for one key while the reply is read for another
+would leave every conforming answer with nothing recorded about why a split
+was not proposed -- which is the whole of what that field exists to carry.
+
 The false positives are named out loud because the gate is a size gate and
 size is not the question. A diff dominated by legitimate generated or data
 artifacts is a small change with a large diff and gets a fast `single`; the
@@ -47,6 +53,7 @@ from orchestrator.workflow.late_split.models import (
     MAX_LINEAGE_DEPTH,
     LateGeneration,
 )
+from orchestrator.workflow.stages.decomposition.late_reply import _SPLIT_BLOCKER
 from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
 
 _NO_BODY = "(no body)"
@@ -192,9 +199,14 @@ def _outcome_rules() -> str:
         "initial decomposer, prose alone is not an outcome here: a reply with "
         "no block, or with more than one, is parked for a human rather than "
         "guessed at, so ask through `\"question\"` instead.\n\n"
-        '- On `"single"`: omit `"children"`. Give `"rationale"` (<= 2 '
-        'sentences); `"category"` is optional and worth setting when the '
-        "verdict has a reason worth counting.\n"
+        f'- On `"single"`: omit `"children"`. Give `"{_SPLIT_BLOCKER}"` -- '
+        "one or two sentences on what makes splitting this work unsafe or "
+        "unavailable. That is the part of a `single` answer the orchestrator "
+        "keeps, and the only account anybody looking at this oversized "
+        'candidate later has of why it was not split; `"rationale"` (<= 2 '
+        'sentences) says why the work is one change and is not kept. '
+        '`"category"` is optional and worth setting when the verdict has a '
+        "reason worth counting.\n"
         f'- On `"split"`: `"children"` is a non-empty list of at most '
         f"{_MAX_CHILDREN} entries, each with a non-empty `\"title\"` and "
         '`"body"`. `"depends_on"` is a list of 0-based indexes into THIS '

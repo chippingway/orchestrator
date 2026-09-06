@@ -99,10 +99,10 @@ _QUESTION_PARK = ":mag: the late decomposer is asking ({category}): {asked}"
 
 _UNRECORDABLE_PARK = (
     "the late decomposer decided something this issue's pinned state cannot "
-    "hold -- a question or a child manifest past the size one orchestrator "
-    "comment may carry. Nothing was recorded and nothing was published, "
-    "because half an outcome is not one. This oversized candidate needs a "
-    "human to split it by hand."
+    "hold -- a question, an explanation of what stopped a split, or a child "
+    "manifest past the size one orchestrator comment may carry. Nothing was "
+    "recorded and nothing was published, because half an outcome is not one. "
+    "This oversized candidate needs a human to split it by hand."
 )
 
 # What a split proposed at the lineage bound is recorded as. The bound is a
