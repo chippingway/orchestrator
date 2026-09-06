@@ -47,7 +47,10 @@ from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
     resume as _dev_resume,
 )
-from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
+from orchestrator.workflow.stages.validating import (
+    dev_fix as _dev_fix,
+    stranded as _stranded,
+)
 from orchestrator.workflow.state import WorkflowLabel
 
 
@@ -189,7 +192,7 @@ def _fixing_ack_fast_path(
     """
     ack_reason = _messages._drift_ack_reason(dev_result.last_message or "")
     if not ack_reason or (
-        after_sha and _dev_fix._stranded_fix_unpushed(
+        after_sha and _stranded._stranded_fix_unpushed(
             ctx.spec, wt, ctx.state, ctx.issue,
         )
     ):
@@ -273,7 +276,7 @@ def _resume_fixing_and_dispatch_result(
     # (`pending_fix_at` unset) is excluded -- the reviewer DID request a
     # concrete change, so an ACK there falls through to `_handle_dev_fix_result`,
     # which parks for the human unless its stranded-fix check publishes a
-    # committed-but-unpushed fix instead (`validating._stranded_fix_unpushed`).
+    # committed-but-unpushed fix instead (`validating/stranded.py`'s probe).
     if (
         pending_fix_at_was_set
         and not run.dev_result.timed_out

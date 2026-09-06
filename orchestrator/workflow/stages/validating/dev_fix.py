@@ -10,13 +10,12 @@ look. Only the disposition order differs, and `_dispose_dev_fix_result` fixes
 it -- an interrupted run first, so a shutdown-killed agent parks nothing and
 the next tick simply retries it, then the timeout park, then the question.
 
-`_stranded_fix_unpushed` is the non-obvious gate. A fix committed by an
-earlier run that parked before publishing looks identical to "the agent did
-nothing" on every later resume -- `after_sha == before_sha` -- so without it
-the commit can never reach the PR and the issue ping-pongs between
-awaiting-human parks forever. It is conservative by construction: a dirty
-tree, a failed fetch, or a remote that moved all report False, because
-pushing over a head nobody reconciled is worse than one more park.
+`stranded.py` beside this owns the non-obvious gate the no-commit reading
+falls through to, because the fixing handler's no-feedback bounce and its ACK
+fast path ask the same question off no dev run at all. What it refuses is what
+the reading here inherits: a dirty tree, a failed fetch, or a remote that moved
+prove nothing, because pushing over a head nobody reconciled is worse than one
+more park.
 
 `rounds.py` beside this owns the counter every landed fix pays into. It sits there
 rather than beside any one caller because all three routes owe it for the
@@ -26,13 +25,10 @@ so the round it spent does not count against the cap.
 from __future__ import annotations
 
 from dataclasses import replace as _replace
-from pathlib import Path
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git import branch_transport as _branch_transport
-from orchestrator.git.publication import probes as _publication_probes
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
@@ -43,52 +39,11 @@ from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
     parks as _dev_parks,
 )
-from orchestrator.workflow.stages.validating import models as _models, state as _state
-
-
-def _stranded_fix_unpushed(
-    spec: config.RepoSpec, wt: Path, state: PinnedState, issue: Issue
-) -> str:
-    """The remote head a stranded fix is proved ahead of, or "" where none is.
-
-    A clean worktree HEAD strictly ahead of the remote PR branch is a fix an
-    earlier parked run committed and never published.
-
-    The shape arises when the publish was blocked at commit time (e.g. a
-    dirty-worktree park whose stray files a human later had the dev clean
-    up): every later resume sees `after_sha == before_sha`, so without
-    this check the stranded commit can never reach the PR and the issue
-    ping-pongs between `awaiting_human` parks forever.
-
-    Conservative by construction: a dirty tree, a failed fetch, or a
-    remote that moved (`behind > 0` -- pushing would race a head we have
-    not reconciled) all report "", so the caller takes whichever
-    no-publish path it owns -- the question park here, the bounce back to
-    `validating` in the fixing handler's no-feedback exit -- instead of
-    pushing blind.
-
-    What comes back is the head the comparison was taken AGAINST rather than
-    a bare yes. The caller's next step is a push, and the proof this took is
-    a claim about one commit: the branch is ahead of THAT head and behind
-    nothing. Handed on, the gate is pinned to it and a pull request somebody
-    moved between this probe and that push refuses instead of being adopted
-    as the lease and force-overwritten. A tip nothing could read is no head
-    either, and refuses here rather than publishing against one.
-    """
-    if _verification_probes._worktree_dirty_files(wt):
-        return ""
-    branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
-    fetch = _branch_transport._authed_fetch(
-        spec,
-        f"+refs/heads/{branch}:refs/remotes/{spec.remote_name}/{branch}",
-        cwd=wt,
-    )
-    if fetch.returncode != 0:
-        return ""
-    divergence = _publication_probes._branch_divergence(spec, wt, branch)
-    if not divergence.readable or divergence.ahead <= 0 or divergence.behind:
-        return ""
-    return divergence.tip
+from orchestrator.workflow.stages.validating import (
+    models as _models,
+    state as _state,
+    stranded as _stranded,
+)
 
 
 def _park_dev_fix_timeout(
@@ -137,7 +92,9 @@ def _publishable_dev_fix(
         return None
     if after_sha != run.before_sha:
         return _replace(run, after_sha=after_sha)
-    stranded = _stranded_fix_unpushed(spec, run.worktree, state, issue)
+    stranded = _stranded._stranded_fix_unpushed(
+        spec, run.worktree, state, issue,
+    )
     if not stranded:
         return None
     return _replace(run, after_sha=after_sha, stranded_head=stranded)
@@ -248,9 +205,9 @@ def _handle_dev_fix_result(
     on True so the reviewer re-runs against the new head; any stale
     approval state must be reset by the caller before relabeling). A
     no-new-commit run also returns True when it published a stranded fix
-    a prior parked run had committed (see `_stranded_fix_unpushed`).
-    Returns False if the run produced no fix (timeout, no-new-commit,
-    dirty tree, or push failure); caller should write state and return.
+    a prior parked run had committed (see `stranded._stranded_fix_unpushed`).
+    Returns False if the run produced no fix (timeout, no-new-commit, dirty
+    tree, or push failure); caller should write state and return.
     A shutdown-killed (interrupted) run also returns False WITHOUT parking,
     posting, or publishing, so the next tick re-runs the dev cleanly.
 

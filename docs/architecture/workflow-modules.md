@@ -1715,10 +1715,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       watermarks.py         the seed walk past leading orchestrator comments and the ratchet that never regresses one
       requested_changes.py  the PR feedback and `workflow:fixing`-labeled dev fix, plus the no-VERDICT park and
                             the split that tells a provider's failure from a reviewer's
-      dev_fix.py            what a finished dev fix leaves behind: the stranded-commit probe, the size gate every
-                            fix route publishes through -- told the state the run really belongs to, since the route
-                            that relabels before it spawns reads its own cached labels back -- the push and the
-                            approval it spends, and the round bump
+      dev_fix.py            what a finished dev fix leaves behind: the no-commit reading and the head it carries
+                            on, the size gate every fix route publishes through -- told the state the run really
+                            belongs to, since the route that relabels before it spawns reads its own cached labels
+                            back -- the push and the approval it spends, and the round bump
+      stranded.py           the probe under that reading, which the `fixing` handler asks off no dev run at all:
+                            a clean checkout fetched and proved strictly ahead of the remote pull request branch
+                            and behind nothing, answering with the head it was compared AGAINST so the push that
+                            follows is pinned to it -- and refusing, on a dirty tree, a failed fetch, an unreadable
+                            divergence, or a remote that moved, because pushing over a head nobody reconciled is
+                            worse than one more park
       awaiting.py           the three park-reason claims on a human reply and the dev attempt they fall through to
       awaiting_resume.py    the order those claims are asked in and the resume none of them wanted
       drift.py              a body edit mid-review, the three parks that defer, and the consumed-thread watermark
