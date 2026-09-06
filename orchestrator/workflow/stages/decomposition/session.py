@@ -11,12 +11,9 @@ flight, and writing it early is what keeps a backend that returned no session
 id from leaving the issue unattributed.
 
 A human reply resumes the session with the new comments quoted, and two
-things retire it instead. A user-content edit does: the manifest tracking it
-produced is wiped so recovery cannot mistake the reroute for a crash, and the
-session id is dropped so the next tick starts a fresh conversation against the
-new body. Children the wiped manifest tracked stay open on GitHub and are
-named as orphans in the notice; which of them still apply to the edited body
-is the operator's call, not ours. The continuation that lifts a spent-budget
+callers outside this owner retire it instead. The drift reset does, because a
+conversation held against the body the human has since rewritten answers a
+question nobody is asking any more. The continuation that lifts a spent-budget
 park does too, and there a reply resumes nothing at all: what a trusted
 `/orchestrator continue` buys is the fresh spawn the budget refused, so the
 conversation that ran out is not the one it pays for.
@@ -39,7 +36,6 @@ from orchestrator.github.comments import filter_trusted
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     comments as _comments,
-    drift as _drift,
     prompts as _prompts,
     retry_budget as _retry_budget,
     run_circuit as _run_circuit,
@@ -188,21 +184,6 @@ def _resume_decomposer_on_human_reply(
     return decomposer_result
 
 
-def _decomposition_drift_notice(orphans: list) -> str:
-    notice = (
-        ":pencil2: issue content changed; re-running decomposer against "
-        "the updated body."
-    )
-    if not orphans:
-        return notice
-    orphan_list = _state._issue_ref_list(orphans)
-    return (
-        f"{notice} The previously-tracked children ({orphan_list}) will be "
-        "ORPHANED -- the orchestrator no longer tracks them; please close "
-        "any that no longer apply to the updated requirements."
-    )
-
-
 def _retire_decomposer_session(state: PinnedState) -> None:
     """Drop the session id, so the next spawn opens a conversation of its own.
 
@@ -218,56 +199,3 @@ def _retire_decomposer_session(state: PinnedState) -> None:
     replaying the conversation this issue was moved on from.
     """
     state.set("decomposer_session_id", None)
-
-
-def _clear_decomposition_manifest(state: PinnedState) -> None:
-    _retire_decomposer_session(state)
-    state.set(_state._CHILDREN, [])
-    state.set("dep_graph", {})
-    state.set("expected_children_count", None)
-    # The seal is a fact about that count, so it goes with it: a register
-    # called final belongs to the manifest this reset is throwing away.
-    state.set(_state._SPLIT_LEDGER_SEALED, None)
-    state.set(_state._UMBRELLA, None)
-    state.set(_state._AWAITING_HUMAN, False)
-    state.set(_state._PARK_REASON, None)
-
-
-def _reset_decomposing_on_drift(
-    gh: GitHubClient, issue: Issue, state: PinnedState
-) -> None:
-    """Wipe manifest tracking and the decomposer session when the issue
-    body drifted, so the fresh-spawn path re-derives a manifest against
-    the updated body THIS tick.
-
-    Runs at the very top of `_handle_decomposing` -- the spec requires
-    "at the start of every per-tick handler". Ordering it before the
-    half-finished recovery is what stops the recovery branch from
-    finalizing to `blocked` / `umbrella` against a stale manifest when the
-    human edited the issue body during a crash window. When drift IS
-    detected we clear the manifest tracking (children, dep_graph,
-    expected_children_count, umbrella) so the recovery branch is bypassed
-    and the fresh-spawn path derives a new manifest. Previously-created
-    children are listed as orphans in the notice -- they remain on GitHub
-    but the orchestrator no longer tracks them.
-
-    Unlike the pre-implementation handlers (which call
-    `_route_drift_to_decomposing` and RETURN), this issue is already
-    `decomposing`, so we mutate state in place and fall through -- the
-    caller keeps running and spawns the decomposer this tick.
-    """
-    new_hash = _drift._detect_user_content_change(gh, issue, state)
-    if new_hash is None:
-        return
-    _comments._post_issue_comment(
-        gh, issue, state,
-        _decomposition_drift_notice(list(state.get(_state._CHILDREN) or [])),
-    )
-    state.set("user_content_hash", new_hash)
-    # Drop only the SESSION id -- preserve `decomposer_agent`
-    # (the locked role spec). Lock-on-first-spawn means a
-    # mid-flight `DECOMPOSE_AGENT` env flip must not retarget
-    # an in-flight issue at a different backend; the fresh
-    # spawn below picks up the recorded spec via
-    # `_read_decomposer_session`.
-    _clear_decomposition_manifest(state)

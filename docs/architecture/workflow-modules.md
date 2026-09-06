@@ -527,6 +527,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             -- the id dropped and the spec kept, since a spawn records an id only where the backend
                             hands one back and the resume after one that did not would replay the conversation the
                             issue was moved on from
+      drift.py              what a body edit resets on an issue already wearing this label: the orphan notice said
+                            before the new baseline is recorded, the manifest markers wiped in one step -- children,
+                            dep graph, expected count, the seal that calls that count final, the umbrella flag, and
+                            the park flags -- and the session retired through the owner above, so the tick falls
+                            through and re-derives a manifest against the updated body instead of relabelling and
+                            returning the way the pre-implementation routes do
       manifest.py           the fenced-block envelope rules both modes are held to, the JSON decode, and the parse entry
                             point the stage routes on
       validation.py         what a `split` payload must satisfy: the child cap, each child's shape, and the acyclicity

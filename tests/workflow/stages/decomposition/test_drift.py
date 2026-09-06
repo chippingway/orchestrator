@@ -4,8 +4,14 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import drift as _drift
-from orchestrator.workflow.stages.decomposition import blocked as _blocked, run as _decomposing, umbrella as _umbrella
+from orchestrator.workflow.stages.decomposition import (
+    blocked as _blocked,
+    drift as _drift_reset,
+    run as _decomposing,
+    umbrella as _umbrella,
+)
 from tests.support.fakes import (
     FakeComment,
     FakeGitHubClient,
@@ -31,6 +37,8 @@ PICKUP_COMMENT_ID = 900
 READY_DRIFT_ISSUE_NUMBER = 50
 STABLE_READY_ISSUE_NUMBER = 51
 DECOMPOSING_DRIFT_ISSUE_NUMBER = 90
+DECOMPOSING_ORPHAN_ISSUE_NUMBER = 91
+ORPHANED_CHILD_NUMBERS = (411, 412)
 HUMAN_COMMENT_ID = 2000
 LAST_ACTION_COMMENT_ID = 1500
 BLOCKED_PARENT_NUMBER = 300
@@ -39,6 +47,12 @@ BLOCKED_CHILD_NUMBER = 310
 BLOCKED_CHILD_PARENT_NUMBER = 309
 UMBRELLA_NUMBER = 400
 UMBRELLA_CHILD_NUMBERS = (401, 402)
+LOCKED_BACKEND = "claude"
+RETIRED_SESSION_ID = "old-sess"
+KEY_DECOMPOSER_SESSION_ID = "decomposer_session_id"
+KEY_CHILDREN = "children"
+RESPAWN_NOTICE_MARKER = "re-running decomposer"
+ORPHAN_NOTICE_WORD = "ORPHANED"
 
 
 def _decomposing_drift_fixture():
@@ -59,8 +73,8 @@ def _decomposing_drift_fixture():
     github.seed_state(
         DECOMPOSING_DRIFT_ISSUE_NUMBER,
         user_content_hash=STALE_USER_CONTENT_HASH,
-        decomposer_agent="claude",
-        decomposer_session_id="old-sess",
+        decomposer_agent=LOCKED_BACKEND,
+        decomposer_session_id=RETIRED_SESSION_ID,
         awaiting_human=True,
         park_reason=None,
         last_action_comment_id=LAST_ACTION_COMMENT_ID,
@@ -81,7 +95,7 @@ def _blocked_parent_drift_fixture():
     github.seed_state(
         BLOCKED_PARENT_NUMBER,
         children=[BLOCKED_PARENT_CHILD_NUMBER],
-        decomposer_session_id="old-sess",
+        decomposer_session_id=RETIRED_SESSION_ID,
         user_content_hash=STALE_USER_CONTENT_HASH,
     )
     return github, parent
@@ -125,8 +139,8 @@ class HandleReadyRoutesBackOnHashChangeTest(
         gh.seed_state(
             READY_DRIFT_ISSUE_NUMBER,
             user_content_hash=PRIOR_TICK_USER_CONTENT_HASH,
-            decomposer_agent="claude",
-            decomposer_session_id="old-sess",
+            decomposer_agent=LOCKED_BACKEND,
+            decomposer_session_id=RETIRED_SESSION_ID,
             pickup_comment_id=PICKUP_COMMENT_ID,
         )
 
@@ -148,8 +162,8 @@ class HandleReadyRoutesBackOnHashChangeTest(
         # a mid-flight config flip must not retarget the issue's
         # recorded role identity. The fresh spawn uses the recorded
         # spec via `_read_decomposer_session`.
-        self.assertIsNone(state.get("decomposer_session_id"))
-        self.assertEqual(state.get("decomposer_agent"), "claude")
+        self.assertIsNone(state.get(KEY_DECOMPOSER_SESSION_ID))
+        self.assertEqual(state.get("decomposer_agent"), LOCKED_BACKEND)
         # New hash now persisted so the next decomposing tick sees a
         # stable baseline.
         self.assertNotEqual(
@@ -204,6 +218,88 @@ class DecomposingHashChangeResetsSessionTest(
     unittest.TestCase,
     _PatchedWorkflowMixin,
 ):
+    """The reset an issue already wearing `decomposing` takes on a body edit.
+
+    The tick sees only what the fresh spawn reads back, so the wipe and the
+    orphan notice are asked of the owner that performs them: nothing about the
+    manifest a re-derivation throws away survives into the run below it.
+    """
+
+    def test_notice_names_every_child_it_orphans(self) -> None:
+        for orphans in ([], list(ORPHANED_CHILD_NUMBERS)):
+            with self.subTest(orphans=orphans):
+                notice = _drift_reset._decomposition_drift_notice(orphans)
+
+                self.assertIn("issue content changed", notice)
+                self.assertEqual(ORPHAN_NOTICE_WORD in notice, bool(orphans))
+                for child_number in orphans:
+                    self.assertIn(f"#{child_number}", notice)
+
+    def test_manifest_wipe_keeps_the_locked_spec(self) -> None:
+        state = PinnedState(data={
+            "decomposer_agent": LOCKED_BACKEND,
+            KEY_DECOMPOSER_SESSION_ID: RETIRED_SESSION_ID,
+            KEY_CHILDREN: list(ORPHANED_CHILD_NUMBERS),
+            "dep_graph": {"411": []},
+            "expected_children_count": len(ORPHANED_CHILD_NUMBERS),
+            "split_ledger_sealed": 7,
+            "umbrella": True,
+            "awaiting_human": True,
+            "park_reason": "decomposer_question",
+        })
+
+        _drift_reset._clear_decomposition_manifest(state)
+
+        cleared = {
+            KEY_DECOMPOSER_SESSION_ID: None,
+            KEY_CHILDREN: [],
+            "dep_graph": {},
+            "expected_children_count": None,
+            "split_ledger_sealed": None,
+            "umbrella": None,
+            "awaiting_human": False,
+            "park_reason": None,
+        }
+        self.assertEqual({key: state.get(key) for key in cleared}, cleared)
+        # The backend the pinned session id was written by outlives the
+        # transcript it names: the fresh spawn has to land on the same CLI.
+        self.assertEqual(state.get("decomposer_agent"), LOCKED_BACKEND)
+
+    def test_reset_names_the_children_it_drops(self) -> None:
+        gh = FakeGitHubClient()
+        issue = make_issue(
+            DECOMPOSING_ORPHAN_ISSUE_NUMBER,
+            label=LABEL_DECOMPOSING,
+            body="updated decomposition input",
+        )
+        gh.add_issue(issue)
+        gh.seed_state(
+            DECOMPOSING_ORPHAN_ISSUE_NUMBER,
+            user_content_hash=STALE_USER_CONTENT_HASH,
+            decomposer_agent=LOCKED_BACKEND,
+            decomposer_session_id=RETIRED_SESSION_ID,
+            children=list(ORPHANED_CHILD_NUMBERS),
+        )
+        state = gh.read_pinned_state(issue)
+
+        _drift_reset._reset_decomposing_on_drift(gh, issue, state)
+
+        notice = _comment_with_marker(
+            gh,
+            DECOMPOSING_ORPHAN_ISSUE_NUMBER,
+            RESPAWN_NOTICE_MARKER,
+        )
+        self.assertIn(ORPHAN_NOTICE_WORD, notice)
+        for child_number in ORPHANED_CHILD_NUMBERS:
+            self.assertIn(f"#{child_number}", notice)
+        # The notice quotes the children off the manifest, so it has to be
+        # said before the wipe that stops tracking them.
+        self.assertEqual(state.get(KEY_CHILDREN), [])
+        self.assertNotEqual(
+            state.get(KEY_USER_CONTENT_HASH),
+            STALE_USER_CONTENT_HASH,
+        )
+
     def test_drops_session_and_spawns_fresh(
         self,
     ) -> None:
@@ -232,7 +328,7 @@ class DecomposingHashChangeResetsSessionTest(
         state = gh.pinned_data(DECOMPOSING_DRIFT_ISSUE_NUMBER)
         # The new session id from the fresh spawn was persisted, not the
         # stale one.
-        self.assertEqual(state.get("decomposer_session_id"), "new-sess")
+        self.assertEqual(state.get(KEY_DECOMPOSER_SESSION_ID), "new-sess")
         # Notice posted.
         self.assertIn(
             "issue content changed",
@@ -267,8 +363,8 @@ class HandleBlockedHashDriftTest(
         state = gh.pinned_data(BLOCKED_PARENT_NUMBER)
         self.assertFalse(state.get("awaiting_human"))
         # Manifest state cleared so half-finished-recovery does not fire.
-        self.assertEqual(state.get("children"), [])
-        self.assertIsNone(state.get("decomposer_session_id"))
+        self.assertEqual(state.get(KEY_CHILDREN), [])
+        self.assertIsNone(state.get(KEY_DECOMPOSER_SESSION_ID))
         self.assertNotEqual(
             state.get(KEY_USER_CONTENT_HASH),
             STALE_USER_CONTENT_HASH,
@@ -278,10 +374,10 @@ class HandleBlockedHashDriftTest(
         notice = _comment_with_marker(
             gh,
             BLOCKED_PARENT_NUMBER,
-            "re-running decomposer",
+            RESPAWN_NOTICE_MARKER,
         )
         self.assertIn("#301", notice)
-        self.assertIn("ORPHANED", notice)
+        self.assertIn(ORPHAN_NOTICE_WORD, notice)
 
     def test_child_waiting_routes_to_decomposing(self) -> None:
         # A blocked child waiting on a sibling. Without routing to
@@ -320,9 +416,9 @@ class HandleBlockedHashDriftTest(
         notice = _comment_with_marker(
             gh,
             BLOCKED_CHILD_NUMBER,
-            "re-running decomposer",
+            RESPAWN_NOTICE_MARKER,
         )
-        self.assertNotIn("ORPHANED", notice)
+        self.assertNotIn(ORPHAN_NOTICE_WORD, notice)
 
 
 class HandleUmbrellaHashDriftTest(
@@ -357,7 +453,7 @@ class HandleUmbrellaHashDriftTest(
         # Manifest state cleared so half-finished-recovery does not fire
         # against the stale children list / umbrella flag.
         self.assertEqual(
-            (state.get("children"), state.get("umbrella")),
+            (state.get(KEY_CHILDREN), state.get("umbrella")),
             ([], None),
         )
         self.assertNotEqual(
@@ -368,8 +464,8 @@ class HandleUmbrellaHashDriftTest(
         notice = _comment_with_marker(
             gh,
             UMBRELLA_NUMBER,
-            "re-running decomposer",
+            RESPAWN_NOTICE_MARKER,
         )
         self.assertIn("#401", notice)
         self.assertIn("#402", notice)
-        self.assertIn("ORPHANED", notice)
+        self.assertIn(ORPHAN_NOTICE_WORD, notice)
