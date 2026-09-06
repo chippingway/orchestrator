@@ -615,22 +615,25 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             binary wrote beside the two this one does, and the one question that recognizes any of
                             the three as ours, the head that moved under a standing hold reported and never
                             restamped, and the retry, the refusal, and the settled pull request it reconciles to
-      late_outcome.py       what one finished reply becomes: the lineage-bound refusal recorded as the categorized
+      late_verdict.py       what one finished reply decides: the lineage-bound refusal recorded as the categorized
                             question it actually is, the record written and persisted before anything is posted,
-                            the completion that closes by carrying the owner read it now owes -- under
-                            `owner_check` unless a split transaction was interrupted, whose boundary the record
-                            itself refuses to let any pre-split write rewind, since the phase is all that says a
-                            loop was in flight when nothing is recorded yet -- the answer a crashed tick reads
-                            back rather than paying an agent for a second time, the session a timeout or a
-                            contaminated worktree pins before the issue is handed back, the three sentences this
-                            owner words for parks this mode's park owner stages -- the unusable reply, the outcome
-                            too large to record, and the question itself, since the reason is a shared value that
-                            owner is read against and the sentence is the failing step's own to say -- the
-                            announcement a recorded question is reconciled by, and the three emissions each
-                            written straight after the state they describe: a verdict, a typed late failure --
-                            reported with the step and the line behind it where the step was a re-measurement, so
-                            a reading that did not happen reads alike wherever it was taken -- and the
-                            cancellation an owner read earns
+                            and the announcement a recorded question is reconciled by -- made past the owner
+                            guard rather than beside the record, and suppressed where a park already stands. Two
+                            of the three sentences this mode's park owner stages are worded here -- the unusable
+                            reply and the outcome too large to record -- since the reason is a shared value that
+                            owner is read against and the sentence is the failing step's own to say
+      late_outcome.py       what every completion leaves on the record: the write that closes one by carrying the
+                            owner read it now owes -- under `owner_check` unless a split transaction was
+                            interrupted, whose boundary the record itself refuses to let any pre-split write
+                            rewind, since the phase is all that says a loop was in flight when nothing is
+                            recorded yet -- the answer a crashed tick reads back rather than paying an agent for
+                            a second time, the session a timeout or a contaminated worktree pins before the issue
+                            is handed back, the one record every ending hands its caller -- a decided one
+                            travelling on the adjudication itself rather than on a re-read of the comment it was
+                            written to -- and the three emissions each written straight after the state they
+                            describe: a verdict, a typed late failure -- carrying the step and the line behind it
+                            where the reading was a re-measurement, so a reading that did not happen reads alike
+                            wherever it was taken -- and the cancellation an owner read earns
       late_parks.py         every reason a late exit hands the issue back under, and the durable write each of
                             them rides out on: the park staged for the owner read to release, released anyway
                             where nothing would ever say it, and re-said at the top of a later tick when the

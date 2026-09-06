@@ -53,6 +53,7 @@ _OWNERS = (
     "late_snapshot",
     "late_sweep",
     "late_transaction",
+    "late_verdict",
     "late_verdict_push",
     "manifest",
     "models",
