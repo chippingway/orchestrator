@@ -618,10 +618,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       late_verdict.py       what one finished reply decides: the lineage-bound refusal recorded as the categorized
                             question it actually is, the record written and persisted before anything is posted,
                             and the announcement a recorded question is reconciled by -- made past the owner
-                            guard rather than beside the record, and suppressed where a park already stands. Two
-                            of the three sentences this mode's park owner stages are worded here -- the unusable
-                            reply and the outcome too large to record -- since the reason is a shared value that
-                            owner is read against and the sentence is the failing step's own to say
+                            guard rather than beside the record, and suppressed where a park already stands. All
+                            three sentences a read reply hands the issue back under are worded here -- the
+                            unusable reply, the outcome too large to record, and the question itself -- since the
+                            reason is a shared value this mode's park owner is read against and the sentence is
+                            the failing step's own to say
       late_outcome.py       what every completion leaves on the record: the write that closes one by carrying the
                             owner read it now owes -- under `owner_check` unless a split transaction was
                             interrupted, whose boundary the record itself refuses to let any pre-split write
