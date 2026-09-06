@@ -1476,17 +1476,27 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             a human's to answer, and the commits a publication is read by: the one an approval owes a
                             push for with the head it is pinned to, and the one this stage made
       publication.py        the push -- named against the commit the gate decided and pinned to the head a
-                            published approval was frozen against, where there is one -- the PR reuse (re-bodied
-                            when it was opened elsewhere) or open, and the
-                            validating handoff with its counter resets and the commit the push carried (decided
-                            once ahead of the push -- the one that passed the gate, or the checkout's own head
-                            where the switch named none -- and made durable there), written durably ahead of the
-                            relabel so nothing this line spends is stranded on an issue that has moved on and a
-                            relabel that fails leaves the branch recognizable -- refused,
-                            recoverably, on a checkout that has left the approved commit or stopped being provably
-                            clean around it -- both asked before the push and again once the pull request is open,
-                            since the worktree is writable while those requests run -- and spending the record of
-                            that commit once the handoff it was owed lands
+                            published approval was frozen against, where there is one -- the pull request opened
+                            or reused for it, and the validating handoff with its counter resets and the commit
+                            the push carried (decided once ahead of the push -- the one that passed the gate, or
+                            the checkout's own head where the switch named none -- and made durable there),
+                            written durably ahead of the relabel so nothing this line spends is stranded on an
+                            issue that has moved on and a relabel that fails leaves the branch recognizable --
+                            refused, recoverably, on a checkout that has left the approved commit or stopped
+                            being provably clean around it -- both asked before the push and again once the pull
+                            request is open, since the worktree is writable while those requests run -- and
+                            spending the record of that commit once the handoff it was owed lands
+      dev_pr.py             what that pull request says and whose work it says it carries: the title taken from
+                            the branch's own first commit subject, falling back to a prefix inferred from recent
+                            base history so it reads like the repository it lands in; the body pairing the
+                            `Resolves #N` that closes the issue with the dev session the branch was written by
+                            and the run's closing message, cut on a paragraph, line, or word boundary and marked
+                            as clipped where it outgrows the cap, with a fence the cut left open closed first;
+                            and the reuse of whatever is already open on the branch, which `find_open_pr`
+                            promises nothing else about -- one whose body already names this session is adopted
+                            as it stands, human annotations included, and one that does not (an operator's, or
+                            the `discussion` stage's plan PR sitting on the very ref the dev commits went to) is
+                            re-bodied to the implementation's
       parks.py              the session-limit, provider-unavailable, question, silent-failure, dirty-tree, and
                             unreadable-tree parks, the last two behind one seam so the caller asks whether the
                             tree is PROVABLY clean

@@ -23,6 +23,7 @@ _HANDLER_OWNER = "handler"
 
 _OWNERS = (
     "continue_command",
+    "dev_pr",
     "disposition",
     "drift",
     "drift_preflight",

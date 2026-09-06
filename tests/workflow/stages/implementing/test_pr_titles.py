@@ -21,9 +21,9 @@ class ConventionalPrTitleTest(
     unittest.TestCase,
     _ConventionalTitleFixtureMixin,
 ):
-    """`_on_commits` opens the PR with the title the publication owner picks
-    from the agent's first commit subject and the inferred repo prefix, and
-    keeps traceability in the body."""
+    """`_on_commits` opens the PR with the title the `dev_pr` owner picks from
+    the agent's first commit subject and the inferred repo prefix, and keeps
+    traceability in the body."""
 
     def test_uses_selected_title_and_links_the_issue(self) -> None:
         gh, issue = self._seeded(issue_number=CONVENTIONAL_ISSUE)
