@@ -167,8 +167,9 @@ The drift-sensitive handlers hash the issue title, body, and every human-authore
 once to a change: `workflow:decomposing` re-spawns inline, `workflow:ready` / `workflow:blocked` /
 `workflow:umbrella` route back to `workflow:decomposing`, the dev stages resume the locked dev session, and
 `workflow:documenting` unwinds to `workflow:validating`. `_handle_fixing`, `_handle_question`, and
-`_handle_discussion` deliberately skip the check. The seven non-human filters (including the untrusted-author filter
-and the bare-operator-command exclusions, `/orchestrator continue` and `/orchestrator add-agent-runs N`), the
+`_handle_discussion` deliberately skip the check. The eight non-human filters (including the untrusted-author filter
+and the whole-comment operator-command exclusions -- `/orchestrator continue`, `/orchestrator add-agent-runs N`, and
+`/orchestrator authorize-oversized <commit>`), the
 legacy-hash normalization, and the per-stage result routing are in
 [`state-machine/delivery-stages.md#user-content-drift-detection`][drift].
 

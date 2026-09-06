@@ -5,13 +5,25 @@ diagnostics it writes back when that message is not enough.
 
 The read side is the marker vocabulary the stage prompts promise and the stage
 handlers act on: a review verdict, a documentation no-change verdict, a drift
-acknowledgement, and the operator's `/orchestrator continue`. Each marker takes
+acknowledgement, and the two commands an operator writes. Each marker takes
 the LAST match, so one quoted from a template earlier in a long message loses
 to the concluding line, and prose that merely sounds like an outcome ("no
 changes needed") stays `_VERDICT_UNKNOWN` -- the caller parks a human in rather
-than guessing. `/orchestrator continue` is the one marker a human writes, so it
-also owns the refusal posted when that command arrives without the guidance the
-park is actually waiting on.
+than guessing. `/orchestrator continue` is the first of the two a human writes,
+so it also owns the refusal posted when that command arrives without the
+guidance the park is actually waiting on.
+
+`/orchestrator authorize-oversized <commit>` is the second, and only its
+SYNTAX is here. What it means -- which candidate it may publish, what has to be
+proved before it does, and what the record it earns says -- is the late-split
+stage owner's, because that is the only place the frozen pair and the
+measurement it names exist. Read from the WHOLE comment and nowhere else: it
+bypasses the one gate that stops unreviewed bulk reaching a pull request, so a
+line of it inside a paragraph is prose that mentions the command rather than a
+gesture anybody made, and prose about an oversized candidate is guidance the
+developer is resumed against. The argument is captured as whatever was written
+rather than as a commit, because a malformed one is a command this workflow
+owes an answer to and not a line it never saw.
 
 The write side is the stderr block a park comment and a log line carry. Both
 run the shared redactor over the raw stderr BEFORE trimming it to either
@@ -51,6 +63,16 @@ _CONTINUE_PARK_REASONS = frozenset(("agent_silent", "agent_timeout"))
 
 _ORCHESTRATOR_CONTINUE_RE = re.compile(
     r"^[ \t]*/orchestrator[ \t]+continue[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+# The command that publishes one oversized candidate a human has read, as a
+# whole line. Anchored at both ends like the continue above it, and matched
+# against the whole comment by the reader below, so a park notice spelling it
+# out inside a sentence is never read back as somebody's authorization.
+_AUTHORIZE_OVERSIZED_RE = re.compile(
+    r"^[ \t]*/orchestrator[ \t]+authorize-oversized"
+    r"(?P<candidate>[ \t]+[^\r\n]*?)?[ \t]*$",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -196,6 +218,28 @@ def _is_bare_orchestrator_continue(comment) -> bool:
         _ORCHESTRATOR_CONTINUE_RE.fullmatch((comment.body or "").strip())
         is not None
     )
+
+
+def _authorized_oversized_candidate(comment) -> str | None:
+    """The commit an operator's whole-comment authorization names, or None.
+
+    None is "this comment is not that command", which is what every caller
+    branches on: the drift hash leaves the command out of the requirements it
+    counts, and the late stage reads the argument out of it. A command with
+    nothing after it answers with the empty string rather than None -- it is
+    still a command, and one nobody could act on is owed the same answer a
+    misspelled commit is.
+
+    The whole comment or nothing. What this licenses is a bypass of the size
+    gate, so a line of it under a paragraph is text that mentions the command
+    rather than a decision somebody made -- and that paragraph is guidance,
+    which resumes the developer against it.
+    """
+    written = (getattr(comment, "body", "") or "").strip()
+    found = _AUTHORIZE_OVERSIZED_RE.fullmatch(written)
+    if found is None:
+        return None
+    return (found.group("candidate") or "").strip()
 
 
 def _continue_command_action(new_comments: list, park_reason) -> str:

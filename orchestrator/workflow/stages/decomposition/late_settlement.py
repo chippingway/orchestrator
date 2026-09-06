@@ -30,14 +30,20 @@ thing being guarded against rather than the grounds for waiving the guard. So
 the issue stops, and everything a human would decide against is left exactly
 where the adjudication put it.
 
-What a decision to publish an oversized candidate unsplit would license is the
-SETTLEMENT below, and this owner keeps the ORDER of it while the steps
-themselves are owned beside it: `late_reconcile` takes the hold off and settles
-which pull request the issue records, `late_verdict_push` makes the push a
-candidate measured past publication earns, and `late_handback` hands the label
-on and retires the cycle. Nothing in this mode makes that decision -- a verdict
-is not one -- so what follows describes the road rather than a road a reply
-takes.
+Unless a human has already decided. The one thing that turns that park into a
+publication is an operator's own authorization of this exact candidate, proved
+and recorded by `late_authorize` before this owner is reached -- so the
+question asked here is of the RECORD rather than of a reply, and a tick that
+died between the two finishes the settlement from what the write left. What
+follows is that settlement.
+
+This owner keeps the ORDER of it while the steps themselves are owned beside
+it: `late_reconcile` takes the hold off and settles which pull request the
+issue records, `late_verdict_push` makes the push a candidate measured past
+publication earns, and `late_handback` hands the label on and retires the
+cycle. Nothing in this mode makes the decision the road starts from -- a
+verdict is not one -- which is why the road is entered from a human's command
+and from nothing else.
 
 The settlement writes an EXEMPTION: a durable record that this exact commit
 has been adjudicated, or the gate would measure the same candidate past the
@@ -84,6 +90,7 @@ from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.late_split import exemption as _exemption
 from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.stages.decomposition import (
+    late_authorize as _late_authorize,
     late_handback as _late_handback,
     late_outcome as _late_outcome,
     late_owner as _late_owner,
@@ -117,6 +124,13 @@ def _settle_adjudication(
     runs; that is `late_verdict`'s contract, and it is what makes the
     fail-closed read in front of this affordable: a tick that stops there has
     lost a GitHub read and not an agent run.
+
+    A `single` is the one verdict whose answer depends on something other than
+    the verdict. Its park is what an adjudicator's answer alone earns, and the
+    settlement below is what an operator's authorization of this exact
+    candidate earns -- asked of the durable record rather than of the reply
+    that wrote it, so a tick that died between the two finishes rather than
+    asking a human who has already decided.
     """
     adjudication = finished.adjudication
     if finished.disposition != _LateDisposition.DECIDED or adjudication is None:
@@ -126,6 +140,8 @@ def _settle_adjudication(
         return finished
     if adjudication.verdict == LateVerdict.SPLIT:
         return _handed_split(context, finished)
+    if _late_authorize._publishes_unsplit(context):
+        return _reconcile_single(context, finished)
     return _late_unsplit._parked_single(context, finished)
 
 
@@ -159,7 +175,7 @@ def _handed_split(
 def _reconcile_single(
     context: _LateContext, finished: _LateAdjudicationRun,
 ) -> _LateAdjudicationRun:
-    """Exempt exactly the measured commit and hand the candidate back.
+    """Exempt exactly the authorized commit and hand the candidate back.
 
     Two reconciliations first, and the second is the one a search by branch and
     open state cannot make: the hold comes off the pull request it marked, and

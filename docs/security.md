@@ -453,11 +453,13 @@ The security posture:
   the `user_content_hash` drift signal, every awaiting-human resume signal (including the base-sync auto-rebase
   retry-unpark, the `/orchestrator add-review-rounds` review-cap command, the `/orchestrator continue` that
   renews a spent per-issue spawn budget under `workflow:decomposing` or `workflow:implementing`, and the
-  `/orchestrator add-agent-runs N` that widens a spent lifetime agent-run allowance), and the
+  `/orchestrator add-agent-runs N` that widens a spent lifetime agent-run allowance, and the
+  `/orchestrator authorize-oversized <commit>` that publishes an oversized committed candidate unsplit), and the
   `in_review` / `fixing`
   PR-feedback loop. So an outsider on a public repo cannot inject instructions into an agent, resume a parked session,
   retry a parked rebase, buy an agent run out of an exhausted budget or off a spent lifetime ceiling
-  ([below](#bounded-agent-spend-per-issue-max_agent_runs_per_issue)), route
+  ([below](#bounded-agent-spend-per-issue-max_agent_runs_per_issue)), bypass the added-line ceiling on a change
+  nobody reviewed, route
   `in_review` to `workflow:fixing`, or shift the drift hash, while the audit trail of what they said stays intact. An
   untrusted request for more agent runs is not even answered: a receipt is a comment somebody else's word paid for,
   and posting one would spend the watermark a trusted operator's own command is read against.

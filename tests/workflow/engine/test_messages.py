@@ -23,6 +23,8 @@ from tests.support.fakes import FakeComment, FakeGitHubClient, make_issue
 _AGENT_SESSION_ID = "s"
 _REDACTION_MARKER = "***"
 _CONTINUE_COMMAND = "/orchestrator continue"
+_SHA_LENGTH = 40
+_COMMIT = "a" * _SHA_LENGTH
 _REFUSAL_ISSUE_NUMBER = 1011
 _WATERMARK_KEY = "last_action_comment_id"
 def _agent_result(stderr: str) -> AgentResult:
@@ -169,6 +171,51 @@ class ContinueCommandRecognitionTest(unittest.TestCase):
             with self.subTest(guided=body):
                 self.assertFalse(
                     messages._is_bare_orchestrator_continue(
+                        FakeComment(id=1, body=body),
+                    ),
+                )
+
+
+class AuthorizeOversizedRecognitionTest(unittest.TestCase):
+    """Which comments carry the authorization, and what commit each names.
+
+    Only a WHOLE comment is ever the command, because what it licenses is a
+    bypass of the size gate: a line of it under a paragraph is text that
+    mentions the command rather than a decision anybody made, and that
+    paragraph reaches the stage as guidance instead.
+    """
+
+    def test_a_whole_comment_names_its_commit(self) -> None:
+        named = {
+            f"/orchestrator authorize-oversized {_COMMIT}": _COMMIT,
+            f"  /Orchestrator  Authorize-Oversized  {_COMMIT}  ": _COMMIT,
+            f"/orchestrator authorize-oversized {_COMMIT}\n": _COMMIT,
+            # A malformed argument is still the command, and the caller owes
+            # it an answer rather than reading it as somebody's requirements.
+            "/orchestrator authorize-oversized the one above": "the one above",
+            "/orchestrator authorize-oversized": "",
+        }
+        for body, commit in named.items():
+            with self.subTest(body=body):
+                self.assertEqual(
+                    messages._authorized_oversized_candidate(
+                        FakeComment(id=1, body=body),
+                    ),
+                    commit,
+                )
+
+    def test_less_than_the_whole_comment_is_prose(self) -> None:
+        prose = (
+            f"ship it\n/orchestrator authorize-oversized {_COMMIT}",
+            f"/orchestrator authorize-oversized {_COMMIT}\nthanks",
+            f"run `/orchestrator authorize-oversized {_COMMIT}`",
+            _CONTINUE_COMMAND,
+            "",
+        )
+        for body in prose:
+            with self.subTest(body=body):
+                self.assertIsNone(
+                    messages._authorized_oversized_candidate(
                         FakeComment(id=1, body=body),
                     ),
                 )

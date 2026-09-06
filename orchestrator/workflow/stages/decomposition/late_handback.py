@@ -51,11 +51,15 @@ from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
 
+# Said by whoever the publication is owed to, which is an operator: a `single`
+# on its own parks, so the only road that reaches this sentence is one a human
+# authorized. Naming the adjudicator instead would credit the decision to the
+# agent that is not allowed to make it.
 _ACCEPTED_NOTICE = (
-    ":white_check_mark: the late decomposer read the committed candidate "
-    "`{candidate}` as one coherent change ({additions} added lines against a "
-    "ceiling of {threshold}), so it publishes as it stands. Only that commit "
-    "is exempt -- anything committed on top of it is measured again."
+    ":white_check_mark: the committed candidate `{candidate}` was authorized "
+    "to publish unsplit ({additions} added lines against a ceiling of "
+    "{threshold}), so it publishes as it stands. Only that commit is exempt "
+    "-- anything committed on top of it is measured again."
 )
 
 

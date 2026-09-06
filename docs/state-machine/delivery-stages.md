@@ -54,7 +54,7 @@ refreshes `user_content_hash` itself once it has consumed the PR-side feedback; 
 `_handle_discussion` run their own conversation flows on an operator-applied label nothing routes into, so rerouting
 an edited issue to `workflow:decomposing` would take it out of the conversation a human deliberately put it in.
 
-Non-human content is filtered seven ways:
+Non-human content is filtered eight ways:
 
 - pinned-state comments by `PINNED_STATE_MARKER`;
 - orchestrator-posted comments by `_ORCH_COMMENT_MARKER` (an HTML comment embedded via `_with_orch_marker`, invisible in
@@ -71,6 +71,12 @@ Non-human content is filtered seven ways:
   issue" instead of running the reviewer round the issue stopped mid-way through. Filtered in **both** hashing modes,
   since the legacy algorithm the flag below reproduces predates the command entirely; guidance beside the command is
   requirements here too, so it is not bare, it shifts the hash, and the drift road carries those words to the agent;
+- a whole-comment `/orchestrator authorize-oversized <commit>` via
+  `messages._authorized_oversized_candidate`, in both modes and for the same reasons: it is an operator control, and
+  the tick that reads it hands the **same issue** straight on to the stage the authorized publication continues at,
+  so a hash counting it would meet that stage as a body edit nobody made — resuming a developer over the very commit
+  an operator just authorized. Only the whole comment is the command, so a paragraph containing the line is
+  requirements text, shifts the hash, and reaches the developer as the guidance it is;
 - untrusted authors via `github.comments.is_trusted_author` when `ALLOWED_ISSUE_AUTHORS` is set (opt-in; empty
   allowlist trusts everyone), so an outsider's comment cannot shift the hash and re-trigger drift on a public repo.
   The same trust helpers filter the conversation text fed to agent prompts: `_recent_comments_text` (implement /
@@ -101,7 +107,7 @@ Non-human content is filtered seven ways:
   pending-fix bookmark, routes `in_review` to `workflow:fixing`, resumes an awaiting-human decomposer / developer /
   reviewer / question / documenting session, retries a parked auto-rebase, satisfies the `/orchestrator
   add-review-rounds` review-cap command, renews an exhausted spawn budget, buys an issue past its lifetime agent-run
-  ceiling, nor reaches any agent prompt.
+  ceiling, authorizes an oversized committed candidate to publish unsplit, nor reaches any agent prompt.
 
 `_detect_user_content_change` durably persists the baseline on its FIRST encounter via `gh.write_pinned_state`, so an
 early-return tick cannot silently absorb a later edit as the new baseline. It also carries a **legacy-hash
@@ -716,8 +722,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
     comes back, which stops the remeasure that would write a fresh candidate over a cycle a close already ended.
     The poisoned-session retry inside the shared resume is guarded with them, since that is a *second* agent and an
     issue somebody closed is owed neither;
-  - **an authorized settlement's publication** (`late_settlement`, and `late_handback` behind it) — the road a human's
-    decision to publish an oversized candidate unsplit licenses, since an adjudicator's own `single` parks and
+  - **an authorized settlement's publication** (`late_settlement`, and `late_handback` behind it) — the road a
+    human's `/orchestrator authorize-oversized <commit>` licenses, since an adjudicator's own `single` parks and
     publishes nothing — asked between *each* of its own steps — the reconciliations, the exemption write (which
     carries the identity of the accepted contribution beside it, since the retirement below takes the frozen pair it
     was read over off the record), the handoff label, and the accepted notice — because these are the barriers

@@ -42,7 +42,9 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      late coordinator owns every later tick
                                      and an adjudicator's `single` parks the
                                      candidate for a human's decision rather
-                                     than publishing it unsplit
+                                     than publishing it unsplit -- one
+                                     trusted /orchestrator
+                                     authorize-oversized <commit> settles it
      candidate == late_exempt_sha ─► publish unmeasured (the one commit an
                                      authorized settlement accepted, and only
                                      it)

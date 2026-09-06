@@ -37,7 +37,12 @@ earns, `late_revision` owns the developer run guidance buys and the re-measured
 candidate it comes back with, `late_relabel` owns the label a live generation
 pins against the kill switch and a hand relabel, `late_owner` owns the fresh
 read that stands between a finished run and anything it earns,
-`late_settlement` owns what a guarded verdict becomes and the order a settled
+`late_unsplit` owns the park an adjudicator's own `single` hands the issue to a
+human under and `late_authorize` the one command that ends it -- a trusted
+whole-comment `/orchestrator authorize-oversized <commit>`, proved against the
+frozen candidate, the recorded verdict, and a contribution fingerprinted again
+before anything publishes -- `late_settlement` owns what a guarded verdict
+becomes and the order an authorized
 one is acted on in -- `late_reconcile` takes the hold off and settles which
 pull request the issue records, `late_proof` decides whether the publication a
 candidate was measured against is still standing somewhere the verdict may act

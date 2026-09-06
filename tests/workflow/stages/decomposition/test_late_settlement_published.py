@@ -56,7 +56,7 @@ def _CRASHES(*_called, **_options):
     raise RuntimeError(LABEL_WRITE_REJECTED)
 
 
-ACCEPTED_NOTICE = "one coherent change"
+ACCEPTED_NOTICE = "authorized to publish unsplit"
 
 # What a settled generation leaves behind on the pinned comment: none of it.
 _RETIRED_KEYS = (

@@ -95,7 +95,11 @@ from orchestrator.workflow.engine import (
     prompts as _prompts,
     usage as _usage,
 )
-from orchestrator.workflow.late_split import events as _events, telemetry as _telemetry
+from orchestrator.workflow.late_split import (
+    events as _events,
+    overrides as _overrides,
+    telemetry as _telemetry,
+)
 from orchestrator.workflow.late_split.models import (
     LateFailure,
     LatePhase,
@@ -497,6 +501,13 @@ def _remeasured(
     candidate whose SHA is unchanged would otherwise read back as already
     decided -- decided against the requirements that have since moved, which
     is the one answer this whole path exists to refuse.
+
+    An operator's authorization to publish is refused for exactly that reason
+    and needs its own statement, because the counter is the one identity it
+    does not carry: it names the frozen pair, the measurement and the digest,
+    and an acknowledged candidate can come back matching every one of them.
+    Left standing it would license the fresh adjudication this re-freeze buys
+    -- a permission taken against requirements a human has since changed.
     """
     measured = _measurement._measure_candidate(
         context.spec, worktree, revised,
@@ -541,6 +552,7 @@ def _remeasured(
         # the issue.
         owner_check_pending=True,
     )
+    _overrides.clear_publication_override(context.state)
     _late_parks._answer_park(context)
     _late_parks._persist(context)
     _telemetry.emit_late_event(
