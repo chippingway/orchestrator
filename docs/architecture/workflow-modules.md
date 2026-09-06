@@ -1076,14 +1076,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             missing-`pr_number` park, and the commit the no-feedback bounce publishes -- measured by
                             the same size gate the shared dev-fix publication passes, so a held candidate stops the
                             bounce rather than being relabelled over -- before it hands the PR back to the reviewer
-      feedback.py           the rescan past the three in_review watermarks and the narrower ratchet a consumed batch
-                            advances them by
+      feedback.py           the rescan past the three in_review watermarks, the quiet window a fresh batch settles
+                            through before a resume spends the session on a fragment of it, and the narrower ratchet
+                            a consumed batch advances those watermarks by
       bookmarks.py          the `pending_fix_*` ids a replay rebuilds the triggering batch from, and the clear each
                             round earns
-      resume.py             the quiet window, the dev run, the ACK fast path, the `workflow:validating` relabel a
-                            pushed fix earns, and the round a fix the size gate sent to adjudication spends here --
-                            no later tick of this stage can, since a settled verdict publishes before handing the
-                            issue back
+      resume.py             the dev run, the ACK fast path, the `workflow:validating` relabel a pushed fix earns,
+                            and the round a fix the size gate sent to adjudication spends here -- no later tick of
+                            this stage can, since a settled verdict publishes before handing the issue back
       parked.py             the four answers an `awaiting_human` tick can reach and the order they are asked in
       continue_command.py   `/orchestrator continue` on a parked fix: the replay and what it may hand the dev --
                             guidance, never the command itself -- plus the two refusals and the guidance passthrough

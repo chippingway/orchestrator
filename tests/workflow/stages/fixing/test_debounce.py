@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import unittest
 
+from orchestrator.workflow.stages.fixing import feedback as _feedback, models as _models
 from tests.workflow.stages.fixing import fixing_test_support as support
 
 IssueScenario = support.IssueScenario
@@ -21,8 +22,10 @@ DEV_SESSION = support.DEV_SESSION
 EARLIER_PENDING_FIX_AT_TS = support.EARLIER_PENDING_FIX_AT_TS
 EVENT_AGENT_SPAWN = support.EVENT_AGENT_SPAWN
 FIXING = support.FIXING
+FOLLOWUP_ID = support.FOLLOWUP_ID
 STAGE_FIXING = support.STAGE_FIXING
 FakeComment = support.FakeComment
+FakePRReview = support.FakePRReview
 FakeUser = support.FakeUser
 INITIAL_PR_COMMENT_WATERMARK = support.INITIAL_PR_COMMENT_WATERMARK
 IN_REVIEW = support.IN_REVIEW
@@ -35,6 +38,7 @@ PR_LAST_COMMENT_ID = support.PR_LAST_COMMENT_ID
 PUSHED_FIX_MESSAGE = support.PUSHED_FIX_MESSAGE
 PUSH_BRANCH = support.PUSH_BRANCH
 RESUME_SESSION_ID = support.RESUME_SESSION_ID
+REVIEW_SUMMARY_FEEDBACK_ID = support.REVIEW_SUMMARY_FEEDBACK_ID
 ROLE_DEVELOPER = support.ROLE_DEVELOPER
 RUN_AGENT = support.RUN_AGENT
 SHA_AFTER = support.SHA_AFTER
@@ -45,10 +49,89 @@ _FixingFixtureMixin = support._FixingFixtureMixin
 _agent = support._agent
 config = support.config
 datetime = support.datetime
+now_utc = support.now_utc
 patch = support.patch
 posted_comment_contains = support.posted_comment_contains
 timedelta = support.timedelta
 timezone = support.timezone
+
+
+FEEDBACK_BODY = "rename foo to bar"
+
+# The window the helper-level cases below are measured against: each dates its
+# items relative to this rather than carrying a duration of its own.
+GATE_WINDOW_SECONDS = 900
+
+
+def _comment(comment_id: int, created_at) -> FakeComment:
+    return FakeComment(id=comment_id, body=FEEDBACK_BODY, created_at=created_at)
+
+
+def _batch(issue_space=(), review_summaries=()) -> _models._FixingFeedback:
+    """A rescan result carrying only the surfaces a case needs."""
+    issue_space = list(issue_space)
+    review_summaries = list(review_summaries)
+    return _models._FixingFeedback(
+        issue_space=issue_space,
+        review_comments=[],
+        review_summaries=review_summaries,
+        all_items=issue_space + review_summaries,
+    )
+
+
+def _window_cases() -> dict:
+    """Batches the gate answers for, paired with the answer each one earns."""
+    now = now_utc()
+    settled = now - timedelta(seconds=GATE_WINDOW_SECONDS * 2)
+    return {
+        "nothing unread": (_batch(), False),
+        "one settled comment": (_batch([_comment(TRIGGER_ID, settled)]), False),
+        "one fresh comment": (_batch([_comment(TRIGGER_ID, now)]), True),
+        # The freshest item decides, wherever the batch lists it.
+        "a fresh comment behind a settled one": (
+            _batch([_comment(TRIGGER_ID, now), _comment(FOLLOWUP_ID, settled)]),
+            True,
+        ),
+        # A review summary stamps `submitted_at` where a comment stamps
+        # `created_at`, so the newest-item read spans both spellings.
+        "a fresh review summary": (
+            _batch(
+                [_comment(TRIGGER_ID, settled)],
+                [FakePRReview(
+                    id=REVIEW_SUMMARY_FEEDBACK_ID,
+                    body=FEEDBACK_BODY,
+                    submitted_at=now,
+                )],
+            ),
+            True,
+        ),
+        # An item that cannot say when it landed cannot say the batch is still
+        # settling, so it never holds the resume.
+        "an undated comment": (_batch([_comment(TRIGGER_ID, None)]), False),
+    }
+
+
+class QuietWindowGateTest(unittest.TestCase):
+    """The gate one tick asks before it spends a dev session on a batch."""
+
+    def test_freshest_item_decides_the_window(self) -> None:
+        with patch.object(config, DEBOUNCE_CONFIG, GATE_WINDOW_SECONDS):
+            for case, (feedback, expected) in _window_cases().items():
+                with self.subTest(case=case):
+                    self.assertIs(
+                        _feedback._fixing_debounce_open(feedback, None), expected,
+                    )
+
+    def test_replay_batch_skips_the_window(self) -> None:
+        # An accepted `/orchestrator continue` is a deliberate operator signal
+        # rather than chatter, so the preserved batch resumes the dev on the
+        # same feedback the window would otherwise still be holding.
+        feedback = _batch([_comment(TRIGGER_ID, now_utc())])
+        with patch.object(config, DEBOUNCE_CONFIG, GATE_WINDOW_SECONDS):
+            self.assertTrue(_feedback._fixing_debounce_open(feedback, None))
+            self.assertFalse(
+                _feedback._fixing_debounce_open(feedback, feedback.all_items),
+            )
 
 
 class FixingDebounceAndAckTest(unittest.TestCase, _FixingFixtureMixin):

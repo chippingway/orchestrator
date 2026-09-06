@@ -71,6 +71,11 @@ _pending_fix_id_set = _bookmarks._pending_fix_id_set
 _reconstruct_pending_fix_batch = _continue_command._reconstruct_pending_fix_batch
 
 
+def now_utc() -> datetime_module.datetime:
+    """The tz-aware clock every comment age in this stage is measured from."""
+    return datetime.now(timezone.utc)
+
+
 def _branch(issue_number: int) -> str:
     """Return the per-issue PR branch used by the fixing handler."""
     return f"orchestrator/chippingway__orchestrator/issue-{issue_number}"

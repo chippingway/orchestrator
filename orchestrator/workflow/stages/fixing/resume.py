@@ -2,16 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """The dev run, and everything a finished run leaves behind.
 
-The quiet window comes first: a human mid-thought posts three comments in a
-minute, and resuming on the first would spend the session on a fragment. Each
-rescan re-reads the freshest timestamp, so a later comment extends the wait
-rather than racing it -- and an accepted `/orchestrator continue` skips it
-outright, because that is a deliberate operator signal rather than chatter.
-
-The run itself refreshes `user_content_hash` on BOTH outcomes, because the dev
-saw the quoted comments either way: leaving the baseline behind would let the
-next handler that checks for a body edit read the comments it just consumed as
-fresh drift and resume a second time on input already handled.
+The run refreshes `user_content_hash` on BOTH outcomes, because the dev saw
+the quoted comments either way: leaving the baseline behind would let the next
+handler that checks for a body edit read the comments it just consumed as fresh
+drift and resume a second time on input already handled.
 
 Two refusals sit between the finished run and any disposition, and both bail
 WITHOUT writing pinned state so the whole tick is re-decidable next time. A
@@ -31,10 +25,8 @@ belongs to the final-docs handoff after reviewer approval.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 
-from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
@@ -55,39 +47,8 @@ from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
     resume as _dev_resume,
 )
-from orchestrator.workflow.stages.in_review import watermarks as _in_review_watermarks
 from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
 from orchestrator.workflow.state import WorkflowLabel
-
-
-def _fixing_debounce_open(
-    feedback: _models._FixingFeedback, replay_batch,
-) -> bool:
-    """True while the quiet window is still open: hold the resume until no
-    comment has landed for `IN_REVIEW_DEBOUNCE_SECONDS`.
-
-    A newer comment arriving on a later tick is naturally picked up by the
-    rescan, which extends the wait because the freshest timestamp controls
-    the gate. Comments without a usable timestamp (older fakes, PyGithub
-    edge cases) do not block the resume; in production `created_at` /
-    `submitted_at` are always set. An accepted `/orchestrator continue`
-    (`replay_batch` set) skips the wait entirely -- it is a deliberate
-    operator signal, not chatter to debounce.
-    """
-    if replay_batch is not None:
-        return False
-    now = datetime.now(UTC)
-    latest_ts: datetime | None = None
-    for feedback_item in feedback.all_items:
-        ts = _in_review_watermarks._comment_created_at(feedback_item)
-        if ts is None:
-            continue
-        if latest_ts is None or ts > latest_ts:
-            latest_ts = ts
-    return (
-        latest_ts is not None
-        and (now - latest_ts).total_seconds() < config.IN_REVIEW_DEBOUNCE_SECONDS
-    )
 
 
 def _spends_fix_round(state, pending_fix_at_was_set: bool):
