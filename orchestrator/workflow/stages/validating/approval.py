@@ -9,19 +9,17 @@ short-circuits to ok, and a failure parks in `validating` with a durable
 reason rather than advancing. The squash follows, and its failure parks
 WITHOUT relabeling on purpose -- the original commits are still on the branch,
 and only a human can decide whether to keep the history or force it flat. The
-notice it parks with says which of the three places the failure left the
-branch in, because the errand differs: the approved commits at HEAD, the
-approved commits off the tip and in the reflog behind a recorded head, the
-approved commits still in the branch's own history under work committed on top
-of them, or a reading that placed them nowhere at all.
+notice it parks with says which of the four places the failure left the branch
+in, because the errand differs: the approved commits at HEAD, the approved
+commits off the tip and in the reflog behind a recorded head, the approved
+commits still in the branch's own history under work committed on top of them,
+or a reading that placed them nowhere at all.
 
 The ordering inside the handoff matters too. The squash notice is posted
-BEFORE the watermarks are seeded so that its own id lands in the recorded
-orchestrator set and the seed walk steps past it; the reverse order would hand
-in_review an informational post as fresh human PR feedback and wake the dev on
-it. A `get_pr` failure is not fatal here -- in_review still has its legacy
-watermark to fall back on -- so it logs and skips the seed rather than
-stranding an approved branch.
+BEFORE `handoff` is asked to seed the watermarks, so that its own id lands in
+the recorded orchestrator set and the seed walk steps past it; the reverse
+order would hand in_review an informational post as fresh human PR feedback
+and wake the dev on it.
 
 A notice that was OWED and did not post is the one step that stops the
 handoff, and what stops it is the record. The count that notice is worded
@@ -55,19 +53,17 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.git.publication import models as _publication, squash as _squash
 from orchestrator.git.verification import runner as _verify_runner
-from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.github.client import GitHubClient
-from orchestrator.github.pinned_state import PinnedState
+from orchestrator.github import (
+    client as _client,
+    pinned_state as _pinned_state,
+)
 from orchestrator.workflow.engine import comments as _comments, guards as _guards
 from orchestrator.workflow.late_split import collapses as _collapses
-from orchestrator.workflow.stages.implementing import (
-    late_records as _late_records,
-)
 from orchestrator.workflow.stages.validating import (
+    handoff as _handoff,
     models as _models,
     state as _state,
     verify as _verify,
-    watermarks as _watermarks,
 )
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -124,7 +120,7 @@ _LEFT_UNKNOWN = (
 )
 
 
-# The notice each of the three readings earns. Spelled as a mapping rather
+# The notice each of the four readings earns. Spelled as a mapping rather
 # than a chain of tests, because the reading is the squash owner's and this
 # stage's only job with it is to say the right sentence.
 _LEFT = MappingProxyType({
@@ -135,75 +131,10 @@ _LEFT = MappingProxyType({
 })
 
 
-def _handed_off(
-    gh: GitHubClient,
-    issue: Issue,
-    state: PinnedState,
-    pr_number,
-    squashed_count: int,
-) -> bool:
-    """Announce the squash and seed the in_review watermarks, or say it failed.
-
-    The seed keeps `_handle_in_review` from replaying the orchestrator's own
-    automated comments ("picking this up", "PR opened", the approval just
-    posted, the squash notice) as fresh PR feedback once the debounce expires.
-    Concurrent human feedback posted during the prior stage is preserved:
-    `_latest_pr_comment_ids` stops the seed walk at the first unread
-    non-orchestrator comment, and `_ratchet_watermark` never regresses a
-    watermark a prior in_review tick already advanced. Inline review comments
-    and review summaries live in namespaces the orchestrator never posts on,
-    so the inline surface answers None and there is no seeded summary value;
-    `_ratchet_watermark` defaults each to 0 so the in_review legacy migration
-    treats them as already seeded and does NOT advance past human feedback
-    submitted on those surfaces.
-
-    The notice goes out FIRST so the snapshot behind it carries the notice's
-    own id and the seed walk steps past it. Posted afterwards it would reach
-    in_review as fresh human PR feedback and wake the dev on an informational
-    orchestrator post.
-
-    False is the one road that stops the handoff: a notice this squash OWED
-    and could not post. The count it is worded from lives on the pinned record
-    of the collapse and nowhere else, so the caller keeps that record and
-    leaves the label where it is -- and the next tick republishes the commit
-    the remote already carries as the leased no-op it is and words the notice
-    again. A `get_pr` failure is not that: in_review falls back to its legacy
-    watermark, so the seed is skipped and the handoff carries on rather than
-    stranding an approved branch on a read.
-    """
-    if pr_number is None:
-        return True
-    if not _squash_notice_posted(gh, issue, state, pr_number, squashed_count):
-        return False
-    try:
-        pr = gh.get_pr(int(pr_number))
-    except Exception as error:  # noqa: BLE001 - an unreadable PR falls back to the legacy watermark
-        # Surface the failure but skip the traceback -- it adds no signal.
-        log.warning(
-            "issue=#%s could not snapshot PR #%s for in_review "
-            "handoff: %s", issue.number, pr_number, error,
-        )
-        return True
-    issue_wm, review_wm = _watermarks._latest_pr_comment_ids(gh, issue, pr, state)
-    state.set(
-        "pr_last_comment_id",
-        _watermarks._ratchet_watermark(state.get("pr_last_comment_id"), issue_wm),
-    )
-    state.set(
-        "pr_last_review_comment_id",
-        _watermarks._ratchet_watermark(state.get("pr_last_review_comment_id"), review_wm),
-    )
-    state.set(
-        "pr_last_review_summary_id",
-        _watermarks._ratchet_watermark(state.get("pr_last_review_summary_id"), None),
-    )
-    return True
-
-
 def _squash_notice_posted(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     pr_number,
     squashed_count: int,
 ) -> bool:
@@ -211,14 +142,15 @@ def _squash_notice_posted(
 
     Nothing is owed where nothing was collapsed, which is every branch that
     reached approval with one commit on it -- and every tick that finished a
-    collapse an earlier one already announced.
+    collapse an earlier one already announced. An issue with no pull request
+    has nowhere to say it.
 
     A post that fails answers False rather than being swallowed, because the
     count behind it is recoverable state: it is on the pinned record of the
     collapse, and the caller keeps that record rather than dropping it over an
     announcement that never went out.
     """
-    if squashed_count <= 1:
+    if pr_number is None or squashed_count <= 1:
         return True
     try:
         _comments._post_pr_comment(
@@ -235,49 +167,10 @@ def _squash_notice_posted(
     return True
 
 
-def _approved_work_verifies(
-    gh: GitHubClient,
-    issue: Issue,
-    state: PinnedState,
-    reviewer_run: _models._ReviewerRun,
-) -> bool:
-    verify = _verify_runner._run_verify_commands(
-        reviewer_run.wt, config.VERIFY_COMMANDS, config.VERIFY_TIMEOUT,
-    )
-    if verify.status == "ok":
-        return True
-    _verify._park_verify_failure(gh, issue, state, verify)
-    gh.write_pinned_state(issue, state)
-    return False
-
-
-def _post_approval_comment(
-    gh: GitHubClient,
-    issue: Issue,
-    state: PinnedState,
-    reviewer_run: _models._ReviewerRun,
-) -> None:
-    if reviewer_run.pr_number is None:
-        return
-    try:
-        _comments._post_pr_comment(
-            gh,
-            int(reviewer_run.pr_number),
-            state,
-            f":white_check_mark: {config.REVIEW_AGENT} review approved.",
-        )
-    except Exception:
-        log.exception(
-            "issue=#%s could not post approval to PR #%s",
-            issue.number,
-            reviewer_run.pr_number,
-        )
-
-
 def _park_squash_failure(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     error,
     standing: str = _publication.BRANCH_INTACT,
 ) -> None:
@@ -317,7 +210,7 @@ def _park_squash_failure(
     gh.write_pinned_state(issue, state)
 
 
-def _parked_on_the_squash(state: PinnedState) -> bool:
+def _parked_on_the_squash(state: _pinned_state.PinnedState) -> bool:
     """Whether this issue is already parked on a squash that would not go."""
     return bool(
         state.get(_AWAITING_HUMAN)
@@ -325,13 +218,7 @@ def _parked_on_the_squash(state: PinnedState) -> bool:
     )
 
 
-def _squashed_and_handed_off(
-    gh: GitHubClient,
-    spec: config.RepoSpec,
-    issue: Issue,
-    state: PinnedState,
-    worktree,
-) -> None:
+def _squashed_and_handed_off(gate, branch: str) -> None:
     """Squash what the branch carries and hand the issue on, or stop.
 
     The whole of what an approval owes past the reviewer, and the whole of
@@ -341,6 +228,12 @@ def _squashed_and_handed_off(
     rather than about which reading sent them -- a recovery that finished a
     landed collapse owes the pull request exactly the announcement the tick
     that made it would have posted, and the label it never moved.
+
+    The subject the size gate decides about, and the branch the rewrite
+    lands on, are handed in rather than rebuilt: each road already holds
+    every part of them, and the checkout in particular is one only that road
+    may decide -- a recovery reads the worktree where it stands and rebuilds
+    it only where it is absent.
 
     The squash is reached on every approval, whatever `SQUASH_ON_APPROVAL`
     says. The switch decides whether a NEW collapse is made and the squash
@@ -364,13 +257,8 @@ def _squashed_and_handed_off(
     an `awaiting_human` carried past the relabel would hold the issue in
     `documenting` over a condition nobody is waiting on any more.
     """
-    # The subject the size gate decides about, built here rather than in the
-    # git layer: this stage already holds every part of it, and the squash
-    # owner would have to reach up a layer for the record otherwise.
-    squashed = _squash._squash_and_force_push(
-        _late_records._gate(gh, spec, issue, state, worktree),
-        _worktree_paths._resolve_branch_name(state, spec, issue.number),
-    )
+    gh, issue, state = gate.gh, gate.issue, gate.state
+    squashed = _squash._squash_and_force_push(gate, branch)
     if squashed.held:
         # The gate owns the issue from here, and it owns it in one of two
         # shapes. Routed, the squashed commit is on the branch, the label is
@@ -391,32 +279,49 @@ def _squashed_and_handed_off(
             gh, issue, state, squashed.error, standing=squashed.standing,
         )
         return
-    if not _handed_off(
-        gh, issue, state, state.get(_PR_NUMBER), squashed.count,
-    ):
+    pr_number = state.get(_PR_NUMBER)
+    if not _squash_notice_posted(gh, issue, state, pr_number, squashed.count):
         # The notice this collapse owed did not go out, and the count behind
         # it is on the record the next tick would drop. Keep it, persist what
         # did land, and leave the label here: the recovery republishes the
         # commit the remote already carries and words the notice again.
         gh.write_pinned_state(issue, state)
         return
+    # Behind the notice on purpose: the snapshot the seed is read off carries
+    # the notice's own id, so the walk steps past it. Seeded ahead of the post
+    # instead, that notice would reach in_review as fresh human PR feedback
+    # and wake the dev on an informational orchestrator post.
+    _handoff._seed_in_review_handoff_watermarks(gh, issue, state, pr_number)
     # A squash that finished ends the park it took: the branch is published
     # and the label is about to move, so an `awaiting_human` carried into
     # `documenting` would hold an issue over a condition that is answered.
     state.set(_AWAITING_HUMAN, False)
     state.set(_state._PARK_REASON, None)
-    # The rewrite is over and announced, so what stays on the comment is not a
-    # claim any more but the commit the move behind this write is owed over.
-    # Dropped outright, a relabel that does not land would leave an issue on
-    # `validating` with nothing saying a squash ever ran -- and the next tick
-    # spawns a second reviewer over a branch this stage already published.
-    _collapses.settle_pending_collapse(state, squashed.sha)
+    _persists_then_relabels(gh, issue, state, squashed.sha)
+
+
+def _persists_then_relabels(
+    gh: _client.GitHubClient, issue: Issue, state: _pinned_state.PinnedState, sha,
+) -> None:
+    """Land everything this handoff owes durably, and only then move the label.
+
+    The rewrite is over and announced, so what stays on the comment is not a
+    claim any more but the commit the move behind this write is owed over.
+    Dropped outright, a relabel that does not land would leave an issue on
+    `validating` with nothing saying a squash ever ran -- and the next tick
+    spawns a second reviewer over a branch this stage already published.
+
+    Everything the caller staged rides the same write: the watermarks seeded
+    behind the notice, and the end of a park this recovery may have taken over
+    an earlier attempt.
+    """
+    _collapses.settle_pending_collapse(state, sha)
     gh.write_pinned_state(issue, state)
     _hands_to_documenting(gh, issue, state)
 
 
 def _hands_to_documenting(
-    gh: GitHubClient, issue: Issue, state: PinnedState,
+    gh: _client.GitHubClient, issue: Issue, state: _pinned_state.PinnedState,
 ) -> None:
     """Move the label a finished handoff owes, and end the record of it.
 
@@ -450,11 +355,7 @@ def _hands_to_documenting(
 
 
 def _finalize_validating_approval(
-    gh: GitHubClient,
-    spec: config.RepoSpec,
-    issue: Issue,
-    state: PinnedState,
-    reviewer_run: _models._ReviewerRun,
+    gate, reviewer_run: _models._ReviewerRun, branch: str,
 ) -> None:
     """Finalize an approved review: verify gate, approval comment, optional
     squash, in_review handoff watermarks, then relabel to `documenting`.
@@ -474,9 +375,16 @@ def _finalize_validating_approval(
     The squash and everything behind it are the tail beside this one, because
     a collapse an earlier tick did not finish owes the same steps with no
     reviewer having run: what the branch is owed does not depend on which
-    reading sent the tick.
+    reading sent the tick -- which is why the gate and the branch arrive here
+    already built, from whichever road did the deciding.
     """
-    if not _approved_work_verifies(gh, issue, state, reviewer_run):
+    gh, issue, state = gate.gh, gate.issue, gate.state
+    verify = _verify_runner._run_verify_commands(
+        reviewer_run.wt, config.VERIFY_COMMANDS, config.VERIFY_TIMEOUT,
+    )
+    if verify.status != "ok":
+        _verify._park_verify_failure(gh, issue, state, verify)
+        gh.write_pinned_state(issue, state)
         return
-    _post_approval_comment(gh, issue, state, reviewer_run)
-    _squashed_and_handed_off(gh, spec, issue, state, reviewer_run.wt)
+    _handoff._post_approval_comment(gh, issue, state, reviewer_run)
+    _squashed_and_handed_off(gate, branch)

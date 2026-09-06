@@ -1542,7 +1542,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       handler.py            the order one review tick asks its questions in, the terminals it opens with, and the
                             recorded-collapse route it asks behind only those, ahead of every route that could
                             point an agent at the branch
-      reviewer.py           the round cap, the tracked reviewer spawn and its two refusals, and the verdict fan-out
+      reviewer.py           the round cap, the tracked reviewer spawn and its two refusals, and the verdict
+                            fan-out, with the subject an approved verdict hands the squash tail built here over
+                            this run's own checkout
       collapse.py           whether a squash this issue began and did not finish is answered before anything else
                             runs an agent, over the same tail the approval road runs -- what the branch is owed
                             does not depend on which reading sent the tick. Asked only from that road it would be
@@ -1559,15 +1561,26 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             it is not, which is the one thing this route may not borrow from the reviewer road:
                             ensuring a worktree force-removes a checkout carrying no commits over its base, and
                             that is exactly what a collapse rewound and not yet recommitted looks like, with
-                            every change it was about in the index. The settled handoff is answered beside it and needs no checkout at all: the label
+                            every change it was about in the index -- which is why the subject the squash tail
+                            decides over is built here, off that reading, rather than a layer down off the pieces.
+                            The settled handoff is answered beside it and needs no checkout at all: the label
                             a finished squash never got to move is moved here, but only while the pull request is
                             still standing on the commit that handoff named
-      approval.py           the verify gate, the approval comment, and the squash-and-hand-off tail both roads
-                            run: the optional squash, the notice its count is worded from, the in_review watermark
-                            seed, the end of the collapse record, and the `workflow:documenting` relabel that
-                            lands behind that write rather than ahead of it -- with the commit the move is owed
-                            over left on the comment across that boundary, so a relabel that does not land is the
-                            next tick's to retry rather than the next reviewer's to re-review
+      approval.py           the verify gate and the squash-and-hand-off tail both roads run, over the subject and
+                            branch whichever road decided them hands in: the optional squash, the park each of
+                            its four readings earns, the notice its count is worded from --
+                            posted ahead of the seed it orders, and the one failure that stops the road, since
+                            the count lives only on the collapse record the next tick would otherwise drop -- the
+                            end of that record, and the `workflow:documenting` relabel that lands behind that
+                            write rather than ahead of it, with the commit the move is owed over left on the
+                            comment across that boundary, so a relabel that does not land is the next tick's to
+                            retry rather than the next reviewer's to re-review
+      handoff.py            what that arc posts on the pull request and seeds after: the approval comment whose
+                            failure is logged and walked past, and the in_review watermarks in two halves -- the
+                            snapshot taken behind the caller's notice so the seed walk steps past the notice's own
+                            id, abandoned outright on an unreadable PR rather than stranding an approved branch on
+                            a read, and the ratchets reached past it, which is what each of the three watermarks
+                            becomes against what is already persisted
       verify.py             how a non-ok verify result reads and the park it earns
       watermarks.py         the seed walk past leading orchestrator comments and the ratchet that never regresses one
       requested_changes.py  the PR feedback and `workflow:fixing`-labeled dev fix, plus the no-VERDICT park and

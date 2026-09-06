@@ -77,6 +77,9 @@ from orchestrator.git.worktrees import (
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import collapses as _collapses
+from orchestrator.workflow.stages.implementing import (
+    late_records as _late_records,
+)
 from orchestrator.workflow.stages.validating import (
     approval as _approval,
     models as _models,
@@ -124,8 +127,14 @@ def _finished_collapse(
     """Take the recovery, or hold the tick for a park it did not word."""
     if _held_by_another_park(gh, spec, issue, state):
         return True
+    # The subject the size gate decides about, built over the checkout this
+    # route read rather than one rebuilt a layer down: what a recovery may do
+    # with a worktree is exactly what `_checkout_of` decided.
     _approval._squashed_and_handed_off(
-        gh, spec, issue, state, _checkout_of(spec, issue, state),
+        _late_records._gate(
+            gh, spec, issue, state, _checkout_of(spec, issue, state),
+        ),
+        _worktree_paths._resolve_branch_name(state, spec, issue.number),
     )
     return True
 
