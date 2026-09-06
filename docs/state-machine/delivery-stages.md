@@ -151,8 +151,8 @@ Result routing in `_post_user_content_change_result`:
   `workflow:implementing` the drift path publishes through the shared committed-work seam, so the size gate measures
   the resumed commit before `_on_commits` opens/pushes the PR;
 - a no-commit reply whose clean HEAD is strictly ahead of the remote PR branch (a fix a prior parked / interrupted run
-  committed but never pushed) is published through the push tail and counted as a pushed fix (`_stranded_fix_unpushed`),
-  ahead of the ack check;
+  committed but never pushed) is published through the push tail and counted as a pushed fix
+  (`validating/stranded._stranded_fix_unpushed`), ahead of the ack check;
 - a no-commit reply is otherwise treated as an ack ONLY when it carries the explicit `ACK: <reason>` marker the resume
   prompt instructs the dev to emit when existing work already satisfies the edit;
 - any other no-commit response falls back to `_on_question` and parks awaiting human.
@@ -2537,9 +2537,9 @@ state. The PR comment that triggers a route to `workflow:fixing` is the human si
      issue at dispatch so the breaker never runs. The `pending_fix_*` bookmarks and in_review watermarks are left
      untouched so the eventual in_review re-entry still re-discovers the feedback.
   6. If no unread feedback at all (watermarks already cover the bookmarks), publish any **stranded fix** first —
-     `_stranded_fix_unpushed` against the worktree the issue already has on disk, i.e. a commit an earlier run left
-     unpushed (a dev run whose outcome the live-pause guard discarded, a run killed before its push) — through the
-     same [size gate](#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr)
+     `validating/stranded._stranded_fix_unpushed` against the worktree the issue already has on disk, i.e. a commit
+     an earlier run left unpushed (a dev run whose outcome the live-pause guard discarded, a run killed before its
+     push) — through the same [size gate](#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr)
      the shared dev-fix publication passes, since this is the second seam a candidate reaches a
      published pull request through and a
      bounce that pushed unmeasured would be the way past a ceiling every other route holds to. On a

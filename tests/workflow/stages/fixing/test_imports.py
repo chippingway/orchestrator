@@ -66,10 +66,11 @@ class CleanProcessImportTest(unittest.TestCase):
 
     The owners import each other, the engine, and the implementing, validating,
     and in_review owners they borrow the dev resume, the dev-fix disposition,
-    the transient-park recovery, and the comment timestamp from, and the
-    engine's dispatcher reaches back into this package. A subprocess per module
-    gives each a clean `sys.modules` no other test has already populated,
-    exposing an import-order cycle a package-first suite run would mask.
+    the stranded-commit probe, the transient-park recovery, and the comment
+    timestamp from, and the engine's dispatcher reaches back into this package.
+    A subprocess per module gives each a clean `sys.modules` no other test has
+    already populated, exposing an import-order cycle a package-first suite run
+    would mask.
     """
 
     def test_each_module_imports_standalone(self) -> None:

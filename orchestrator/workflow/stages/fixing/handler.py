@@ -51,7 +51,7 @@ from orchestrator.workflow.stages.implementing import (
     late_reconcile as _late_reconcile,
     late_records as _late_records,
 )
-from orchestrator.workflow.stages.validating import dev_fix as _dev_fix
+from orchestrator.workflow.stages.validating import stranded as _stranded
 from orchestrator.workflow.state import WorkflowLabel
 
 log = logging.getLogger("orchestrator.workflow")
@@ -173,10 +173,10 @@ def _publish_stranded_fix(
     gets to count it: a hold relabels, so bookkeeping applied afterwards is
     lost to any crash in that window and no later tick goes back for it.
 
-    The worktree may be gone (a terminal cleanup, a fresh host),
-    `_stranded_fix_unpushed` refuses every shape it cannot vouch for, and a
-    failed push leaves the commit on disk for the next round's push to carry
-    rather than claiming a publish that did not happen.
+    The worktree may be gone (a terminal cleanup, a fresh host), the stranded
+    probe refuses every shape it cannot vouch for, and a failed push leaves the
+    commit on disk for the next round's push to carry rather than claiming a
+    publish that did not happen.
     """
     wt = _worktree_paths._worktree_path(spec, issue.number)
     if not wt.exists():
@@ -187,7 +187,7 @@ def _publish_stranded_fix(
         return _models._StrandedPublication(
             held=_late_reconcile._holds_absent_checkout(gh, spec, issue, state),
         )
-    stranded = _dev_fix._stranded_fix_unpushed(spec, wt, state, issue)
+    stranded = _stranded._stranded_fix_unpushed(spec, wt, state, issue)
     if not stranded:
         return _models._StrandedPublication()
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)

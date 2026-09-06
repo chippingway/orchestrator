@@ -25,12 +25,16 @@ verdicts: the feedback posted on the PR and the dev fix run under the `fixing`
 label, plus the park a reviewer that emitted no VERDICT line earns.
 
 Between rounds the stage is a dev-fix driver, and `dev_fix` owns what one
-finished dev run leaves behind -- the stranded-commit probe that keeps a
-committed-but-unpublished fix from ping-ponging between parks, the push, and
-the `review_round` bump a landed fix earns so the reviewer re-reads the new
-head. Three entry points feed it: `awaiting` and `awaiting_resume` for a park
-a human replied to, `drift` and `drift_outcomes` for a body edit mid-review,
-and `recovery` for the parks that can clear without a human at all.
+finished dev run leaves behind -- the no-commit reading, the push, and the
+`review_round` bump a landed fix earns so the reviewer re-reads the new head.
+Three entry points feed it: `awaiting` and `awaiting_resume` for a park a
+human replied to, `drift` and `drift_outcomes` for a body edit mid-review, and
+`recovery` for the parks that can clear without a human at all. `stranded`
+holds the probe under that no-commit reading -- the one that keeps a
+committed-but-unpublished fix from ping-ponging between parks -- because the
+`fixing` handler asks it off no dev run at all, on the ACK fast path it has to
+stand down on and on the no-feedback bounce that is the last tick left to
+publish such a commit.
 
 `models` and `state` carry the records and the wire keys the rest share.
 Callers import the owner they need, so this initializer binds nothing: the

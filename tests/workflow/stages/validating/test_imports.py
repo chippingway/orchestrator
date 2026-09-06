@@ -37,6 +37,7 @@ _OWNERS = (
     "requested_changes",
     "reviewer",
     "state",
+    "stranded",
     "verify",
     "watermarks",
 )
