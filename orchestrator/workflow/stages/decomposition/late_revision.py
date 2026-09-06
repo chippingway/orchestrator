@@ -97,6 +97,7 @@ from orchestrator.workflow.engine import (
 )
 from orchestrator.workflow.late_split import events as _events, telemetry as _telemetry
 from orchestrator.workflow.late_split.models import (
+    LateFailure,
     LatePhase,
     LateResourceKind,
 )
@@ -501,8 +502,11 @@ def _remeasured(
         context.spec, worktree, revised,
     )
     if not measured.is_measured:
-        _late_outcome._emit_measurement_failure(
-            context, measured.failure, measured.detail,
+        _late_outcome._emit_failure(
+            context,
+            LateFailure.MEASUREMENT_FAILED,
+            measured.failure,
+            measured.detail,
         )
         return _parked(
             context,

@@ -6,8 +6,9 @@ The coordinator an oversized committed candidate is adjudicated by. What puts
 an issue in front of it is the size gate at the clean-committed pre-publication
 seam, and what reaches it is the first question a `decomposing` tick asks: a
 record carrying a live generation belongs to this owner entire, and no step of
-the initial decomposition runs for it. What a finished reply becomes is the
-`late_outcome` owner beside it.
+the initial decomposition runs for it. What a finished reply decides is the
+`late_verdict` owner beside it, and what any completion leaves on the record
+is `late_outcome` beside that.
 
 The order is the contract, and each step persists what it reached before it
 acts. A generation that is not a live oversized one is not this owner's
@@ -125,6 +126,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_session as _late_session,
     late_settlement as _late_settlement,
     late_transaction as _late_transaction,
+    late_verdict as _late_verdict,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateAdjudicationRun,
@@ -679,7 +681,7 @@ def _settle(
         return _guarded(context, declined)
     _late_session._record_late_session(context.state, agent_result)
     return _guarded(
-        context, _late_outcome._decide(context, agent_result.last_message),
+        context, _late_verdict._decide(context, agent_result.last_message),
     )
 
 

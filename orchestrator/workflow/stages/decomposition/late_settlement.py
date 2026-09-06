@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """What a guarded verdict earns, once the owner has been read again.
 
-The step between `late_outcome`, which decides what a reply MEANS, and the
+The step between `late_verdict`, which decides what a reply MEANS, and the
 transactions that act on it. Nothing reaches those transactions except through
 here, and nothing reaches here without a fresh owner read behind it: the
 coordinator takes that read on every completed run and only calls this owner
@@ -78,6 +78,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_owner as _late_owner,
     late_parks as _late_parks,
     late_reconcile as _late_reconcile,
+    late_verdict as _late_verdict,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
     _GuardedSplit,
@@ -101,7 +102,7 @@ def _settle_adjudication(
     settle, and it is handed straight back.
 
     The result of one that DID decide is already durable by the time this
-    runs; that is `late_outcome`'s contract, and it is what makes the
+    runs; that is `late_verdict`'s contract, and it is what makes the
     fail-closed read in front of this affordable: a tick that stops there has
     lost a GitHub read and not an agent run.
     """
@@ -109,7 +110,7 @@ def _settle_adjudication(
     if finished.disposition != _LateDisposition.DECIDED or adjudication is None:
         return finished
     if adjudication.verdict == LateVerdict.QUESTION:
-        _late_outcome._announce(context, adjudication)
+        _late_verdict._announce(context, adjudication)
         return finished
     if adjudication.verdict == LateVerdict.SPLIT:
         return _handed_split(context, finished)
