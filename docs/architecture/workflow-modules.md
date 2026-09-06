@@ -1598,6 +1598,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       awaiting.py           the three park-reason claims on a human reply and the dev attempt they fall through to
       awaiting_resume.py    the order those claims are asked in and the resume none of them wanted
       drift.py              a body edit mid-review, the three parks that defer, and the consumed-thread watermark
+      drift_models.py       the frozen record that route's resume hands the helper that finishes it
       drift_outcomes.py     the `ACK:` reply that must not park, over the shared fix disposition
       recovery.py           the silent retry of a push race or dev timeout, both through the size gate -- the
                             timeout's commit is the one road to a published pull request nothing else measures --
@@ -1607,6 +1608,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the reviewer has not seen reaching the pull request -- spent by the push that lands and
                             by the hold that sends the candidate to the adjudication, the held form handed to the
                             gate so the count is not lost to a crash in the relabel window
-      models.py             the frozen records the owners hand each other
+      models.py             the frozen records several owners in this stage hand each other -- a record one
+                            route builds and reads alone stays beside that route instead
       state.py              the pinned-state keys, park reasons, and outcome tokens they share
 ```

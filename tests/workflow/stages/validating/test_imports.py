@@ -28,6 +28,7 @@ _OWNERS = (
     "awaiting_resume",
     "dev_fix",
     "drift",
+    "drift_models",
     "drift_outcomes",
     "handoff",
     _HANDLER_OWNER,

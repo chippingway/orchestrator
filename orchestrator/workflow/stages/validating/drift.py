@@ -22,36 +22,33 @@ against something stable.
 The full issue thread is marked consumed before the resume, because the dev
 sees it inside the resume prompt; leaving the watermark behind would let the
 in_review handoff replay those same comments as fresh feedback.
+
+What the resume freezes for the helper that finishes it is a record only this
+route builds and only this route reads, so it answers on `drift_models.py`
+beside this owner rather than on the stage's shared `models.py`.
 """
 from __future__ import annotations
-
-from dataclasses import dataclass
-from pathlib import Path
 
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments, drift as _engine_drift, usage as _usage
 from orchestrator.workflow.stages.implementing import resume as _dev_resume
-from orchestrator.workflow.stages.validating import drift_outcomes as _outcomes, rounds as _rounds, state as _state
-
-
-@dataclass(frozen=True)
-class _ValidatingDriftRun:
-    worktree: Path
-    agent_result: AgentResult
-    before_sha: str
-    paused: bool
+from orchestrator.workflow.stages.validating import (
+    drift_models as _drift_models,
+    drift_outcomes as _outcomes,
+    rounds as _rounds,
+    state as _state,
+)
 
 
 def _run_validating_drift(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
-) -> _ValidatingDriftRun:
+) -> _drift_models._ValidatingDriftRun:
     worktree = _worktree_paths._worktree_path(spec, issue.number)
     if not worktree.exists():
         worktree = _worktree_creation._ensure_worktree(
@@ -66,7 +63,7 @@ def _run_validating_drift(
     worktree, agent_result, paused = _dev_resume._resume_dev_with_text(
         gh, spec, issue, state, followup, pause_guard=True,
     )
-    return _ValidatingDriftRun(worktree, agent_result, before_sha, paused)
+    return _drift_models._ValidatingDriftRun(worktree, agent_result, before_sha, paused)
 
 
 def _defer_validating_drift(state: PinnedState) -> bool:
@@ -86,7 +83,7 @@ def _finish_validating_drift(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    run: _ValidatingDriftRun,
+    run: _drift_models._ValidatingDriftRun,
 ) -> None:
     owed = _rounds._spends_next_round(state)
     outcome = _outcomes._post_user_content_change_result(
