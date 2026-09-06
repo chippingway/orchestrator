@@ -793,6 +793,11 @@ land in blocks of their own and every HTML-comment opener between them stays ins
 than obeyed. How wide to let a fence grow before paying for a block instead is answered by trying every width from the
 shortest up to the widest line, doubling, and taking the smallest rendering.
 
+What ends a line is markdown's answer rather than this orchestrator's: a newline, a carriage return, or the pair. The
+quote is split on all three and rejoined by the terminators it arrived with, so an explanation written on a machine
+that ends its lines with a carriage return reaches the thread exactly as its author wrote it — and its fence lines are
+recognized as fence lines, rather than blocked off at three characters they could close.
+
 Past what any pieces can hold the quote goes in unblocked, with its openers escaped a backslash apiece — unblocked is
 exactly where an opener is obeyed again, and GitHub renders nothing from it onwards. Past what that holds it is cut
 and said to be cut, which nothing this orchestrator records can reach and which exists because the alternative has no
@@ -813,12 +818,13 @@ superseding the pull request its work is on are one transaction; what the guard 
 check for itself, that the outcome was re-checked against an owner read taken after the agent finished. Nothing is
 created here. What that transaction then does is [the section below](#what-a-cleared-split-actually-does).
 
-A **single** earns a PARK (`late_settlement.py`, `late_single_decision`). It is the adjudicator answering that this
-change stays one change, and that is the one answer this mode may not act on: the ceiling exists so unreviewed bulk
-does not reach a pull request, so an agent proposing to publish past it is the thing being guarded against rather
-than grounds for waiving the guard. Publishing an oversized candidate unsplit is a human's decision, and the issue
-waits for one. Every category lands there, `unsafe_split` included — what decides it is the verdict rather than the
-reason offered for it.
+A **single** earns a PARK (`late_unsplit.py`, `late_single_decision`, with the sentence it owes the thread held by
+`late_notice.py`). It is the adjudicator answering that this change stays one change, and that is the one answer this
+mode may not act on: the ceiling exists so unreviewed bulk does not reach a pull request, so an agent proposing to
+publish past it is the thing being guarded against rather than grounds for waiving the guard. What ends the park is a
+human: guidance saying what to change, which resumes the developer and re-measures whatever comes back. Publishing an
+oversized candidate unsplit is a human's decision, and the issue waits for one. Every category lands there,
+`unsafe_split` included — what decides it is the verdict rather than the reason offered for it.
 
 The notice names what a human deciding cannot get anywhere else once the run is over: the frozen candidate, the
 additions counted and the ceiling they were counted against, and the recorded explanation of what stopped a split —

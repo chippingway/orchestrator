@@ -679,7 +679,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             close one -- is blocked off in PIECES instead, so the long lines land in blocks of their
                             own and every HTML-comment opener between them stays inside a block where it is shown
                             rather than obeyed; every fence width from the shortest up to the widest line is tried by
-                            doubling and the smallest rendering wins. Past what pieces hold, the quote goes in
+                            doubling and the smallest rendering wins. What ends a line is markdown's answer rather
+                            than this owner's -- a newline, a carriage return, or the pair -- so the quote is split
+                            on all three and rejoined by the terminators it arrived with, and a fence line written
+                            with a carriage return is one, rather than three characters the block it rides in could
+                            be closed at. Past what pieces hold, the quote goes in
                             unblocked with its openers escaped a backslash apiece, and past what that holds it is cut
                             and said to be cut -- unreachable for anything recorded here, and there because a comment
                             GitHub refuses is rebuilt identically on every poll
