@@ -272,19 +272,9 @@ def _owes_the_handoff(
     ahead of every handler reads the pair as the claim it is, and half of one
     there is damage rather than a debt.
 
-    The grounds are carried where this is RE-asserting a debt already standing
-    for the same commit, since nothing about a checkout that stopped being
-    what went out changes what a publication was allowed on. Where it is
-    minting one they are `unmeasured`, which is what this road is: a candidate
-    the switch kept out of the gate skipped the reading on a record this
-    workflow made for itself and re-derives on the next tick, so it answers
-    for its own bypass. Left off entirely, a crash between here and the next
-    write would leave a debt the tick that comes back has no way to tell the
-    gate's own answer from an operator's.
+    Which grounds it rests on, and the carrying rule behind them, belong to
+    the approval group's own owner -- this seam has a second caller in the
+    guard that refuses a moved checkout, and a debt written two ways would be
+    two debts.
     """
-    standing = (
-        _late_parks._standing_basis(state)
-        if _late_parks._approved_commit(state) == published
-        else _late_parks.LateApprovalBasis.UNMEASURED
-    )
-    _late_parks._approve(state, published, "", standing)
+    _late_parks._owes_a_publication(state, published)

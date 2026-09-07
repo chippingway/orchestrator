@@ -1665,7 +1665,13 @@ rather than preserving.
   exemption beside it is the only evidence left. The claim an unproven landing puts back reads the standing basis
   BEFORE the write that pays and drops the debt it replaces, since read after it that claim would say `unmeasured`
   for a debt an operator's gesture was behind. Written, dropped, and spent with the approval it describes, never on
-  its own. So it freezes by presence — as the whole pair, `late_approved_lease` included, because the two go
+  its own — including on the **implementing** seam, where nothing froze a publication head to lease a push against,
+  so the gate's own debt writer declines and the seam mints its own. That happens in one place for two callers: the
+  publication that names the commit it is about to push, and the guard that refuses a checkout which has left the
+  approved commit, which stands exactly where that publication would have recorded one. Either carries the grounds
+  of an approval already standing for that very commit and records `unmeasured` where none does, so a candidate a
+  receipt or an exemption admitted is never parked as a commit with no account of what its push rests on. So it
+  freezes by presence — as the whole pair, `late_approved_lease` included, because the two go
   down in one write and a lease standing alone is the damage the dispatcher parks on a tick later, by which time a
   hold keyed to the commit alone would have rebased and force-pushed the branch that park is about. One approval is
   set aside all the same, and it is the refresh's own rather than a stage's: where `late_approved_lease` IS a

@@ -761,6 +761,39 @@ def _approve(
     state.set(_state._APPROVED_BASIS, str(basis))
 
 
+def _owes_a_publication(state: PinnedState, candidate_sha: str) -> None:
+    """Record that this commit is owed a push, on whatever grounds it has.
+
+    The write for a caller holding one commit and no lease, which is the
+    implementing seam: nothing froze a publication head there because there is
+    no pull request yet, and the push that opens one reads the remote for
+    itself. The gate's own debt writer declines for exactly that reason, so
+    this seam mints its own -- and it has two callers, since the publication
+    that normally does it is skipped whenever the checkout stopped being the
+    commit that was approved.
+
+    The grounds are CARRIED where an approval already stands for this very
+    commit, since nothing about a checkout that moved changes what the
+    publication was allowed on. Where none does they are `unmeasured`, which
+    is what every road reaching here without one is: a receipt the remote
+    already carries, an adjudication's exemption, a permit -- records this
+    workflow made for itself and re-derives on the next tick, so each answers
+    for its own bypass.
+
+    The whole group goes down either way rather than the commit alone. A
+    commit with a lease left over from some other attempt beside it is the
+    pair disagreeing with itself, which the reconciliation ahead of the next
+    handler reads as damage; and one with no basis is a debt the tick that
+    spends it has to GUESS the provenance of, which is the guess this
+    vocabulary exists to remove.
+    """
+    standing = (
+        _standing_basis(state) if _approved_commit(state) == candidate_sha
+        else LateApprovalBasis.UNMEASURED
+    )
+    _approve(state, candidate_sha, "", standing)
+
+
 def _standing_basis(state: PinnedState) -> LateApprovalBasis:
     """What the claim an unproven landing records rests on.
 

@@ -1646,7 +1646,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             own count from a debt an operator's gesture is behind rather than inferring it from
                             the records standing beside them; the two bases that gesture IS behind are named as
                             one group, since what a reader decides is whether a debt has to be revalidated
-                            rather than which owner granted it -- plus
+                            rather than which owner granted it, and the one write the implementing seam mints a
+                            debt through -- carrying the grounds of an approval already standing for that very
+                            commit and recording `unmeasured` where none does, so the publication and the guard
+                            that refuses a moved checkout leave one debt rather than two -- plus
                             the one park shape every unreadable reading takes, worded on the side of publication it
                             was taken on, the typed failure both sinks carry under the stage the reading happened in
                             -- carrying the step that stopped and the line it wrote wherever the refusal was a
@@ -1692,7 +1695,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             where the publication stands and only the handoff stops so review never reads the
                             descendant; every one of them parked under the one reason a moved checkout earns,
                             named after the commit to go back to or the paths to clear, and settled by the
-                            worktree rather than by a reply
+                            worktree rather than by a reply. The moved-head refusal writes the whole approval
+                            group as it parks, through the same owner the publication mints one with: it stands
+                            exactly where that publication would have recorded the debt this seam owes, so a
+                            candidate a receipt or an exemption admitted would otherwise be parked as a commit
+                            with no account of what its push rests on
       checkout_recovery.py  what a handoff refused for its checkout waits to see back, and the only park in
                             this stage settled by a worktree rather than by a reply: the commit the size gate
                             approved under the checkout's own head, with a provably clean tree around it --
