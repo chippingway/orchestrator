@@ -424,10 +424,21 @@ orchestrator/
                         nothing to collapse carry the same one commit; the record goes down between the entry and
                         the reset, so no write is spent on a publication the entry refuses and none is owed once
                         the evidence is gone -- and a write GitHub refuses stops the squash rather than leaving a
-                        rewrite nothing could account for. Every failure is stamped with WHERE it left the
-                        branch, read off the record AND the checkout: the terms go down before the reset, so an
+                        rewrite nothing could account for. Every failure is stamped on the way out with WHERE
+                        it left the branch, which `standing` beside it reads
+      standing.py       which of the four places a refused squash left the branch in, read off the pinned
+                        record AND the checkout rather than assumed. The terms go down before the reset, so an
                         outstanding record whose head is the head the checkout stands on is a rewrite that did
-                        not happen and the approved commits are exactly where a human will look for them
+                        not happen and the approved commits are exactly where a human will look for them. A
+                        recorded head the branch moved OFF is two answers rather than one, and the ancestry
+                        separates them: still reachable from HEAD it is buried, so the notice sends an operator
+                        into the branch's own history under the stray work rather than past it to the reflog,
+                        and one the branch REPLACED is the collapse a reflog entry resolves. A record this
+                        build cannot read whole, a recorded head no object here answers to, and a checkout that
+                        would not report its own head are none of them shown. The same owner answers whether a
+                        collapse is CLAIMED at all -- the reading the stamp is gated on, and the one an install
+                        with the switch off decides its entry from. Nothing here resets, writes, or pushes, so
+                        the classification costs a publication that succeeded nothing
       titles.py         subject-prefix inference and PR-title selection
     measurement/        how large a committed candidate is, which contribution it is, and why either is
                         sometimes unknown
@@ -666,8 +677,8 @@ off a facade:
 
 - `publication/` — `probes` calls `commands`; `titles` calls `probes`; `planning` calls `commands`, both siblings,
   and the verification probes; `rewrite` calls `commands`, `branch_transport`, and those probes; `resume` calls
-  `rewrite` and reaches the gate through the one hop that owner spells; `squash` calls `planning`, `resume`, and
-  `rewrite`.
+  `rewrite` and reaches the gate through the one hop that owner spells; `standing` calls `resume` for the ancestry
+  read and reaches the gate through that same hop; `squash` calls `planning`, `resume`, `rewrite`, and `standing`.
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
 - `measurement/` — `models` carries only data. `commits` calls `commands`, `branch_transport`, and the verification
   probes for the two object reads, and `commands` once more for the one line it keeps off a fetch that brought
