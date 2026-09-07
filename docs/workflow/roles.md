@@ -280,12 +280,15 @@ host that made the commit still has it sitting in the object store it shares. Th
 been restored, which is what tells the two hosts apart: a commit the branch already carries comes back with it and the
 tick proceeds, while a checkout standing anywhere else parks as `late_candidate_moved` — nothing published, no second
 developer, and the same quiet republication settling it once the worktree is back on that commit with a provably
-clean tree around it. What that park records is what the side of the gate it was taken on can promise: an INITIAL
-publication writes the commit alone, since its push is the one that opens the pull request and reads the remote for
-itself, while a push onto a pull request the remote already carries writes the commit AND the head to pin the
-republication against — both being the commit that just landed, which is where that push left the branch. Half a pair
-there is not a smaller debt but a claim the reconciliation refuses as damage, under a reason only a human clears, so
-restoring the worktree would never finish the retry this park documents.
+clean tree around it. What that park leaves standing is the whole approval group. Where the seam has to mint one — a
+candidate a receipt or an exemption admitted reaches this refusal with nothing recorded yet, since the intent that
+would have written it is never reached — it goes down through the same owner the publication mints one with, so the
+two of them leave one debt rather than two. The lease inside it is what the side of the gate it was taken on can
+promise: an INITIAL publication leaves it empty, since its push is the one that opens the pull request and reads the
+remote for itself, while a push onto a pull request the remote already carries writes the commit AND the head to pin
+the republication against — both being the commit that just landed, which is where that push left the branch. Half a
+pair there is not a smaller debt but a claim the reconciliation refuses as damage, under a reason only a human clears,
+so restoring the worktree would never finish the retry this park documents.
 Both halves are asked there, or the republication would walk straight back into the refusal
 the park was taken on and post a fresh notice every poll for a checkout nobody has touched. The record is spent by the
 handoff that pays the debt, and spent *durably before the relabel*: past that label the issue belongs to

@@ -495,15 +495,17 @@ The keys that matter for the state machine fall into a few groups:
   takes.
 - **Decomposition.** `children`, `dep_graph` (`{child_idx_str: [child_idx, ...]}` — GitHub has no first-class blocks
   relation), `decomposed_at`, `pickup_comment_id`.
-- **A debt with no record behind it.** `late_approved_sha` + `late_approved_lease` outlive the generation that
-  granted them, because the write that approves a candidate retires that generation before the push. Where the lease
-  is set the approval was taken over a pull request the remote already carries, and the dispatcher pays it ahead of
-  every handler rather than leaving a stage to run over a publication the commit never joined — but only from a
-  checkout still standing on the commit, and never while the issue is under `workflow:decomposing`, where the
-  settlement owns the push. A checkout that is absent, unreadable, or standing elsewhere parks instead. The pair is
-  dropped by whatever settles the commit: the push that lands it, an approval superseded, a hold that routes it to
-  the adjudication, or a reset that sends the branch back off it — the auto rebase's after a refused push, and the
-  squash's own rollback after one.
+- **A debt with no record behind it.** `late_approved_sha` + `late_approved_lease` + `late_approved_basis` outlive the
+  generation that granted them, because the write that approves a candidate retires that generation before the push.
+  The basis is what the debt RESTS on, said by the owner that granted it rather than inferred from the records
+  standing beside it, so the tick that comes back after a crash can tell the gate's own count from a debt an
+  operator's gesture is behind. Where the lease is set the approval was taken over a pull request the remote already
+  carries, and the dispatcher pays it ahead of every handler rather than leaving a stage to run over a publication the
+  commit never joined — but only from a checkout still standing on the commit, and never while the issue is under
+  `workflow:decomposing`, where the settlement owns the push. A checkout that is absent, unreadable, or standing
+  elsewhere parks instead. The group is dropped by whatever settles the commit: the push that lands it, an approval
+  superseded, a hold that routes it to the adjudication, or a reset that sends the branch back off it — the auto
+  rebase's after a refused push, and the squash's own rollback after one.
 - **A held pair's continuation.** `late_spends` records what the tick that froze a pair owed if its hold went
   through — the reviewer round a fix spends, the bookmarks a consumed batch clears, the head a finished docs pass
   produced, the outcome a resolution earned — as `[[field, value], ...]`. It is one of `LATE_STATE_KEYS`, so it lives
@@ -1670,8 +1672,10 @@ rather than preserving.
   group records is the *permission* for a later write to move it — and that later write is the one that receipts the
   landed push, where the exemption, the identity, and the account of what the remote holds go down together or not
   at all. `record_rewrite_publication` is that write, staged by `late_rotation` into the push tail's settlement, and
-  it moves all three in one statement — a reader is entitled to find them agreeing, and any two of them apart is a
-  comment nothing here can tell from a hand edit. It is held to the record rather than to its caller: only a
+  it moves them in one statement, the `late_override_*` authorization that made the exemption a bypass included —
+  a reader is entitled to find them agreeing, and any two of them apart is a comment nothing here can tell from a
+  hand edit. The authorization is the one member that may be absent: a comment carrying none has none to carry, and
+  the move is silent there rather than minting one. It is held to the record rather than to its caller: only a
   permission this build can read back whole and still finds `authorized` is spent, so a damaged group, one bound to
   a commit this issue does not exempt, and one already `published` each refuse instead of being repaired. Being
   readable is not being *valid*, and the settlement is held to the second as well: what licenses the move is the
@@ -1977,7 +1981,10 @@ rather than preserving.
   anything else, leaves the park exactly where it is. It freezes the branch out of the pre-tick base refresh for as
   long as it stands, and there the freeze IS the remedy: what settles this park is an operator putting the worktree
   back, so a rebase between their `git checkout` and the tick that would have noticed moves the head off the approved
-  commit again and leaves the one park answerable without a comment with nothing left to answer it.
+  commit again and leaves the one park answerable without a comment with nothing left to answer it. It never stands
+  alone: `late_approved_basis` goes down, is carried, and is dropped with it by every write named above, and says
+  which owner granted the debt — spelled out beside the accepted candidate it shares its window with, under
+  [late generation state](#late-generation-state).
 - **Published commit.** `implementing_published_sha` is the commit the last gated push carried — the one that passed
   the gate, or the checkout's own head on a push the switch named none for, since `DECOMPOSE` keeps candidates out of
   the gate rather than off the remote and is an operator's to turn back on. It keeps the implementing spelling it was

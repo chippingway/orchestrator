@@ -196,7 +196,12 @@ orchestrator/
                         back as `{}` -- and the comment watermarks beside it, whose thread read tells the pinned
                         comment by the ID a caller can name where it has one and by the marker in a body
                         otherwise: the marker also hides every comment merely QUOTING it, which is right for a
-                        reader after conversation and wrong for one after a receipt it posted itself
+                        reader after conversation and wrong for one after a receipt it posted itself. A field is
+                        asked about two ways and the model answers both -- what one HOLDS, and whether the
+                        comment CARRIES it at all -- because every fail-closed reader in this repository turns a
+                        value nothing can act on into an absence, so a caller asking whether the record CLAIMS
+                        something could not otherwise tell an issue that never wrote a field from one whose
+                        field a hand edit truncated
     pull_requests.py    PR lookup by open state, by commit, and when GitHub could not be asked at all -- either
                         search narrowed to one base for a caller choosing the thread it would push onto, or asked of
                         every base by one asking only whether anybody is still standing on this branch -- plus
