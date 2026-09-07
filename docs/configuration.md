@@ -275,8 +275,14 @@ examples.
   dev-fix publication and the no-feedback bounce behind it, both validating recoveries, the three conflict
   publications, the base sync's auto-rebase and its crash recovery, the final docs pass, and the squash on approval.
   There the count is what the pull request would COME TO rather than what one push adds, so a branch cannot be grown
-  past the ceiling a commit at a time. See
+  past the ceiling a commit at a time. It is also what a proposed CHILD is sized against once a candidate reaches
+  adjudication: the late decomposer is told the ceiling its own candidate was measured at, every child of a `split`
+  declares the lines it will add across all of its paths, and one declared at or above that ceiling is refused, since a
+  split whose children are each still oversized is not a split. So lowering the value narrows what an adjudication may
+  propose as well as what may publish — what finally decides a child is the cumulative measurement of its own diff, on
+  the value in force when that child is measured. See
   [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#_handle_implementing-label-workflowimplementing)
+  and [`workflow/roles.md`](workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)
 - `ORCHESTRATOR_BASE_BRANCH` — default `main`. base branch of the orchestrator's own repo, used by the self-update
   path
 - `SQUASH_ON_APPROVAL` — default `on`. after the reviewer emits `VERDICT: APPROVED`, squash the dev's commits on the
