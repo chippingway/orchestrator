@@ -143,26 +143,22 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.github import comments as _github_comments
-from orchestrator.github.client import GitHubClient
-from orchestrator.github.issues import CLEANUP_ROUTE_LABELS, issue_is_closed
-from orchestrator.github.labels import hard_skip_control_label
-from orchestrator.github.pinned_state import PinnedState
+from orchestrator.github import (
+    client as _client,
+    comments as _github_comments,
+    issues as _issues,
+    labels as _labels,
+    pinned_state as _pinned_state,
+)
 from orchestrator.workflow.engine import observations as _observations, usage as _usage
 from orchestrator.workflow.late_split import (
     endings as _endings,
     events as _events,
     lineage as _lineage,
+    models as _late_models,
     restart as _restart,
     state as _late_state,
     telemetry as _telemetry,
-)
-from orchestrator.workflow.late_split.models import (
-    LateGeneration,
-    LatePhase,
-    LateResource,
-    LateResourceKind,
-    LateResourceState,
 )
 from orchestrator.workflow.stages.decomposition import (
     late_cleanup as _late_cleanup,
@@ -177,9 +173,9 @@ from orchestrator.workflow.state import (
 
 log = logging.getLogger("orchestrator.workflow")
 
-_PLAN_PR = LateResourceKind.PLAN_PR
+_PLAN_PR = _late_models.LateResourceKind.PLAN_PR
 
-_BRANCH = LateResourceKind.BRANCH
+_BRANCH = _late_models.LateResourceKind.BRANCH
 
 # Stamped on the notice a cancelled cycle leaves on the pull request it
 # was holding, so a pass that repeats after a crash recognizes its own. Scoped
@@ -241,15 +237,15 @@ _RELABELLED_MID_ENDING = (WorkflowLabel.READY, WorkflowLabel.BLOCKED)
 # Nothing else does, so an ending still owed is reachable by wearing one of
 # them or by the in-memory observation, and by nothing at all once it wears
 # neither.
-_SWEPT_LABELS = frozenset(CLEANUP_ROUTE_LABELS)
+_SWEPT_LABELS = frozenset(_issues.CLEANUP_ROUTE_LABELS)
 
 
 def _reconcile_closed_owner(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
 ) -> None:
     """End one late cycle whose owner is gone, as far as this visit can.
 
@@ -261,7 +257,7 @@ def _reconcile_closed_owner(
 
 
 def _cleanup_settled(
-    gh: GitHubClient, spec: config.RepoSpec, issue_number: int,
+    gh: _client.GitHubClient, spec: config.RepoSpec, issue_number: int,
 ) -> bool:
     """Whether the ending a cleanup pass was routed for is actually over.
 
@@ -311,7 +307,7 @@ def _cleanup_settled(
         )
         return False
     issue, state = reading
-    if not issue_is_closed(issue):
+    if not _issues.issue_is_closed(issue):
         return True
     if gh.workflow_label(issue) in _SWEPT_LABELS:
         return True
@@ -319,8 +315,8 @@ def _cleanup_settled(
 
 
 def _owner_reading(
-    gh: GitHubClient, issue_number: int,
-) -> tuple[Issue, PinnedState]:
+    gh: _client.GitHubClient, issue_number: int,
+) -> tuple[Issue, _pinned_state.PinnedState]:
     """The issue and the record a question about its ending is asked of.
 
     One reading rather than two, because the two answers have to agree: an
@@ -333,7 +329,7 @@ def _owner_reading(
 
 
 def _ending_is_over(
-    gh: GitHubClient, issue: Issue, state: PinnedState,
+    gh: _client.GitHubClient, issue: Issue, state: _pinned_state.PinnedState,
 ) -> bool:
     """Whether one closed owner's record shows nothing of its cycle left.
 
@@ -361,7 +357,7 @@ def _ending_is_over(
     return gh.workflow_label(issue) == WorkflowLabel.REJECTED
 
 
-def _still_owed(generation: LateGeneration) -> bool:
+def _still_owed(generation: _late_models.LateGeneration) -> bool:
     """Whether this cycle still holds something on the remote.
 
     The half of `_ending_is_over` that costs no request, asked on its own by
@@ -373,7 +369,7 @@ def _still_owed(generation: LateGeneration) -> bool:
 
 
 def _record_observed_close(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue_number: int,
     *,
@@ -450,7 +446,7 @@ def _record_observed_close(
 
 
 def _observed_close_posted(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue_number: int,
     *,
@@ -488,7 +484,7 @@ def _observed_close_posted(
 def _ending_cycle(
     spec: config.RepoSpec,
     issue_number: int,
-    generation: LateGeneration,
+    generation: _late_models.LateGeneration,
 ) -> int | None:
     """Which cycle a close observed now would end on this issue, if any.
 
@@ -521,7 +517,7 @@ def _observed_close_marker(issue_number: int, cycle_id: int) -> str:
 
 
 def _carries_observed_close(
-    gh: GitHubClient, issue: Issue, marker: str,
+    gh: _client.GitHubClient, issue: Issue, marker: str,
 ) -> bool:
     """Whether this cycle's own close receipt is already on the thread.
 
@@ -537,7 +533,7 @@ def _carries_observed_close(
 
 
 def _mark_observed_close(
-    gh: GitHubClient, issue: Issue, state: PinnedState,
+    gh: _client.GitHubClient, issue: Issue, state: _pinned_state.PinnedState,
 ) -> None:
     """Mark a live cycle on an issue the POLL read closed.
 
@@ -563,11 +559,11 @@ def _mark_observed_close(
 
 
 def _closed_under_a_label(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
-) -> LateGeneration:
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """Mark a live cycle whose owner this dispatch can see is already closed.
 
     The cleanup route takes a closed owner on either label an adjudication
@@ -590,7 +586,7 @@ def _closed_under_a_label(
     otherwise take it away -- so the two together cover a close whichever
     side of the refetch it landed on.
     """
-    if generation.cancelled or not issue_is_closed(issue):
+    if generation.cancelled or not _issues.issue_is_closed(issue):
         return generation
     log.warning(
         "issue=#%s is closed and wears %r over a LIVE late cycle; ending "
@@ -601,7 +597,7 @@ def _closed_under_a_label(
 
 
 def _owns_a_live_cycle(
-    gh: GitHubClient, spec: config.RepoSpec, issue_number: int,
+    gh: _client.GitHubClient, spec: config.RepoSpec, issue_number: int,
 ) -> bool | None:
     """Whether this issue's record carries a cycle a close would end, or None.
 
@@ -640,12 +636,12 @@ def _owns_a_live_cycle(
 
 
 def _inherited_close(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
-) -> LateGeneration:
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """Adopt a close a process that is gone observed and never settled.
 
     An in-memory latch dies with the process holding it, and a close observed
@@ -685,10 +681,10 @@ def _inherited_close(
 
 
 def _latched_close_ends(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
 ) -> bool:
     """Mark a latched close on this owner, and say whether the walk stops.
 
@@ -725,11 +721,11 @@ def _latched_close_ends(
 
 
 def _refuses_cancelled(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
     label: str | None,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
 ) -> bool:
     """Whether this issue is a cancelled cycle's ending and nothing else.
 
@@ -808,11 +804,11 @@ def _refuses_cancelled(
 
 
 def _retired_close_adopted(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    state: PinnedState,
-) -> LateGeneration | None:
+    state: _pinned_state.PinnedState,
+) -> _late_models.LateGeneration | None:
     """Put back a cycle a retirement dropped, if a close was seen inside it.
 
     The one window the reinstatement behind the retirement write cannot cover
@@ -862,8 +858,8 @@ def _retired_close_adopted(
 
 
 def _reconstructed(
-    issue: Issue, state: PinnedState, retired: int,
-) -> LateGeneration:
+    issue: Issue, state: _pinned_state.PinnedState, retired: int,
+) -> _late_models.LateGeneration:
     """Rebuild enough of a dropped cycle for the ending to be recorded by.
 
     The ledgers are already there -- a retirement carries them across, since
@@ -892,7 +888,7 @@ def _reconstructed(
         current_issue=issue.number,
         root_issue=ancestry.root_issue or issue.number,
         lineage_depth=ancestry.lineage_depth,
-        phase=LatePhase.CLEANING_UP,
+        phase=_late_models.LatePhase.CLEANING_UP,
     )
 
 
@@ -911,7 +907,7 @@ def _parked_ending(spec: config.RepoSpec, issue: Issue) -> bool:
     generation and spawn against it. So the fact is written and the reaction
     waits for the tick the label comes off.
     """
-    skip_label = hard_skip_control_label(issue)
+    skip_label = _labels.hard_skip_control_label(issue)
     if skip_label is None:
         return False
     log.info(
@@ -923,7 +919,9 @@ def _parked_ending(spec: config.RepoSpec, issue: Issue) -> bool:
 
 
 def _ends_here(
-    state: PinnedState, generation: LateGeneration, label: str | None,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+    label: str | None,
 ) -> bool:
     """Whether the cycle's terminal may be written from where the issue is.
 
@@ -964,12 +962,12 @@ def _ends_here(
 
 
 def _reconciled(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
-) -> LateGeneration:
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """Settle everything one cancelled cycle owes that can be settled now.
 
     The order is the contract. The cancellation is durable before any external
@@ -997,11 +995,11 @@ def _reconciled(
 
 
 def _reverified(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
-) -> LateGeneration:
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """Ask the held PR again, on the far side of everything else owed.
 
     The terminal is the write that cannot be taken back: it takes the issue
@@ -1032,11 +1030,11 @@ def _reverified(
 
 
 def _children_discharged(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
-) -> LateGeneration:
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """Say on the ledger that the children this cycle made owe it nothing.
 
     A child entry is the split's own receipt -- this generation created issue
@@ -1063,32 +1061,34 @@ def _children_discharged(
     discharged = generation
     for target in pending:
         discharged = _late_cleanup._recorded(
-            discharged, LateResourceKind.CHILD, target,
-            LateResourceState.RECONCILED,
+            discharged, _late_models.LateResourceKind.CHILD, target,
+            _late_models.LateResourceState.RECONCILED,
         )
     _persisted(gh, issue, state, discharged)
     return discharged
 
 
-def _pending_children(generation: LateGeneration) -> tuple[str, ...]:
+def _pending_children(
+    generation: _late_models.LateGeneration,
+) -> tuple[str, ...]:
     """The child receipts this record has not yet said it owes nothing on."""
     if _late_cleanup._unwritable(generation):
         return ()
     return tuple(
         entry.target
         for entry in generation.resources
-        if entry.kind == LateResourceKind.CHILD
-        and entry.resource_state != LateResourceState.RECONCILED
+        if entry.kind == _late_models.LateResourceKind.CHILD
+        and entry.resource_state != _late_models.LateResourceState.RECONCILED
     )
 
 
 def _superseded_branch(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
-) -> LateGeneration:
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """Take on the branch a supersession left behind but never wrote down.
 
     The transaction settles the held pull request and records the branch
@@ -1148,23 +1148,23 @@ def _superseded_branch(
         "owed rather than retiring over it", issue.number, branch,
     )
     owed = _late_cleanup._recorded(
-        generation, _BRANCH, branch, LateResourceState.PENDING,
+        generation, _BRANCH, branch, _late_models.LateResourceState.PENDING,
     )
     _persisted(gh, issue, state, owed)
     return owed
 
 
-def _names_a_branch(generation: LateGeneration) -> bool:
+def _names_a_branch(generation: _late_models.LateGeneration) -> bool:
     """Whether this record already holds the superseded branch, any state."""
     return any(entry.kind == _BRANCH for entry in generation.resources)
 
 
 def _marked(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
-) -> LateGeneration:
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """Record that this cycle is over, once, before anything acts on it.
 
     A record that already carries the mark is handed straight back: the flag,
@@ -1188,7 +1188,7 @@ def _marked(
     )
     cancelled = replace(
         generation.cancel(_usage._now_iso()),
-        phase=LatePhase.CANCELLING,
+        phase=_late_models.LatePhase.CANCELLING,
         owner_check_pending=False,
     )
     _persisted(gh, issue, state, cancelled)
@@ -1202,11 +1202,11 @@ def _marked(
 
 
 def _plan_pr_settled(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
-) -> LateGeneration:
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """Take the hold off the pull request it marked, say why, and close it.
 
     Only the pull request this generation actually held -- the plan one where
@@ -1255,11 +1255,11 @@ def _plan_pr_settled(
 
 
 def _reached(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    generation: LateGeneration,
+    generation: _late_models.LateGeneration,
     number: int,
-) -> tuple[LateGeneration, LateResourceState]:
+) -> tuple[_late_models.LateGeneration, _late_models.LateResourceState]:
     """Release the hold, close the pull request, and say where that left it.
 
     The record travels back with the answer because the release is entitled to
@@ -1273,16 +1273,16 @@ def _reached(
     """
     release = _late_hold._release_hold(gh, issue, generation)
     if release.failed:
-        return release.generation, LateResourceState.FAILED
+        return release.generation, _late_models.LateResourceState.FAILED
     if not _closed_over_notice(gh, issue, release.generation, number):
-        return release.generation, LateResourceState.FAILED
-    return release.generation, LateResourceState.RECONCILED
+        return release.generation, _late_models.LateResourceState.FAILED
+    return release.generation, _late_models.LateResourceState.RECONCILED
 
 
 def _closed_over_notice(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    generation: LateGeneration,
+    generation: _late_models.LateGeneration,
     number: int,
 ) -> bool:
     """Fetch the held pull request and hand it its cancellation.
@@ -1314,14 +1314,16 @@ def _closed_over_notice(
     )
 
 
-def _cancelled_marker(issue: Issue, generation: LateGeneration) -> str:
+def _cancelled_marker(
+    issue: Issue, generation: _late_models.LateGeneration,
+) -> str:
     """The receipt this cycle's cancellation notice carries."""
     return _CANCELLED_MARKER.format(
         issue=issue.number, cycle=generation.cycle_id,
     )
 
 
-def _held_pull_request(generation: LateGeneration) -> int | None:
+def _held_pull_request(generation: _late_models.LateGeneration) -> int | None:
     """The held pull request this pass may act on, if there is one.
 
     Both halves of the hold or neither. The number alone is not a hold this
@@ -1346,7 +1348,7 @@ def _held_pull_request(generation: LateGeneration) -> int | None:
     return generation.plan_pr_number
 
 
-def _unprovable_hold(generation: LateGeneration) -> bool:
+def _unprovable_hold(generation: _late_models.LateGeneration) -> bool:
     """Whether this record names a PR it cannot show it ever held."""
     return (
         generation.plan_pr_number is not None
@@ -1354,7 +1356,7 @@ def _unprovable_hold(generation: LateGeneration) -> bool:
     )
 
 
-def _owed_plan_pr(generation: LateGeneration) -> tuple[str, ...]:
+def _owed_plan_pr(generation: _late_models.LateGeneration) -> tuple[str, ...]:
     """Every held pull request this cancellation has still to settle.
 
     What the terminal is held by, and a different question from what the pass
@@ -1385,7 +1387,7 @@ def _owed_plan_pr(generation: LateGeneration) -> tuple[str, ...]:
         _OWED_PLAN_PR.format(entry.target)
         for entry in generation.resources
         if entry.kind == _PLAN_PR
-        and entry.resource_state != LateResourceState.RECONCILED
+        and entry.resource_state != _late_models.LateResourceState.RECONCILED
     )
     if not _unprovable_hold(generation):
         return owed
@@ -1393,7 +1395,9 @@ def _owed_plan_pr(generation: LateGeneration) -> tuple[str, ...]:
 
 
 def _proof_scan(
-    gh: GitHubClient, issue: Issue, generation: LateGeneration,
+    gh: _client.GitHubClient,
+    issue: Issue,
+    generation: _late_models.LateGeneration,
 ) -> _ChildScan:
     """Read the consumers a held ref has to be proved against, if any.
 
@@ -1410,10 +1414,10 @@ def _proof_scan(
 
 
 def _retired(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
 ) -> None:
     """Hand a settled cycle its terminal, or say what is still holding it.
 
@@ -1494,10 +1498,10 @@ def _retired(
 
 
 def _terminal_proved(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
 ) -> None:
     """Record a `rejected` this pass can SEE on the issue, once.
 
@@ -1521,11 +1525,11 @@ def _terminal_proved(
 
 
 def _terminal_recovered(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
     label: str | None,
-    state: PinnedState,
-    generation: LateGeneration,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
 ) -> None:
     """Prove a terminal a dead process left unrecorded, off the remote itself.
 
@@ -1581,7 +1585,9 @@ def _terminal_recovered(
 
 
 def _terminal_unproved(
-    label: str | None, state: PinnedState, generation: LateGeneration,
+    label: str | None,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
 ) -> bool:
     """Whether this issue is the one window the remote has to answer for.
 
@@ -1609,10 +1615,10 @@ def _terminal_unproved(
 
 
 def _terminal_recorded(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
 ) -> None:
     """Write down that this cycle's terminal is on the issue, once.
 
@@ -1636,7 +1642,7 @@ def _terminal_recorded(
     _persisted(gh, issue, state, generation)
 
 
-def _outstanding(generation: LateGeneration) -> tuple[str, ...]:
+def _outstanding(generation: _late_models.LateGeneration) -> tuple[str, ...]:
     """Everything this cancellation may not leave the remote holding.
 
     The reclamation owner's own reading of the branch and the ref, plus the
@@ -1651,7 +1657,7 @@ def _outstanding(generation: LateGeneration) -> tuple[str, ...]:
     return _late_cleanup._blocking(generation) + _owed_plan_pr(generation)
 
 
-def _unsettled(generation: LateGeneration) -> bool:
+def _unsettled(generation: _late_models.LateGeneration) -> bool:
     """Whether anything this cancellation took on is owed by any reading.
 
     Two readings, because neither contains the other and an obligation either
@@ -1674,10 +1680,10 @@ def _unsettled(generation: LateGeneration) -> bool:
 
 
 def _persisted(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
-    generation: LateGeneration,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
 ) -> None:
     """Make one step of this pass durable before the next one acts."""
     _late_state.write_late_generation(state, generation)
@@ -1685,9 +1691,9 @@ def _persisted(
 
 
 def _reported(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    generation: LateGeneration,
+    generation: _late_models.LateGeneration,
     target: str,
 ) -> None:
     """Say on both sinks what this pass did to the held PR.
@@ -1702,7 +1708,7 @@ def _reported(
     _late_cleanup._emit_cleanup(
         gh, generation, entry, stage_name(gh.workflow_label(issue)),
     )
-    if entry.resource_state != LateResourceState.RECONCILED:
+    if entry.resource_state != _late_models.LateResourceState.RECONCILED:
         log.warning(
             "issue=#%d could not close the PR its cancelled cycle held "
             "(%s); it is retried on every visit until it is",
@@ -1711,8 +1717,8 @@ def _reported(
 
 
 def _plan_pr_entry(
-    generation: LateGeneration, target: str,
-) -> LateResource | None:
+    generation: _late_models.LateGeneration, target: str,
+) -> _late_models.LateResource | None:
     """The ledger entry this pass just wrote for the held PR.
 
     None where the update could not be applied at all, which the recording

@@ -83,21 +83,17 @@ from pathlib import Path
 from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.github import pinned_state as _pinned_state
-from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     comments as _comments,
     run_circuit as _run_circuit,
     usage as _usage,
 )
 from orchestrator.workflow.late_split import (
+    events as _events,
     formats as _formats,
+    models as _late_models,
     overrides as _overrides,
     payloads as _payloads,
-)
-from orchestrator.workflow.late_split.events import LateVerdictCategory
-from orchestrator.workflow.late_split.models import (
-    LateGeneration,
-    LateVerdict,
 )
 from orchestrator.workflow.stages.decomposition import (
     late_budget as _budget,
@@ -204,7 +200,7 @@ MAX_NOTICE_COMMENT = MAX_RECORDED_BODY + MAX_NOTICE_BODY
 MAX_SESSION_ID = 256
 
 
-def _read_late_run(state: PinnedState) -> _LateRun:
+def _read_late_run(state: _pinned_state.PinnedState) -> _LateRun:
     """Return the late run this issue is locked to, defaults where unset.
 
     Every field is read through the late domain's own defensive readers: a
@@ -225,10 +221,10 @@ def _read_late_run(state: PinnedState) -> _LateRun:
         ) or "",
         generation=_payloads.as_count(state.get(_LATE_RUN_GENERATION)) or 0,
         verdict=_payloads.as_member(
-            LateVerdict, state.get(_LATE_RESULT_VERDICT),
+            _late_models.LateVerdict, state.get(_LATE_RESULT_VERDICT),
         ),
         category=_payloads.as_member(
-            LateVerdictCategory, state.get(_LATE_RESULT_CATEGORY),
+            _events.LateVerdictCategory, state.get(_LATE_RESULT_CATEGORY),
         ),
         question=_payloads.as_text(state.get(_LATE_RESULT_QUESTION)) or "",
         split_blocker=_payloads.as_text(
@@ -241,7 +237,7 @@ def _read_late_run(state: PinnedState) -> _LateRun:
     )
 
 
-def _recorded_children(state: PinnedState) -> tuple[dict, ...]:
+def _recorded_children(state: _pinned_state.PinnedState) -> tuple[dict, ...]:
     """Return the recorded child manifest, or nothing if it is not one.
 
     Held to the same rules the reply was: the child cap, the shape of each
@@ -258,7 +254,9 @@ def _recorded_children(state: PinnedState) -> tuple[dict, ...]:
     return tuple(recorded)
 
 
-def _locked_spec(state: PinnedState) -> tuple[str, str, tuple[str, ...]]:
+def _locked_spec(
+    state: _pinned_state.PinnedState,
+) -> tuple[str, str, tuple[str, ...]]:
     """Return the agent spec a late run is locked to, or the configured one.
 
     A legacy bare-backend value (`"codex"` / `"claude"`) re-parses to
@@ -276,7 +274,9 @@ def _locked_spec(state: PinnedState) -> tuple[str, str, tuple[str, ...]]:
     )
 
 
-def _record_late_spawn(state: PinnedState, run: _LateRun) -> None:
+def _record_late_spawn(
+    state: _pinned_state.PinnedState, run: _LateRun,
+) -> None:
     """Record what a late run IS, before that run can fail.
 
     Written ahead of the spawn for the reason the initial decomposer's spec
@@ -311,7 +311,7 @@ def _record_late_spawn(state: PinnedState, run: _LateRun) -> None:
     _drop_late_result(state)
 
 
-def _drop_late_result(state: PinnedState) -> None:
+def _drop_late_result(state: _pinned_state.PinnedState) -> None:
     """Forget the outcome a completed run recorded, keeping its identity.
 
     What a human's answer to a categorized question earns, what a certificate
@@ -336,7 +336,9 @@ def _drop_late_result(state: PinnedState) -> None:
     _overrides.clear_publication_override(state)
 
 
-def _record_late_session(state: PinnedState, agent_result: AgentResult) -> None:
+def _record_late_session(
+    state: _pinned_state.PinnedState, agent_result: AgentResult,
+) -> None:
     """Pin the session a finished run opened, when it surfaced one.
 
     Bounded, because the room for it was reserved before any pull request was
@@ -358,7 +360,7 @@ def _record_late_session(state: PinnedState, agent_result: AgentResult) -> None:
 
 
 def _record_late_result(
-    state: PinnedState, adjudication: _LateAdjudication,
+    state: _pinned_state.PinnedState, adjudication: _LateAdjudication,
 ) -> bool:
     """Record the whole of a completed adjudication, or record none of it.
 
@@ -477,8 +479,8 @@ def _recovered_adjudication(run: _LateRun) -> _LateAdjudication:
 
 
 def _spawn_record_for(
-    state: PinnedState,
-    generation: LateGeneration,
+    state: _pinned_state.PinnedState,
+    generation: _late_models.LateGeneration,
     *,
     resuming: bool = False,
 ) -> _LateRun:
@@ -509,7 +511,9 @@ def _spawn_record_for(
     )
 
 
-def _holdable(state_data: dict, generation: LateGeneration) -> bool:
+def _holdable(
+    state_data: dict, generation: _late_models.LateGeneration,
+) -> bool:
     """Whether a comment holding this could still record the run beside it.
 
     Asked before a held PR's description is replaced, because the write that
@@ -523,7 +527,7 @@ def _holdable(state_data: dict, generation: LateGeneration) -> bool:
     longer of the two spellings a late write puts there, so the measurement
     errs toward refusing.
     """
-    written = PinnedState(data=dict(state_data))
+    written = _pinned_state.PinnedState(data=dict(state_data))
     _record_late_spawn(written, _spawn_record_for(written, generation))
     written.set(_LATE_SESSION_ID, "s" * MAX_SESSION_ID)
     return _fits_the_comment(written.data, MAX_RECORDED_BODY)

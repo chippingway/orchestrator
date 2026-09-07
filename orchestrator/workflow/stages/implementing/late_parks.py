@@ -54,9 +54,11 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.git.measurement.models import MeasurementFailure
-from orchestrator.github.client import GitHubClient
-from orchestrator.github.comments import filter_trusted
-from orchestrator.github.pinned_state import PinnedState
+from orchestrator.github import (
+    client as _client,
+    comments as _github_comments,
+    pinned_state as _pinned_state,
+)
 from orchestrator.workflow.engine import (
     guards as _guards,
     messages as _messages,
@@ -65,11 +67,11 @@ from orchestrator.workflow.late_split import (
     events as _events,
     exemption as _exemption,
     formats as _formats,
+    models as _late_models,
     payloads as _payloads,
     state as _late_state,
     telemetry as _telemetry,
 )
-from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
     late_records as _records,
     state as _state,
@@ -257,7 +259,10 @@ def _described(failure, detail: str) -> str:
 
 
 def _parked(
-    gate: _records._Gate, generation: LateGeneration, failure, message: str,
+    gate: _records._Gate,
+    generation: _late_models.LateGeneration,
+    failure,
+    message: str,
     detail: str = "",
 ) -> bool:
     """Record the typed failure on both sinks, then hand the issue back.
@@ -291,7 +296,7 @@ def _parked(
 
 
 def _unmeasured(
-    gate: _records._Gate, generation: LateGeneration, failure,
+    gate: _records._Gate, generation: _late_models.LateGeneration, failure,
     detail: str = "",
 ) -> bool:
     """Park a candidate nobody could measure, loudly and with its reason.
@@ -337,7 +342,7 @@ def _unmeasured(
 
 
 def _repeats_a_notice(
-    gate: _records._Gate, generation: LateGeneration, failure,
+    gate: _records._Gate, generation: _late_models.LateGeneration, failure,
 ) -> bool:
     """Whether the thread has already been told THIS about THIS pair.
 
@@ -355,7 +360,7 @@ def _repeats_a_notice(
 
 
 def _held_quietly(
-    gate: _records._Gate, generation: LateGeneration, failure,
+    gate: _records._Gate, generation: _late_models.LateGeneration, failure,
     detail: str = "",
 ) -> bool:
     """Report a refusal a human has already been sent, and tell them nothing.
@@ -392,7 +397,7 @@ def _held_quietly(
 
 
 def _records_the_notice(
-    gate: _records._Gate, generation: LateGeneration, failure,
+    gate: _records._Gate, generation: _late_models.LateGeneration, failure,
 ) -> None:
     """Write the member a notice is about to name, before it is said.
 
@@ -419,7 +424,7 @@ def _records_the_notice(
 
 
 def _lost_reading(
-    gate: _records._Gate, generation: LateGeneration, failure,
+    gate: _records._Gate, generation: _late_models.LateGeneration, failure,
     detail: str = "",
 ) -> bool:
     """Count one reading the transport lost, and end the tick either way.
@@ -501,7 +506,9 @@ def _lost_reading(
     return True
 
 
-def _stands_over(gate: _records._Gate, generation: LateGeneration) -> bool:
+def _stands_over(
+    gate: _records._Gate, generation: _late_models.LateGeneration,
+) -> bool:
     """Whether a human is still waiting on a notice about THIS pair.
 
     Two things have to be true, and each rules out a different way of
@@ -522,7 +529,9 @@ def _stands_over(gate: _records._Gate, generation: LateGeneration) -> bool:
     return recorded.candidate_sha == generation.candidate_sha
 
 
-def _announced(generation: LateGeneration, failure) -> LateGeneration:
+def _announced(
+    generation: _late_models.LateGeneration, failure,
+) -> _late_models.LateGeneration:
     """The record a notice naming this step leaves behind.
 
     The field is what the thread has been TOLD, so it is written by the two
@@ -533,7 +542,9 @@ def _announced(generation: LateGeneration, failure) -> LateGeneration:
     return replace(generation, measurement_failure=failure)
 
 
-def _one_more_miss(generation: LateGeneration, failure) -> LateGeneration:
+def _one_more_miss(
+    generation: _late_models.LateGeneration, failure,
+) -> _late_models.LateGeneration:
     """The record one lost reading leaves, where the bound counts it.
 
     A step outside the bound is handed on untouched. The count is what says
@@ -553,7 +564,7 @@ def _one_more_miss(generation: LateGeneration, failure) -> LateGeneration:
     )
 
 
-def _retries_quietly(missed: LateGeneration, failure) -> bool:
+def _retries_quietly(missed: _late_models.LateGeneration, failure) -> bool:
     """Whether this miss is one the next tick takes again without a human."""
     return (
         failure in _TRANSPORT_STEPS
@@ -562,7 +573,9 @@ def _retries_quietly(missed: LateGeneration, failure) -> bool:
     )
 
 
-def _reached(generation: LateGeneration) -> LateGeneration:
+def _reached(
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """The record a base this host really holds leaves: no miss outstanding.
 
     A freeze that succeeded is what the count exists to be ended by, and the
@@ -582,7 +595,9 @@ def _reached(generation: LateGeneration) -> LateGeneration:
     return replace(generation, measurement_miss_count=0)
 
 
-def _measured(generation: LateGeneration) -> LateGeneration:
+def _measured(
+    generation: _late_models.LateGeneration,
+) -> _late_models.LateGeneration:
     """The record a reading that HAPPENED leaves: nothing outstanding at all.
 
     The end of every step a measurement can stop at, which is the first point
@@ -602,7 +617,7 @@ def _measured(generation: LateGeneration) -> LateGeneration:
     )
 
 
-def _retire_spent_park(state: PinnedState) -> None:
+def _retire_spent_park(state: _pinned_state.PinnedState) -> None:
     """Drop a measurement park this attempt is the answer to, latch and all.
 
     The reason is durable and so is the flag beside it, so without this a park
@@ -635,7 +650,7 @@ def _retire_spent_park(state: PinnedState) -> None:
 
 
 def _retire_settled_park(
-    state: PinnedState, recorded: LateGeneration,
+    state: _pinned_state.PinnedState, recorded: _late_models.LateGeneration,
 ) -> bool:
     """Drop a measurement park a settled split's own record provoked.
 
@@ -665,7 +680,7 @@ def _retire_settled_park(
     return True
 
 
-def _retire_superseded_park(state: PinnedState) -> None:
+def _retire_superseded_park(state: _pinned_state.PinnedState) -> None:
     """Drop a park the adjudication is taking the issue out of.
 
     A hold hands every later tick to the late coordinator, and what the issue
@@ -680,7 +695,7 @@ def _retire_superseded_park(state: PinnedState) -> None:
     state.set(_state._PARK_REASON, None)
 
 
-def _recorded_candidate(state: PinnedState) -> str:
+def _recorded_candidate(state: _pinned_state.PinnedState) -> str:
     """The commit this issue's record names, or "" where none does.
 
     Published for the disposition beside this owner, which needs the floor a
@@ -691,7 +706,7 @@ def _recorded_candidate(state: PinnedState) -> str:
     return _late_state.read_late_generation(state).candidate_sha
 
 
-def _approved_commit(state: PinnedState) -> str:
+def _approved_commit(state: _pinned_state.PinnedState) -> str:
     """The commit an approval owes a publication for, or "" where none does.
 
     Published for every owner that has to know a commit is already DECIDED.
@@ -707,7 +722,7 @@ def _approved_commit(state: PinnedState) -> str:
     ) or ""
 
 
-def _approved_lease(state: PinnedState) -> str:
+def _approved_lease(state: _pinned_state.PinnedState) -> str:
     """The head a published approval was frozen against, or "" where none was.
 
     The other half of an approval taken on the published side, and the half
@@ -725,7 +740,7 @@ def _approved_lease(state: PinnedState) -> str:
     ) or ""
 
 
-def _approved_basis(state: PinnedState) -> str:
+def _approved_basis(state: _pinned_state.PinnedState) -> str:
     """What the standing approval rests on, or "" where the record cannot say.
 
     Read fail-closed like every other late field: only a value this build's
@@ -744,7 +759,7 @@ def _approved_basis(state: PinnedState) -> str:
 
 
 def _approve(
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     candidate_sha: str,
     lease: str,
     basis: LateApprovalBasis | None,
@@ -775,7 +790,9 @@ def _approve(
     state.set(_state._APPROVED_BASIS, None if basis is None else str(basis))
 
 
-def _owes_a_publication(state: PinnedState, candidate_sha: str) -> None:
+def _owes_a_publication(
+    state: _pinned_state.PinnedState, candidate_sha: str,
+) -> None:
     """Record that this commit is owed a push, on whatever grounds it has.
 
     The write for a caller holding one commit and no lease, which is the
@@ -817,7 +834,7 @@ def _owes_a_publication(state: PinnedState, candidate_sha: str) -> None:
     _approve(state, candidate_sha, "", _minted_basis(state))
 
 
-def _minted_basis(state: PinnedState) -> LateApprovalBasis:
+def _minted_basis(state: _pinned_state.PinnedState) -> LateApprovalBasis:
     """What a debt this seam mints for a commit no approval names rests on.
 
     Read off the exemption CLAIM rather than off the commit it names, and
@@ -837,7 +854,9 @@ def _minted_basis(state: PinnedState) -> LateApprovalBasis:
     return LateApprovalBasis.UNMEASURED
 
 
-def _standing_basis(state: PinnedState) -> LateApprovalBasis | None:
+def _standing_basis(
+    state: _pinned_state.PinnedState,
+) -> LateApprovalBasis | None:
     """What the standing approval rests on, or None where it cannot say.
 
     The debt a caller re-records is the one that was already there -- the same
@@ -861,7 +880,7 @@ def _standing_basis(state: PinnedState) -> LateApprovalBasis | None:
     return LateApprovalBasis(standing)
 
 
-def _forget_approval(state: PinnedState) -> None:
+def _forget_approval(state: _pinned_state.PinnedState) -> None:
     """Drop a debt that is paid, superseded, or being adjudicated instead.
 
     What the route still owed goes with it. Those obligations outlive the
@@ -876,7 +895,7 @@ def _forget_approval(state: PinnedState) -> None:
     _late_state.write_late_spends(state, ())
 
 
-def _published_commit(state: PinnedState) -> str:
+def _published_commit(state: _pinned_state.PinnedState) -> str:
     """The commit this stage last pushed, or "" where none was.
 
     Published beside the approval for the owner that has to tell a candidate
@@ -892,7 +911,7 @@ def _published_commit(state: PinnedState) -> str:
     ) or ""
 
 
-def _published_lease(state: PinnedState) -> str:
+def _published_lease(state: _pinned_state.PinnedState) -> str:
     """The head the recorded publication replaced, or "" where none is named.
 
     What scopes the receipt beside it to one publication attempt. A receipt is
@@ -910,7 +929,7 @@ def _published_lease(state: PinnedState) -> str:
     ) or ""
 
 
-def _publication_from(state: PinnedState, head: str) -> str:
+def _publication_from(state: _pinned_state.PinnedState, head: str) -> str:
     """The commit recorded as pushed FROM this head, or "" where none is.
 
     The receipt and its head asked as the one question every caller of them
@@ -929,7 +948,7 @@ def _publication_from(state: PinnedState, head: str) -> str:
 
 
 def _record_publication(
-    state: PinnedState, published: str, superseded: str,
+    state: _pinned_state.PinnedState, published: str, superseded: str,
 ) -> None:
     """Record the commit a push put on the remote, and the head it replaced.
 
@@ -943,7 +962,9 @@ def _record_publication(
     state.set(_state._PUBLISHED_LEASE, superseded or None)
 
 
-def _persisted(gate: _records._Gate, generation: LateGeneration) -> None:
+def _persisted(
+    gate: _records._Gate, generation: _late_models.LateGeneration,
+) -> None:
     """Write the generation this step reached, and the state around it.
 
     What the caller's hold owes rides the same write, because the freeze is
@@ -976,7 +997,9 @@ def _persisted(gate: _records._Gate, generation: LateGeneration) -> None:
     gate.gh.write_pinned_state(gate.issue, gate.state)
 
 
-def _unbound_park(state: PinnedState, generation: LateGeneration) -> None:
+def _unbound_park(
+    state: _pinned_state.PinnedState, generation: _late_models.LateGeneration,
+) -> None:
     """Retire a measurement park the record being written moves past.
 
     Only a park over some OTHER candidate: one taken over the pair still being
@@ -996,7 +1019,9 @@ def _unbound_park(state: PinnedState, generation: LateGeneration) -> None:
 
 
 def _emit(
-    gate: _records._Gate, generation: LateGeneration, event: _events.LateEvent,
+    gate: _records._Gate,
+    generation: _late_models.LateGeneration,
+    event: _events.LateEvent,
 ) -> None:
     """Report one late event from the stage the measurement happened in.
 
@@ -1014,7 +1039,7 @@ def _emit(
 
 
 def _answers_the_measurement_park(
-    gh: GitHubClient, issue: Issue, state: PinnedState,
+    gh: _client.GitHubClient, issue: Issue, state: _pinned_state.PinnedState,
 ) -> list:
     """The bare continues a human has written on a measurement park, if any.
 
@@ -1033,7 +1058,7 @@ def _answers_the_measurement_park(
         return []
     if not state.get(_state._AWAITING_HUMAN):
         return []
-    replies = filter_trusted(
+    replies = _github_comments.filter_trusted(
         gh.comments_after(issue, state.get(_state._LAST_ACTION_COMMENT_ID)),
     )
     if not replies or not _messages._parse_orchestrator_continue(replies):
