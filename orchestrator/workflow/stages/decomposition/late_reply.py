@@ -25,12 +25,48 @@ tightened there tightens here, and the number the late prompt states is still
 the number the reply is judged against.
 
 `single` carries one field the other two do not: the explanation of what
-stopped a split. The verdict says the committed work is one change, and the
-reason it could not be several is the thing an operator deciding whether to
-accept it needs -- so it is read off the reply as text rather than left in the
-prose around the block, which nothing keeps. It is optional here: a reply that
-declares the outcome and omits the sentence has still decided something, and
-refusing it would buy a second agent run to recover prose.
+stopped a split. The verdict says the committed work is one change AND that no
+safe split of it is available, and it decides nothing on its own -- it hands an
+oversized candidate to a human -- so that reason is the whole of what the human
+is given to decide on. It is read off the reply as text rather than left in the
+prose around the block, which nothing keeps, and a fresh reply that declares
+the outcome without it is refused rather than recorded: what would be kept
+otherwise is a verdict missing the one thing it exists to carry, and the park a
+refusal takes names the field that was owed.
+
+What that refusal is NOT is a rule about records. A result recorded before this
+domain kept an explanation is on live issues, and it reads back as this
+candidate's answer with a stand-in beside it -- re-adjudicating to recover
+prose would buy a second run free to decide something else entirely. The
+obligation is the fresh reply's alone, exactly as the per-child budget below
+is.
+
+Every child of a `split` owes one field the initial mode never asks for: the
+lines that child is estimated to ADD across all of its paths. It is required
+and it is bounded -- a real count of at least one line, strictly below the
+ceiling this candidate was measured against -- because a split whose children
+are each still oversized is not a split, and the cheapest place to catch one
+that says so is while it is still a reply rather than after it has become
+issues. The number is judged here and kept nowhere: what decides whether a
+child is oversized is the cumulative measurement of that child's own diff, so
+what is being checked is whether the proposal is actionable and never whether
+a later measurement is allowed to disagree with it.
+
+The ceiling comes from the generation the reply is about rather than from
+configuration, so an answer is judged against the number its own prompt
+stated even where an operator retuned the knob while the agent was running. A
+generation that cannot say what its ceiling was refuses nothing on size, and
+still refuses a child that declared no estimate at all: a missing budget is a
+protocol failure whatever the bound is, while a bound nobody can name is not
+one a reply can be measured against.
+
+That rule sits on THIS owner rather than on the shared split validator, for
+the reason the explanation above is asked only of a reply: it is a rule about
+what an agent just said. The same validator reads recorded manifests back off
+the pinned comment, and a live issue's recorded split was written before any
+budget was asked for -- so a requirement placed there would read every one of
+them as no manifest at all and send a candidate that has already been
+adjudicated round again.
 
 What this owner does NOT decide is whether a `split` is allowed at all. The
 lineage bound is the record's invariant and is enforced where the generation
@@ -43,7 +79,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from orchestrator.workflow.late_split import events as _events
+from orchestrator.workflow.late_split import events as _events, formats as _formats
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.stages.decomposition import manifest as _manifest, validation as _validation
@@ -62,6 +98,7 @@ _DECISION = "decision"
 _CATEGORY = "category"
 _QUESTION = "question"
 _SPLIT_BLOCKER = "split_blocker"
+_ESTIMATE = "estimated_added_lines"
 
 _SINGLE_DECISION = "single"
 _SPLIT_DECISION = "split"
@@ -77,9 +114,23 @@ _BAD_DECISION = "decision must be 'single', 'split', or 'question'"
 
 _NO_QUESTION = "question decision requires a non-empty question"
 
+_NO_SPLIT_BLOCKER = (
+    f"single decision requires a non-empty {_SPLIT_BLOCKER} saying why no "
+    "safe split of this work is available"
+)
+
+_NO_ESTIMATE = (
+    f"child {{0}} needs an `{_ESTIMATE}` of at least one whole line"
+)
+
+_ESTIMATE_PAST_CEILING = (
+    f"child {{0}} declares an `{_ESTIMATE}` of {{1}}, which is not below the "
+    "{2}-line ceiling this split has to get under"
+)
+
 
 def _parse_late_reply(
-    last_message: str,
+    last_message: str, threshold: int | None,
 ) -> tuple[_LateAdjudication | None, str | None]:
     """Parse a fenced `orchestrator-late-manifest` block.
 
@@ -88,6 +139,10 @@ def _parse_late_reply(
     message -- for every reply that did not. There is deliberately no third
     answer: unlike the initial mode, a late reply with no block has not asked
     a question, it has failed to answer one.
+
+    The threshold is the ceiling THIS candidate was measured against, and it
+    is passed rather than read, so what a proposed child is judged against is
+    the number its own prompt stated.
     """
     payload, envelope_error = _manifest._fenced_payload(
         last_message, _LATE_MANIFEST_RE, _LATE_BLOCK,
@@ -97,41 +152,91 @@ def _parse_late_reply(
     late_manifest, decode_error = _manifest._decode_manifest(payload)
     if late_manifest is None:
         return None, decode_error
-    return _adjudication(late_manifest)
+    return _adjudication(late_manifest, threshold)
 
 
 def _adjudication(
-    late_manifest: dict,
+    late_manifest: dict, threshold: int | None,
 ) -> tuple[_LateAdjudication | None, str | None]:
     """Route one decoded late manifest onto the verdict it declares."""
     decision = late_manifest.get(_DECISION)
     if decision not in _DECISIONS:
         return None, _BAD_DECISION
     if decision == _SPLIT_DECISION:
-        return _split_adjudication(late_manifest)
+        return _split_adjudication(late_manifest, threshold)
     if decision == _QUESTION:
         return _question_adjudication(late_manifest)
+    return _single_adjudication(late_manifest)
+
+
+def _single_adjudication(
+    late_manifest: dict,
+) -> tuple[_LateAdjudication | None, str | None]:
+    """Require a `single` to say why no safe split of the work is available.
+
+    Asked of the reply for the same reason the question's own sentence is:
+    this verdict publishes nothing and hands the candidate to a human, so an
+    answer that names no obstacle has decided the one thing it is not allowed
+    to decide alone and given the human nothing to decide it on. A reply
+    refused here parks naming the field, which is a cheaper thing to read than
+    a recorded verdict nobody can act on.
+    """
+    blocked = _text(late_manifest, _SPLIT_BLOCKER)
+    if not blocked:
+        return None, _NO_SPLIT_BLOCKER
     return _LateAdjudication(
         verdict=LateVerdict.SINGLE,
         category=_category(late_manifest, required=False),
         rationale=_text(late_manifest, "rationale"),
-        split_blocker=_text(late_manifest, _SPLIT_BLOCKER),
+        split_blocker=blocked,
     ), None
 
 
 def _split_adjudication(
-    late_manifest: dict,
+    late_manifest: dict, threshold: int | None,
 ) -> tuple[_LateAdjudication | None, str | None]:
-    """Validate a late split against the initial mode's own split rules."""
+    """Validate a late split against the split rules and the budget.
+
+    The shared rules first, because they are what says these are children at
+    all: a budget read off something that is not a child object would be
+    reporting the wrong fault about the wrong thing.
+    """
     split_error = _validation._split_manifest_error(late_manifest)
     if split_error is not None:
         return None, split_error
+    children = tuple(late_manifest.get("children") or ())
+    budget_error = _estimates_error(children, threshold)
+    if budget_error is not None:
+        return None, budget_error
     return _LateAdjudication(
         verdict=LateVerdict.SPLIT,
         category=_category(late_manifest, required=False),
         rationale=_text(late_manifest, "rationale"),
-        children=tuple(late_manifest.get("children") or ()),
+        children=children,
     ), None
+
+
+def _estimates_error(
+    children: tuple, threshold: int | None,
+) -> str | None:
+    """Return the first child whose declared addition budget is not one.
+
+    A count rather than anything that converts to one: a bool, a float, and a
+    numeric string are all values nothing estimated, and a child sized by one
+    of them is a child nobody sized. Zero and below are refused for the same
+    reason -- no slice of an oversized candidate adds nothing -- and a number
+    at or past the ceiling is refused because a child that big is this same
+    adjudication again with an issue number in front of it.
+    """
+    for child_index, child in enumerate(children):
+        estimated = child.get(_ESTIMATE)
+        if not _formats.whole_number(estimated) or estimated < 1:
+            return _NO_ESTIMATE.format(child_index)
+        if threshold is not None and estimated >= threshold:
+            return _ESTIMATE_PAST_CEILING.format(
+                child_index, estimated, threshold,
+            )
+    return None
 
 
 def _question_adjudication(

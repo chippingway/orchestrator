@@ -555,21 +555,44 @@ Three dots, not two: that is the prospective pull-request range the measurement 
 (`git/measurement/additions.py`), and on a diverged history the two-dot range would put the agent on changes nobody
 measured — deciding a split over work this candidate does not add. The child cap, the lineage bound, and the category
 vocabulary are read back off the owners that enforce them, so a bound the agent is told cannot drift from the bound it
-is judged against, and the one field name the prompt states — the explanation a `single` owes — is read off the parser
-that reads the reply, so a key nothing reads is not one the agent can be asked for.
+is judged against, and the two field names the prompt states — the explanation a `single` owes, and the addition budget
+every proposed child declares — are read off the parser that reads the reply, so a key nothing reads is not one the
+agent can be asked for. The per-child ceiling is this generation's own measurement rather than the configured knob, so
+an operator retuning that knob while an agent is running cannot leave it sizing children under a bound nothing checks.
 
 The reply ends in exactly one fenced `orchestrator-late-manifest` block — a different fence from the initial
 `orchestrator-manifest`, read by `late_reply.py` — declaring one of three outcomes:
 
-- `single` — the committed work is one coherent change despite its size. A diff dominated by legitimate generated or
-  data artifacts is the named false positive and gets this verdict with `"category": "generated_artifacts"`. The
-  `"split_blocker"` beside it says what made splitting unsafe or unavailable, and it is the one part of a `single`
-  reply's prose the pinned comment keeps — the `"rationale"` is dropped, which is why the two are separate fields
-  rather than one. The prompt asks for it; the parser does not refuse a reply that left it out, since that would buy
-  a second agent run to recover prose — so a `single` with none still decides, and everything reading the verdict
-  afterwards is told no reason was recorded rather than shown nothing.
+- `single` — the committed work is one coherent change despite its size, and no safe split of it is available. It
+  publishes nothing, and the prompt says so in those terms: the verdict REQUIRES a human decision, so it must say what
+  that human is being handed. A diff dominated by legitimate generated or data artifacts is the named false positive
+  and gets this verdict with `"category": "generated_artifacts"`. The `"split_blocker"` beside it says what makes a
+  safe split unavailable — the prerequisite that cannot be landed dormant, the artifact that cannot land apart from
+  what generates it, the invariant a half-landed slice would break — and it is the one part of a `single` reply's prose
+  the pinned comment keeps; the `"rationale"` is dropped, which is why the two are separate fields rather than one. The
+  prompt states it as an obligation and the parser enforces it: a fresh reply that declares the verdict and names no
+  obstacle is refused, because what would be recorded otherwise is the one answer a human has to act on with the one
+  thing it turns on missing. The refusal is about a REPLY and never about a record — results predating the key are on
+  live issues, still decide their candidate, and are read back with a fixed stand-in sentence rather than sent round
+  for a second run to recover prose.
 - `split` — a child manifest that partitions the declared scope completely, held to the same rules the initial mode
-  uses: the child cap, each child's shape, and the acyclicity of the graph they declare.
+  uses: the child cap, each child's shape, and the acyclicity of the graph they declare. The prompt requires
+  dependency-ordered implementation slices to be considered *before* a `single` is answered, because that is the way
+  out an agent otherwise talks itself out of: work that will not cut across features almost always cuts along its
+  dependencies, and a prerequisite may land dormant — built, tested directly, reached by nothing in production — with
+  its activation waiting for the last consumer that needs it, the recovery paths included, so no half-wired state is
+  what a user or a later tick meets. Every child body owns its slice end to end, its own tests and documentation
+  included, since a slice whose proof or description belongs to a sibling is not one. Beside that each child declares
+  an `"estimated_added_lines"` budget covering ALL of its paths, and that one is enforced: on a fresh reply it has to
+  be a real count of at least one line, strictly below the ceiling this candidate was measured against, and a manifest
+  that does not clear it is refused — a split whose children are each still oversized is not a split. The number is
+  judged and kept nowhere; what decides whether a child is oversized is the cumulative measurement of that child's own
+  diff, which is why the prompt asks for headroom under the ceiling for the review fixes that land on the same pull
+  request rather than for a number that only just fits, and why the figure its JSON template shows is scaled to that
+  ceiling rather than fixed — a template is copied verbatim, so a standing figure would be a refused child on every
+  repository configured under it. The requirement lives on the late parser rather than on the
+  shared split validator, which also reads recorded manifests back off pinned comments written before any budget was
+  asked for.
 - `question` — a categorized question for a human, which is also where artifacts that look like they should NOT have
   been committed go. The category is mapped onto the closed vocabulary, so an agent's own spelling records as
   `unknown` rather than widening the field.
@@ -583,8 +606,11 @@ asks the human instead of paying for the same forbidden split again.
 A completed run is recorded whole so a crashed tick does not pay for a second one — a second run is not free, and it
 is free to decide differently. What "whole" means is per verdict: a `single` carries the explanation of what stopped a
 split, a `question` carries its category and the sentence it asked, and a `split` carries the ordered child manifest
-that *is* its decision. The explanation is the one of the three a record may lack and still be an answer, since
-results predating the key are on live issues and the reply contract does not refuse an outcome that omitted it.
+that *is* its decision — rewritten from the three fields a child issue is created out of, so the declared budget is not
+among them: it is a rule about a proposal rather than a fact about the split, and every manifest a live issue already
+carries reads back without one. The explanation is the one of the three a record may lack and still be an answer, since
+results predating the key are on live issues; a fresh reply that omits it never becomes a record at all, because the
+reply contract refuses one.
 Whether it fits is measured on the whole comment the write would produce — the preserved held-PR body and every other
 stage's keys included — because a result small on its own can still be the one that pushes the comment past what
 GitHub accepts, and learning that from the failed write means the agent has already been paid for. The budget is

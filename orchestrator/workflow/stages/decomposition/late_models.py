@@ -52,12 +52,13 @@ from orchestrator.workflow.late_split.models import LateGeneration, LateVerdict
 # developer revision a trusted answer earns, which records its own role.
 _DECOMPOSER_ROLE = "decomposer"
 
-# What a `single` with no explanation beside it answers with. Live issues
-# carry results recorded before this domain kept one, and the reply contract
-# does not refuse an outcome that omitted it either -- so the absence has a
-# sentence of its own rather than an empty string a reader would render as
-# nothing. Re-running the adjudicator to recover the prose is the one thing it
-# must not cost: a second run is not free and is free to decide differently.
+# What a `single` with no explanation beside it answers with. A fresh reply
+# that omits one is refused where it is read, so the absence a reader meets is
+# always a RECORD's: live issues carry results written before this domain kept
+# an explanation, and those still decide this candidate. So it has a sentence
+# of its own rather than an empty string a reader would render as nothing.
+# Re-running the adjudicator to recover the prose is the one thing it must not
+# cost: a second run is not free and is free to decide differently.
 UNRECORDED_SPLIT_BLOCKER = (
     "no explanation of what stopped a split was recorded with this verdict"
 )
@@ -120,10 +121,12 @@ class _LateAdjudication:
         """What this verdict says stopped a split, or that nothing says.
 
         Asked instead of the field, so every reader of a `single` gets a
-        sentence: an outcome recorded before this domain kept one, and a
-        reply that declared the verdict without explaining it, both answer
-        with the stand-in rather than with nothing. Empty on the other two
-        verdicts, which are not answers about a split that did not happen.
+        sentence: an outcome recorded before this domain kept one answers
+        with the stand-in rather than with nothing, which is the only way the
+        field is ever empty on this verdict, since a reply that declared it
+        without an explanation never became one of these. Empty on the other
+        two verdicts, which are not answers about a split that did not
+        happen.
         """
         if self.verdict != LateVerdict.SINGLE:
             return ""

@@ -14,6 +14,7 @@ naming one of them is naming the durable key a live issue would carry.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, replace
 
 from orchestrator.git.measurement.models import (
@@ -23,6 +24,7 @@ from orchestrator.git.measurement.models import (
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
+from orchestrator.workflow.stages.decomposition.late_reply import _ESTIMATE
 from tests.support.fakes import (
     FakeGitHubClient,
     FakeIssue,
@@ -185,11 +187,45 @@ SINGLE_REPLY = late_block(
     ' "category": "generated_artifacts"}'
 )
 
-SPLIT_REPLY = late_block(
-    '{"decision": "split", "rationale": "two slices",'
-    ' "children": [{"title": "A", "body": "a"},'
-    ' {"title": "B", "body": "b", "depends_on": [0]}]}'
-)
+# What each proposed child says it will add across all of its paths. Well
+# under the threshold every late-mode test measures against, since a child
+# sized at the ceiling is one the reply contract refuses.
+FIRST_ESTIMATE = 400
+SECOND_ESTIMATE = 600
+
+
+def split_reply_of(*declared: object) -> str:
+    """A split reply whose children declare exactly these budgets.
+
+    Written through the JSON encoder rather than as text, so a case can
+    declare a budget nothing estimated -- a string, a bool, a zero -- and
+    still hand the parser the shape an agent would really have sent. `None`
+    is the child that declared no budget at all.
+    """
+    children = []
+    for index, budget in enumerate(declared):
+        child = {"title": f"A{index}", "body": "a"}
+        if budget is not None:
+            child[_ESTIMATE] = budget
+        children.append(child)
+    return late_block(
+        json.dumps({"decision": "split", "children": children}),
+    )
+
+
+SPLIT_REPLY = late_block(json.dumps({
+    "decision": "split",
+    "rationale": "two slices",
+    "children": [
+        {"title": "A", "body": "a", _ESTIMATE: FIRST_ESTIMATE},
+        {
+            "title": "B",
+            "body": "b",
+            "depends_on": [0],
+            _ESTIMATE: SECOND_ESTIMATE,
+        },
+    ],
+}))
 
 QUESTION_ASKED = "which half of this is in scope?"
 

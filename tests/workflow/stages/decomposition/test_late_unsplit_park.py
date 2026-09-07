@@ -48,6 +48,8 @@ from tests.workflow.stages.decomposition.late_settlement_support import (
 from tests.workflow.stages.decomposition.late_test_support import (
     ADDITIONS,
     CANDIDATE_SHA,
+    CYCLE_ID,
+    GENERATION_NUMBER,
     HOLD_MARKER_PREFIX,
     KEYS,
     LATE_SESSION_ID,
@@ -59,6 +61,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     THRESHOLD,
     generation_state,
     late_block,
+    late_generation,
 )
 
 # Every category an adjudicator may land a `single` under, `unsafe_split`
@@ -71,12 +74,18 @@ _CATEGORIES = (
     "unknown_to_this_build",
 )
 
-# A verdict recorded with no explanation beside it, which live issues carry and
-# the reply contract does not refuse: the notice answers with the stand-in
-# rather than paying for a second run to recover the prose.
-_UNEXPLAINED_RUN = agent_reply(late_block(
-    '{"decision": "single", "rationale": "one coherent change"}'
-))
+# A verdict an older binary recorded with no explanation beside it, which live
+# issues carry: the identities that make it this candidate's answer, and
+# nothing under the key this domain later kept. A tick reading it back takes
+# the park without an agent, and the notice answers with the stand-in rather
+# than paying for a second run to recover the prose.
+_UNEXPLAINED_RECORD = MappingProxyType({
+    **generation_state(late_generation()),
+    KEYS.run_cycle_id: CYCLE_ID,
+    KEYS.run_generation: GENERATION_NUMBER,
+    KEYS.source_sha: CANDIDATE_SHA,
+    KEYS.verdict: "single",
+})
 
 # A checkout whose push would be refused. What it turns into an assertion is
 # that the road a settlement takes was never entered: a tick that reached the
@@ -159,12 +168,18 @@ class UnsplittableParkTest(GuardedLateCase, unittest.TestCase):
         self.assertIn(str(THRESHOLD), said)
         self.assertIn(SPLIT_BLOCKER, said)
 
-    def test_an_unexplained_verdict_says_so(self) -> None:
-        # An outcome recorded with no explanation is still this candidate's
-        # answer, so it is announced with the stand-in rather than re-run to
-        # recover prose an agent may not decide the same way twice.
-        self._decide(_UNEXPLAINED_RUN)
+    def test_an_unexplained_record_says_so(self) -> None:
+        # An outcome recorded before this domain kept an explanation is still
+        # this candidate's answer, so it is announced with the stand-in
+        # rather than re-run to recover prose an agent may not decide the
+        # same way twice. What a fresh reply owes is the reply contract's,
+        # and no record is held to it.
+        self.github.seed_state(self.issue.number, **_UNEXPLAINED_RECORD)
 
+        outcome, spawn = self._adjudicate()
+
+        spawn.assert_not_called()
+        self.assertEqual(outcome.disposition, _LateDisposition.PARKED)
         said = self.github.posted_comments[-1][1]
         self.assertIn(UNRECORDED_SPLIT_BLOCKER, said)
 

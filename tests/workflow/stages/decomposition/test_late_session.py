@@ -399,6 +399,12 @@ class LateRunAnswersTest(unittest.TestCase):
                 self.assertFalse(run.answers(late_generation()))
 
     def test_a_complete_split_reads_answered(self) -> None:
+        # A recorded manifest carries the three fields a child issue is
+        # created out of and nothing else -- no per-child addition budget,
+        # which is a rule about a fresh reply rather than about a record. A
+        # live issue's split was written before any budget was asked for, and
+        # reading it as no manifest at all would send a candidate that has
+        # already been adjudicated round again.
         run = _session._read_late_run(PinnedState(data={
             KEYS.run_cycle_id: CYCLE_ID,
             KEYS.source_sha: CANDIDATE_SHA,
@@ -408,6 +414,7 @@ class LateRunAnswersTest(unittest.TestCase):
         }))
 
         self.assertTrue(run.answers(late_generation()))
+        self.assertEqual(run.children, (recorded_child(),))
 
 
 if __name__ == "__main__":

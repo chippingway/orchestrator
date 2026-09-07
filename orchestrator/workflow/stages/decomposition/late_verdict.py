@@ -90,8 +90,15 @@ _AT_BOUND_QUESTION = _LateAdjudication(
 def _decide(
     context: _LateContext, last_message: str,
 ) -> _LateAdjudicationRun:
-    """Read the reply, refuse a split the lineage forbids, and record it."""
-    adjudication, parse_error = _late_reply._parse_late_reply(last_message)
+    """Read the reply, refuse a split the lineage forbids, and record it.
+
+    The reply is read against THIS generation's ceiling, which is the number
+    its own prompt stated: a child sized against anything else would be
+    judged by a bound the agent was never given.
+    """
+    adjudication, parse_error = _late_reply._parse_late_reply(
+        last_message, context.generation.threshold,
+    )
     if adjudication is None:
         _late_parks._stage_park(
             context,

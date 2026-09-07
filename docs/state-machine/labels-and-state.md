@@ -2181,15 +2181,18 @@ the ordered child manifest, because the manifest *is* what a split decided — a
 re-run the adjudicator while the answer it stood for was gone. The agent's rationale for accepting the change is the
 part deliberately not kept: it is prose, it belongs on the issue thread, and nothing acts on it. A recorded manifest
 is rewritten from the three fields a child issue is created out of, so nothing an agent put beside them travels into
-the comment humans read.
+the comment humans read — the per-child addition budget a fresh reply has to declare included, since that bound is a
+rule about the proposal rather than a fact about the split, and a manifest read back off a live issue was written
+before any budget was asked for.
 
 The explanation is the one of those a result may be missing and still be an answer, and the compatibility rule is the
 same in both directions. `late_result_split_blocker` is written only where the reply gave one, so results recorded
-before this key existed — and replies that declared the verdict without explaining it — carry nothing under it, and
-no live issue is migrated to say so. Read back, that absence answers with a fixed stand-in sentence rather than with
-an empty string, and the `single` stays actionable: reading it as incomplete would send the adjudicator round again
-to recover prose, at the price of a second run free to decide something else entirely. Nothing writes the stand-in
-into the comment, so a record that never had an explanation stays distinguishable from one that does.
+before this key existed carry nothing under it, and no live issue is migrated to say so; a fresh reply that declares
+the verdict without explaining it is refused where it is read, so it never becomes a record at all. Read back, that
+absence answers with a fixed stand-in sentence rather than with an empty string, and the `single` stays actionable:
+reading it as incomplete would send the adjudicator round again to recover prose, at the price of a second run free
+to decide something else entirely. Nothing writes the stand-in into the comment, so a record that never had an
+explanation stays distinguishable from one that does.
 
 Half of an outcome is not one, in either direction. On the way in, what is measured is the whole comment the write
 would produce — the preserved held-PR body and every other stage's keys included, since a result small on its own can
