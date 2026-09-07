@@ -31,9 +31,12 @@ the same act as deciding what it says. `publication` owns the order alone --
 one named commit made durable, then the push, then the pull request, then the
 handoff -- while `checkout_guards` owns the proof that the worktree is still
 the thing that was measured, asked of the commit AND of the tree on both sides
-of the push and parked under the one reason a moved checkout earns; `dev_pr`
-owns what that pull request says and whose work it says it carries, including
-the reuse that reads the attribution back off one somebody else opened; and
+of the push and parked under the one reason a moved checkout earns, and
+`checkout_recovery` owns the answer to that park -- the same two questions
+asked silently on every ordinary tick, since what lifts it is the worktree
+coming back rather than anything a human could reply; `dev_pr` owns what that
+pull request says and whose work it says it carries, including the reuse that
+reads the attribution back off one somebody else opened; and
 `handoff` owns the last write and the relabel it goes out ahead of.
 
 `late_gate` is the order its own questions are asked in and nothing else, so

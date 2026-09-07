@@ -625,11 +625,12 @@ The keys that matter for the state machine fall into a few groups:
   same reason covers the pre-spawn refusal one step earlier: an approved commit this host
   cannot show at all — the checkout was rebuilt from the base or the plan pull request on a replacement machine — is
   the same ask with nothing to compare against, so neither the recovered-worktree shortcut nor a fresh developer run
-  is allowed to proceed past it. It is also the one park answered by something other than a comment: the approved
-  commit is recorded as `late_approved_sha`, every tick asks the checkout one local `rev-parse` against it and one
-  `git status` around it, and a checkout put back — on that commit, with nothing loose beside it — publishes on the
-  next poll with nothing re-run and no agent spawned. Both questions are asked, or the recovery would republish into
-  the very refusal the park was taken on and post a fresh notice every poll for a checkout that has not changed.
+  is allowed to proceed past it. It is also the one park answered by something other than a comment, and
+  `checkout_recovery` is what answers it: the approved commit is recorded as `late_approved_sha`, every tick asks the
+  checkout one local `rev-parse` against it and one `git status` around it, and a checkout put back — on that commit,
+  with nothing loose beside it — publishes on the next poll with nothing re-run and no agent spawned. Both questions
+  are asked, or the recovery would republish into the very refusal the park was taken on and post a fresh notice
+  every poll for a checkout that has not changed.
   That record is what makes
   the answer possible at all — the generation is retired ahead of the effects it licenses, so once the approval lands
   nothing else on the issue still names the commit — and the read is silent, so an operator who leaves the checkout

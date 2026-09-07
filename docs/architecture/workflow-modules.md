@@ -1248,9 +1248,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             disposition or at its next-tick recovery; the attribution both readings rest on,
                             which needs BOTH ends of the comparison read and parks where either is not; the
                             certified floor a clean exit is credited against, the size gate every clean
-                            committed candidate passes, the timeout and measurement parks' own recoveries, and
-                            the approved commit an interrupted publication owes, disposed against the record
-                            naming it rather than against any ahead-of-base reading
+                            committed candidate passes, the timeout and measurement parks' own recoveries --
+                            the moved-checkout one asking `checkout_recovery` below whether the worktree has
+                            come back, since that park is settled by the checkout rather than by a reply --
+                            and the approved commit an interrupted publication owes, disposed against the
+                            record naming it rather than against any ahead-of-base reading
       late_gate.py          the order the size gate's questions are asked in, taken over one subject so both seams
                             ask them the same way: the switch, the commit the caller named -- proved against the
                             checkout before anything is persisted or pushed, since between the caller's read and this
@@ -1551,8 +1553,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             outright, which every seam that measures asks the same way
       late_evidence.py      what a recovery proves before it acts: the checkout, both recorded objects, a
                             head that is still the candidate, and a head that is still the commit an approval
-                            owes a publication for -- proved ahead of every spawn, and what a refused handoff
-                            waits to see back, which is that head with a provably clean tree around it
+                            owes a publication for -- proved ahead of every spawn
       late_verdict.py       what a measured candidate earns -- the push and the head an approval on the published
                             side is pinned to, which outlives the generation that froze it for as long as the push
                             is still owed, the `workflow:decomposing` hold and the
@@ -1620,6 +1621,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             descendant; every one of them parked under the one reason a moved checkout earns,
                             named after the commit to go back to or the paths to clear, and settled by the
                             worktree rather than by a reply
+      checkout_recovery.py  what a handoff refused for its checkout waits to see back, and the only park in
+                            this stage settled by a worktree rather than by a reply: the commit the size gate
+                            approved under the checkout's own head, with a provably clean tree around it --
+                            both halves, since a proof narrower than the refusal it answers would republish
+                            straight into that refusal again -- read off the commit the park wrote down, on
+                            every ordinary tick rather than on a command, and silently, so an operator who
+                            leaves the checkout where it is is not told the same thing once a poll
       dev_pr.py             what that pull request says and whose work it says it carries: the title taken from
                             the branch's own first commit subject, falling back to a prefix inferred from recent
                             base history so it reads like the repository it lands in; the body pairing the

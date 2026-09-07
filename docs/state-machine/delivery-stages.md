@@ -1391,8 +1391,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   approved — a head somewhere else, a commit not on this host at all, or a tree carrying work no push would
   publish — so nothing was published and nothing was spawned rather than hand review a checkout the gate never saw
   or buy a second developer run for an implementation that is already written; the approved commit is on the record
-  as `late_approved_sha` from the write that approved it, and the park clears itself on the tick the checkout is
-  back on that commit with a provably clean tree, publishing with no agent). The
+  as `late_approved_sha` from the write that approved it, and `implementing/checkout_recovery` clears the park
+  itself on the tick the checkout is back on that commit with a provably clean tree, publishing with no agent). The
   retirement that precedes a publication is held inside the observations owner's retirement window, so a close
   arriving as the record stops naming its cycle ends the cycle rather than being dropped: nothing is pushed, no pull
   request is opened, and the issue is not relabelled.
