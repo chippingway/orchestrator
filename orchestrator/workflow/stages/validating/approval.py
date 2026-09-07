@@ -58,7 +58,10 @@ from orchestrator.github import (
     pinned_state as _pinned_state,
 )
 from orchestrator.workflow.engine import comments as _comments, guards as _guards
-from orchestrator.workflow.late_split import collapses as _collapses
+from orchestrator.workflow.late_split import (
+    collapses as _collapses,
+    handoffs as _late_handoffs,
+)
 from orchestrator.workflow.stages.validating import (
     handoff as _handoff,
     models as _models,
@@ -348,9 +351,9 @@ def _hands_to_documenting(
             issue.number,
         )
         return
-    if not _collapses.read_settled_handoff(state):
+    if not _late_handoffs.read_settled_handoff(state):
         return
-    _collapses.clear_settled_handoff(state)
+    _late_handoffs.clear_settled_handoff(state)
     gh.write_pinned_state(issue, state)
 
 

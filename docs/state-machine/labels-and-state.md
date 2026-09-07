@@ -1805,13 +1805,16 @@ rather than preserving.
 
   The record is ended by the write that ends what it claims and by no other: the reset a rollback made, the reset
   that never ran, and — for a push that landed — the approval handoff's own write, which is deliberately the write
-  taken **before** the relabel. The count is what the `:package: squashed N commits to 1` notice is worded from, so
-  a notice that was owed and did not post leaves it standing; and past the relabel the issue belongs to
-  `documenting`, which never runs the recovery that would answer a claim left there. A tick that dies before that
+  taken **before** the relabel. That last one is the transition below: the claim is cleared first and the settled
+  handoff staged second, so no comment a write could land from ever carries both. The count is what the
+  `:package: squashed N commits to 1` notice is worded from, so a notice that was owed and did not post leaves it
+  standing; and past the relabel the issue belongs to `documenting`, which never runs the recovery that would
+  answer a claim left there. A tick that dies before that
   write comes back to the same branch and the same answer — an already-published collapse is finished as the leased
   no-op it is, and an untouched branch is squashed afresh.
-- **Settled handoff.** `late_collapse_handoff_sha` is what that write leaves in the claim's place, and it exists for
-  the one boundary the group above cannot cover: the relabel is a second call, and an issue left on
+- **Settled handoff.** `late_collapse_handoff_sha` is what that write leaves in the claim's place, on the
+  [`handoffs`](../../orchestrator/workflow/late_split/handoffs.py) owner beside the group above rather than among
+  it, and it exists for the one boundary that group cannot cover: the relabel is a second call, and an issue left on
   `workflow:validating` with the record simply dropped is one the next tick runs a second reviewer on, over a branch
   already approved, squashed, and published. It names the commit the move is owed over, which is the whole of what
   the move needs and the only thing that says it is owed. The validating recovery route reads it ahead of the
@@ -1823,9 +1826,12 @@ rather than preserving.
   nothing leaves none, and neither does one whose commit is not a whole object id: the value is spent on a
   comparison against the head the pull request stands on, so one no commit could equal is one that comparison can
   never catch — and on an issue with no pull request to read, nothing else stands between such a value and a label
-  moved past the reviewer. It is read for a usable value rather than for presence, the opposite of the group above
-  and for the opposite reason — the worst an unreadable one can cost is the reviewer round the route would have
-  saved, so it is dropped and that round runs.
+  moved past the reviewer. Such a value is dropped rather than refused, which is the opposite of what the claim it
+  succeeds does with one: that claim is written before the reset, where a refusal costs a rewrite nobody has made
+  yet, while this one is written past the push and past the notice, where there is nothing left to call off. It is
+  read for a usable value rather than for presence, the opposite of the group above and for the opposite reason —
+  the worst an unreadable one can cost is the reviewer round the route would have saved, so it is dropped and that
+  round runs.
   The record left by a relabel that DID land is ended by `documenting`, at the top of its own tick, and that stage
   is the only owner that can end one: having the issue is the proof the move happened, and the label history cannot
   tell a move that never happened from one a drift unwind later reversed. Left standing there, the unwind's

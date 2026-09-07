@@ -353,16 +353,24 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             id, and a count no squash collapses each read back as no pending collapse -- while
                             CARRYING one of those is a separate question the recovery has to ask, since a comment
                             claiming a collapse it cannot produce describes a branch that reads as having nothing
-                            to squash. What the write that ends one leaves in its place is the fourth key here,
-                            `late_collapse_handoff_sha`: the commit the relabel behind that write is owed over,
+                            to squash. What ENDS one is here too, and the write that does hands what it leaves
+                            to `handoffs` beside it: the claim goes first and its successor is staged second, so
+                            no comment a write could land from carries both -- a reader finding the pair would be
+                            told a rewrite is outstanding over a branch already published, and refuse to resume
+                            over it
+    handoffs.py             the commit the relabel behind a finished collapse is still owed over,
+                            `late_collapse_handoff_sha`: what the write that ends the claim leaves in its place,
                             since the relabel is a second call and an issue left on `validating` with the record
-                            simply dropped is one the next tick runs a second reviewer on. It is deliberately not
-                            a member of the group -- nothing about the rewrite is outstanding by then, so it
-                            freezes nothing and refuses nothing -- and it is read for a usable value rather than
-                            for presence -- a whole object id at its exact length, since what it is spent on is a
-                            comparison against the head the pull request stands on and an issue with no pull
-                            request to read has nothing else between a value no commit could equal and a label
-                            moved past the reviewer; the worst an unreadable one costs is that saved round.
+                            simply dropped is one the next tick runs a second reviewer on. Deliberately no member
+                            of the collapse group and outside the one a cleared generation drops on the same
+                            terms -- nothing about the rewrite is outstanding by then, so it freezes nothing and
+                            refuses nothing -- and read for a usable value rather than for presence: a whole
+                            object id at its exact length, since what it is spent on is a comparison against the
+                            head the pull request stands on and an issue with no pull request to read has nothing
+                            else between a value no commit could equal and a label moved past the reviewer. Such
+                            a value is dropped rather than refused on the way in as well, the opposite of what
+                            the claim it succeeds does with one: this write is taken past the push and past the
+                            notice, where nothing is left to call off, so the worst it costs is that saved round.
                             One the relabel LANDED over is ended by `documenting`, which is the only owner that
                             can: having the issue is the proof that move happened, and the label history cannot
                             tell a move that never did from one a drift unwind later reversed

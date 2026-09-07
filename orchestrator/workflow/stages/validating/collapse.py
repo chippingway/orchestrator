@@ -76,7 +76,10 @@ from orchestrator.git.worktrees import (
 )
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import collapses as _collapses
+from orchestrator.workflow.late_split import (
+    collapses as _collapses,
+    handoffs as _late_handoffs,
+)
 from orchestrator.workflow.stages.implementing import (
     late_records as _late_records,
 )
@@ -238,19 +241,19 @@ def _finished_handoff(
     nobody could read decides neither way, and the tick is held for the next
     one to ask again.
     """
-    settled = _collapses.read_settled_handoff(state)
+    settled = _late_handoffs.read_settled_handoff(state)
     if not settled:
         # Present and unreadable is not the same as absent, and it is the one
         # value nothing may be moved over: a label taken past the reviewer on
         # a string that cannot name a commit is one no comparison could ever
         # have caught. It goes, and the round below runs.
-        _collapses.clear_settled_handoff(state)
+        _late_handoffs.clear_settled_handoff(state)
         return False
     standing = _publication_stands_on(gh, issue, state, settled)
     if standing is None:
         return True
     if not standing:
-        _collapses.clear_settled_handoff(state)
+        _late_handoffs.clear_settled_handoff(state)
         return False
     _approval._hands_to_documenting(gh, issue, state)
     return True

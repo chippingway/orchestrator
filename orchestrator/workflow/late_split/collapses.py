@@ -39,15 +39,16 @@ carrying none, which is the question `carries_pending_collapse` answers for
 the caller that would otherwise wave a collapsed branch past as having nothing
 to squash.
 
-One boundary is left over once the rewrite is finished, and it is why this
-record outlives the push. The write that ends the claim and the relabel behind
-it are two calls, and an issue left on `validating` between them is one the
-next tick runs a second reviewer on, over a branch already approved, squashed,
-and published. So the record is not dropped there but SETTLED -- replaced by
-the commit the handoff was made over, which is what the route ahead of that
-reviewer reads to move the label instead. It is deliberately not a member of
-the group above: nothing about the rewrite is outstanding by then, so nothing
-may freeze the branch or refuse to resume over it.
+One boundary is left over once the rewrite is finished, and it is why the
+record does not simply go when the push lands. The write that ends the claim
+and the relabel behind it are two calls, and an issue left on `validating`
+between them is one the next tick runs a second reviewer on, over a branch
+already approved, squashed, and published. So the claim is not dropped there
+but SETTLED -- replaced by the commit the handoff was made over, which
+`handoffs` owns and the route ahead of that reviewer reads to move the label
+instead. That successor is deliberately no member of the group here: nothing
+about the rewrite is outstanding by then, so nothing may freeze the branch or
+refuse to resume over it.
 
 The keys live outside `LATE_STATE_KEYS` for the reason the exemption's do:
 they describe a rewrite that outlives the generation it was made under -- the
@@ -60,7 +61,11 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import formats as _formats, payloads as _payloads
+from orchestrator.workflow.late_split import (
+    formats as _formats,
+    handoffs as _handoffs,
+    payloads as _payloads,
+)
 
 # The head the squash is collapsing and the base it is collapsed over, spelled
 # here because this is the record's owner and deliberately outside the keys
@@ -74,14 +79,6 @@ LATE_COLLAPSE_BASE_SHA = "late_collapse_base_sha"
 # finished handoff owes the pull request, which says how much history the
 # force-push replaced.
 LATE_COLLAPSE_COUNT = "late_collapse_count"
-
-# What is left of the record once the rewrite itself is over: the commit the
-# push put on the pull request, kept until the label behind it has moved. It
-# is the successor of the group above rather than a member of it -- nothing is
-# outstanding about the rewrite any more, so nothing may freeze the branch or
-# refuse to resume over it -- and it is what closes the one boundary the group
-# could not, between the write that ends a collapse and the relabel behind it.
-LATE_COLLAPSE_HANDOFF = "late_collapse_handoff_sha"
 
 # What the two recorded ends have to be, at their exact length. An
 # abbreviation is not a commit this domain froze, so neither end is a value a
@@ -214,44 +211,18 @@ def settle_pending_collapse(state: PinnedState, published: str) -> None:
     it happened. Read as an ordinary tick, that issue gets a second reviewer
     over a branch this stage already approved, squashed, and published.
 
-    So the record does not simply go: it becomes the commit the handoff was
-    made over, which is the whole of what the move still needs and the only
-    thing that says the move is owed. An approval that collapsed nothing
-    leaves none -- there was no claim to end, and the label is all it ever
-    owed -- and neither does a publication whose commit is not one this domain
-    froze. A value that cannot name a commit is not one a later tick could
-    check the publication against, and a record nothing can check is exactly
-    what this one may not become: what it buys is a relabel taken without a
-    reviewer.
+    So the record does not simply go: it is handed to `handoffs`, which keeps
+    the commit the move was made over -- the whole of what the move still
+    needs and the only thing that says it is owed. An approval that collapsed
+    nothing hands on nothing: there was no claim to end, and the label is all
+    such an approval ever owed.
+
+    The clear comes first and the successor second, so the two never stand
+    together on the comment a write could land from. A reader that found both
+    would be told a rewrite is outstanding over a branch this stage has
+    already published, and what that claim earns is a refusal to resume.
     """
     claimed = carries_pending_collapse(state)
     clear_pending_collapse(state)
-    if claimed and _formats.is_hex_of(published, _formats.COMMIT_LENGTHS):
-        state.set(LATE_COLLAPSE_HANDOFF, published)
-
-
-def read_settled_handoff(state: PinnedState) -> str:
-    """The commit a finished squash still owes its relabel over, or "".
-
-    Held to the same shape every other end in this domain is: a whole object
-    id, at its exact length. What the value is spent on is a comparison
-    against the commit the pull request is standing on, and what a value that
-    cannot name a commit buys is a comparison nobody can make -- which, on the
-    road where there is no pull request to compare against at all, is a label
-    moved past the reviewer on the strength of a string somebody typed.
-
-    Read for a usable value rather than for presence, which is the opposite of
-    what the group above is read for and for the opposite reason. A claim
-    nobody can read there describes a branch mid-rewrite, so it has to reach a
-    refusal; here it describes a rewrite already measured, published, and
-    announced, where the most an unreadable value can cost is the reviewer
-    round this route would have saved -- so it is dropped and the round runs.
-    """
-    return _payloads.as_hex(
-        state.get(LATE_COLLAPSE_HANDOFF), _formats.COMMIT_LENGTHS,
-    ) or ""
-
-
-def clear_settled_handoff(state: PinnedState) -> None:
-    """Drop the handoff record, leaving every other field alone."""
-    state.data.pop(LATE_COLLAPSE_HANDOFF, None)
+    if claimed:
+        _handoffs.record_settled_handoff(state, published)
