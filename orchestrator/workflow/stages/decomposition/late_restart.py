@@ -104,11 +104,13 @@ from typing import Any
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.github import comments as _github_comments
-from orchestrator.github.client import GitHubClient
-from orchestrator.github.issues import issue_is_closed
-from orchestrator.github.labels import hard_skip_control_label
-from orchestrator.github.pinned_state import PinnedState
+from orchestrator.github import (
+    client as _client,
+    comments as _github_comments,
+    issues as _issues,
+    labels as _labels,
+    pinned_state as _pinned_state,
+)
 from orchestrator.workflow.engine import (
     comments as _comments,
     run_ledger as _run_ledger,
@@ -186,11 +188,11 @@ _RETAINED_KEYS = (
 
 
 def _restarts(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
     label: str | None,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
 ) -> bool:
     """Whether this dispatch is one cancelled cycle's restart and nothing else.
 
@@ -229,7 +231,7 @@ def _restarts(
 
 
 def _identified(
-    issue: Issue, state: PinnedState, generation: LateGeneration,
+    issue: Issue, state: _pinned_state.PinnedState, generation: LateGeneration,
 ) -> LateGeneration:
     """This cycle carrying the identity every record of it is correlated by.
 
@@ -270,7 +272,7 @@ def _identified(
 
 def _restartable(
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     label: str | None,
     generation: LateGeneration,
 ) -> bool:
@@ -313,7 +315,7 @@ def _restartable(
     and only after both were proved, so an issue carrying one is a restart
     this orchestrator began and owes the rest of.
     """
-    if issue_is_closed(issue):
+    if _issues.issue_is_closed(issue):
         return False
     if not generation.is_present or not generation.cancelled:
         return False
@@ -335,7 +337,7 @@ def _deferred(spec: config.RepoSpec, issue: Issue) -> bool:
     issue's own surface, since the operator's removal of `rejected` is not
     something a later tick can lose.
     """
-    skip_label = hard_skip_control_label(issue)
+    skip_label = _labels.hard_skip_control_label(issue)
     if skip_label is None:
         return False
     log.info(
@@ -347,9 +349,9 @@ def _deferred(spec: config.RepoSpec, issue: Issue) -> bool:
 
 
 def _begun(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     generation: LateGeneration,
 ) -> LateGeneration:
     """Make the cycle this restart intends durable before anything acts on it.
@@ -405,9 +407,9 @@ def _selected_target() -> WorkflowLabel:
 
 
 def _applied(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     generation: LateGeneration,
 ) -> bool:
     """Carry out both external halves of the restart, or say one did not.
@@ -446,9 +448,9 @@ def _applied(
 
 
 def _effects(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     generation: LateGeneration,
 ) -> None:
     """The two external halves, in the order a human reads them.
@@ -463,9 +465,9 @@ def _effects(
 
 
 def _announced(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     generation: LateGeneration,
     target: str,
 ) -> None:
@@ -499,7 +501,7 @@ def _announced(
     _tracked(state, said)
 
 
-def _tracked(state: PinnedState, said: Any) -> None:
+def _tracked(state: _pinned_state.PinnedState, said: Any) -> None:
     """Put a notice an earlier pass posted back on the bounded id ledger.
 
     Guarded on the ledger it is joining, because the tracker appends: a pass
@@ -515,7 +517,7 @@ def _tracked(state: PinnedState, said: Any) -> None:
     _comments._track_orchestrator_comment(state, int(said_id))
 
 
-def _relabelled(gh: GitHubClient, issue: Issue, target: str) -> None:
+def _relabelled(gh: _client.GitHubClient, issue: Issue, target: str) -> None:
     """Put the issue in the state the marker named, as this workflow's write.
 
     Written GUARDED, because it is a transition the graph declares: the
@@ -547,7 +549,7 @@ def _relabelled(gh: GitHubClient, issue: Issue, target: str) -> None:
     _reapplied(gh, issue, target)
 
 
-def _reapplied(gh: GitHubClient, issue: Issue, target: str) -> None:
+def _reapplied(gh: _client.GitHubClient, issue: Issue, target: str) -> None:
     """Make a target somebody else applied this orchestrator's own write.
 
     Cleared and set rather than set again, because what is missing is the
@@ -572,9 +574,9 @@ def _reapplied(gh: GitHubClient, issue: Issue, target: str) -> None:
 
 
 def _retired(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     generation: LateGeneration,
 ) -> None:
     """Retire the marker, leaving the fresh cycle the restart was for.
@@ -620,7 +622,9 @@ def _retired(
     )
 
 
-def _projected(state: PinnedState, fresh: LateGeneration) -> None:
+def _projected(
+    state: _pinned_state.PinnedState, fresh: LateGeneration,
+) -> None:
     """Rewrite this pinned comment as the fresh cycle's whole durable state.
 
     A whitelist rather than a list of drops. Every stage shares this comment
@@ -645,7 +649,7 @@ def _restart_marker(issue_number: int, cycle_id: Any) -> str:
 
 
 def _notice_on_the_thread(
-    gh: GitHubClient, issue: Issue, marker: str,
+    gh: _client.GitHubClient, issue: Issue, marker: str,
 ) -> Any | None:
     """This restart's own notice where the thread already carries it.
 
@@ -668,9 +672,9 @@ def _notice_on_the_thread(
 
 
 def _persisted(
-    gh: GitHubClient,
+    gh: _client.GitHubClient,
     issue: Issue,
-    state: PinnedState,
+    state: _pinned_state.PinnedState,
     generation: LateGeneration,
 ) -> None:
     """Make one step of this transaction durable before the next one acts."""
