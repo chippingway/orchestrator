@@ -35,12 +35,14 @@ agent is running cannot leave that agent sizing children under a bound nothing
 checks. A generation that cannot say what its ceiling was still asks for the
 number, worded on the measurement above rather than on a figure nobody has.
 
-The two field NAMES in it are read the same way and for the same reason. The
-explanation a `single` is asked for and the budget every proposed child owes
-are both spelled by the parser that reads the reply, so a prompt asking for one
-key while the reply is read for another would leave every conforming answer
-with nothing recorded about why a split was not proposed, and every conforming
-split refused over a field nobody asked for.
+The two field NAMES in it are read the same way and for the same reason: each
+comes from the owner that reads it back. The explanation a `single` is asked
+for is the reply parser's, since nothing else ever reads one; the budget every
+proposed child owes is the shared budget owner's, since the reply, the record,
+and the child issue created from a slice all read the same field. A prompt
+asking for one key while the reply is read for another would leave every
+conforming answer with nothing recorded about why a split was not proposed, and
+every conforming split refused over a field nobody asked for.
 
 What a `single` EARNS is named too, because the prompt must not tell an agent
 it is deciding something it is not. That verdict publishes nothing: the ceiling
@@ -101,7 +103,8 @@ from orchestrator.workflow.late_split.models import (
     MAX_LINEAGE_DEPTH,
     LateGeneration,
 )
-from orchestrator.workflow.stages.decomposition.late_reply import _ESTIMATE, _SPLIT_BLOCKER
+from orchestrator.workflow.stages.decomposition import late_budget as _budget
+from orchestrator.workflow.stages.decomposition.late_reply import _SPLIT_BLOCKER
 from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
 
 _NO_BODY = "(no body)"
@@ -320,7 +323,7 @@ def _block_rules(threshold: int | None) -> str:
         '  "rationale": "<<= 2 sentences why>",\n'
         '  "children": [\n'
         '    {"title": "...", "body": "...", "depends_on": [], '
-        f'"{_ESTIMATE}": {example}}}\n'
+        f'"{_budget.ESTIMATE}": {example}}}\n'
         "  ]\n"
         "}\n"
         "```\n\n"
@@ -340,13 +343,13 @@ def _block_rules(threshold: int | None) -> str:
         "reason worth counting.\n"
         f'- On `"split"`: `"children"` is a non-empty list of at most '
         f'{_MAX_CHILDREN} entries, each with a non-empty `"title"`, a '
-        f'non-empty `"body"`, and an `"{_ESTIMATE}"`. `"depends_on"` is a '
+        f'non-empty `"body"`, and an `"{_budget.ESTIMATE}"`. `"depends_on"` is a '
         "list of 0-based indexes into THIS children array (not GitHub issue "
         "numbers; the orchestrator allocates those). Self-dependencies and "
         "cycles are rejected.\n"
         '- On `"question"`: omit `"children"`, and give `"question"` (the one '
         'specific thing you are asking) and `"category"`.\n\n'
-        f'`"{_ESTIMATE}"` is REQUIRED on every child: your estimate of the '
+        f'`"{_budget.ESTIMATE}"` is REQUIRED on every child: your estimate of the '
         "lines that child will ADD, counted over ALL of its paths -- "
         "implementation, tests, documentation, fixtures, generated files, "
         "everything that child commits -- as one whole number of at least 1. "

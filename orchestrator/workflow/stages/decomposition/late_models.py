@@ -99,7 +99,9 @@ class _LateAdjudication:
     A verdict is always present -- a reply that could not produce one is a
     parse error and never becomes one of these -- and the rest is what that
     verdict is allowed to carry. `children` is the manifest a `split`
-    proposes, held in memory for the tick that acts on it.
+    proposes, held in memory for the tick that acts on it, each slice of it
+    carrying the addition budget it was proposed at: the issue created from
+    that slice states the size, so the number travels with the manifest.
 
     `split_blocker` is the `single` verdict's own: what the agent said made
     splitting unsafe or unavailable, verbatim. It is what a reader shows
@@ -160,9 +162,11 @@ class _LateRun:
     from anywhere else once the run is over; a `question` carries the category
     it was asked under and the sentence it asked, because announcing it is the
     outcome's own external effect and a crash between recording and posting
-    has to be able to finish it; a `split` carries the child manifest, because
-    that manifest IS what the split decided and a record without it would
-    refuse the re-run while the answer it stands for was gone.
+    has to be able to finish it; a `split` carries the child manifest and the
+    budget each slice of it was proposed at, because that manifest IS what the
+    split decided and the issues it becomes state those sizes -- a record
+    without them would refuse the re-run while the answer it stands for was
+    gone.
     """
 
     role: str = _DECOMPOSER_ROLE

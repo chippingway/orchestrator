@@ -2137,7 +2137,7 @@ stage's own, which describe the RUN that adjudicates one:
 - `late_result_verdict`, `late_result_category`, `late_result_question`, `late_result_split_blocker`, and
   `late_result_children` — what it completed with: the verdict, the category beside it, the sentence a `question`
   asked, the explanation a `single` gave for what stopped a split, and the ordered child manifest a `split` decided
-  on.
+  on, each slice of it carrying the addition budget it was proposed at.
 
 They are written by [`late_session.py`](../../orchestrator/workflow/stages/decomposition/late_session.py) and are
 deliberately NOT in `LATE_STATE_KEYS`: clearing late mode drops exactly the domain's group, and a locked backend
@@ -2180,10 +2180,19 @@ asked under and the sentence it asked, because announcing it is that outcome's o
 the ordered child manifest, because the manifest *is* what a split decided — a marker without it would refuse to
 re-run the adjudicator while the answer it stood for was gone. The agent's rationale for accepting the change is the
 part deliberately not kept: it is prose, it belongs on the issue thread, and nothing acts on it. A recorded manifest
-is rewritten from the three fields a child issue is created out of, so nothing an agent put beside them travels into
-the comment humans read — the per-child addition budget a fresh reply has to declare included, since that bound is a
-rule about the proposal rather than a fact about the split, and a manifest read back off a live issue was written
-before any budget was asked for.
+is rewritten from the fields a child issue is created out of, so nothing an agent put beside them travels into the
+comment humans read. The per-child addition budget is one of them: the child issue created from a slice states the
+size that slice was proposed at, so a manifest recorded without the number would leave a tick that crashed between
+the verdict and the transaction creating children that say nothing about their own size — and the only way back to
+it would be a second adjudication, free to propose a different split entirely.
+
+The budget is written only where the reply declared one, and read back the same way. A manifest on a live issue was
+recorded before this domain kept budgets, and the rules a record is read through are the shared split rules, which
+ask for none: requiring one there would read every such manifest as no split at all and send an adjudicated candidate
+round again. Those children are created exactly as they always were, and their issues state no size, because nothing
+here invents a number an agent did not give. A value that is not a whole count of at least one line is not one
+either — a bool, a float, a numeric string, and zero are each a size nobody estimated — so a hand edit cannot put
+prose where a child issue states a budget.
 
 The explanation is the one of those a result may be missing and still be an answer, and the compatibility rule is the
 same in both directions. `late_result_split_blocker` is written only where the reply gave one, so results recorded

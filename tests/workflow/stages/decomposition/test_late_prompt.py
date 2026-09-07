@@ -9,8 +9,12 @@ import unittest
 
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import MAX_LINEAGE_DEPTH
-from orchestrator.workflow.stages.decomposition import late_prompt as _prompt, late_reply as _late_reply
-from orchestrator.workflow.stages.decomposition.late_reply import _ESTIMATE, _SPLIT_BLOCKER
+from orchestrator.workflow.stages.decomposition import (
+    late_budget as _budget,
+    late_prompt as _prompt,
+    late_reply as _late_reply,
+)
+from orchestrator.workflow.stages.decomposition.late_reply import _SPLIT_BLOCKER
 from orchestrator.workflow.stages.decomposition.validation import _MAX_CHILDREN
 from tests.support.fakes import make_issue
 from tests.workflow.fixtures import _TEST_SPEC
@@ -32,7 +36,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
 
 # The budget the JSON template shows, read back out of the composed prompt so
 # what a case checks is the figure an agent would copy.
-_TEMPLATE_ESTIMATE = re.compile(f'"{_ESTIMATE}": ([0-9]+)')
+_TEMPLATE_ESTIMATE = re.compile(f'"{_budget.ESTIMATE}": ([0-9]+)')
 
 # Ceilings the template has to stay under. The default this suite measures
 # against, the narrow one an operator may configure -- where the standing
@@ -250,7 +254,7 @@ class LateSplitPlanTest(unittest.TestCase):
         composed = _prompt_for()
 
         for fragment in (
-            f'`"{_ESTIMATE}"` is REQUIRED on every child',
+            f'`"{_budget.ESTIMATE}"` is REQUIRED on every child',
             f"strictly below {THRESHOLD}",
             "NO PATH MAY BE EXCLUDED",
             "REVIEW FIXES",

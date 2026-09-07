@@ -24,7 +24,7 @@ from orchestrator.git.measurement.models import (
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
-from orchestrator.workflow.stages.decomposition.late_reply import _ESTIMATE
+from orchestrator.workflow.stages.decomposition.late_budget import ESTIMATE
 from tests.support.fakes import (
     FakeGitHubClient,
     FakeIssue,
@@ -194,36 +194,43 @@ FIRST_ESTIMATE = 400
 SECOND_ESTIMATE = 600
 
 
-def split_reply_of(*declared: object) -> str:
-    """A split reply whose children declare exactly these budgets.
+def proposed_slice(
+    title: str,
+    body: str,
+    estimated: object = None,
+    depends_on: tuple = (),
+) -> dict:
+    """One child as a split proposes it: scope, dependencies, and a budget.
 
-    Written through the JSON encoder rather than as text, so a case can
-    declare a budget nothing estimated -- a string, a bool, a zero -- and
-    still hand the parser the shape an agent would really have sent. `None`
-    is the child that declared no budget at all.
+    The one builder every late-mode fixture proposes a child through, so a
+    case declaring a budget nothing estimated -- a string, a bool, a zero --
+    hands the parser the shape an agent would really have sent. `None` is the
+    slice that declared no budget at all: what the reply contract refuses, and
+    what a manifest recorded before this domain kept budgets reads back as.
     """
-    children = []
-    for index, budget in enumerate(declared):
-        child = {"title": f"A{index}", "body": "a"}
-        if budget is not None:
-            child[_ESTIMATE] = budget
-        children.append(child)
-    return late_block(
-        json.dumps({"decision": "split", "children": children}),
-    )
+    proposed = {"title": title, "body": body, "depends_on": list(depends_on)}
+    if estimated is not None:
+        proposed[ESTIMATE] = estimated
+    return proposed
+
+
+def split_reply_of(*declared: object) -> str:
+    """A split reply whose children declare exactly these budgets."""
+    return late_block(json.dumps({
+        "decision": "split",
+        "children": [
+            proposed_slice(f"A{index}", "a", budget)
+            for index, budget in enumerate(declared)
+        ],
+    }))
 
 
 SPLIT_REPLY = late_block(json.dumps({
     "decision": "split",
     "rationale": "two slices",
     "children": [
-        {"title": "A", "body": "a", _ESTIMATE: FIRST_ESTIMATE},
-        {
-            "title": "B",
-            "body": "b",
-            "depends_on": [0],
-            _ESTIMATE: SECOND_ESTIMATE,
-        },
+        proposed_slice("A", "a", FIRST_ESTIMATE),
+        proposed_slice("B", "b", SECOND_ESTIMATE, depends_on=(0,)),
     ],
 }))
 

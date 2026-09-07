@@ -556,7 +556,7 @@ Three dots, not two: that is the prospective pull-request range the measurement 
 measured — deciding a split over work this candidate does not add. The child cap, the lineage bound, and the category
 vocabulary are read back off the owners that enforce them, so a bound the agent is told cannot drift from the bound it
 is judged against, and the two field names the prompt states — the explanation a `single` owes, and the addition budget
-every proposed child declares — are read off the parser that reads the reply, so a key nothing reads is not one the
+every proposed child declares — are read off the owners that read the reply back, so a key nothing reads is not one the
 agent can be asked for. The per-child ceiling is this generation's own measurement rather than the configured knob, so
 an operator retuning that knob while an agent is running cannot leave it sizing children under a bound nothing checks.
 
@@ -585,14 +585,16 @@ The reply ends in exactly one fenced `orchestrator-late-manifest` block — a di
   included, since a slice whose proof or description belongs to a sibling is not one. Beside that each child declares
   an `"estimated_added_lines"` budget covering ALL of its paths, and that one is enforced: on a fresh reply it has to
   be a real count of at least one line, strictly below the ceiling this candidate was measured against, and a manifest
-  that does not clear it is refused — a split whose children are each still oversized is not a split. The number is
-  judged and kept nowhere; what decides whether a child is oversized is the cumulative measurement of that child's own
-  diff, which is why the prompt asks for headroom under the ceiling for the review fixes that land on the same pull
-  request rather than for a number that only just fits, and why the figure its JSON template shows is scaled to that
-  ceiling rather than fixed — a template is copied verbatim, so a standing figure would be a refused child on every
-  repository configured under it. The requirement lives on the late parser rather than on the
-  shared split validator, which also reads recorded manifests back off pinned comments written before any budget was
-  asked for.
+  that does not clear it is refused — a split whose children are each still oversized is not a split. What is judged
+  is whether the proposal is *actionable*, never whether a later measurement may disagree with it: what decides that a
+  child is oversized is the cumulative measurement of that child's own diff, which is why the prompt asks for headroom
+  under the ceiling for the review fixes that land on the same pull request rather than for a number that only just
+  fits, and why the figure its JSON template shows is scaled to that ceiling rather than fixed — a template is copied
+  verbatim, so a standing figure would be a refused child on every repository configured under it. The number itself
+  travels: it is recorded with the manifest and stated on the child issue created from the slice, so a tick that
+  crashed between the verdict and the transaction still opens children that say what they were sized at. The
+  requirement is what stays on the late parser rather than moving to the shared split validator, which also reads
+  recorded manifests back off pinned comments written before any budget was asked for.
 - `question` — a categorized question for a human, which is also where artifacts that look like they should NOT have
   been committed go. The category is mapped onto the closed vocabulary, so an agent's own spelling records as
   `unknown` rather than widening the field.
@@ -606,11 +608,15 @@ asks the human instead of paying for the same forbidden split again.
 A completed run is recorded whole so a crashed tick does not pay for a second one — a second run is not free, and it
 is free to decide differently. What "whole" means is per verdict: a `single` carries the explanation of what stopped a
 split, a `question` carries its category and the sentence it asked, and a `split` carries the ordered child manifest
-that *is* its decision — rewritten from the three fields a child issue is created out of, so the declared budget is not
-among them: it is a rule about a proposal rather than a fact about the split, and every manifest a live issue already
-carries reads back without one. The explanation is the one of the three a record may lack and still be an answer, since
-results predating the key are on live issues; a fresh reply that omits it never becomes a record at all, because the
-reply contract refuses one.
+that *is* its decision — rewritten from the fields a child issue is created out of, the declared budget among them,
+since the issue created from a slice states the size that slice was proposed at. So a result this binary writes
+persists every budget its reply declared, and a tick that crashed between the verdict and the transaction still opens
+children that say what they were sized at. A manifest a live issue already carries was recorded before any budget was
+asked for and reads back without one, which is no bar to answering: the rules a record is read through ask for none,
+those children are created exactly as they always were, and their issues state no size, because nothing here invents a
+number an agent did not give. The compatibility rule is the same for the explanation — results predating that key are
+on live issues and still decide their candidate — and so is the other half of it: a fresh reply that omits either
+field never becomes a record at all, because the reply contract refuses one.
 Whether it fits is measured on the whole comment the write would produce — the preserved held-PR body and every other
 stage's keys included — because a result small on its own can still be the one that pushes the comment past what
 GitHub accepts, and learning that from the failed write means the agent has already been paid for. The budget is
@@ -1200,13 +1206,25 @@ correlated by — written to the child's own pinned state as the `late_ancestry_
 late field. Its body says how the work may be reused: **cherry-pick a coherent commit**, or **copy selected paths**,
 and never split hunks mechanically to make the change smaller. File and hunk boundaries do not express issue scope, so
 a change partitioned along them is one nobody can build or review — the judgment about what belongs to a slice stays
-with the developer who implements it. The seed is re-applied on a resume by reading the child's state and adding to
-it, never by writing a fresh record: by the time a retry reaches a child that was already created, that child may be
-implementing. The write that first *attributes* a child also takes back the park it may have collected in the
-meantime — poll order is the repository's, not the transaction's, so an orphan can reach the stage machine before
-anything records it and be parked as an unattributed `blocked` issue. Leaving that standing would activate a child
-that then waits for a reply nobody owes it. A child that already records a parent keeps whatever park it has: that
-one is its own.
+with the developer who implements it.
+
+The body also states the **addition budget** the adjudication sized that slice at, and says which of the slice's
+paths the estimate covers: implementation, tests, documentation, fixtures, generated files — every path the child
+commits, with none excluded. That sentence is there because the developer who reads it is the one who has to keep to
+the number, and the parent's pinned comment is not somewhere they look. What it is not is a limit: what decides that
+a child is oversized is the cumulative measurement of the child's own diff, taken the way the parent's was, so a
+slice that lands past the ceiling is adjudicated and split again however it was sized. The budget is added *beside*
+the declared scope rather than folded into it — what the adjudication wrote about a slice is what its developer is
+owed in full, and a size stated in the orchestrator's own words is not part of it, which is also why the scope
+recorded in `late_declared_scope` is the adjudication's words alone. A slice that declared no budget states none:
+that is what a manifest recorded before this domain kept budgets reads back as, and those still create children.
+
+The seed is re-applied on a resume by reading the child's state and adding to it, never by writing a fresh record: by
+the time a retry reaches a child that was already created, that child may be implementing. The write that first
+*attributes* a child also takes back the park it may have collected in the meantime — poll order is the repository's,
+not the transaction's, so an orphan can reach the stage machine before anything records it and be parked as an
+unattributed `blocked` issue. Leaving that standing would activate a child that then waits for a reply nobody owes it.
+A child that already records a parent keeps whatever park it has: that one is its own.
 
 **Only then the links and the supersession.** The parent says what it became and where its work went, exactly once,
 and both halves of "once" are needed. The generation's own `late_links_announced` flag is the cheap gate and the one

@@ -12,6 +12,7 @@ from orchestrator.workflow.stages.decomposition import (
     late_parks as _parks,
     late_session as _session,
 )
+from orchestrator.workflow.stages.decomposition.late_budget import ESTIMATE
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
@@ -23,6 +24,7 @@ from tests.workflow.stages.decomposition.late_run_support import (
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     CYCLE_ID,
+    FIRST_ESTIMATE,
     KEY_PLAN_PATH,
     KEYS,
     LATE_ISSUE_NUMBER,
@@ -32,6 +34,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     PLAN_PR_NUMBER,
     QUESTION_ASKED,
     QUESTION_REPLY,
+    SECOND_ESTIMATE,
     SINGLE_REPLY,
     SPLIT_REPLY,
     generation_state,
@@ -122,6 +125,18 @@ class SplitRecoveryTest(LateCase, unittest.TestCase):
             ["A", "B"],
         )
 
+    def test_a_split_records_each_slice_budget(self) -> None:
+        # The child issues are created from this manifest and each states the
+        # size its slice was proposed at, so a record without the numbers
+        # would leave a crashed tick creating children that say nothing about
+        # their own size.
+        self._adjudicate(agent_reply(SPLIT_REPLY))
+
+        self.assertEqual(
+            [child[ESTIMATE] for child in self._pinned()[KEYS.children]],
+            [FIRST_ESTIMATE, SECOND_ESTIMATE],
+        )
+
     def test_a_crashed_split_recovers_its_children(self) -> None:
         # The whole point of recording it: a second run would be paid for
         # again and is free to decide something else entirely.
@@ -137,6 +152,37 @@ class SplitRecoveryTest(LateCase, unittest.TestCase):
             ["A", "B"],
         )
         self.assertEqual(outcome.adjudication.children[1]["depends_on"], [0])
+        self.assertEqual(
+            [child[ESTIMATE] for child in outcome.adjudication.children],
+            [FIRST_ESTIMATE, SECOND_ESTIMATE],
+        )
+
+    def test_a_manifest_without_budgets_answers(self) -> None:
+        # A live issue's split was recorded before this domain kept budgets.
+        # Reading one as no manifest would send a candidate that has already
+        # been adjudicated round again, for a run free to decide differently.
+        self._adjudicate(agent_reply(SPLIT_REPLY))
+        self.github.seed_state(LATE_ISSUE_NUMBER, **{
+            **self._pinned(),
+            KEYS.children: [
+                {
+                    field: declared
+                    for field, declared in child.items()
+                    if field != ESTIMATE
+                }
+                for child in self._pinned()[KEYS.children]
+            ],
+        })
+
+        recovered, unspawned = self._adjudicate()
+
+        unspawned.assert_not_called()
+        self.assertEqual(recovered.disposition, _LateDisposition.DECIDED)
+        self.assertEqual(
+            [child["title"] for child in recovered.adjudication.children],
+            ["A", "B"],
+        )
+        self.assertNotIn(ESTIMATE, recovered.adjudication.children[0])
 
 
 class AnnouncementRecoveryTest(LateCase, unittest.TestCase):

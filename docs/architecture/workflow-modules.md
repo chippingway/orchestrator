@@ -611,7 +611,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             pays for, and needing no session retirement of its own, since the pre-spawn record
                             opens a fresh conversation for every run that is not answering a question
       late_session.py       the late run's pinned record -- role, locked spec, session, cycle, source commit,
-                            generation, and the whole of what a verdict decided -- the ONE whole-comment budget every
+                            generation, and the whole of what a verdict decided, each slice of a split manifest
+                            carrying the addition budget it was proposed at, since the child issue created from
+                            it states that number -- the ONE whole-comment budget every
                             verdict is refused past, since charging a `single` for the sentence it earns would buy a
                             superseded refusal, another decomposer run, and a `single` short of the park a human's
                             decision is owed on, while the sentence itself goes in the headroom that budget leaves
@@ -742,8 +744,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             made and never recorded would not be on it, the adopt
                             -- never repeat -- a resumed walk does, the one-receipt-only check a candidate has to
                             pass to be adopted, the manifest test that refuses a slice declaring a receipt of ours,
-                            the seed that adds an ancestry without replacing a child's own work, and the body naming
-                            the snapshot, the two reuse forms, and the hunk splitting it forbids
+                            the seed that adds an ancestry without replacing a child's own work, and the body
+                            naming the snapshot, the two reuse forms, the hunk splitting it forbids, and the
+                            budget the slice was proposed at -- stated BESIDE the declared scope rather than
+                            folded into it, with the paths that estimate covers named, and dropped entirely for a
+                            slice nobody sized
       late_transaction.py   the order a cleared split runs in: the four refusals no step below could repair, the
                             snapshot before any child, the owner re-read before every step the remote keeps -- the
                             same guard the handoff took, taken between the children and again between the
@@ -1016,9 +1021,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             overtake, and since the retirement that hands the issue to `workflow:umbrella`
                             outlives neither the children still to be released nor the branch still to be
                             deleted
+      late_budget.py        the addition budget one proposed child declares: the manifest field the prompt asks
+                            under and the parser, the record, and the child issue all read back, and the one rule
+                            for what a declared budget IS -- a whole number of at least one line, so a bool, a
+                            float, a numeric string, and zero each read back as no budget at all. What an absent
+                            one earns stays the caller's: a fresh reply is refused, a record writes none, and a
+                            child issue states none
       late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
                             lineage, and the three outcomes with the bounds they are judged against and the two
-                            field names they are answered under, read off the parser that reads the reply -- the
+                            field names they are answered under, read off the owners that read the reply -- the
                             human decision a `single` requires and the explanation it owes for it, the
                             dependency-ordered slices and dormant prerequisites a split has to consider before
                             that answer, what every child body owns, and the addition budget each child declares
@@ -1032,7 +1043,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             none of what it turns on, and the per-child addition budget, required and bounded
                             against the ceiling this candidate was measured at. Neither is asked of a record: the
                             borrowed validator also reads back manifests written before any budget existed, and a
-                            `single` recorded before the explanation was kept still answers, with a stand-in
+                            `single` recorded before the explanation was kept still answers, with a stand-in. The
+                            number itself travels past this owner, since the record keeps it and the child issue
+                            created from the slice states it
       late_content.py       WHICH content the two late-local fingerprints are taken over -- the title and body, and
                             the trusted-thread run the ratcheting watermark covers -- what a comparison against a
                             recorded baseline says moved, the floor a comment has to clear to be a REPLY rather

@@ -11,7 +11,8 @@ from orchestrator.workflow.stages.decomposition import (
     late_reply as _late_reply,
     manifest as _manifest,
 )
-from orchestrator.workflow.stages.decomposition.late_reply import _ESTIMATE, _SPLIT_BLOCKER
+from orchestrator.workflow.stages.decomposition.late_budget import ESTIMATE
+from orchestrator.workflow.stages.decomposition.late_reply import _SPLIT_BLOCKER
 from tests.workflow.fixtures import _manifest as _initial_block
 from tests.workflow.stages.decomposition.late_test_support import (
     FIRST_ESTIMATE,
@@ -82,12 +83,12 @@ _REFUSED_REPLIES = (
     (
         "a child with no budget",
         split_reply_of(None),
-        f"child 0 needs an `{_ESTIMATE}`",
+        f"child 0 needs an `{ESTIMATE}`",
     ),
     (
         "a budget that is a string",
         split_reply_of("300"),
-        f"child 0 needs an `{_ESTIMATE}`",
+        f"child 0 needs an `{ESTIMATE}`",
     ),
     ("a budget that is a bool", split_reply_of(True), "child 0 needs"),
     ("a budget of nothing", split_reply_of(FIRST_ESTIMATE, 0), "child 1 needs"),
@@ -225,7 +226,7 @@ class LateBudgetTest(unittest.TestCase):
 
         self.assertIsNone(refusal)
         self.assertEqual(
-            [child[_ESTIMATE] for child in proposed.children],
+            [child[ESTIMATE] for child in proposed.children],
             [FIRST_ESTIMATE, SECOND_ESTIMATE],
         )
 
@@ -246,7 +247,7 @@ class LateBudgetTest(unittest.TestCase):
         )
 
         self.assertIsNone(unsized)
-        self.assertIn(_ESTIMATE, error)
+        self.assertIn(ESTIMATE, error)
 
 
 class ModeSeparationTest(unittest.TestCase):

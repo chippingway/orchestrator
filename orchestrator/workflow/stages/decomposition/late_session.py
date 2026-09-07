@@ -32,7 +32,9 @@ one's.
 What is recorded of the result is the whole of what the verdict decided: a
 `single` with the explanation of what stopped a split, a `question` with its
 category and the sentence it asked, and a `split` with the ordered child
-manifest that IS its decision. That is what lets a crashed tick recover an
+manifest that IS its decision -- every slice of it carrying the addition
+budget it was proposed under, since the child issue created from that slice
+states the size it was sized at. That is what lets a crashed tick recover an
 answer rather than pay for a second run that may not decide the same way. The
 part deliberately not kept is the agent's rationale for accepting the change,
 which is prose and belongs on the issue thread rather than in the state every
@@ -55,6 +57,10 @@ would record a question nobody asked, a reason nobody wrote, or children
 nobody proposed. On the way back, a recorded manifest is read through the same
 split rules the reply was held to, so a shape this binary would not have
 written is read as no manifest at all rather than as half a split to create.
+Those rules are the shared ones and ask for no budget: a manifest on a live
+issue was recorded before this domain kept one, and requiring it here would
+read every one of them as no split and send an adjudicated candidate round
+again.
 
 One late run in three resumes. A human answering the categorized question the
 adjudicator asked is answering an agent that ASKED it, so that run continues
@@ -94,6 +100,7 @@ from orchestrator.workflow.late_split.models import (
     LateVerdict,
 )
 from orchestrator.workflow.stages.decomposition import (
+    late_budget as _budget,
     late_prompt as _prompt,
     validation as _split_validation,
 )
@@ -404,14 +411,20 @@ def _fits_the_comment(state_data: dict, ceiling: int) -> bool:
 def _result_payload(adjudication: _LateAdjudication) -> dict:
     """The pinned fields one completed adjudication is written as.
 
-    The children are rewritten from the three fields a child issue is created
-    out of rather than copied, so nothing an agent put beside them travels
-    into the pinned comment a human reads and every other stage shares.
+    The children are rewritten from the fields a child issue is created out of
+    rather than copied, so nothing an agent put beside them travels into the
+    pinned comment a human reads and every other stage shares. The declared
+    budget is one of them: the child issue states the size its slice was
+    proposed at, so a manifest recorded without it would leave a tick that
+    crashed between the verdict and the transaction creating children that say
+    nothing about their own size -- and the only way back to the number would
+    be a second adjudication free to propose a different split entirely.
 
-    The explanation goes only where the reply gave one. What an absent field
-    means is settled on the way back, so writing the stand-in here would put
-    this binary's own sentence in the comment as though an agent had written
-    it, and spend the comment budget saying nothing.
+    The explanation goes only where the reply gave one, and so does the
+    budget. What an absent field means is settled on the way back, so writing
+    a stand-in here would put this binary's own number in the comment as
+    though an agent had estimated it, and spend the comment budget saying
+    nothing.
     """
     recorded = {_LATE_RESULT_VERDICT: str(adjudication.verdict)}
     if adjudication.category is not None:
@@ -422,14 +435,22 @@ def _result_payload(adjudication: _LateAdjudication) -> dict:
         recorded[_LATE_RESULT_SPLIT_BLOCKER] = adjudication.split_blocker
     if adjudication.children:
         recorded[_LATE_RESULT_CHILDREN] = [
-            {
-                "title": child.get("title"),
-                "body": child.get("body"),
-                "depends_on": list(child.get("depends_on") or []),
-            }
-            for child in adjudication.children
+            _recorded_child(child) for child in adjudication.children
         ]
     return recorded
+
+
+def _recorded_child(child: dict) -> dict:
+    """The fields one proposed child is kept as, and nothing beside them."""
+    kept = {
+        "title": child.get("title"),
+        "body": child.get("body"),
+        "depends_on": list(child.get("depends_on") or []),
+    }
+    estimated = _budget.declared_budget(child)
+    if estimated is not None:
+        kept[_budget.ESTIMATE] = estimated
+    return kept
 
 
 def _recovered_adjudication(run: _LateRun) -> _LateAdjudication:

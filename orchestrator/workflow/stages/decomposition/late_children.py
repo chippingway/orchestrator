@@ -8,13 +8,19 @@ about handing that work over without handing over the branch it was committed
 on -- which is about to be superseded and closed.
 
 **What a child is told.** Its own declared scope, in the words the adjudication
-used; the base branch it targets; the snapshot ref and the exact commit under
-it; and where it sits in the lineage. Selective reuse is spelled out because
-the alternative has to be ruled out in writing: a child may cherry-pick a
-coherent commit or copy selected paths, and may not mechanically split hunks to
-hit a size target. File and hunk boundaries do not express issue scope, so a
-change partitioned along them is one nobody can build or review -- the judgment
-about what belongs to a slice stays with the developer who implements it.
+used; the addition budget that slice was proposed at, and that the estimate
+covers every path the child commits; the base branch it targets; the snapshot
+ref and the exact commit under it; and where it sits in the lineage. The
+budget is added BESIDE the declared scope rather than folded into it: what the
+adjudication wrote about a slice is what the developer implementing it is owed
+in full, and a size stated in this binary's own words is not part of it.
+
+Selective reuse is spelled out because the alternative has to be ruled out in
+writing: a child may cherry-pick a coherent commit or copy selected paths, and
+may not mechanically split hunks to hit a size target. File and hunk boundaries
+do not express issue scope, so a change partitioned along them is one nobody
+can build or review -- the judgment about what belongs to a slice stays with
+the developer who implements it.
 
 **What a child is born with.** The same parent link and creation stamp every
 split child gets, plus the ancestry: the lineage this child continues, the
@@ -83,6 +89,7 @@ from orchestrator.workflow.late_split.models import (
     LateResourceState,
 )
 from orchestrator.workflow.stages.decomposition import (
+    late_budget as _budget,
     late_outcome as _late_outcome,
     late_owner as _late_owner,
     late_parks as _late_parks,
@@ -144,6 +151,26 @@ _CHILD_CREATE_PARK = (
     "this issue; the next tick adopts them and continues from the same "
     "manifest without re-running any agent."
 )
+
+# What one slice's issue says about the size it was proposed at. The paths
+# the estimate covers are named because it covers all of them: a developer who
+# read it as implementation alone would leave out the tests and documentation
+# the same slice owes, and come back with a change nobody can review on its
+# own. What it is not is a limit -- what decides that a child is oversized is
+# the measurement of its own diff -- so the sentence saying so is here rather
+# than left for a developer to infer from a number in a heading.
+_BUDGET_BLOCK = """---
+
+## Estimated all-path addition budget: {budget} lines
+
+That is the size this slice was proposed at, counted over **all** of its paths:
+implementation, tests, documentation, fixtures, generated files -- everything
+this issue commits. No path is excluded from it.
+
+The number binds nothing and excuses nothing: what decides whether the change
+this issue produces is oversized is the cumulative measurement of its own diff,
+taken exactly as the parent's was. A slice that lands past this repository's
+ceiling is adjudicated and split again however it was sized here."""
 
 _REUSE_BLOCK = """---
 
@@ -760,11 +787,18 @@ def _child_body(
     The manifest's own body first, because that is the slice a human reads,
     and the reuse block after it -- so an issue whose snapshot has since been
     reclaimed still opens as a description of work rather than as instructions
-    for a ref that is gone.
+    for a ref that is gone. The budget the adjudication sized this slice at
+    goes between them, where a developer meets it with the scope it is about.
+
+    A slice that declared no budget states none. That is what a manifest
+    recorded before this domain kept budgets reads back as, and those still
+    create children -- so the section is dropped rather than written with a
+    number nobody estimated.
     """
     generation = context.generation
-    return "\n\n".join((
+    sections = (
         _declared_scope(child),
+        _budget_block(child),
         _child_marker(generation, index),
         _REUSE_BLOCK.format(
             parent=generation.current_issue,
@@ -782,7 +816,16 @@ def _child_body(
             cycle=generation.cycle_id,
             generation=generation.generation,
         ),
-    ))
+    )
+    return "\n\n".join(section for section in sections if section)
+
+
+def _budget_block(child: dict) -> str:
+    """What this slice was sized at, or nothing where nobody sized it."""
+    budget = _budget.declared_budget(child)
+    if budget is None:
+        return ""
+    return _BUDGET_BLOCK.format(budget=budget)
 
 
 def _declared_scope(child: dict) -> str:
