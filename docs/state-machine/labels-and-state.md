@@ -67,9 +67,9 @@ Three non-workflow **control labels** modify behavior without occupying the work
   `park_reason`, so a continue command is not an un-pause and does not clear `paused`. It is unrelated to un-pausing,
   but not exempt from it — the hard skip fires in `_process_issue` before any handler, so a continue comment posted
   on a paused issue is deferred with everything else until the label is removed.
-- `workflow:community_contribution` is applied by the per-tick open-PR sweep (on the `workflow/engine/tick.py` owner,
-  which drives it before per-issue dispatch) when `ALLOWED_ISSUE_AUTHORS` is configured: any open PR whose author is
-  not in the allowlist is labeled and `HITL_HANDLE` is @-mentioned once per PR. Bot-authored PRs
+- `workflow:community_contribution` is applied by the per-tick open-PR sweep (on the `workflow/engine/community.py`
+  owner, which the tick drives before per-issue dispatch) when `ALLOWED_ISSUE_AUTHORS` is configured: any open PR
+  whose author is not in the allowlist is labeled and `HITL_HANDLE` is @-mentioned once per PR. Bot-authored PRs
   (Dependabot, Renovate, CI bots) are skipped via GitHub's `user.type == "Bot"` flag — they open PRs structurally and
   are not community contributions. The orchestrator does not otherwise drive these PRs. With `ALLOWED_ISSUE_AUTHORS`
   empty (the default), the sweep is a no-op. The label is the sweep's own dedup marker rather than an operator

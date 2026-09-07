@@ -10,12 +10,12 @@ stale `<remote_name>/<base_branch>`. It is also the only pass whose failure is
 caught here, because a fetch that fails must not cost the tick its issues; the
 sweep and the catalog are internally fail-open and cannot raise at all.
 
-The community sweep sits with the tick rather than in the stage tree because it
-is the one pass with no per-issue home: a PR the orchestrator never opened
-carries no pinned state for a handler to consult, so nothing dispatches it. The
-skill-catalog emission is producer-side observability with the same shape. Both
-run before the scheduler / in-tick split so they fire exactly once per tick on
-either path.
+The community sweep and the skill-catalog emission are driven from here rather
+than from the stage tree because neither has a per-issue home: a PR the
+orchestrator never opened carries no pinned state for a handler to consult, and
+the catalog is producer-side observability about the repo rather than about any
+issue. Both run before the scheduler / in-tick split so they fire exactly once
+per tick on either path.
 
 Past that split the tick either hands every issue to the scheduler and returns
 without waiting, or runs them itself under `parallel_limit`. The two in-tick
@@ -33,13 +33,13 @@ slot and leaves the other `limit - 1` free for fanout. Per-family-issue futures
 behind a shared lock would instead let a waiting family future hold a second
 slot and starve fanout under a small `limit`.
 
-Every collaborator is named on the owner that defines it, including the two
-passes a test has to replace to drive a tick without a git remote or a clone:
-`_refresh_base_and_worktrees` on `git/base_sync/refresh.py` and the catalog
-emission on `orchestrator/skills/catalog.py`. A mock aimed at either lands on
-that owner; one left anywhere else would let the real fetch run. The line an
-isolated per-issue failure reports on comes from `dispatch.py` for the same
-reason: the three isolation points here would otherwise spell it three ways.
+Every collaborator is named on the owner that defines it, the three passes
+above included: `_refresh_base_and_worktrees` on `git/base_sync/refresh.py`,
+the sweep on `community.py` beside this one, and the catalog emission on
+`orchestrator/skills/catalog.py`. A mock aimed at one of them lands on that
+owner; one left anywhere else would let the real pass run. The line an isolated
+per-issue failure reports on comes from `dispatch.py` for the same reason: the
+three isolation points here would otherwise spell it three ways.
 """
 from __future__ import annotations
 
@@ -53,118 +53,15 @@ from typing import Any
 from orchestrator import config
 from orchestrator.git.base_sync import refresh as _base_refresh
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.labels import (
-    COMMUNITY_CONTRIBUTION_LABEL,
-    COMMUNITY_CONTRIBUTION_LABEL_NAMES,
-)
 from orchestrator.scheduler import IssueScheduler
 from orchestrator.skills import catalog as _catalog
-from orchestrator.workflow.engine import dispatch as _dispatch, observations as _observations
+from orchestrator.workflow.engine import (
+    community as _community,
+    dispatch as _dispatch,
+    observations as _observations,
+)
 
 log = logging.getLogger("orchestrator.workflow")
-
-
-@dataclass(frozen=True)
-class _CommunityContribution:
-    author: str
-
-
-def _has_contribution_label(gh: GitHubClient, pr) -> bool:
-    """Whether the sweep already marked this PR, under either spelling.
-
-    A PR labeled before the namespace -- on a repository whose label the
-    bootstrap rename could not reach -- has already had its one HITL ping.
-    """
-    return any(
-        gh.pr_has_label(pr, label_name)
-        for label_name in COMMUNITY_CONTRIBUTION_LABEL_NAMES
-    )
-
-
-def _community_contribution_for_pr(
-    gh: GitHubClient, pr, allowed_lower: set[str],
-) -> _CommunityContribution | None:
-    user = getattr(pr, "user", None)
-    if getattr(user, "type", None) == "Bot":
-        return None
-    author = getattr(user, "login", None) or ""
-    if author.lower() in allowed_lower:
-        return None
-    if _has_contribution_label(gh, pr):
-        return None
-    return _CommunityContribution(author)
-
-
-def _label_community_contribution(
-    gh: GitHubClient,
-    spec: config.RepoSpec,
-    pr,
-    contribution: _CommunityContribution,
-) -> None:
-    # The label is the dedup marker, so the ping must land first. A label
-    # failure may repeat a ping; a comment failure must not suppress one.
-    author = contribution.author or "unknown"
-    gh.pr_comment(
-        pr.number,
-        f"{config.HITL_MENTIONS} community contribution from "
-        f"@{author} -- please review this PR.",
-    )
-    gh.add_pr_label(pr, COMMUNITY_CONTRIBUTION_LABEL)
-    log.info(
-        "repo=%s pr=#%s author=%r pinged HITL and labeled %r",
-        spec.slug, pr.number, contribution.author, COMMUNITY_CONTRIBUTION_LABEL,
-    )
-
-
-def _sweep_pr_contribution(
-    gh: GitHubClient, spec: config.RepoSpec, pr, allowed_lower: set,
-) -> None:
-    """Label one open PR when its author is an outside community contributor."""
-    contribution = _community_contribution_for_pr(gh, pr, allowed_lower)
-    if contribution is not None:
-        _label_community_contribution(gh, spec, pr, contribution)
-
-
-def _sweep_community_contribution_prs(
-    gh: GitHubClient, spec: config.RepoSpec
-) -> None:
-    """Label open PRs from authors outside ALLOWED_ISSUE_AUTHORS and ping HITL.
-
-    No-op when ALLOWED_ISSUE_AUTHORS is empty (the default) so a single-user
-    deployment keeps the legacy "anyone is trusted" behavior. When the list
-    is populated, every open PR whose author is not in it earns the
-    `workflow:community_contribution` label and a one-shot HITL ping comment;
-    the label is idempotent (a PR already carrying either spelling of it is
-    skipped) so the comment fires exactly once per PR.
-
-    Bot-authored PRs (Dependabot, Renovate, CI bots) are skipped by
-    GitHub's `user.type == "Bot"` flag -- they open PRs structurally and
-    are not community contributions, so they never earn the label or ping.
-
-    All errors are caught and logged: a PyGithub lazy-load failure on one
-    PR must not abort the rest of the sweep, and the sweep itself must not
-    abort the polling tick.
-    """
-    allowed = config.ALLOWED_ISSUE_AUTHORS
-    if not allowed:
-        return
-    allowed_lower = {github_handle.lower() for github_handle in allowed}
-    try:
-        prs = list(gh.iter_open_prs())
-    except Exception:
-        log.exception(
-            "repo=%s community-contribution sweep: open-PR enumeration failed",
-            spec.slug,
-        )
-        return
-    for pr in prs:
-        try:
-            _sweep_pr_contribution(gh, spec, pr, allowed_lower)
-        except Exception:
-            log.exception(
-                "repo=%s pr=#%s community-contribution sweep step failed; continuing",
-                spec.slug, getattr(pr, "number", "?"),
-            )
 
 
 def _run_sequential_tick(
@@ -442,8 +339,8 @@ def tick(
     # Per-tick: label any open PR from an outsider author and ping HITL once.
     # Independent from the per-issue dispatch (PRs not driven by the
     # orchestrator have no pinned state to consult), so failures inside the
-    # sweep are swallowed by the helper itself and cannot stop the tick.
-    _sweep_community_contribution_prs(gh, spec)
+    # sweep are swallowed by its owner and cannot stop the tick.
+    _community._sweep_community_contribution_prs(gh, spec)
     # Per-tick: snapshot the target repo's skill catalog into analytics.
     # Runs after the base refresh above has fetched
     # `<remote_name>/<base_branch>` so the ls-tree reads the current base

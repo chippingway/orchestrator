@@ -11,9 +11,9 @@ from orchestrator.github.labels import (
     COMMUNITY_CONTRIBUTION_LABEL,
     COMMUNITY_CONTRIBUTION_LABEL_NAMES,
 )
-from orchestrator.workflow.engine import tick
+from orchestrator.workflow.engine import community
 from tests.support.fakes import FakeGitHubClient
-from tests.workflow.engine.tick_community_test_support import (
+from tests.workflow.engine.community_test_support import (
     ALLOWED_LOGIN,
     ALLOWLIST_CONFIG,
     COMMENT_RETRY_PR_NUMBER,
@@ -43,7 +43,7 @@ class SweepCommunityContributionPRsTest(unittest.TestCase):
         gh = FakeGitHubClient()
         gh.add_pr(_pr(1, author=_OUTSIDER_LOGIN))
         with patch.object(config, _ALLOWLIST_CONFIG, ()):
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+            community._sweep_community_contribution_prs(gh, _TEST_SPEC)
         self.assertEqual(gh.pulls[1].labels, [])
         self.assertEqual(gh.posted_pr_comments, [])
 
@@ -52,7 +52,7 @@ class SweepCommunityContributionPRsTest(unittest.TestCase):
         gh.add_pr(_pr(7, author=_OUTSIDER_LOGIN))
         with patch.object(config, _ALLOWLIST_CONFIG, (_ALLOWED_LOGIN,)), \
              patch.object(config, "HITL_MENTIONS", f"@{_ALLOWED_LOGIN}"):
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+            community._sweep_community_contribution_prs(gh, _TEST_SPEC)
         self.assertTrue(
             gh.pr_has_label(gh.pulls[7], COMMUNITY_CONTRIBUTION_LABEL)
         )
@@ -67,7 +67,7 @@ class SweepCommunityContributionPRsTest(unittest.TestCase):
         gh.add_pr(_pr(1, author=_ALLOWED_LOGIN))
         gh.add_pr(_pr(2, author="Geserdugarov"))  # case-insensitive
         with patch.object(config, _ALLOWLIST_CONFIG, (_ALLOWED_LOGIN,)):
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+            community._sweep_community_contribution_prs(gh, _TEST_SPEC)
         self.assertEqual(gh.pulls[1].labels, [])
         self.assertEqual(gh.pulls[2].labels, [])
         self.assertEqual(gh.posted_pr_comments, [])
@@ -81,7 +81,7 @@ class SweepCommunityContributionPRsTest(unittest.TestCase):
             _pr(5, author="dependabot[bot]", user_type="Bot")
         )
         with patch.object(config, _ALLOWLIST_CONFIG, (_ALLOWED_LOGIN,)):
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+            community._sweep_community_contribution_prs(gh, _TEST_SPEC)
         self.assertEqual(gh.pulls[5].labels, [])
         self.assertEqual(gh.posted_pr_comments, [])
 
@@ -98,7 +98,7 @@ class SweepCommunityContributionPRsTest(unittest.TestCase):
                 with patch.object(
                     config, _ALLOWLIST_CONFIG, (_ALLOWED_LOGIN,),
                 ):
-                    tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+                    community._sweep_community_contribution_prs(gh, _TEST_SPEC)
                 self.assertEqual(
                     [label.name for label in gh.pulls[3].labels],
                     [label_name],

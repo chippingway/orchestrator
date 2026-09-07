@@ -1,17 +1,17 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Community-contribution failure isolation and tick wiring."""
+"""Community-contribution failure isolation."""
 from __future__ import annotations
 
 import unittest
 from functools import partial
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.github.labels import COMMUNITY_CONTRIBUTION_LABEL
-from orchestrator.workflow.engine import tick
+from orchestrator.workflow.engine import community
 from tests.support.fakes import FakeGitHubClient
-from tests.workflow.engine.tick_community_test_support import (
+from tests.workflow.engine.community_test_support import (
     ALLOWED_LOGIN,
     ALLOWLIST_CONFIG,
     COMMENT_RETRY_PR_NUMBER,
@@ -20,7 +20,6 @@ from tests.workflow.engine.tick_community_test_support import (
     fail_first_label_write,
     make_pr,
 )
-from tests.workflow.git_owners import seam_patch
 
 _ALLOWED_LOGIN = ALLOWED_LOGIN
 _ALLOWLIST_CONFIG = ALLOWLIST_CONFIG
@@ -49,7 +48,7 @@ class SweepCommunityContributionFailuresTest(unittest.TestCase):
                 side_effect=partial(_fail_first_label_write, calls, original),
             ),
         ):
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+            community._sweep_community_contribution_prs(gh, _TEST_SPEC)
         # Both PRs were attempted (the failure on #1 must not abort the
         # sweep). Both got a HITL ping because the comment is posted
         # BEFORE the label; only #2 ended up labeled because #1's label
@@ -81,7 +80,7 @@ class SweepCommunityContributionFailuresTest(unittest.TestCase):
                 side_effect=RuntimeError("comment boom"),
             ),
         ):
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+            community._sweep_community_contribution_prs(gh, _TEST_SPEC)
         self.assertFalse(
             gh.pr_has_label(
                 gh.pulls[_COMMENT_RETRY_PR_NUMBER],
@@ -91,7 +90,7 @@ class SweepCommunityContributionFailuresTest(unittest.TestCase):
         # A subsequent tick (comment now succeeds) must complete both
         # writes against the same PR, proving the retry path works.
         with patch.object(config, _ALLOWLIST_CONFIG, (_ALLOWED_LOGIN,)):
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+            community._sweep_community_contribution_prs(gh, _TEST_SPEC)
         self.assertTrue(
             gh.pr_has_label(
                 gh.pulls[_COMMENT_RETRY_PR_NUMBER],
@@ -114,23 +113,5 @@ class SweepCommunityContributionFailuresTest(unittest.TestCase):
             ),
         ):
             # Must not raise.
-            tick._sweep_community_contribution_prs(gh, _TEST_SPEC)
+            community._sweep_community_contribution_prs(gh, _TEST_SPEC)
         self.assertEqual(gh.posted_pr_comments, [])
-
-_REFRESH_BASE = "_refresh_base_and_worktrees"
-
-
-class TickInvokesSweepTest(unittest.TestCase):
-    """`tick` must drive the community-contribution sweep on every tick so a
-    newly-opened outsider PR is labeled without the operator having to take
-    action.
-    """
-
-    def test_tick_calls_sweep_after_refresh(self) -> None:
-        gh = FakeGitHubClient()
-        refresh = MagicMock()
-        sweep = MagicMock()
-        with seam_patch(_REFRESH_BASE, refresh), \
-             patch.object(tick, "_sweep_community_contribution_prs", sweep):
-            tick.tick(gh, _TEST_SPEC)
-        sweep.assert_called_once_with(gh, _TEST_SPEC)
