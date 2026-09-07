@@ -18,6 +18,7 @@ from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.decomposition import (
     late_coordinator as _late_coordinator,
     late_hold as _late_hold,
+    models as _models,
     run as _run,
 )
 from orchestrator.workflow.stages.decomposition.late_models import (
@@ -205,7 +206,7 @@ class LateRouteTest(_RouteCase, unittest.TestCase):
             ),
         )
         prepared = MagicMock(
-            return_value=_run._DecomposerRunPlan(agent_result=None),
+            return_value=_models._DecomposerRunPlan(agent_result=None),
         )
 
         with patch.object(_run, _PREPARE_RUN, prepared):
@@ -222,7 +223,7 @@ class LateRouteTest(_RouteCase, unittest.TestCase):
         github = FakeGitHubClient()
         issue = seed_late_issue(github, LateGeneration())
         prepared = MagicMock(
-            return_value=_run._DecomposerRunPlan(agent_result=None),
+            return_value=_models._DecomposerRunPlan(agent_result=None),
         )
 
         with patch.object(_run, _PREPARE_RUN, prepared):
