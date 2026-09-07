@@ -76,8 +76,7 @@ from dataclasses import dataclass, field, replace
 from github.Issue import Issue
 
 from orchestrator.git.snapshots import refs as _snapshot_refs
-from orchestrator.github.comments import carries_reserved_marker
-from orchestrator.github.issues import issue_is_closed
+from orchestrator.github import comments as _github_comments, issues as _github_issues
 from orchestrator.workflow.engine import usage as _usage
 from orchestrator.workflow.late_split import formats as _formats, identity as _identity, lineage as _lineage
 from orchestrator.workflow.late_split.models import (
@@ -553,7 +552,7 @@ def _orphan_for(
             orphan.number,
             _AMBIGUOUS_RECEIPT.format(number=orphan.number, index=index),
         )
-    if issue_is_closed(orphan) or _moved_off_blocked(context, orphan):
+    if _github_issues.issue_is_closed(orphan) or _moved_off_blocked(context, orphan):
         raise _StrandedChild(
             orphan.number, _STRANDED_CHILD.format(number=orphan.number),
         )
@@ -592,7 +591,7 @@ def _forged_receipt(children: tuple) -> str | None:
     """
     for index, child in enumerate(children):
         declared = (child.get(_TITLE), child.get(_BODY))
-        if any(carries_reserved_marker(text) for text in declared):
+        if any(_github_comments.carries_reserved_marker(text) for text in declared):
             return _FORGED_RECEIPT.format(
                 index=index, title=child.get(_TITLE),
             )
