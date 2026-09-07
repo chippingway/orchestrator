@@ -2005,7 +2005,11 @@ publication context at all.
   `late_approved_sha`, its lease, and `late_spends` go down before the push, and the reconciliation ahead of every
   handler pays them: without that a tick dying in the window comes back to an issue that has published nothing,
   resumes a developer over the head the pull request already carries, and hands the gate a candidate whose two
-  readings of that publication no longer agree. Recorded only where the push will MOVE the publication — one that
+  readings of that publication no longer agree. That reconciliation answers a CLOSED issue before any of it and
+  hands the tick straight back: everything it does ends in a push, and the terminal that drains a closed issue runs
+  inside the stage handler behind it — so a close landing in this very window would otherwise be answered one push
+  too late, on a pull request nobody wants. The record, the branch and the debt are left exactly as they are for
+  that terminal to drain. Recorded only where the push will MOVE the publication — one that
   finds the pull request already standing on the commit has nothing to receive, and a debt written there would be
   paid by a republication closing a round the tick that really published it already closed — and never over a debt
   the issue already carries for that commit, whose lease was frozen by the tick that granted it. The head it is

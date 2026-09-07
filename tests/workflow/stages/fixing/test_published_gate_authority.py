@@ -119,14 +119,13 @@ class UndeliveredExemptionTest(unittest.TestCase, _SizeGateFixtureMixin):
         self.assertEqual(self.scenario.github.label_history, [])
 
 
-class ParkedAcrossPollsTest(unittest.TestCase, _SizeGateFixtureMixin):
-    """The park a published pull request takes, and the poll behind it.
+class _ParkedFixRound(_SizeGateFixtureMixin):
+    """One fix round already parked for an operator's authorization.
 
     Nothing on these stages goes back for a parked candidate except the debt
-    reconciliation the dispatcher runs ahead of every handler, so both halves
-    of the recovery live in one poll: the guards in front of it have to leave
-    the issue where the park put it, and the command a human writes has to
-    reach the gate through it.
+    reconciliation the dispatcher runs ahead of every handler, so the seed is
+    the debt: an approval and the head it was pinned to, beside the exemption
+    nothing authorizes.
     """
 
     def setUp(self) -> None:
@@ -137,16 +136,36 @@ class ParkedAcrossPollsTest(unittest.TestCase, _SizeGateFixtureMixin):
         })
         self.mocks = self._measured(added_lines=PAST_THE_CEILING)
 
-    def test_the_notice_promises_no_resume(self) -> None:
-        # The park is re-entered here through the debt reconciliation, which
-        # stops the tick ahead of the stage handler on every poll -- so prose
-        # on this thread reaches no agent, and a notice offering a resume
-        # would have somebody writing into a thread nothing reads.
-        said = self._said_last()
+    def _said_last(self) -> str:
+        """What this issue's thread was told most recently."""
+        posted = self.scenario.github.posted_comments
+        return posted[-1][1]
 
-        self.assertIn(_authorize_command(MEASURED_CANDIDATE_SHA), said)
-        self.assertNotIn(_RESUMED_AGAINST_IT, said)
-        self.assertIn(_REACHES_NO_AGENT, said)
+    def _authorize(self) -> None:
+        """One trusted whole-comment authorization past the park's notice."""
+        self._said(
+            _authorize_command(MEASURED_CANDIDATE_SHA),
+            comment_id=_AUTHORIZING_COMMENT,
+        )
+
+    def _said(self, body: str, comment_id: int = _PROSE_COMMENT) -> None:
+        """One trusted human reply past the park's own notice."""
+        self.scenario.issue.comments.append(fixing.FakeComment(
+            id=comment_id, body=body, user=fixing.FakeUser(fixing.ALICE),
+        ))
+
+    def _measured(self, **run_options):
+        """One whole poll of this issue under the fixture's own ceiling."""
+        return self._polled(**run_options)[1]
+
+    def _polled(self, **run_options):
+        """That poll, reported with whether the stage handler was reached."""
+        with patch.object(config, support.MAX_ADDED_LINES, CEILING):
+            return self._poll(self.scenario, **run_options)
+
+
+class ParkedAcrossPollsTest(_ParkedFixRound, unittest.TestCase):
+    """The poll behind that park, and the command that reaches the gate."""
 
     def test_the_poll_behind_it_leaves_the_label(self) -> None:
         # A record answering "oversized" is what this workflow means by an
@@ -177,6 +196,25 @@ class ParkedAcrossPollsTest(unittest.TestCase, _SizeGateFixtureMixin):
         )
         self.assertFalse(pinned[fixing.AWAITING_HUMAN])
 
+
+class ParkedProseTest(_ParkedFixRound, unittest.TestCase):
+    """What a reply that is not the command is worth on this side.
+
+    Nothing, and the notice says so rather than promising otherwise: the debt
+    reconciliation owns the tick ahead of the stage handler while the
+    candidate is unmeasured and unpushed, so no road here carries a human's
+    words to an agent.
+    """
+
+    def test_the_notice_promises_no_resume(self) -> None:
+        # A notice offering a resume would have somebody writing into a thread
+        # nothing reads.
+        said = self._said_last()
+
+        self.assertIn(_authorize_command(MEASURED_CANDIDATE_SHA), said)
+        self.assertNotIn(_RESUMED_AGAINST_IT, said)
+        self.assertIn(_REACHES_NO_AGENT, said)
+
     def test_prose_holds_the_park_and_runs_nothing(self) -> None:
         # What the notice above promises, pinned: guidance on this seam is not
         # carried anywhere. The debt reconciliation owns the tick ahead of the
@@ -194,33 +232,6 @@ class ParkedAcrossPollsTest(unittest.TestCase, _SizeGateFixtureMixin):
         )
         self._authorize()
         self._assert_pushed_once(self._measured(added_lines=PAST_THE_CEILING))
-
-    def _said_last(self) -> str:
-        """What this issue's thread was told most recently."""
-        posted = self.scenario.github.posted_comments
-        return posted[-1][1]
-
-    def _authorize(self) -> None:
-        """One trusted whole-comment authorization past the park's notice."""
-        self._said(
-            _authorize_command(MEASURED_CANDIDATE_SHA),
-            comment_id=_AUTHORIZING_COMMENT,
-        )
-
-    def _said(self, body: str, comment_id: int = _PROSE_COMMENT) -> None:
-        """One trusted human reply past the park's own notice."""
-        self.scenario.issue.comments.append(fixing.FakeComment(
-            id=comment_id, body=body, user=fixing.FakeUser(fixing.ALICE),
-        ))
-
-    def _measured(self, **run_options):
-        """One whole poll of this issue under the fixture's own ceiling."""
-        return self._polled(**run_options)[1]
-
-    def _polled(self, **run_options):
-        """That poll, reported with whether the stage handler was reached."""
-        with patch.object(config, support.MAX_ADDED_LINES, CEILING):
-            return self._poll(self.scenario, **run_options)
 
 
 if __name__ == "__main__":

@@ -255,6 +255,27 @@ class UnmeasuredDebtRetryTest(
         self.assertIsNone(pinned[support.KEY_APPROVED_SHA])
         self.assertEqual(pinned[REVIEW_ROUND], SPENT_ROUND)
 
+    def test_a_closed_issue_publishes_nothing(self) -> None:
+        # The same crash window with the issue closed in it. Everything this
+        # reconciliation does ends in a push, and the terminal that drains a
+        # closed issue runs INSIDE the stage handler -- behind it. Answered
+        # there, the debt would put work on a pull request nobody wants, one
+        # tick before the finalizer said so. Handing it back costs nothing:
+        # the record, the branch and the debt are left exactly as they are for
+        # that terminal to drain.
+        scenario = self._crashed_before_the_settlement()
+        scenario.issue.closed = True
+
+        mocks = self._route_to_the_stage(
+            scenario.github, scenario.github.get_issue(ISSUE),
+        )
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        self.assertEqual(
+            self._pinned(scenario)[support.KEY_APPROVED_SHA],
+            MEASURED_CANDIDATE_SHA,
+        )
+
     def _crashed_before_the_settlement(self):
         """One tick that pushed and died before it recorded anything."""
         scenario = self._exempt_publication()

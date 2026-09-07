@@ -1643,8 +1643,12 @@ rather than preserving.
   ceiling on an issue still carrying an older binary's exemption would have its own approval refused and be re-judged
   against a base that has moved, and a settlement's debt whose exemption somebody hand-edited would read as the gate's
   own and publish unmeasured. Read fail-closed like every other late field, so a value from outside that vocabulary is
-  no basis at all — and so is an approval an older binary wrote, where the exemption is the only evidence left and is
-  read conservatively. Written, dropped, and spent with the approval it describes, never on its own.
+  no basis at all — and so is an approval an older binary wrote, where the exemption is the only evidence left. There
+  it is read for the CLAIM rather than for the commit: an issue that never entered an adjudication carries no
+  `late_exempt_sha` at all, while one whose field a hand edit truncated carries the claim that an adjudication
+  happened and no way to say which commit it was about. Read alike, that truncated record is the shape that publishes
+  an adjudication's debt unmeasured — a hand edit of the one field a bypass turns on. Written, dropped, and spent
+  with the approval it describes, never on its own.
 
   The approval freezes the branch by presence — as the whole pair, `late_approved_lease` included, because the two go
   down in one write and a lease standing alone is the damage the dispatcher parks on a tick later, by which time a

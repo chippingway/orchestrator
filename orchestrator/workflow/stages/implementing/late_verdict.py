@@ -33,6 +33,7 @@ from orchestrator.workflow.late_split import (
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from orchestrator.workflow.stages.implementing import (
     late_authority as _authority,
+    late_consent as _consent,
     late_parks as _parks,
     late_records as _records,
 )
@@ -81,7 +82,7 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     ruled on -- what it is missing is the human, not the verdict -- so sending
     it back would pay for a second adjudicator over an answered question and
     risk a `split` cutting children out of work somebody decided ships whole.
-    It waits for the authorization instead, which `late_authority` owns: the
+    It waits for the authorization instead, which `late_consent` owns: the
     park, the command that ends one, and the answer a command naming another
     commit earns.
 
@@ -112,23 +113,34 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     _parks._retire_spent_park(gate.state)
     settled = _parks._measured(generation)
     if not settled.is_oversized:
-        return _accepted(gate, settled)
+        return _accepted(gate, settled, _parks.LateApprovalBasis.READING)
     if not _authority._unauthorized_exemption(gate.state, settled.candidate_sha):
         return _routed(gate, settled)
-    if not _authority._authorizes_the_park(gate, settled):
+    if not _consent._authorizes_the_park(gate, settled):
         return True
-    return _accepted(gate, settled)
+    return _accepted(gate, settled, _parks.LateApprovalBasis.AUTHORIZATION)
 
 
-def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
+def _accepted(
+    gate: _records._Gate,
+    generation: LateGeneration,
+    basis: _parks.LateApprovalBasis,
+) -> bool:
     """Retire the generation a published candidate no longer needs, and push.
 
     Two candidates reach it and both have had the size question ANSWERED: one
     the reading found at or below the ceiling, and one past it that an
     operator authorized on the reading this very call took. Neither needs a
-    record any more, and the approval each earns is this gate's own -- a count
-    it took and a permission it was shown -- which is what its recorded basis
-    says and why a later tick spends it without asking anyone.
+    record any more.
+
+    The approval they earn is NOT the same approval, which is why the basis is
+    handed in rather than assumed here. A count under the ceiling needs
+    nobody's permission and is spent by the tick after a crash without asking.
+    A count past it was let through by a human, so the debt it leaves rests on
+    that authorization and may be spent only while the authorization can still
+    be read -- recorded as an ordinary reading, a record damaged between this
+    write and the push would publish an oversized change nothing could show
+    the grounds for.
 
     The record is dropped rather than left standing, and it has to be: a
     frozen candidate freezes this branch out of the ordinary base refresh, and
@@ -167,8 +179,7 @@ def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
         generation.threshold,
     )
     _parks._approve(
-        gate.state, generation.candidate_sha, _frozen_lease(gate),
-        _parks.LateApprovalBasis.READING,
+        gate.state, generation.candidate_sha, _frozen_lease(gate), basis,
     )
     return _retired(gate, generation, _late_state.read_late_spends(gate.state))
 

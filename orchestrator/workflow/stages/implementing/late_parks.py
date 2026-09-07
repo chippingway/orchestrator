@@ -89,9 +89,18 @@ class LateApprovalBasis(StrEnum):
     `READING` is this gate's own count coming back at or below the ceiling.
     `UNMEASURED` is a publication that skipped the count on a record the gate
     recognized -- an exemption an operator authorized, a rewrite permit, a
-    switched-off candidate, a receipt already on the remote. `ADJUDICATION` is
-    the publication debt an authorized settlement records beside the exemption
-    it writes, which is the one an unreadable authorization takes down with it.
+    switched-off candidate, a receipt already on the remote.
+
+    The other two are the ones an operator's authorization stands behind, and
+    they are apart from `READING` for exactly that reason: an approval is
+    spent by the tick that comes back after a crash, and one that RESTS on an
+    authorization may only be spent while that authorization can still be
+    read. `ADJUDICATION` is the publication debt an authorized settlement
+    records beside the exemption it writes. `AUTHORIZATION` is the debt a
+    candidate past the ceiling earns when an operator authorizes it at the
+    gate itself -- the count behind it was this gate's own, so recording it as
+    a reading would be true and useless: what let it through was the human,
+    and a record damaged before the push would have it publish unmeasured.
 
     A value from anywhere else, and an approval an older binary wrote with no
     basis at all, read back as no basis -- and what a reader does with that is
@@ -101,6 +110,17 @@ class LateApprovalBasis(StrEnum):
     READING = "reading"
     UNMEASURED = "unmeasured"
     ADJUDICATION = "adjudication"
+    AUTHORIZATION = "authorization"
+
+
+# The two an operator's gesture is behind, which may be spent only while that
+# gesture can still be read. Spelled as a group because the readers ask about
+# the group rather than about either member: what they are deciding is whether
+# a debt has to be revalidated, not which owner granted it.
+AUTHORIZED_BASES = frozenset((
+    LateApprovalBasis.ADJUDICATION,
+    LateApprovalBasis.AUTHORIZATION,
+))
 
 # The steps a lost reading is retried quietly for, and the only two. Both name
 # the transport between this host and the base -- a remote that would not
@@ -737,6 +757,26 @@ def _approve(
     state.set(_state._APPROVED_SHA, candidate_sha)
     state.set(_state._APPROVED_LEASE, lease or None)
     state.set(_state._APPROVED_BASIS, str(basis))
+
+
+def _standing_basis(state: PinnedState) -> LateApprovalBasis:
+    """What the claim an unproven landing records rests on.
+
+    The debt this write puts back is the one that was already there -- the
+    same commit, now the head the pull request stands on -- so what it rests
+    on is whatever granted it. Carried forward rather than re-decided, since
+    nothing about a checkout that stopped being what went out changes the
+    grounds a publication was allowed on.
+
+    A comment that never said, and one the drop beside this has already taken,
+    leave an unmeasured claim: such a push skipped no reading of its own, and
+    a reader that has to fall back reads the exemption beside it exactly as it
+    does for every other record that cannot say.
+    """
+    standing = _approved_basis(state)
+    if not standing:
+        return LateApprovalBasis.UNMEASURED
+    return LateApprovalBasis(standing)
 
 
 def _forget_approval(state: PinnedState) -> None:

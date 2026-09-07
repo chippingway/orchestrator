@@ -27,7 +27,6 @@ from tests.workflow.fixtures import (
     MEASURED_BASE_SHA,
     MEASURED_CANDIDATE_SHA,
     _agent,
-    _legacy_exemption,
     _PatchedWorkflowMixin,
 )
 
@@ -302,16 +301,23 @@ class _GateCase(
         """Replace this issue's pinned state with the one a test is about."""
         self.github.seed_state(GATE_ISSUE_NUMBER, **state)
 
-    def _reply(self, body: str, comment_id: int = REPLY_COMMENT_ID) -> None:
+    def _reply(self, body: str, comment_id: int | None = None) -> int:
         """Add one trusted human comment past the consumed watermark.
 
-        The id is a parameter because the batches that decide anything have
-        more than one reply in them: which of them is the LAST word is what a
-        standing park is answered by.
+        Numbered off the THREAD by default, and answered with the id it got,
+        because the batches that decide anything have more than one reply in
+        them: which of them is the LAST word is what a standing park is
+        answered by, and a tick between two of them has posted a sentence of
+        its own that a hand-picked id would land on top of.
+
+        A case that seeds a reply before anything has run may name the id, so
+        the fixtures that pin a watermark still have one to pin against.
         """
+        posted = comment_id or self.github.next_reply_id(self.issue)
         self.issue.comments.append(
-            FakeComment(comment_id, body, user=FakeUser(TRUSTED_AUTHOR)),
+            FakeComment(posted, body, user=FakeUser(TRUSTED_AUTHOR)),
         )
+        return posted
 
     def _run_gate(self, worktree: Path = TEMP_WORKTREE_ROOT, **run_options):
         """Run one tick in a checkout the gate's own probes can find.
@@ -397,54 +403,4 @@ class _ParkedRetryCase(_GateCase):
             "dev_session_id": DEV_SESSION,
             **recorded,
         })
-        self._reply(reply)
-
-
-class _LegacyExemptionCase(_GateCase):
-    """A candidate exempt on a record no operator authorization stands behind.
-
-    The shape an older binary left on a live issue: a `single` verdict wrote
-    the exemption by itself, before a human's own decision was required at
-    publication. Every case here starts from that comment and differs only in
-    what the reading of the candidate then says.
-    """
-
-    def _seed_legacy(self, **extra) -> None:
-        """The pinned comment that exemption leaves, and nothing beside it."""
-        self._seed(**{**_legacy_exemption(), **extra})
-
-    def _park_awaiting_authorization(self, reply: str = "", **recorded) -> None:
-        """Seed the park an oversized one takes, and any reply to it.
-
-        The generation carries the PAIR and no count, which is exactly what
-        the park leaves: a record answering "oversized" is what this workflow
-        means by an adjudication in flight, and the dispatcher puts
-        `workflow:decomposing` back over one before any stage runs. So the
-        reading is re-taken by the tick that acts, and a case that seeds one
-        here would be seeding a park no poll of a real issue could survive.
-        """
-        self._seed(**{
-            AWAITING_HUMAN: True,
-            PARK_REASON: PARK_UNAUTHORIZED_EXEMPTION,
-            LAST_ACTION_COMMENT_ID: PRIOR_ACTION_COMMENT_ID,
-            "dev_agent": "codex",
-            "dev_session_id": DEV_SESSION,
-            **_legacy_exemption(),
-            **recorded_generation(),
-            **recorded,
-        })
-        if reply:
-            self._reply(reply)
-
-    def _assert_waiting_for_authorization(self) -> None:
-        """Parked on the one refusal only a named command answers."""
-        pinned = self._pinned()
-        self.assertTrue(pinned[AWAITING_HUMAN])
-        self.assertEqual(pinned[PARK_REASON], PARK_UNAUTHORIZED_EXEMPTION)
-        self.assertEqual(self.github.label_history, [])
-
-    def _assert_kept_the_record(self) -> None:
-        """Nothing the compatibility read was deleted on the way past."""
-        pinned = self._pinned()
-        self.assertEqual(pinned[KEY_EXEMPT_SHA], MEASURED_CANDIDATE_SHA)
-        self.assertNotIn(KEY_OVERRIDE_CANDIDATE_SHA, pinned)
+        self._reply(reply, comment_id=REPLY_COMMENT_ID)

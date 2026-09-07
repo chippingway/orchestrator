@@ -33,7 +33,10 @@ from tests.workflow.fixtures import (
     _damaged_authorization,
     _legacy_exemption,
 )
-from tests.workflow.stages.implementing import late_gate_test_support as support
+from tests.workflow.stages.implementing import (
+    late_authority_test_support as legacy,
+    late_gate_test_support as support,
+)
 
 _DECOMPOSING = (support.GATE_ISSUE_NUMBER, LABEL_DECOMPOSING)
 _KEY_APPROVED_SHA = "late_approved_sha"
@@ -74,11 +77,10 @@ _AUTHORIZE_ABBREVIATED = _authorize_command(
     MEASURED_CANDIDATE_SHA[:_ABBREVIATED],
 )
 
-# The reply ids the fixture posts. Two, because the batches that matter are
-# the ones with a word after the first: a command a human corrected, and
-# guidance they then decided against.
+# The id the fixture's first reply carries. Every reply after it is numbered
+# off the thread, because the batches that matter have a word after the first
+# and a tick between them has posted a sentence of its own.
 _REPLY_ID = support.REPLY_COMMENT_ID
-_LATER_REPLY_ID = support.REPLY_COMMENT_ID + 1
 
 # The half of the notice that differs by the side of publication it is taken
 # on: an offer only the seam with a resume behind it may make.
@@ -86,7 +88,7 @@ _RESUMED_AGAINST_IT = "the developer is resumed against it"
 
 
 class UnauthorizedExemptionTest(
-    support._LegacyExemptionCase, unittest.TestCase,
+    legacy._LegacyExemptionCase, unittest.TestCase,
 ):
     """An exemption alone lets nothing past: the candidate is measured."""
 
@@ -143,6 +145,16 @@ class UnauthorizedExemptionTest(
         self._assert_measured(mocks)
         self._assert_published(mocks)
 
+
+class UnauthorizedDebtTest(legacy._LegacyExemptionCase, unittest.TestCase):
+    """Whose decision a publication debt rests on, and who may spend it.
+
+    An approval is spent by the tick that comes back after a crash without
+    asking anybody, so the only thing that decides whether one may be spent is
+    what it RESTS on -- which is why the record says, and why every case here
+    is about a basis rather than about the records standing beside it.
+    """
+
     def test_the_exemptions_own_debt_does_not_bypass(self) -> None:
         # The settlement writes the exemption and the approval in one breath,
         # so an approval it recorded is that adjudication wearing another
@@ -198,6 +210,39 @@ class UnauthorizedExemptionTest(
                 self._assert_measured(mocks)
                 self._assert_held(mocks)
 
+    def test_an_authorized_debt_is_revalidated(self) -> None:
+        # The crash window an authorized publication opens. The gate counted
+        # this candidate and a human let it past, so the approval it left
+        # rests on that gesture -- and a record damaged between the approval
+        # and the push has to take the bypass down with it. Recorded as an
+        # ordinary reading it would look like a count under the ceiling and
+        # publish an oversized change nothing can show the grounds for.
+        self._seed_legacy(**{
+            _KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+            _KEY_APPROVED_BASIS: str(_parks.LateApprovalBasis.AUTHORIZATION),
+        })
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_measured(mocks)
+        self._assert_held(mocks)
+
+    def test_an_authorized_publication_records_it(self) -> None:
+        # And the basis the road actually writes, so the case above is about
+        # this publication rather than about a value nothing produces. Read as
+        # the comment stood BEFORE the push, since the landing that pays a
+        # debt is also what drops it.
+        self._park_awaiting_authorization(_AUTHORIZE)
+        recorded = support._RecordAtHandoff(self.github, support.FIND_OPEN_PR)
+
+        with recorded.held():
+            self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self.assertEqual(
+            recorded.pinned[_KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.AUTHORIZATION),
+        )
+
     def test_a_gate_owned_approval_still_bypasses(self) -> None:
         # And the approval this gate owns is untouched, exemption or no
         # exemption. A candidate the reading found at or below the ceiling on
@@ -219,7 +264,7 @@ class UnauthorizedExemptionTest(
                 self._assert_published(mocks)
 
 
-class AuthorizationParkTest(support._LegacyExemptionCase, unittest.TestCase):
+class AuthorizationParkTest(legacy._LegacyExemptionCase, unittest.TestCase):
     """What an oversized reading of an adjudicated candidate earns."""
 
     def test_it_parks_rather_than_re_adjudicating(self) -> None:
@@ -288,10 +333,8 @@ class AuthorizationParkTest(support._LegacyExemptionCase, unittest.TestCase):
         self.assertIn(str(support.OVERSIZED_ADDITIONS), said)
         self.assertIn(str(config.MAX_ADDED_LINES), said)
         self.assertIn(_RESUMED_AGAINST_IT, said)
-
-
 class AuthorizationRecoveryTest(
-    support._LegacyExemptionCase, unittest.TestCase,
+    legacy._LegacyExemptionCase, unittest.TestCase,
 ):
     """The command that ends the park, and every reply that does not."""
 
@@ -372,6 +415,27 @@ class AuthorizationRecoveryTest(
         self._assert_resumed(mocks)
         self.assertNotIn(support.KEY_OVERRIDE_CANDIDATE_SHA, self._pinned())
 
+    def _unreadable_contribution(self):
+        """The authorized park re-entered on a host that cannot fingerprint."""
+        self._park_awaiting_authorization(_AUTHORIZE)
+        return self._run_gate(
+            contribution_digest=FingerprintFailure.CONTENT_ABSENT,
+            added_lines=support.OVERSIZED_ADDITIONS,
+        )
+
+
+class RefusedCommandTest(legacy._LegacyExemptionCase, unittest.TestCase):
+    """Every command this park owes an answer to and may not act on.
+
+    One gesture, three ways of not being actionable: it names another commit,
+    it names no commit at all, or the right one arrives behind either. All
+    three are ANSWERED and consumed rather than dropped -- the seams that
+    publish onto a pull request the remote already carries move the watermark
+    by no other means, so a reply left standing would be in every later batch
+    and would refuse the correct command behind it for as long as the park
+    stood.
+    """
+
     def test_another_commits_command_is_answered(self) -> None:
         # A bypass may license exactly what a human looked at, and an id
         # copied out of a notice about work the developer has since been
@@ -388,9 +452,7 @@ class AuthorizationRecoveryTest(
         self.assertIn(
             MEASURED_CANDIDATE_SHA, self.github.posted_comments[-1][1],
         )
-        self.assertEqual(
-            self._pinned()[support.LAST_ACTION_COMMENT_ID], _REPLY_ID,
-        )
+        self._assert_consumed_its_own_answer()
 
     def test_an_abbreviated_command_is_answered(self) -> None:
         # A command nobody could act on is still a gesture this park owes an
@@ -406,9 +468,21 @@ class AuthorizationRecoveryTest(
         self.assertIn(
             MEASURED_CANDIDATE_SHA, self.github.posted_comments[-1][1],
         )
-        self.assertEqual(
-            self._pinned()[support.LAST_ACTION_COMMENT_ID], _REPLY_ID,
-        )
+        self._assert_consumed_its_own_answer()
+
+    def test_a_refusal_is_not_read_as_guidance(self) -> None:
+        # Comment ids ascend across a thread, so the sentence a refusal posts
+        # lands ABOVE the reply it answers. Consumed only as far as that
+        # reply, the orchestrator's own words are what the next poll finds
+        # past the watermark -- and the resume reads whatever is there as a
+        # human's, spawning a developer against a refusal nobody wrote.
+        self._park_awaiting_authorization(_AUTHORIZE_ANOTHER)
+        self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        mocks = self._poll(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_no_agent(mocks)
+        self.assertEqual(len(self.github.posted_comments), 1)
 
     def test_a_refused_command_poisons_nothing(self) -> None:
         # The command a human gets right after getting one wrong has to work,
@@ -417,13 +491,13 @@ class AuthorizationRecoveryTest(
         # of as a last word, the first reply would refuse every one behind it.
         self._park_awaiting_authorization(_AUTHORIZE_ANOTHER)
         self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
-        self._reply(_AUTHORIZE, comment_id=_LATER_REPLY_ID)
+        corrected = self._reply(_AUTHORIZE)
 
         mocks = self._poll(added_lines=support.OVERSIZED_ADDITIONS)
 
         self._assert_published(mocks)
         self.assertEqual(
-            self._pinned()[support.KEY_OVERRIDE_COMMENT_ID], _LATER_REPLY_ID,
+            self._pinned()[support.KEY_OVERRIDE_COMMENT_ID], corrected,
         )
 
     def test_guidance_before_it_poisons_nothing(self) -> None:
@@ -432,22 +506,28 @@ class AuthorizationRecoveryTest(
         # decided about the second. Read as a set, the guidance would refuse
         # the command standing behind it for as long as the park stood.
         self._park_awaiting_authorization("make it smaller, please")
-        self._reply(_AUTHORIZE, comment_id=_LATER_REPLY_ID)
+        decided = self._reply(_AUTHORIZE)
 
         mocks = self._poll(added_lines=support.OVERSIZED_ADDITIONS)
 
         self._assert_no_agent(mocks)
         self._assert_published(mocks)
         self.assertEqual(
-            self._pinned()[support.KEY_OVERRIDE_COMMENT_ID], _LATER_REPLY_ID,
+            self._pinned()[support.KEY_OVERRIDE_COMMENT_ID], decided,
         )
 
-    def _unreadable_contribution(self):
-        """The authorized park re-entered on a host that cannot fingerprint."""
-        self._park_awaiting_authorization(_AUTHORIZE)
-        return self._run_gate(
-            contribution_digest=FingerprintFailure.CONTENT_ABSENT,
-            added_lines=support.OVERSIZED_ADDITIONS,
+    def _assert_consumed_its_own_answer(self) -> None:
+        """The watermark is past the sentence, not merely past the reply.
+
+        Ids ascend across a thread, so a refusal lands above the command it
+        answers. Left between the two, the orchestrator's own words are what
+        the next poll reads as a human's fresh reply.
+        """
+        watermark = self._pinned()[support.LAST_ACTION_COMMENT_ID]
+
+        self.assertGreater(watermark, _REPLY_ID)
+        self.assertEqual(
+            watermark, self.github.latest_comment_id(self.issue),
         )
 
 

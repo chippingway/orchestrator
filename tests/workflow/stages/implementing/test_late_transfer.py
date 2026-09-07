@@ -19,7 +19,7 @@ from orchestrator.workflow.late_split import (
     rewrites as _rewrites,
 )
 from orchestrator.workflow.stages.implementing import (
-    late_gate as _gate,
+    late_authority as _authority,
     late_parks as _parks,
     late_transfer as _transfer,
     state as _state,
@@ -553,7 +553,7 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
             _transfer._licensed_by_a_permit(self.state),
         )
         self.assertFalse(
-            _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
+            _authority._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
         )
 
     def test_an_ordinary_approval_still_bypasses(self) -> None:
@@ -562,22 +562,7 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
         _rewrites.clear_rewrite_authorization(self.state)
 
         self.assertTrue(
-            _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
-        )
-
-    def test_a_legacy_permission_is_revalidated_away(self) -> None:
-        # The crash road asked over a comment that never carried an operator
-        # authorization: the permission the grant left names the rewrite, but
-        # the exemption it would move licenses nothing, so the permit refuses
-        # on the re-ask and the ordinary cumulative gate measures the rewrite.
-        _overrides.clear_publication_override(self.state)
-        self.github.write_pinned_state(self.issue, self.state)
-
-        self.assertEqual(
-            _transfer._carried_over(self.recovery, REWRITTEN_SHA), "",
-        )
-        self.assertFalse(
-            _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
+            _authority._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
         )
 
     def test_an_unreadable_published_record_defers(self) -> None:
@@ -599,7 +584,7 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
                     _transfer._licensed_by_a_permit(self.state),
                 )
                 self.assertFalse(
-                    _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
+                    _authority._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
                 )
 
     def test_a_published_record_bound_away_defers(self) -> None:
@@ -615,7 +600,7 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
 
         self.assertTrue(_transfer._licensed_by_a_permit(self.state))
         self.assertFalse(
-            _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
+            _authority._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
         )
 
     def test_a_spent_permission_bypasses_again(self) -> None:
@@ -631,7 +616,7 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
 
         self.assertFalse(_transfer._licensed_by_a_permit(self.state))
         self.assertTrue(
-            _gate._approved_on_a_reading(self.recovery, STRANGER_SHA),
+            _authority._approved_on_a_reading(self.recovery, STRANGER_SHA),
         )
 
     def test_a_permission_for_another_commit_defers(self) -> None:
@@ -644,7 +629,7 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
 
         self.assertTrue(_transfer._licensed_by_a_permit(self.state))
         self.assertFalse(
-            _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
+            _authority._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
         )
         self.assertEqual(
             _transfer._carried_over(self.recovery, REWRITTEN_SHA), "",
@@ -659,6 +644,21 @@ class RevalidatedRecoveryTest(_RecoveryCase, unittest.TestCase):
     debt's bare object id to the remote.
     """
 
+    def test_a_legacy_permission_is_revalidated_away(self) -> None:
+        # The crash road asked over a comment that never carried an operator
+        # authorization: the permission the grant left names the rewrite, but
+        # the exemption it would move licenses nothing, so the permit refuses
+        # on the re-ask and the ordinary cumulative gate measures the rewrite.
+        _overrides.clear_publication_override(self.state)
+        self.github.write_pinned_state(self.issue, self.state)
+
+        self.assertEqual(
+            _transfer._carried_over(self.recovery, REWRITTEN_SHA), "",
+        )
+        self.assertFalse(
+            _authority._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
+        )
+
     def test_a_malformed_permission_is_measured(self) -> None:
         # The record the recovery would rebuild its evidence from is one this
         # build cannot read, so there is nothing to re-ask the permit over --
@@ -672,7 +672,7 @@ class RevalidatedRecoveryTest(_RecoveryCase, unittest.TestCase):
                     _transfer._carried_over(self.recovery, REWRITTEN_SHA), "",
                 )
                 self.assertFalse(
-                    _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
+                    _authority._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
                 )
 
     def test_a_disagreeing_digest_is_measured(self) -> None:

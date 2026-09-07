@@ -162,6 +162,56 @@ class LateOversizedPublication:
     threshold: int = 0
     comment_id: int = 0
 
+    @property
+    def unusable_terms(self) -> str:
+        """Why these are not terms an authorization may be written on, or "".
+
+        One answer for every term, because a caller that cannot name any of
+        them has the same problem: it is asking this domain to record evidence
+        a later reader could not check, and that reader's move on unreadable
+        evidence is to let unmeasured work reach a pull request.
+
+        Asked of the terms themselves rather than beside the writer, since
+        what makes a group unusable is a fact about the group: the same answer
+        is owed whether it is about to be recorded or was handed in by a
+        caller that has not decided yet.
+
+        A refusal names the term and the type it arrived as, never the value.
+        An exception message is read by a log, and a log is one step over from
+        the surfaces a refusal about an unvouched-for value was protecting.
+        """
+        named = (
+            (self.candidate_sha, _formats.COMMIT_LENGTHS),
+            (self.base_sha, _formats.COMMIT_LENGTHS),
+            (self.fingerprint, _formats.DIGEST_LENGTHS),
+        )
+        for given, lengths in named:
+            if not _formats.is_hex_of(given, lengths):
+                return f"an authorized publication is not one ({type(given).__name__})"
+        return self._unusable_measurement
+
+    @property
+    def _unusable_measurement(self) -> str:
+        """Why the reading behind these terms is not one, or "".
+
+        The half of the answer above that is about numbers rather than about
+        object ids, spelled apart because it is where the domain rule lives: a
+        record at or under its own threshold describes a candidate the gate
+        publishes untouched, which is a decision nobody had to make and so no
+        authorization to record.
+        """
+        for counted in (self.additions, self.threshold):
+            if not _formats.whole_number(counted) or counted < 0:
+                return f"an authorized measurement is not one ({type(counted).__name__})"
+        if self.additions <= self.threshold:
+            return "an authorized publication is not one the gate would stop"
+        if not _formats.whole_number(self.comment_id) or self.comment_id <= 0:
+            return (
+                "an authorizing comment is not an identity "
+                f"({type(self.comment_id).__name__})"
+            )
+        return ""
+
 
 @dataclass(frozen=True)
 class LatePublicationOverride:
@@ -263,7 +313,7 @@ def record_publication_override(
     lets it land together with whatever else that caller is recording, or not
     at all.
     """
-    refusal = _unusable_terms(publication)
+    refusal = publication.unusable_terms
     if refusal:
         raise _formats.InvalidLateValue(refusal)
     recorded = {
@@ -277,39 +327,6 @@ def record_publication_override(
     }
     for key, given in recorded.items():
         state.set(key, given)
-
-
-def _unusable_terms(publication: LateOversizedPublication) -> str:
-    """Why these terms are not ones an authorization may be written on, or "".
-
-    One answer for every term, because a caller that cannot name any of them
-    has the same problem: it is asking this domain to record evidence a later
-    reader could not check, and that reader's move on unreadable evidence is
-    to let unmeasured work reach a pull request.
-
-    A refusal names the term and the type it arrived as, never the value. An
-    exception message is read by a log, and a log is one step over from the
-    surfaces a refusal about an unvouched-for value was protecting.
-    """
-    named = (
-        (publication.candidate_sha, _formats.COMMIT_LENGTHS),
-        (publication.base_sha, _formats.COMMIT_LENGTHS),
-        (publication.fingerprint, _formats.DIGEST_LENGTHS),
-    )
-    for given, lengths in named:
-        if not _formats.is_hex_of(given, lengths):
-            return f"an authorized publication is not one ({type(given).__name__})"
-    for counted in (publication.additions, publication.threshold):
-        if not _formats.whole_number(counted) or counted < 0:
-            return f"an authorized measurement is not one ({type(counted).__name__})"
-    if publication.additions <= publication.threshold:
-        return "an authorized publication is not one the gate would stop"
-    if not _formats.whole_number(publication.comment_id) or publication.comment_id <= 0:
-        return (
-            "an authorizing comment is not an identity "
-            f"({type(publication.comment_id).__name__})"
-        )
-    return ""
 
 
 def carry_publication_override(

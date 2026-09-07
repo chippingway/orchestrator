@@ -903,7 +903,8 @@ the reply being consumed are ONE write — a park cleared without the record wou
 into the adjudication a human just answered, and a record without the consumed watermark would let the same comment
 authorize a second candidate later.
 
-The same command ends one other park, and `implementing/late_authority.py` owns that one. `late_exempt_sha` is half
+The same command ends one other park, which `implementing/late_authority.py` decides is owed and
+`implementing/late_consent.py` takes and answers. `late_exempt_sha` is half
 of a bypass rather than the whole of one: it records that an ADJUDICATOR ruled the change one whole, and the size
 gate asks for the `late_override_*` group beside it before a candidate publishes without a reading. A live issue can
 carry an exemption with no such group — an older build wrote one on a `single` verdict alone — and so can any issue
@@ -921,7 +922,11 @@ the comment it was written in — and the park itself keeps the pair and not the
 the adjudication park above, where a whole conversation is read at once: guidance written after a command outranks
 it, a command written after guidance replaces it, and a reply that IS the command is answered whatever it goes on to
 say — another commit, or an abbreviation, which names none — under a scoped receipt, and consumed. Those five stages
-move the watermark by no other means, so a reply left standing would refuse every command behind it. What guidance
+move the watermark by no other means, so a reply left standing would refuse every command behind it. The consumption
+reaches past the SENTENCE rather than past the reply, since comment ids ascend across a thread: left between the two,
+the orchestrator's own answer is what the next poll finds unread, and the resume reads whatever is there as a
+human's. Our own comments are dropped from the reading for the same reason twice over — the park notice spells the
+command out ready to copy. What guidance
 is worth differs by seam and the notice says which: before there is a pull request it reaches the developer through
 the park's own recovery, and past one the debt reconciliation stops the tick ahead of the stage handler on every
 poll, so the notice taken there says the command is the only reply that stage reads.

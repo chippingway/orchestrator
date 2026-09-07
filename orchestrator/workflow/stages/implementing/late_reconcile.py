@@ -26,6 +26,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
+from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
@@ -154,7 +155,27 @@ def _reconciles_published_work(
     of. The recorded pair keeps the branch and the record exactly as they are
     until a host that has the checkout comes back, which is what the recorded
     pair is for.
+
+    A CLOSED issue is answered before any of it, and that order is the point.
+    Everything below publishes: the reading ends in a push, and the debt road
+    exists to make one. The terminal that drains a closed issue runs inside
+    the stage handler, which is behind this owner -- so without the guard the
+    crash window this whole owner exists for becomes the way work reaches a
+    pull request on an issue somebody closed. A tick that died between the
+    retirement and the push leaves exactly the debt this road pays, and a
+    close landing in that window would be answered one push too late.
+    Handing it back instead costs nothing: the handler's own terminal is the
+    next thing that runs, and it flips the issue to `rejected` with the
+    record, the branch and the debt left exactly as they are for it to drain.
     """
+    if issue_is_closed(issue):
+        log.info(
+            "issue=#%d is closed; leaving whatever its record still owes to "
+            "the stage terminal rather than publishing onto an issue nobody "
+            "wants",
+            issue.number,
+        )
+        return False
     recorded = _late_state.read_late_generation(state)
     damage = _claims._unreadable_record(label, state)
     owed = _debt._owes_a_published_push(label, state)

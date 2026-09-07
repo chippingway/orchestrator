@@ -309,47 +309,6 @@ def _decided(
     return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
 
 
-def _approved_on_a_reading(
-    gate: _records._Gate, candidate_sha: str,
-) -> bool:
-    """Whether this commit's debt rests on a decision this gate already made.
-
-    An approval is the gate's own answer brought back by a crash, which is
-    what makes skipping the reading for it a repeat rather than a bypass. One
-    exception, and it is the only approval that was never a reading at all: a
-    commit an approval names because a rewrite TRANSFER let it past. What
-    licensed that push is a permit, granted on terms -- a pull request, a
-    stage, a record, two fingerprints -- that can each stop being true between
-    the grant and the tick that comes back to pay the debt.
-
-    So a debt an OUTSTANDING permission stands beside defers to the permit,
-    which `late_transfer` re-asks in full over the record the grant left. That
-    is asked of the permission rather than of the commit it names, because the
-    two go down in one write for one commit: an approval beside an outstanding
-    permission is either the one it licensed or evidence the record disagrees
-    with itself, and a hand-edited target would otherwise make the permit
-    invisible and leave the approval looking ordinary.
-
-    Refused, the ordinary cumulative gate measures the rewrite like any other
-    candidate: an oversized change nothing may publish unmeasured is exactly
-    what an unvalidatable permission leaves behind.
-
-    A debt the EXEMPTION left defers on the same footing and for the same
-    reason. The settlement writes the approval and the exemption in one
-    breath, so an approval naming the exempt commit is that adjudication's own
-    publication debt rather than a reading this gate took -- and where nothing
-    authorizes the exemption, nothing authorizes the debt either. A gate-owned
-    approval, which is every approval for a candidate the reading found at or
-    below the ceiling, is untouched by this: it is this gate's own answer
-    brought back by a crash, and no human was ever owed a decision about it.
-    """
-    if _parks._approved_commit(gate.state) != candidate_sha:
-        return False
-    if _authority._unauthorized_debt(gate.state, candidate_sha):
-        return False
-    return not _transfer._licensed_by_a_permit(gate.state)
-
-
 def _moved_off_the_caller(
     gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
 ) -> bool:
@@ -482,7 +441,7 @@ def _already_decided(gate: _records._Gate, candidate_sha: str) -> str:
     delivered = _authority._already_on_its_pull_request(gate, candidate_sha)
     if delivered:
         return delivered
-    if _approved_on_a_reading(gate, candidate_sha):
+    if _authority._approved_on_a_reading(gate, candidate_sha):
         return _APPROVED
     if _parks._published_commit(gate.state) != candidate_sha:
         return ""

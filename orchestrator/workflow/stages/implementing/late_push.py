@@ -356,29 +356,11 @@ A process that died in that window would leave a paid debt standing,
         _parks._forget_approval(gate.state)
         _parks._record_publication(gate.state, landed, superseded)
     if unproven:
-        _parks._approve(gate.state, landed, landed, _standing_basis(gate.state))
+        _parks._approve(
+            gate.state, landed, landed, _parks._standing_basis(gate.state),
+        )
     gate.gh.write_pinned_state(gate.issue, gate.state)
     _rotation._reports_the_transfer(gate, rotation)
-
-
-def _standing_basis(state: PinnedState) -> _parks.LateApprovalBasis:
-    """What the claim an unproven landing records rests on.
-
-    The debt this write puts back is the one that was already there -- the
-    same commit, now the head the pull request stands on -- so what it rests
-    on is whatever granted it. Carried forward rather than re-decided, since
-    nothing about a checkout that stopped being what went out changes the
-    grounds a publication was allowed on.
-
-    A comment that never said, and one the drop above this has already taken,
-    leave an unmeasured claim: this push skipped no reading of its own, and a
-    reader that has to fall back reads the exemption beside it exactly as it
-    does for every other record that cannot say.
-    """
-    standing = _parks._approved_basis(state)
-    if not standing:
-        return _parks.LateApprovalBasis.UNMEASURED
-    return _parks.LateApprovalBasis(standing)
 
 
 def _owes_a_settlement(state: PinnedState, published: str) -> bool:

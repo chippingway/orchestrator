@@ -209,7 +209,7 @@ class _WorkflowStateService:
 
     def seed_state(self, issue_number: int, **state_data: Any) -> None:
         self._pinned[issue_number] = PinnedState(
-            comment_id=next(self._comment_id),
+            comment_id=self._next_comment_id(),
             data=dict(state_data),
         )
 
@@ -247,7 +247,7 @@ class _WorkflowStateService:
     ) -> PinnedState:
         self._issue_history._write_state_calls += 1
         if state.comment_id is None:
-            state.comment_id = next(self._comment_id)
+            state.comment_id = self._next_comment_id()
             issue.comments.append(FakeComment(
                 id=state.comment_id,
                 body=f"{PINNED_STATE_MARKER} ... -->",
@@ -271,13 +271,26 @@ class _IssueCommentService:
         # orchestrator reads back off a thread is recognized by its author as
         # well as by its marker.
         new_comment = FakeComment(
-            id=next(self._comment_id),
+            id=self._minted_comment_id(issue),
             body=body,
             user=FakeUser(self._bot_login),
         )
         issue.comments.append(new_comment)
         self.posted_comments.append((issue.number, body))
         return new_comment
+
+    def next_reply_id(self, issue: FakeIssue) -> int:
+        """The id a comment appended to this thread now would carry.
+
+        For a case that seeds a human reply AFTER a tick has already posted
+        something. Ids ascend across the thread, so a hand-picked one can
+        collide with a comment the orchestrator has since written -- and a
+        reply sharing an id with the watermark is one no reader ever sees.
+        """
+        return max(
+            (posted.id for posted in issue.comments),
+            default=self._comment_id,
+        ) + 1
 
     def comments_after(
         self,
@@ -298,6 +311,26 @@ class _IssueCommentService:
             (comment.id for comment in issue.comments),
             default=None,
         )
+
+    def _minted_comment_id(self, issue: FakeIssue) -> int:
+        """The id GitHub would give a new comment on this thread.
+
+        Ids ascend across the whole thread rather than per author, so a
+        comment the orchestrator posts lands ABOVE the reply it is answering
+        -- which is what makes a watermark left between the two into a
+        sentence of ours that the next tick reads as somebody's fresh word. A
+        double numbering its own comments from a private counter puts them
+        below a seeded reply instead, and every bug that turns on that
+        ordering is invisible in it.
+        """
+        highest = max((posted.id for posted in issue.comments), default=0)
+        self._comment_id = max(self._comment_id, highest)
+        return self._next_comment_id()
+
+    def _next_comment_id(self) -> int:
+        """The next id this client mints, client-wide, so none repeats."""
+        self._comment_id += 1
+        return self._comment_id
 
     def _is_state_comment(
         self, comment: FakeComment, state_comment_id: int | None,
