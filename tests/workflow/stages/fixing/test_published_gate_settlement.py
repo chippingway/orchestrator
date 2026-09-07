@@ -23,9 +23,17 @@ debt recorded ahead of the push is what the settlement reads instead.
 from __future__ import annotations
 
 import unittest
+from functools import partial
 
-from orchestrator.workflow.stages.implementing import late_push as _late_push
+from orchestrator.workflow.stages.implementing import (
+    late_debt as _late_debt,
+    late_push as _late_push,
+    late_reconcile as _late_reconcile,
+)
 from tests.workflow.fixtures import _authorized_exemption
+from tests.workflow.interleaving import _RacesTheStep
+from tests.workflow.observation_support import ObservedCloseCase
+from tests.workflow.repo_values import TEST_REPO_SLUG
 from tests.workflow.stages.fixing import (
     fixing_test_support as fixing,
     published_gate_support as support,
@@ -216,9 +224,20 @@ class SwitchedOffDebtTest(unittest.TestCase, _SizeGateFixtureMixin):
     _crashes = UnmeasuredDebtTest._crashes
 
 
-class UnmeasuredDebtRetryTest(
+class _ReconciliationCase(
     unittest.TestCase, _SizeGateFixtureMixin, _FrozenPairMixin,
 ):
+    """A fix round routed the way a whole tick routes one.
+
+    The two mixins together, because the reconciliation is only reachable
+    through the dispatcher and only seedable through the fix round: one owns
+    the seed and the gate assertions, the other the routing and the frozen
+    pair. Named rather than repeated so a case about the same window adds a
+    base of its own instead of a fourth.
+    """
+
+
+class UnmeasuredDebtRetryTest(_ReconciliationCase):
     """The tick after the one that pushed and recorded nothing else."""
 
     def test_the_retry_publishes_it_first(self) -> None:
@@ -282,6 +301,62 @@ class UnmeasuredDebtRetryTest(
         self._crashes(scenario, settling=False)
         return scenario
 
+    _crashes = UnmeasuredDebtTest._crashes
+    _exempt_publication = UnmeasuredDebtTest._exempt_publication
+
+
+class ClosedMidFlightTest(ObservedCloseCase, _ReconciliationCase):
+    """A close a poll observes while this reconciliation is in flight.
+
+    The guard at the reconciliation's door reads the issue OBJECT, which is
+    the snapshot the tick opened with. Everything between it and the push --
+    a worktree probe, a head read, a status read on the debt road, and the
+    whole gated reading on the frozen-pair road -- is time another worker's
+    poll can find the issue closed in, and a close there would be answered one
+    push too late, on a pull request nobody wants.
+    """
+
+    def setUp(self) -> None:
+        self._fresh_process()
+
+    def test_a_close_mid_debt_publishes_nothing(self) -> None:
+        scenario = self._crashed_before_the_settlement()
+
+        with self._racing(_late_debt, "_unpayable_debt"):
+            mocks = self._route_to_the_stage(
+                scenario.github, scenario.github.get_issue(ISSUE),
+            )
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        self.assertEqual(
+            self._pinned(scenario)[support.KEY_APPROVED_SHA],
+            MEASURED_CANDIDATE_SHA,
+        )
+
+    def test_a_close_mid_reading_publishes_nothing(self) -> None:
+        # The frozen-pair road, whose window is wider still: the reading
+        # itself is behind the guard, so a close can land while the remote is
+        # being asked for the base.
+        scenario = self._seed_fix_round(**support.recorded_generation())
+
+        with self._racing(_late_reconcile, "_answers_the_frozen_pair"):
+            mocks = self._route_to_the_stage(
+                scenario.github, scenario.github.get_issue(ISSUE),
+            )
+
+        mocks[support.COUNT_ADDED_LINES].assert_not_called()
+        mocks[PUSH_BRANCH].assert_not_called()
+
+    def _racing(self, owner, step: str):
+        """A poll that latches the close the instant that step runs."""
+        return patch.object(owner, step, _RacesTheStep(
+            getattr(owner, step),
+            partial(self._latch_close, TEST_REPO_SLUG, ISSUE),
+        ))
+
+    _crashed_before_the_settlement = (
+        UnmeasuredDebtRetryTest._crashed_before_the_settlement
+    )
     _crashes = UnmeasuredDebtTest._crashes
     _exempt_publication = UnmeasuredDebtTest._exempt_publication
 

@@ -2009,7 +2009,11 @@ publication context at all.
   hands the tick straight back: everything it does ends in a push, and the terminal that drains a closed issue runs
   inside the stage handler behind it — so a close landing in this very window would otherwise be answered one push
   too late, on a pull request nobody wants. The record, the branch and the debt are left exactly as they are for
-  that terminal to drain. Recorded only where the push will MOVE the publication — one that
+  that terminal to drain. Asked **twice**, and the second is the one that matters: the guard at the door reads the
+  issue OBJECT, which is the snapshot the tick opened with, while the process-wide close latch is asked again
+  immediately before each of the two pushes — the debt's and the frozen pair's. Everything between them is time
+  another worker's poll can find the issue closed in, and on the frozen-pair road that is the whole gated reading.
+  Recorded only where the push will MOVE the publication — one that
   finds the pull request already standing on the commit has nothing to receive, and a debt written there would be
   paid by a republication closing a round the tick that really published it already closed — and never over a debt
   the issue already carries for that commit, whose lease was frozen by the tick that granted it. The head it is

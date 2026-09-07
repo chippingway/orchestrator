@@ -348,43 +348,53 @@ def _refused(
     marker = _REFUSED_MARKER.format(
         issue=gate.issue.number, read=answer.comment_id,
     )
+    said = 0
     if not _command._already_answered(gate, marker):
-        said = _WRONG_CANDIDATE.format(
+        sentence = _WRONG_CANDIDATE.format(
             mentions=config.HITL_MENTIONS,
             candidate=generation.candidate_sha,
         ) + _decided_by(gate, generation.candidate_sha)
-        _comments._post_issue_comment(
-            gate.gh, gate.issue, gate.state, f"{said}\n\n{marker}",
+        posted = _comments._post_issue_comment(
+            gate.gh, gate.issue, gate.state, f"{sentence}\n\n{marker}",
         )
-    _consumed(gate, answer)
+        # The id the consumption below needs, and the only thing that can
+        # supply it: ids ascend, so this sentence lands above the reply it
+        # answers, and a watermark left below it hands our own words to the
+        # next poll as somebody's fresh guidance. Zero where the thread
+        # already carried our receipt -- there is no new comment, and the one
+        # there was in the reading that found it.
+        said = _payloads.as_identity(getattr(posted, "id", 0)) or 0
+    _consumed(gate, answer, said)
     gate.gh.write_pinned_state(gate.issue, gate.state)
     return True
 
 
-def _consumed(gate: _records._Gate, answer: _command._Answer) -> None:
-    """Record the reply this tick acted on as read, and our own answer with it.
+def _consumed(
+    gate: _records._Gate, answer: _command._Answer, said: int = 0,
+) -> None:
+    """Record what this tick read as read, and its own answer with it.
 
     Staged rather than written, so it lands with whatever else the caller is
     recording or not at all: a watermark moved without the answer beside it
     would drop a command nobody acted on.
 
-    Past the LAST comment on the thread rather than past the reply, and that
-    difference is the whole of it where a sentence was posted. Comment ids
-    ascend, so an answer of ours lands ABOVE the reply it answers -- and every
-    other reader of this thread takes what is past the watermark as a human's
-    fresh word. Left at the reply, the refusal this tick just wrote would be
-    read on the next poll as guidance nobody wrote and would resume a
-    developer against the orchestrator's own sentence. It is the same rule the
-    park's own notice rides out on, which is why the park does not have the
-    bug and only this road could.
+    Two things and exactly two. The furthest comment the READING got to, which
+    is what the reader hands back rather than a fresh look at the thread: a
+    tick that consumed past whatever the tip has become since would swallow a
+    reply posted in the meantime -- a retraction of the very command being
+    acted on is the case that matters -- unread, unanswered and gone for good.
+    Consumed to what was read, that reply is still there for the next poll,
+    which is the most a reading taken before it can honestly offer.
 
-    A thread the client could not read the tip of falls back to the reply,
-    which is the answer that is at least never too FAR: a watermark past a
-    comment nobody read would drop the very command a later poll is waiting
-    for.
+    And the answer this tick POSTED, by its own id. Comment ids ascend, so a
+    sentence of ours lands above the reply it answers, and every other reader
+    of this thread takes what is past the watermark as a human's fresh word --
+    so a refusal left unconsumed is read on the next poll as guidance nobody
+    wrote and resumes a developer against the orchestrator's own words. A tick
+    that posted nothing passes nothing, and a receipt an earlier tick left is
+    covered by the reading rather than by this: it was on the thread when the
+    fetch happened, so it is one of the comments that fetch examined.
     """
-    latest = _payloads.as_identity(gate.gh.latest_comment_id(gate.issue))
     gate.state.set(
-        _state._LAST_ACTION_COMMENT_ID,
-        max(latest or 0, answer.comment_id),
+        _state._LAST_ACTION_COMMENT_ID, max(answer.watermark, said),
     )

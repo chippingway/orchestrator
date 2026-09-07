@@ -277,6 +277,20 @@ def _publishes_the_debt(
     unpayable = _unpayable_debt(gate, approved)
     if unpayable:
         return _unreachable_debt(gate, unpayable)
+    if gate.close_was_observed:
+        # The guard at the reconciliation's door reads the issue OBJECT, which
+        # is the snapshot the tick opened with -- and the proof above spends a
+        # worktree probe, a head read and a status read after it. A close
+        # landing in that window would be answered one push too late, on a
+        # pull request nobody wants. Handed back rather than stopped, so the
+        # stage's own terminal drains it with the debt left where it is.
+        log.info(
+            "issue=#%d was observed closed while its debt was being "
+            "reconciled; leaving the push to nothing rather than putting "
+            "work on an issue nobody wants",
+            gate.issue.number,
+        )
+        return False
     log.info(
         "issue=#%d records a commit an approval owes a push for and no "
         "generation to reconcile it from; publishing it before the stage runs",

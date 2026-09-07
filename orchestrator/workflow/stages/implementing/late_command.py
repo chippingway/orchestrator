@@ -80,13 +80,22 @@ class _Answer:
     an object id at all, since nothing in this domain abbreviates -- and it is
     carried rather than dropped: it can never equal the candidate, so it takes
     the refusal road and the human gets the sentence and the command that
-    would have worked. `comment_id` is the reply itself, which is both the
-    watermark an answer consumes and the address a recorded authorization is
-    attributable to.
+    would have worked. `comment_id` is the reply itself, which is the address
+    a recorded authorization is attributable to.
+
+    `watermark` is how far the READING got, which is a different fact from
+    either: the furthest comment this owner actually looked at, ours and
+    untrusted ones included. It travels because it is what an answer may
+    consume and no more. A tick that read the tip of the thread and then
+    consumed past whatever the tip has become would swallow a retraction
+    posted in between -- unread, unanswered, and gone for good, while the
+    authorization it was retracting published. Consumed to what was read, the
+    retraction is still there for the next poll.
     """
 
     named: str
     comment_id: int
+    watermark: int
 
 
 def _read_the_park(
@@ -122,11 +131,11 @@ def _read_the_park(
         return None
     if not state.get(_state._AWAITING_HUMAN):
         return None
+    examined = gh.comments_after(
+        issue, state.get(_state._LAST_ACTION_COMMENT_ID),
+    )
     replies = [
-        reply for reply in filter_trusted(
-            gh.comments_after(issue, state.get(_state._LAST_ACTION_COMMENT_ID)),
-        )
-        if not _ours(reply)
+        reply for reply in filter_trusted(examined) if not _ours(reply)
     ]
     if not replies:
         return None
@@ -134,7 +143,31 @@ def _read_the_park(
     identified = _payloads.as_identity(getattr(last, "id", 0))
     if not _is_the_command(last) or identified is None:
         return None
-    return _Answer(named=_names(last), comment_id=identified)
+    return _Answer(
+        named=_names(last),
+        comment_id=identified,
+        watermark=_furthest_read(examined, identified),
+    )
+
+
+def _furthest_read(examined: list, at_least: int) -> int:
+    """How far this reading of the thread actually got.
+
+    Every comment the fetch returned counts, not just the ones that survived
+    the trust and authorship filters: what a watermark records is what has
+    been LOOKED at, and a filtered-out comment has been. Left out, an
+    outsider's reply or a sentence of ours would be handed to the next poll as
+    something nobody has read yet.
+
+    Never short of the reply being acted on, which is the floor a fetch that
+    answered with ids nothing could read still has to clear.
+    """
+    read = [at_least]
+    for seen in examined:
+        identified = _payloads.as_identity(getattr(seen, "id", 0))
+        if identified is not None:
+            read.append(identified)
+    return max(read)
 
 
 def _ours(reply) -> bool:

@@ -1290,9 +1290,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             and nothing could ever answer it. The command earns the `late_override_*` group written
                             from the gate's OWN reading -- the pair it froze, the count it took, the ceiling it was
                             counted against, the digest recomputed between that pair, and the comment it was
-                            written in -- in the one write that takes the park off and consumes the reply, past the
-                            SENTENCE rather than past the reply, since ids ascend and a watermark left between the
-                            two leaves the orchestrator's own words as what the next tick reads as a human's. A
+                            written in -- in the one write that takes the park off and consumes the reply. What
+                            that write consumes is what the READING got to plus the sentence this tick posted, and
+                            no further: ids ascend, so an answer of ours lands above the reply it answers and must
+                            be consumed or the next poll reads our own words as a human's, while a watermark taken
+                            from the thread's tip NOW would swallow whatever landed since the fetch -- a retraction
+                            of the very command being acted on included -- unread and unanswered. A
                             command it may not act on is answered under a scoped receipt and consumed on the same
                             terms. The notices are worded on the side of publication the park was taken on, since
                             guidance reaches a developer only where the ordinary resume is still in front of the
@@ -1303,7 +1306,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             written and nothing is decided. The LAST fresh trusted reply, because reading the batch
                             as a set is what poisons a park -- a reply matching nothing is never consumed on the
                             seams that publish onto an open pull request, so it would stand in every later batch
-                            and refuse the correct command behind it. A reply that IS the command is carried
+                            and refuse the correct command behind it. It hands back how far that reading got as
+                            well as which reply to act on, since what an answer may consume is what was looked at
+                            and no more. A reply that IS the command is carried
                             whatever it goes on to say, an argument nobody could act on included, which is what
                             earns an abbreviation the sentence saying so instead of a silent park. Three authors
                             are never in the reading: an outsider, a comment with no id, and the orchestrator

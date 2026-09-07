@@ -250,6 +250,13 @@ def _settles_the_frozen_pair(
     settled but its effect is not, and the stage would run over a publication
     the branch never reached.
 
+    A close observed while this tick worked is answered immediately before the
+    call, and the guard at this owner's door cannot stand in for it: that one
+    reads the issue OBJECT, which is the snapshot the tick opened with, while
+    everything between it and here -- the stage check, the checkout probe, and
+    the whole gated reading behind this call -- is time a poll on another
+    worker can find the issue closed in.
+
     What the hold owed is read BEFORE the call, because the retirement an
     allowed candidate earns drops the record those fields were written beside
     -- read after it they are gone. Which event closes them differs by exit: a
@@ -265,6 +272,14 @@ def _settles_the_frozen_pair(
     where the pairs come FROM -- the record, since no run behind this tick
     could re-derive them.
     """
+    if gate.close_was_observed:
+        log.info(
+            "issue=#%d was observed closed while its frozen pair was being "
+            "settled; leaving the reading and the push to nothing rather "
+            "than putting work on an issue nobody wants",
+            gate.issue.number,
+        )
+        return False
     owed = _records._Spends(fields=_late_state.read_late_spends(gate.state))
     published = _push._publishes(
         gate,

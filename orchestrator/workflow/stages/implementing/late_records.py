@@ -28,6 +28,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import (
     endings as _endings,
     formats as _formats,
@@ -174,6 +175,23 @@ class _Gate:
     # human ever saw. It is the caller's because everything in it is gone
     # from the checkout and the remote by the time this owner could ask.
     rewrite: _rewrites.LateRewrite | None = None
+
+    @property
+    def close_was_observed(self) -> bool:
+        """Whether a poll has read this issue closed since the tick opened.
+
+        The process-wide latch rather than the issue object, and the two are
+        different facts. The object is a snapshot the tick opened with, and
+        everything a publication spends between that fetch and its push -- a
+        remote read, a diff, a worktree probe -- is time a poll on another
+        worker can find the issue closed in. The latch is what that poll
+        leaves behind, so this is the only reading that can answer for the
+        window rather than for the moment the fetch happened.
+
+        Costs no request, which is why it can be asked as late as the step it
+        guards rather than once at the door.
+        """
+        return _observations.close_observed(self.spec.slug, self.issue.number)
 
 
 @dataclass(frozen=True)

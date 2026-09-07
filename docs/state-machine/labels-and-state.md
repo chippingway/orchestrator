@@ -664,6 +664,13 @@ The keys that matter for the state machine fall into a few groups:
   this host cannot fingerprint leaves the park and the command exactly where they are, which costs a poll rather
   than a decision.
 
+  What that write consumes is what the READING got to, plus the sentence it posted and nothing else. Comment ids
+  ascend, so a refusal of ours lands above the reply it answers and has to be consumed or the next poll reads the
+  orchestrator's own words as a human's fresh guidance — while a watermark taken from the thread's tip *now* would
+  swallow whatever landed since the fetch, a retraction of the very command being acted on included, unread and
+  unanswered. Consumed to what was examined, that retraction is still there for the next poll, which is the most a
+  reading taken before it can honestly offer.
+
   The **last** fresh trusted reply is what decides, and reading it any other way poisons the park. Guidance written
   after a command outranks it — the safe reading of somebody who asked to publish and then asked for a change is the
   one that publishes nothing — and a command written after guidance is the decision that replaced it. A reply that
@@ -1635,10 +1642,15 @@ rather than preserving.
 
   It shares that window with `late_approved_sha`, and the two are not duplicates of each other. The approval is
   written in the same breath and answers a different question: *this commit is owed a push, and no other may be pushed
-  in its place*. Which is also why that approval carries `late_approved_basis` — `reading`, `unmeasured`, or
-  `adjudication`, written by whichever owner granted it. The gate spends an approval without asking anyone, and an
-  authorized settlement's debt is the exemption wearing another field rather than a count this gate took, so the two
-  have to be told apart. Inferred from the records standing around them — *an approval naming a commit some exemption
+  in its place*. Which is also why that approval carries `late_approved_basis` — `reading`, `unmeasured`,
+  `adjudication`, or `authorization`, written by whichever owner granted it. The gate spends an approval without
+  asking anyone, and the last two are the ones an operator's gesture is behind: the debt an authorized settlement
+  records beside the exemption it writes, and the debt a candidate past the ceiling earns when a human authorizes it
+  at the gate itself. The count behind that second one really was this gate's, so recording it as an ordinary
+  `reading` would be true and useless — a record damaged between the approval and the push would have it publish
+  unmeasured — and a debt an authorization is behind may be spent only while that authorization can still be read.
+
+  Inferred from the records standing around them — *an approval naming a commit some exemption
   also names is the settlement's* — it is wrong in both directions: a candidate the gate measured at or below the
   ceiling on an issue still carrying an older binary's exemption would have its own approval refused and be re-judged
   against a base that has moved, and a settlement's debt whose exemption somebody hand-edited would read as the gate's

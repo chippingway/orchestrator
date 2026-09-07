@@ -21,7 +21,10 @@ import unittest
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FingerprintFailure
-from orchestrator.workflow.stages.implementing import late_parks as _parks
+from orchestrator.workflow.stages.implementing import (
+    late_consent as _consent,
+    late_parks as _parks,
+)
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     MEASURED_BASE_SHA,
@@ -33,6 +36,7 @@ from tests.workflow.fixtures import (
     _damaged_authorization,
     _legacy_exemption,
 )
+from tests.workflow.interleaving import _RacesTheStep
 from tests.workflow.stages.implementing import (
     late_authority_test_support as legacy,
     late_gate_test_support as support,
@@ -85,6 +89,11 @@ _REPLY_ID = support.REPLY_COMMENT_ID
 # The half of the notice that differs by the side of publication it is taken
 # on: an offer only the seam with a resume behind it may make.
 _RESUMED_AGAINST_IT = "the developer is resumed against it"
+
+# What a human posts while the tick that read their authorization is still
+# writing. Its whole point is arriving too late to be read and early enough to
+# be swallowed by a watermark taken from the thread's tip.
+_RETRACTION = "actually, hold off on that"
 
 
 class UnauthorizedExemptionTest(
@@ -414,6 +423,29 @@ class AuthorizationRecoveryTest(
 
         self._assert_resumed(mocks)
         self.assertNotIn(support.KEY_OVERRIDE_CANDIDATE_SHA, self._pinned())
+
+    def test_a_reply_landing_mid_write_survives(self) -> None:
+        # The reading picked the last word the thread had when it looked, and
+        # a retraction posted while this tick was still writing is not one of
+        # the comments it examined. Consumed to the tip of the thread as it
+        # stands NOW, that retraction would be swallowed unread and unanswered
+        # while the authorization it retracts published -- so the watermark
+        # goes only as far as the reading got, and the next poll still has it.
+        self._park_awaiting_authorization(_AUTHORIZE)
+        landed = []
+        racing = _RacesTheStep(
+            _consent._recorded_authorization,
+            lambda: landed.append(self._reply(_RETRACTION)),
+        )
+
+        with support.patch.object(_consent, "_recorded_authorization", racing):
+            mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_published(mocks)
+        self.assertEqual(len(landed), 1)
+        self.assertLess(
+            self._pinned()[support.LAST_ACTION_COMMENT_ID], landed[0],
+        )
 
     def _unreadable_contribution(self):
         """The authorized park re-entered on a host that cannot fingerprint."""
