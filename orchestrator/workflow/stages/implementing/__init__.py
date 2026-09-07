@@ -26,6 +26,16 @@ all three committed outcomes publish through -- a finished run, a timeout that
 committed first, and a branch a crash stranded -- is what makes the
 measurement a contract rather than a check.
 
+The publication divides again, because deciding WHEN something happens is not
+the same act as deciding what it says. `publication` owns the order alone --
+one named commit made durable, then the push, then the pull request, then the
+handoff -- while `checkout_guards` owns the proof that the worktree is still
+the thing that was measured, asked of the commit AND of the tree on both sides
+of the push and parked under the one reason a moved checkout earns; `dev_pr`
+owns what that pull request says and whose work it says it carries, including
+the reuse that reads the attribution back off one somebody else opened; and
+`handoff` owns the last write and the relabel it goes out ahead of.
+
 `late_gate` is the order its own questions are asked in and nothing else, so
 five owners sit under it: what one gate call is ABOUT and the identity every
 refusal is reported under is `late_records`, the pair a count is taken over is

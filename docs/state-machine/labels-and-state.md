@@ -610,10 +610,10 @@ The keys that matter for the state machine fall into a few groups:
   `workflow:umbrella` and lets that handler run (see
   [`delivery-stages.md`](delivery-stages.md#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr)).
   `late_candidate_moved` is the second taken outside the
-  adjudication, and it is the publication's own: the checkout is not the one the gate approved, so
-  nothing is pushed and the issue is not handed on. It reaches the same five states for the same reason — every
-  gated push proves its checkout again on the far side of the effect, not just the one that opens the pull
-  request. Two readings answer for "the checkout", because the head answers
+  adjudication, and it belongs to `checkout_guards` rather than to any one road that publishes: the checkout is not
+  the one the gate approved, so nothing is pushed and the issue is not handed on. It reaches the same five states
+  for the same reason — every gated push proves its checkout again on the far side of the effect, not just the one
+  that opens the pull request. Two readings answer for "the checkout", because the head answers
   only half of what it means. A head somewhere else is one. A tree carrying work no push would publish — or one
   `git status` could not report on, which is not a clean tree but a reading that never happened — is the other, and
   it is the half that can be true with the head never having moved, so every proof about the commit passes over it.

@@ -35,11 +35,11 @@ from dataclasses import dataclass, replace as _replace
 from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.implementing import (
+    checkout_guards as _checkout,
     late_parks as _parks,
     late_publication as _publication_gate,
     late_records as _records,
     late_rotation as _rotation,
-    publication as _publication,
     state as _state,
 )
 
@@ -180,8 +180,8 @@ def _unproven_checkout(gate: _records._Gate, published: str) -> bool:
 
     The window the pre-push proof cannot cover, and the same one the initial
     publication asks about on the far side of its own push -- so it is asked
-    with that owner's two questions rather than a second pair worded here.
-    The push is a request and the worktree is writable while it runs: a
+    with the checkout owner's two questions rather than a second pair worded
+    here. The push is a request and the worktree is writable while it runs: a
     descendant an agent or a cleanup left, or an unstaged edit beside it, is
     enough. What went out is exactly the commit that was named, so the branch
     and its pull request are right; what is wrong is the CHECKOUT, and the
@@ -210,12 +210,12 @@ def _unproven_checkout(gate: _records._Gate, published: str) -> bool:
     """
     if not published:
         return False
-    moved = _publication._moved_after_the_push(
+    moved = _checkout._moved_after_the_push(
         gate.gh, gate.issue, gate.state, published, gate.worktree,
     )
     if moved:
         return True
-    return _publication._dirtied_after_the_push(
+    return _checkout._dirtied_after_the_push(
         gate.gh, gate.issue, gate.state, published, gate.worktree,
     )
 

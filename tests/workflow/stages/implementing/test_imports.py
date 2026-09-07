@@ -22,6 +22,7 @@ _PARENT = "orchestrator.workflow.stages"
 _HANDLER_OWNER = "handler"
 
 _OWNERS = (
+    "checkout_guards",
     "continue_command",
     "dev_pr",
     "disposition",

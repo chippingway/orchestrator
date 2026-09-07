@@ -1300,7 +1300,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             checkout that moved or was dirtied holds the handoff rather than the publication, and
                             the claim it owes lands with the receipt rather than one write behind it, where a crash
                             would take it and leave the stage below reading a dirty worktree as no stranded work;
-                            borrowing the initial publication's own two questions for both; a pull request already
+                            asked through the same checkout owner the initial publication is proved by, for
+                            both; a pull request already
                             STANDING on the candidate goes through the same
                             tail, since the request is the only atomic proof that the publication this tick froze is
                             still the one the pull request has -- git has nothing left to send, and the lease moves
@@ -1597,11 +1598,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             published approval was frozen against, where there is one -- the pull request opened
                             or reused for it, and the commit the push carried (decided once ahead of the push --
                             the one that passed the gate, or the checkout's own head where the switch named none
-                            -- and made durable there), with the handoff below reached last -- refused,
-                            recoverably, on a checkout that has left the approved commit or stopped being
-                            provably clean around it -- both asked before the push and again once the pull
-                            request is open, since the worktree is writable while those requests run -- and
-                            spending the record of that commit once the handoff it was owed lands
+                            -- and made durable there, with a checkout that can name none at all publishing
+                            nothing), with the handoff below reached last -- held back until the checkout has
+                            been proved on both sides of the push, since the worktree is writable while those
+                            requests run -- and spending the record of that commit once the handoff it was owed
+                            lands
+      checkout_guards.py    the proof that the worktree is still the thing that was measured, asked of the
+                            commit AND of the tree because work can appear beside a commit without moving it:
+                            a head that has left the approved commit, and a tree that cannot be proved to carry
+                            nothing, refused before the push -- where nothing is published and the commit stays
+                            where the developer left it -- and refused again once the pull request is open,
+                            where the publication stands and only the handoff stops so review never reads the
+                            descendant; every one of them parked under the one reason a moved checkout earns,
+                            named after the commit to go back to or the paths to clear, and settled by the
+                            worktree rather than by a reply
       dev_pr.py             what that pull request says and whose work it says it carries: the title taken from
                             the branch's own first commit subject, falling back to a prefix inferred from recent
                             base history so it reads like the repository it lands in; the body pairing the
