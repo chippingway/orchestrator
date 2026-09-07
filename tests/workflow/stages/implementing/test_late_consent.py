@@ -35,6 +35,7 @@ from tests.workflow.stages.implementing import (
 
 _FINGERPRINT_CONTRIBUTION = "_fingerprint_contribution"
 _POST_ISSUE_COMMENT = "_post_issue_comment"
+_ORCH_MARKER = _comments._ORCH_COMMENT_MARKER
 
 # What the hermetic world's reading of the frozen pair answers with, and the
 # refusal a host that never held the content between them gives instead.
@@ -200,6 +201,19 @@ class AuthorizedCandidateTest(_ConsentCase, unittest.TestCase):
             pinned[_state._LAST_ACTION_COMMENT_ID],
             support.PRIOR_ACTION_COMMENT_ID,
         )
+
+    def test_consent_withdrawn_publishes_nothing(self) -> None:
+        # An operator who authorizes and then changes their mind has decided
+        # about the second thing. The marker their retraction happens to carry
+        # -- pasted, or quoted off a comment of ours -- is a body anybody can
+        # write, so treating it as proof of authorship would delete the
+        # retraction from the reading and publish on consent withdrawn.
+        self._reply(support.AUTHORIZE)
+        self._reply(f"actually, hold off\n\n{_ORCH_MARKER}")
+
+        self.assertFalse(self._authorizes())
+
+        self.assertNotIn(support.KEY_OVERRIDE_CANDIDATE_SHA, self._pinned())
 
     def test_a_reply_landing_mid_write_survives(self) -> None:
         # The reading picked the last word the thread had when it looked, and

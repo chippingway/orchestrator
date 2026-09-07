@@ -28,6 +28,15 @@ notice spells the command out ready to copy, so our sentences are exactly what
 a reader matching on that syntax would mistake for one. And a comment with no
 id is neither: a record made from it would name a comment nothing can locate,
 which is the one thing an authorization may not be.
+
+Being ours is PROVED rather than read off a body, because the last-reply rule
+makes dropping a comment the same act as deleting what its author said. A
+retraction taken for one of ours is a retraction that never happened, and the
+authorization under it becomes the last word and publishes -- consent
+withdrawn and acted on anyway. So the ledger of ids this process recorded
+posting is what answers, and the marker anybody can paste answers only beside
+an author login that matches ours. A comment neither can vouch for stays in
+the reading and, not being the command, leaves the park standing.
 """
 from __future__ import annotations
 
@@ -36,7 +45,11 @@ from dataclasses import dataclass
 from github.Issue import Issue
 
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.comments import carries_own_marker, filter_trusted
+from orchestrator.github.comments import (
+    authored_by_us,
+    carries_own_marker,
+    filter_trusted,
+)
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     comments as _comments,
@@ -60,6 +73,11 @@ from orchestrator.workflow.stages.implementing import (
 # is the only thing that turns on it -- and published for the two seams that
 # route a parked tick back to the gate.
 PARK_UNAUTHORIZED_EXEMPTION = "late_unauthorized_exemption"
+
+# The attribute a comment's own address is read off, spelled once because
+# every reading here asks for it: which reply was acted on, how far the thread
+# was looked at, and which comments this process posted itself.
+_COMMENT_ID = "id"
 
 
 @dataclass(frozen=True)
@@ -125,10 +143,10 @@ class _Answer:
             return self.watermark
         reached = self.watermark
         for landed in gate.gh.comments_after(gate.issue, self.watermark):
-            identified = _payloads.as_identity(getattr(landed, "id", 0))
+            identified = _payloads.as_identity(getattr(landed, _COMMENT_ID, 0))
             if identified is None or identified > said:
                 break
-            if not _ours(landed):
+            if not _ours(landed, gate.gh, gate.state):
                 break
             reached = identified
         return reached
@@ -171,12 +189,13 @@ def _read_the_park(
         issue, state.get(_state._LAST_ACTION_COMMENT_ID),
     )
     replies = [
-        reply for reply in filter_trusted(examined) if not _ours(reply)
+        reply for reply in filter_trusted(examined)
+        if not _ours(reply, gh, state)
     ]
     if not replies:
         return None
     last = replies[-1]
-    identified = _payloads.as_identity(getattr(last, "id", 0))
+    identified = _payloads.as_identity(getattr(last, _COMMENT_ID, 0))
     if not _is_the_command(last) or identified is None:
         return None
     return _Answer(
@@ -200,25 +219,56 @@ def _furthest_read(examined: list, at_least: int) -> int:
     """
     read = [at_least]
     for seen in examined:
-        identified = _payloads.as_identity(getattr(seen, "id", 0))
+        identified = _payloads.as_identity(getattr(seen, _COMMENT_ID, 0))
         if identified is not None:
             read.append(identified)
     return max(read)
 
 
-def _ours(reply) -> bool:
-    """Whether the orchestrator itself wrote this reply.
+def _ours(reply, gh: GitHubClient, state: PinnedState) -> bool:
+    """Whether the orchestrator itself wrote this reply, PROVED.
 
     Dropped before anything here reads a thread, because nothing this process
     posts is ever somebody's decision -- and a park notice spells the command
     out ready to copy, so our own sentences are exactly the comments a reader
     matching on that syntax would otherwise mistake for one.
 
-    Read off the marker every comment this workflow posts carries rather than
-    off an author login, which a personal access token shares with the human
-    it belongs to.
+    Which makes the standard of proof the whole question, because dropping a
+    comment here is not a neutral act. The reading behind this takes the LAST
+    fresh reply, so a comment dropped is a comment whose author never spoke:
+    an operator who authorizes a candidate and then retracts it would have the
+    retraction removed and the authorization selected, and the candidate would
+    publish on consent that had been withdrawn. Over-filtering is how this
+    park publishes something nobody agreed to.
+
+    So the marker alone is not evidence. It is plain text in a public thread
+    and anybody may paste it -- deliberately, or by quoting a comment of ours
+    that carries one. What answers instead is the bounded ledger of ids this
+    orchestrator recorded posting, which is a fact about what this process
+    DID rather than about what a body says, and which nothing a commenter
+    writes can put itself into.
+
+    The marker still answers for the one comment the ledger cannot: an id
+    evicted past its cap, or written before the ledger existed. There it is
+    asked TOGETHER with the author, which is the same pair every other receipt
+    in this repository is read from -- and unlike those, a client with no
+    login of its own is refused rather than waved through, since with nothing
+    to compare against the marker would be the whole of the proof again.
+
+    Anything else is somebody's word and stays in the reading. What that costs
+    at worst is a comment of ours standing as the last reply, which is not the
+    command, so the park goes on standing and waits -- the safe direction for
+    a question only a human can answer.
     """
-    return _comments._ORCH_COMMENT_MARKER in (getattr(reply, "body", "") or "")
+    identified = _payloads.as_identity(getattr(reply, _COMMENT_ID, 0))
+    if identified is not None and identified in _comments._orchestrator_ids(state):
+        return True
+    if _comments._ORCH_COMMENT_MARKER not in (getattr(reply, "body", "") or ""):
+        return False
+    bot_login = getattr(gh, "_bot_login", None)
+    return bot_login is not None and authored_by_us(
+        reply, bot_login=bot_login,
+    )
 
 
 def _is_the_command(reply) -> bool:

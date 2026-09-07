@@ -19,10 +19,13 @@ from orchestrator.workflow.stages.implementing import (
     late_command as _command,
     state as _state,
 )
+from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.fixtures import MEASURED_CANDIDATE_SHA
 from tests.workflow.stages.implementing import (
     late_consent_test_support as support,
 )
+
+_BOT_LOGIN = "_bot_login"
 
 
 class ReadTheParkTest(support._ParkedCase, unittest.TestCase):
@@ -129,15 +132,6 @@ class UnreadReplyTest(support._ParkedCase, unittest.TestCase):
         ):
             self.assertIsNone(self._read())
 
-    def test_our_own_sentence_is_nobodys_decision(self) -> None:
-        # The park notice spells the command out ready to copy, so our own
-        # comments are exactly what a reader matching on that syntax would
-        # otherwise mistake for one. Read off the marker rather than the
-        # login, which a personal access token shares with its owner.
-        self._reply(f"{support.AUTHORIZE}\n\n{_comments._ORCH_COMMENT_MARKER}")
-
-        self.assertIsNone(self._read())
-
     def test_guidance_written_last_reads_nothing(self) -> None:
         # The same batch the other way round: the safe reading of somebody who
         # asked to publish and then asked for a change publishes nothing.
@@ -148,6 +142,85 @@ class UnreadReplyTest(support._ParkedCase, unittest.TestCase):
 
     def _read(self):
         return _command._read_the_park(self.github, self.issue, self._state())
+
+
+class OrchestratorAuthorshipTest(support._ParkedCase, unittest.TestCase):
+    """What it takes to prove a reply was this process's own, and why.
+
+    Dropping a comment here is the same act as deleting what its author said:
+    the reading takes the LAST fresh reply, so one removed lets the reply
+    beneath it stand as the last word. Over-filter and a retraction becomes an
+    authorization; under-filter and a sentence of ours masks a command. Only
+    the first of those publishes something nobody agreed to.
+    """
+
+    def test_a_pasted_marker_hides_no_retraction(self) -> None:
+        # The marker is plain text on a public thread and anybody may paste
+        # it, deliberately or by quoting a comment of ours that carries one.
+        # Taken as proof, a trusted operator's retraction would be dropped,
+        # the authorization under it would become the last word, and the
+        # candidate would publish on consent that had been withdrawn.
+        self._reply(support.AUTHORIZE)
+        self._reply(
+            f"actually, hold off\n\n{_comments._ORCH_COMMENT_MARKER}",
+        )
+
+        with patch.object(
+            config, support.ALLOWLIST_CONFIG, (support.TRUSTED_AUTHOR,),
+        ):
+            self.assertIsNone(self._read())
+
+    def test_a_login_free_client_refuses_the_marker(self) -> None:
+        # With no login to compare against, the marker would be the whole of
+        # the proof again -- so it is refused rather than waved through, which
+        # is the opposite of what every other receipt in this repository does
+        # with a client that cannot name itself.
+        self._reply(support.AUTHORIZE)
+        self._reply(
+            f"actually, hold off\n\n{_comments._ORCH_COMMENT_MARKER}",
+        )
+
+        with patch.object(self.github, _BOT_LOGIN, None):
+            self.assertIsNone(self._read())
+
+    def test_our_own_comment_does_not_mask_a_command(self) -> None:
+        # The other direction, and the reason this filter exists: a sentence
+        # of ours standing last would leave the command beneath it unread and
+        # the park standing over a decision an operator had already made.
+        acted = self._reply(support.AUTHORIZE)
+        self._we_reply("this issue is waiting on a human")
+
+        self.assertEqual(self._read().comment_id, acted)
+
+    def test_an_evicted_id_still_reads_as_ours(self) -> None:
+        # The ledger is bounded, so a comment of ours old enough to have been
+        # evicted has only the marker left -- and there it is asked together
+        # with the author, which is the pair every other receipt here is read
+        # from.
+        acted = self._reply(support.AUTHORIZE)
+        self.issue.comments.append(FakeComment(
+            self.github.next_reply_id(self.issue),
+            f"an older notice\n\n{_comments._ORCH_COMMENT_MARKER}",
+            user=FakeUser(self.github._bot_login),
+        ))
+
+        self.assertEqual(self._read().comment_id, acted)
+
+    def _we_reply(self, body: str) -> int:
+        """Post one comment the way this workflow posts every one of them.
+
+        Through the owner that writes them, so the comment is ours by the one
+        piece of evidence a commenter cannot forge -- the id ledger -- rather
+        than by a body a test spelled to look right.
+        """
+        state = self._state()
+        posted = _comments._post_issue_comment(
+            self.github, self.issue, state, body,
+        )
+        self.github.write_pinned_state(self.issue, state)
+        return posted.id
+
+    _read = ReadTheParkTest._read
 
 
 if __name__ == "__main__":

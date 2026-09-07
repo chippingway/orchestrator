@@ -1305,7 +1305,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             abbreviation the sentence saying so instead of a silent park. Three authors are
                             never in the reading: an outsider, a comment with no id, and the orchestrator itself
                             -- the park notice spells the command out ready to copy, so our own sentences are
-                            exactly what a reader matching on that syntax would mistake for one
+                            exactly what a reader matching on that syntax would mistake for one. Being ours is
+                            PROVED rather than read off a body, because the last-reply rule makes dropping a
+                            comment the same act as deleting what its author said: a retraction taken for one of
+                            ours never happened, and the authorization beneath it becomes the last word and
+                            publishes on consent withdrawn. So the ledger of ids this process recorded posting is
+                            what answers, the marker anybody may paste answers only beside a matching author
+                            login, and a client with no login of its own is refused rather than waved through
       late_recovery.py      the three parks the size gate takes, answered ahead of every spawn because the work
                             in question is committed already: one owed another READING, which a trusted bare
                             `/orchestrator continue` asks for; one owed another LOOK at the checkout, which no

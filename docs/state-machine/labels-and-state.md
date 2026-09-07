@@ -673,14 +673,29 @@ The keys that matter for the state machine fall into a few groups:
   thread under a receipt scoped to the reply it answers, and **consumed**. The seams that publish onto a pull
   request the remote already carries move the watermark by no other means, so a reply left standing would be in
   every later batch and would refuse the correct command behind it for as long as the park stood. What that write
-  consumes is what the READING got to plus the sentence this tick posted, and no further: comment ids ascend, so an
+  consumes is what the READING got to, then the unbroken run of the orchestrator's OWN comments above it, and no
+  further: comment ids ascend, so an
   answer of ours lands above the reply it answers and has to be consumed or the next poll reads the orchestrator's
   own words as a human's fresh guidance — while a watermark taken from the thread's tip *now* would swallow whatever
-  landed since the fetch, a retraction of the very command being acted on included, unread and unanswered. Our own
-  comments are dropped from the reading for the same reason twice over: the park notice spells the command out ready
-  to copy. The park's own notice moves the watermark to the id of the comment it POSTED rather than to whatever the
+  landed since the fetch, a retraction of the very command being acted on included, unread and unanswered. Jumping
+  straight to that answer's own id would swallow one too, and the likeliest one there is: an operator who reads the
+  notice and posts the corrected command between the reading and the sentence refusing the wrong one lands *below*
+  that sentence. So the first comment that is not ours ends the walk, whatever it says. The park's own notice moves
+  the watermark to the id of the comment it POSTED rather than to whatever the
   thread ends on afterwards, since a reply landing between those two operations is the answer being thrown away by
   the question.
+
+  Our own comments are dropped from the reading, and being ours is **proved** rather than read off a body. The park
+  notice spells the command out ready to copy, so a reader matching on that syntax would mistake our sentences for
+  somebody's decision — but the last-reply rule makes dropping a comment the same act as deleting what its author
+  said, so over-filtering here is how the park publishes something nobody agreed to: a trusted retraction taken for
+  one of ours never happened, and the authorization beneath it becomes the last word. The `<!--orchestrator-comment-->`
+  marker cannot carry that weight, since it is plain text anybody may paste or quote off a comment of ours. What
+  answers is `orchestrator_comment_ids`, the bounded ledger of ids this process recorded posting, which is a fact
+  about what it DID; the marker answers only for an id evicted past that cap, and only beside an author login
+  matching ours — and unlike every other receipt here, a client with no login of its own is refused rather than
+  waved through, since the marker would otherwise be the whole of the proof again. A comment neither can vouch for
+  stays in the reading and, not being the command, leaves the park standing.
 
   What guidance is worth differs by the side of publication the park was taken on, and the notice says which it is
   rather than promising one answer everywhere. Before there is a pull request the ordinary resume is still in front
