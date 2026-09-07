@@ -22,11 +22,12 @@ candidate is let past the gate on, which deliberately outlives them
 rewrite replaced it with (``rewrites``), the terms an operator authorized an
 oversized candidate to publish on, which outlive a clear on the same footing
 (``overrides``), the terms a squash records before it destroys the evidence of
-itself (``collapses``), the two-phase restart marker over them (``restart``),
-what one event of its life may say (``events``), what a generation has to prove
-before any of it may be recorded (``validation``), the bounded record both
-observability sinks carry (``records``), and the dual emission that writes them
-(``telemetry``).
+itself (``collapses``) and the commit the relabel behind a finished one is
+still owed over (``handoffs``), the two-phase restart marker over them
+(``restart``), what one event of its life may say (``events``), what a
+generation has to prove before any of it may be recorded (``validation``), the
+bounded record both observability sinks carry (``records``), and the dual
+emission that writes them (``telemetry``).
 
 Callers import the owner they need, so this initializer binds nothing: the
 state round-trip costs the GitHub pinned-state model and the telemetry costs

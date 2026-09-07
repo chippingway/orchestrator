@@ -21,7 +21,10 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.publication import models as _publication
 from orchestrator.git.publication.models import _SquashOutcome
-from orchestrator.workflow.late_split import collapses as _collapses
+from orchestrator.workflow.late_split import (
+    collapses as _collapses,
+    handoffs as _late_handoffs,
+)
 from orchestrator.workflow.stages.validating import state as _validating_state
 from tests.support.fakes import (
     FakeComment,
@@ -76,7 +79,7 @@ COLLAPSED_HEAD = "aa11bb22" * 5
 COLLAPSED_BASE = "cc33dd44" * 5
 COLLAPSED_COMMITS = 3
 COLLAPSE_KEY = _collapses.LATE_COLLAPSE_HEAD
-HANDOFF_KEY = _collapses.LATE_COLLAPSE_HANDOFF
+HANDOFF_KEY = _late_handoffs.LATE_COLLAPSE_HANDOFF
 
 # The baseline a body edit leaves behind, and the field it is compared
 # against: an issue whose content no longer hashes to it is one the drift

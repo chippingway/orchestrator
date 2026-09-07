@@ -8,6 +8,7 @@ import unittest
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import (
     collapses as _collapses,
+    handoffs as _late_handoffs,
     keys as _late_keys,
     state as _late_state,
 )
@@ -31,7 +32,7 @@ _HEAD = _collapses.LATE_COLLAPSE_HEAD
 _BASE = _collapses.LATE_COLLAPSE_BASE_SHA
 _COUNT = _collapses.LATE_COLLAPSE_COUNT
 
-_HANDOFF = _collapses.LATE_COLLAPSE_HANDOFF
+_HANDOFF = _late_handoffs.LATE_COLLAPSE_HANDOFF
 
 _COLLAPSE_KEYS = (_HEAD, _BASE, _COUNT)
 
@@ -181,13 +182,13 @@ class CollapseOutlivesTheGenerationTest(unittest.TestCase):
         self.assertEqual(collapse.count, COLLAPSED_COMMITS)
 
     def test_the_keys_are_not_the_generations_own(self) -> None:
-        for key in (*_COLLAPSE_KEYS, _HANDOFF):
+        for key in _COLLAPSE_KEYS:
             with self.subTest(key=key):
                 self.assertNotIn(key, _late_keys.LATE_STATE_KEYS)
 
 
-class SettledHandoffTest(unittest.TestCase):
-    """What is left of the record once the rewrite itself is over.
+class SettledCollapseTest(unittest.TestCase):
+    """The transition from the claim to the commit that succeeds it.
 
     The push landed and the notice went out, so nothing about the rewrite is
     outstanding -- but the relabel behind it is a second call, and an issue
@@ -202,7 +203,7 @@ class SettledHandoffTest(unittest.TestCase):
 
         self.assertNotIn(_HEAD, state.data)
         self.assertEqual(
-            _collapses.read_settled_handoff(state), CANDIDATE_SHA,
+            _late_handoffs.read_settled_handoff(state), CANDIDATE_SHA,
         )
 
     def test_an_approval_collapsing_nothing(self) -> None:
@@ -212,48 +213,19 @@ class SettledHandoffTest(unittest.TestCase):
 
         _collapses.settle_pending_collapse(state, CANDIDATE_SHA)
 
-        self.assertEqual(_collapses.read_settled_handoff(state), "")
         self.assertNotIn(_HANDOFF, state.data)
 
     def test_a_publication_naming_no_commit(self) -> None:
-        state = _recorded()
-
-        _collapses.settle_pending_collapse(state, "")
-
-        self.assertNotIn(_HEAD, state.data)
-        self.assertEqual(_collapses.read_settled_handoff(state), "")
-
-    def test_a_value_that_is_not_a_commit(self) -> None:
-        # Held to the shape every other end here is, and for the same reason
-        # one step on: what the value is spent on is a comparison against the
-        # commit the pull request stands on, and a value no commit could equal
-        # is one that comparison can never catch.
-        for unusable in _UNUSABLE_ENDS:
-            with self.subTest(unusable=unusable):
-                state = PinnedState(data={_HANDOFF: unusable})
-
-                self.assertEqual(_collapses.read_settled_handoff(state), "")
-
-    def test_a_value_that_is_not_a_commit_is_dropped(self) -> None:
-        # And it does not become one on the way in either: a record nothing
-        # can check is exactly what this one may not be, since what it buys is
-        # a relabel taken without a reviewer.
-        for unusable in _UNUSABLE_ENDS:
+        # The claim ends whatever the publication is worth, since what ended
+        # it is the push, and only the successor is held to a shape.
+        for unusable in ("", *_UNUSABLE_ENDS):
             with self.subTest(unusable=unusable):
                 state = _recorded()
 
                 _collapses.settle_pending_collapse(state, unusable)
 
-                self.assertNotIn(_HANDOFF, state.data)
                 self.assertNotIn(_HEAD, state.data)
-
-    def test_the_move_that_landed_ends_it(self) -> None:
-        state = _recorded()
-        _collapses.settle_pending_collapse(state, CANDIDATE_SHA)
-
-        _collapses.clear_settled_handoff(state)
-
-        self.assertNotIn(_HANDOFF, state.data)
+                self.assertNotIn(_HANDOFF, state.data)
 
     def test_it_claims_no_outstanding_rewrite(self) -> None:
         # Nothing about the rewrite is outstanding by then, so nothing may
@@ -273,7 +245,6 @@ class CollapseFieldSpellingTest(unittest.TestCase):
         self.assertEqual(_HEAD, "late_collapse_head")
         self.assertEqual(_BASE, "late_collapse_base_sha")
         self.assertEqual(_COUNT, "late_collapse_count")
-        self.assertEqual(_HANDOFF, "late_collapse_handoff_sha")
 
     def test_a_longer_object_id_is_still_a_commit(self) -> None:
         # git writes SHA-1 and SHA-256 object ids, and this domain records

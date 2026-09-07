@@ -20,7 +20,7 @@ from __future__ import annotations
 import unittest
 from types import MappingProxyType
 
-from orchestrator.workflow.late_split import collapses as _collapses
+from orchestrator.workflow.late_split import handoffs as _late_handoffs
 from tests.support.fakes import DEFAULT_PR_HEAD_SHA
 from tests.workflow.fixtures import _agent
 from tests.workflow.stages.documenting.documenting_scenario_test_support import (
@@ -33,7 +33,7 @@ from tests.workflow.stages.documenting.documenting_test_support import (
     VALIDATING,
 )
 
-HANDOFF_KEY = _collapses.LATE_COLLAPSE_HANDOFF
+HANDOFF_KEY = _late_handoffs.LATE_COLLAPSE_HANDOFF
 
 LABEL_DOCUMENTING = "workflow:documenting"
 

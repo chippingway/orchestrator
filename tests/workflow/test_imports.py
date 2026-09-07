@@ -49,6 +49,7 @@ _LATE_SPLIT_OWNERS = (
     "events",
     "exemption",
     "formats",
+    "handoffs",
     "identity",
     "keys",
     "ledger_encoding",

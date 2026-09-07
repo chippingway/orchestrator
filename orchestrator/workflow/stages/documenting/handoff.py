@@ -45,7 +45,7 @@ from github.Issue import Issue
 
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import collapses as _collapses
+from orchestrator.workflow.late_split import handoffs as _late_handoffs
 from orchestrator.workflow.stages.validating import watermarks as _validating_watermarks
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -134,9 +134,9 @@ def _ends_the_validating_handoff(
     Nothing is written for the ordinary issue, which carries no such record:
     the approval that handed it here dropped its own.
     """
-    if not _collapses.read_settled_handoff(state):
+    if not _late_handoffs.read_settled_handoff(state):
         return
-    _collapses.clear_settled_handoff(state)
+    _late_handoffs.clear_settled_handoff(state)
     gh.write_pinned_state(issue, state)
 
 
