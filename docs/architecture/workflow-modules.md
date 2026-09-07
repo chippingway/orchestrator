@@ -1300,8 +1300,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             checkout that moved or was dirtied holds the handoff rather than the publication, and
                             the claim it owes lands with the receipt rather than one write behind it, where a crash
                             would take it and leave the stage below reading a dirty worktree as no stranded work;
-                            asked through the same checkout owner the initial publication is proved by, for
-                            both; a pull request already
+                            asked through `checkout_guards` below, the same owner the initial publication is
+                            proved by, for both; a pull request already
                             STANDING on the candidate goes through the same
                             tail, since the request is the only atomic proof that the publication this tick froze is
                             still the one the pull request has -- git has nothing left to send, and the lease moves

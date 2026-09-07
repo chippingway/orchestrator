@@ -2227,8 +2227,8 @@ the branch and its pull request are right; what is wrong is the CHECKOUT, and th
 this gate reads. A reviewer treats a head ahead of the pushed branch as unpushed work, the squash rewrites what is on
 it, the docs pass commits on top. So the publication stands and the HANDOFF stops: the caller is told the tick is
 finished and relabels nothing, announces nothing, and spends no round, while the issue parks `late_candidate_moved`.
-It is the same pair of questions the initial publication asks past its own push, and both go through the shared
-checkout-safety owner rather than being worded twice.
+It is the same pair of questions the initial publication asks past its own push, and both go through
+`implementing/checkout_guards` rather than being worded twice.
 
 **And it is asked AHEAD of the settlement, so its answer rides the receipt's own write.** What a failed proof records
 is a whole approval, both halves the commit that just landed — that being the head the pull request stands on now —
