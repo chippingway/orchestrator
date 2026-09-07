@@ -278,9 +278,13 @@ examples.
   past the ceiling a commit at a time. It is also what a proposed CHILD is sized against once a candidate reaches
   adjudication: the late decomposer is told the ceiling its own candidate was measured at, every child of a `split`
   declares the lines it will add across all of its paths, and one declared at or above that ceiling is refused, since a
-  split whose children are each still oversized is not a split. So lowering the value narrows what an adjudication may
-  propose as well as what may publish — what finally decides a child is the cumulative measurement of its own diff, on
-  the value in force when that child is measured. See
+  split whose children are each still oversized is not a split. That declaration is kept rather than spent on the
+  refusal: it is recorded with the verdict, so a tick that crashed before the children existed does not pay for a
+  second adjudication to recover it, and it is stated on the child issue the slice becomes — over every path that
+  child commits, tests, documentation and generated files included — so whoever picks the child up reads the size it
+  was proposed at. A child of a manifest recorded before budgets were asked for states none. So lowering the value
+  narrows what an adjudication may propose as well as what may publish — what finally decides a child is the
+  cumulative measurement of its own diff, on the value in force when that child is measured. See
   [`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#_handle_implementing-label-workflowimplementing)
   and [`workflow/roles.md`](workflow/roles.md#what-a-late-adjudication-is-asked-and-what-it-may-answer)
 - `ORCHESTRATOR_BASE_BRANCH` — default `main`. base branch of the orchestrator's own repo, used by the self-update
