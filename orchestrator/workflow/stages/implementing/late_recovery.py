@@ -24,14 +24,16 @@ disposition does -- the branch published, the candidate held, or the park
 taken again with the reason it fails for now. None of them spawns anything,
 and none of them decides for itself what the gate would have decided.
 
-A checkout that is GONE is the one thing that stops a recovery before the
-seam, and what it costs differs by what the park was waiting for. A reading
-can be asked for again, so the measurement park re-parks under the reason
-saying the commit is not on this host and the next continue retries it. A
-DECISION cannot: re-parking would take the authorization park's own reason
-off and move the watermark past the command still standing on the thread, so
-an operator who put the worktree back would be asked to authorize the same
-change a second time. That one is held exactly as found, writing nothing.
+A checkout the seam would REFUSE is what stops a recovery before it, and what
+that costs differs by what the park was waiting for. A reading can be asked
+for again, so the measurement park lets the seam park under a reason of its
+own and the next continue retries it. A DECISION cannot: the seam's reason
+would take the authorization park's own off, and its notice would move the
+watermark past the command still standing on the thread, so an operator who
+fixed the checkout would be asked to authorize the same change a second time.
+That road asks the seam's questions for itself first -- the worktree on this
+host, its tree provably carrying nothing loose -- and holds exactly as found,
+writing nothing, wherever the answer is no.
 """
 from __future__ import annotations
 
@@ -41,6 +43,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
+from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -195,13 +198,13 @@ def _try_recover_unauthorized_exemption_park(
     if _late_command._read_the_park(gh, issue, state) is None:
         return False
     wt = _worktree_paths._worktree_path(spec, issue.number)
-    if not wt.exists():
+    unpublishable = _unpublishable_checkout(wt)
+    if unpublishable:
         log.info(
             "issue=#%d was authorized to publish its adjudicated candidate "
-            "and the checkout it lives in is not on this host; holding the "
-            "park and the command as they stand rather than asking for the "
-            "same decision twice",
-            issue.number,
+            "and its checkout %s; holding the park and the command as they "
+            "stand rather than asking for the same decision twice",
+            issue.number, unpublishable,
         )
         return True
     _, _, _, dev_sid = _session_read._read_dev_session(state)
@@ -221,6 +224,36 @@ def _try_recover_unauthorized_exemption_park(
     )
     gh.write_pinned_state(issue, state)
     return True
+
+
+def _unpublishable_checkout(worktree) -> str:
+    """Why an authorized candidate may not reach the seam yet, or "".
+
+    Everything that seam would refuse, asked HERE instead -- and asked only on
+    this road, because of what its refusal costs on this one. The seam parks
+    under reasons of its own and the notice it posts moves the watermark past
+    whatever it finds. On every other road that is exactly right. Here it
+    would take this park's reason off and consume the command still standing
+    on the thread, so an operator who fixed the checkout would be asked to
+    authorize the same commit a second time, on an issue now waiting for a
+    different reply entirely.
+
+    Three answers under one rule: the checkout has to be on this host, and its
+    tree has to be PROVABLY carrying nothing loose. A reading that established
+    nothing is refused beside a tree that is dirty, since it is not evidence
+    of a clean one -- and none of the three is anybody's decision, so all
+    three leave the park, the command and the record exactly as found and the
+    poll after an operator fixes any of them publishes on the command they
+    already wrote.
+    """
+    if not worktree.exists():
+        return "is not on this host"
+    tree = _verification_probes._worktree_status(worktree)
+    if tree.is_clean:
+        return ""
+    if not tree.readable:
+        return "has a tree this host could not read"
+    return "carries work no push would publish"
 
 
 def _try_recover_moved_candidate_park(

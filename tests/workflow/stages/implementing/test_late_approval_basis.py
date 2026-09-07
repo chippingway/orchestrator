@@ -41,6 +41,10 @@ _WORKTREE = Path("/tmp/orchestrator-test-late-basis")
 # no vocabulary here carries, which reads back as no basis at all.
 _NOT_A_BASIS = "an operator said so"
 
+# The exemption an adjudication's settlement leaves, which is the one record a
+# minted debt is classified from.
+_KEY_EXEMPT_SHA = "late_exempt_sha"
+
 # The push that landed, named by the commit it sent and the head it was
 # pinned against, which is what a settlement is asked to reconcile against.
 _LANDED = _publication._PublishedCandidate(
@@ -150,11 +154,13 @@ class StandingBasisTest(unittest.TestCase):
                     _parks._standing_basis(_approved(basis)), basis,
                 )
 
-    def test_a_record_that_cannot_say_is_unmeasured(self) -> None:
-        # A comment that never said, one a hand edit moved outside the
-        # vocabulary, and one the drop beside this has already taken: such a
-        # push skipped no reading of its own, so the claim it leaves is the
-        # ordinary unmeasured one and the reader falls back from there.
+    def test_a_record_that_cannot_say_says_nothing(self) -> None:
+        # A comment that never said and one a hand edit moved outside the
+        # vocabulary are the same fact -- this record cannot show what its
+        # approval rests on -- and the answer a reader owes that fact is the
+        # exemption beside it. Answered `unmeasured` instead, an unknown would
+        # be promoted to a decision nobody made, and the reader would stop
+        # falling back.
         for described, written in (
             ("never written", None),
             ("outside the vocabulary", _NOT_A_BASIS),
@@ -163,10 +169,71 @@ class StandingBasisTest(unittest.TestCase):
                 state = _approved(_parks.LateApprovalBasis.READING)
                 state.set(_state._APPROVED_BASIS, written)
 
+                self.assertIsNone(_parks._standing_basis(state))
+
+
+class SeamMintedDebtTest(unittest.TestCase):
+    """The debt the implementing seam records for itself, and its grounds.
+
+    Nothing froze a publication head there, so the gate's own debt writer
+    declines and this seam mints one. Which means it is the seam, rather than
+    the owner that admitted the candidate, deciding what a later tick reads --
+    so it may carry grounds and it may read them off the record, but it may
+    never invent them.
+    """
+
+    def test_it_carries_what_already_stands(self) -> None:
+        for basis in _parks.LateApprovalBasis:
+            with self.subTest(basis=str(basis)):
+                state = _approved(basis)
+
+                _parks._owes_a_publication(state, MEASURED_CANDIDATE_SHA)
+
+                self.assertEqual(_parks._approved_basis(state), str(basis))
+
+    def test_an_unknown_one_stays_unknown(self) -> None:
+        # The legacy shape: an older build recorded the commit alone. Upgraded
+        # to `unmeasured`, it would stop being read as unknown and become debt
+        # this workflow owns -- a bypass nobody would ever revalidate.
+        state = PinnedState(data={_state._APPROVED_SHA: MEASURED_CANDIDATE_SHA})
+
+        _parks._owes_a_publication(state, MEASURED_CANDIDATE_SHA)
+
+        self.assertEqual(_parks._approved_basis(state), "")
+        self.assertIsNone(state.get(_state._APPROVED_BASIS))
+
+    def test_a_minted_one_reads_the_exemption_claim(self) -> None:
+        # Where no approval stands, the record decides -- on the CLAIM rather
+        # than on the commit, since a field a hand edit truncated still says
+        # an adjudication happened. Read alike with an issue that never
+        # entered one, that record's debt is recorded as this workflow's own.
+        for described, exempt in (
+            ("naming the commit", MEASURED_CANDIDATE_SHA),
+            ("truncated by a hand edit", MEASURED_CANDIDATE_SHA[:7]),
+        ):
+            with self.subTest(exemption=described):
+                state = PinnedState(data={_KEY_EXEMPT_SHA: exempt})
+
+                _parks._owes_a_publication(state, MEASURED_CANDIDATE_SHA)
+
                 self.assertEqual(
-                    _parks._standing_basis(state),
-                    _parks.LateApprovalBasis.UNMEASURED,
+                    _parks._approved_basis(state),
+                    str(_parks.LateApprovalBasis.ADJUDICATION),
                 )
+
+    def test_an_issue_with_no_exemption_is_unmeasured(self) -> None:
+        # And the ordinary answer, so the rule above is about the claim rather
+        # than about this writer refusing to mint anything: a receipt, a
+        # permit, or a candidate the switch kept out of the gate leaves debt
+        # this workflow made for itself and re-derives on the next tick.
+        state = PinnedState(data={})
+
+        _parks._owes_a_publication(state, MEASURED_CANDIDATE_SHA)
+
+        self.assertEqual(
+            _parks._approved_basis(state),
+            str(_parks.LateApprovalBasis.UNMEASURED),
+        )
 
 
 class UnmeasuredDebtBasisTest(unittest.TestCase):

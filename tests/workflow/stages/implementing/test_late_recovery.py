@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
+from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.stages.implementing import (
     disposition as _disposition,
@@ -29,11 +31,19 @@ from tests.workflow.stages.implementing import (
 
 _PUBLISH_COMMITTED_WORK = "_publish_committed_work"
 _WORKTREE_PATH = "_worktree_path"
+_WORKTREE_STATUS = "_worktree_status"
 
 # A checkout the recovery's existence probe never finds, which is the one
 # outcome the publication seam cannot reach on its own: there is no commit to
 # read there and a fresh run would answer with different work.
 _MISSING_WORKTREE = Path("/tmp/orchestrator-test-late-recovery-gone")
+
+# The three readings a checkout can give the question this road asks it: a
+# tree proved to be carrying nothing loose, one carrying work no push would
+# publish, and one nothing could read -- which is not a clean tree either.
+_CLEAN_TREE = _WorktreeStatus(readable=True)
+_DIRTY_TREE = _WorktreeStatus(readable=True, paths=("src/left_behind.py",))
+_UNREADABLE_TREE = _WorktreeStatus(readable=False)
 
 
 @dataclass
@@ -114,12 +124,17 @@ class UnauthorizedExemptionRecoveryTest(
             support._command.PARK_UNAUTHORIZED_EXEMPTION,
         )
 
-    def _recovers(self, worktree: Path = support.TEMP_WORKTREE_ROOT):
+    def _recovers(
+        self,
+        worktree: Path = support.TEMP_WORKTREE_ROOT,
+        tree: _WorktreeStatus = _CLEAN_TREE,
+    ):
         """Route one parked tick, saying what it routed and where.
 
         The publication seam is patched and nothing else is, so a case reads
         the routing off one call and everything a road did to the record off
-        the record itself.
+        the record itself. The tree reading is the caller's, since what this
+        road asks the checkout is the question the seam would have asked.
         """
         seams = _Routed(
             published=patch.object(_disposition, _PUBLISH_COMMITTED_WORK),
@@ -127,6 +142,9 @@ class UnauthorizedExemptionRecoveryTest(
         with (
             patch.object(
                 _worktree_paths, _WORKTREE_PATH, return_value=worktree,
+            ),
+            patch.object(
+                _verification_probes, _WORKTREE_STATUS, return_value=tree,
             ),
             seams.published as published,
         ):
@@ -137,14 +155,50 @@ class UnauthorizedExemptionRecoveryTest(
         return seams
 
 
-class MissingCheckoutHoldTest(support._ParkedCase, unittest.TestCase):
-    """The one road that answers the command and reaches no publication.
+class UnpublishableCheckoutHoldTest(support._ParkedCase, unittest.TestCase):
+    """Every road that answers the command and reaches no publication.
 
-    A checkout that is gone is not a decision anybody made, so nothing about
-    it may spend the decision already on the thread. Held silently, the park,
-    the command and the record are all still there for the poll that finds the
-    worktree back.
+    A checkout the seam would refuse is not a decision anybody made, so
+    nothing about it may spend the decision already on the thread. Held
+    silently, the park, the command and the record are all still there for the
+    poll that finds the worktree back.
     """
+
+    def test_an_unpublishable_tree_writes_nothing(self) -> None:
+        # The seam below reads the tree before a verdict can be recorded, and
+        # its refusal parks under a reason of its own. Reached on this road,
+        # that reason takes the authorization park's off and its notice moves
+        # the watermark past the command still standing -- so the operator is
+        # asked to authorize the same commit again once they clean the tree.
+        # A tree nothing could READ is refused beside a dirty one, since a
+        # reading that established nothing is not evidence of a clean tree.
+        for described, tree in (
+            ("carrying uncommitted work", _DIRTY_TREE),
+            ("unreadable", _UNREADABLE_TREE),
+        ):
+            with self.subTest(tree=described):
+                self.setUp()
+                self._reply(support.AUTHORIZE)
+                before = dict(self._pinned())
+
+                routed = self._recovers(tree=tree)
+
+                self.assertTrue(routed.routed)
+                routed.published.assert_not_called()
+                self.assertEqual(self._pinned(), before)
+                self.assertEqual(self.github.posted_comments, [])
+
+    def test_a_cleaned_tree_needs_no_command(self) -> None:
+        # The other half, and the whole of what holding quietly buys: the
+        # command is still the last fresh word on the thread, so the poll
+        # after an operator cleans the checkout publishes on it.
+        self._reply(support.AUTHORIZE)
+        self._recovers(tree=_DIRTY_TREE)
+
+        routed = self._recovers()
+
+        self.assertTrue(routed.routed)
+        routed.published.assert_called_once()
 
     def test_a_missing_checkout_writes_nothing(self) -> None:
         # There is no commit to read there, the recorded SHA is evidence no

@@ -54,6 +54,15 @@ _MOVING_HEAD = (
     FrozenCommit(sha=_OTHER_SHA),
 )
 
+# The same race one reading further in, for an issue whose record already
+# names a commit: the reconciliation ahead of the spawn proves it before the
+# gate sees the issue at all, so the descendant is the third answer rather
+# than the second.
+_RECONCILED_THEN_MOVING = (
+    FrozenCommit(sha=MEASURED_CANDIDATE_SHA),
+    *_MOVING_HEAD,
+)
+
 class LateGateVerdictTest(support._GateCase, unittest.TestCase):
     """What a measured candidate earns: the ordinary push, or adjudication."""
 
@@ -211,6 +220,31 @@ class LateGatePushTest(support._GateCase, unittest.TestCase):
         self.assertIn(MEASURED_CANDIDATE_SHA, notice)
         self.assertIn(_OTHER_SHA, notice)
 
+    def test_an_unmeasured_branch_is_named_too(self) -> None:
+        # The switch keeps a candidate out of the MEASUREMENT; it does not
+        # make it unnameable. A push named against nothing publishes whatever
+        # the branch has become by the time git runs it, and leaves nothing on
+        # the issue afterwards saying which commit that was -- so the checkout
+        # names it where the gate did not.
+        with patch.object(config, _DECOMPOSE, False):
+            mocks = self._run_gate()
+
+        self._assert_unmeasured(mocks)
+        self.assertEqual(
+            mocks[support.PUSH_BRANCH].call_args.kwargs["revision"],
+            MEASURED_CANDIDATE_SHA,
+        )
+
+
+class MovedCheckoutDebtTest(support._GateCase, unittest.TestCase):
+    """What the park a moved checkout takes records about the push it owes.
+
+    The refusal stands exactly where the publication would have minted that
+    debt, so the group it writes is the only account a later tick has of what
+    the push it is about to make rests on -- and the one thing it may not do
+    is invent one the record never carried.
+    """
+
     def test_a_moved_checkout_says_what_it_rests_on(self) -> None:
         # The refusal stands exactly where the publication would have minted
         # the debt this seam owes: a candidate the RECEIPT admitted skipped
@@ -236,6 +270,28 @@ class LateGatePushTest(support._GateCase, unittest.TestCase):
             str(_parks.LateApprovalBasis.UNMEASURED),
         )
 
+    def test_a_legacy_debt_is_not_upgraded(self) -> None:
+        # The shape an older build left: the exempt commit named as owed a
+        # push, with no account of what that debt rests on. Stamped
+        # `unmeasured` as the park goes up, it would stop reading as unknown
+        # and become debt this workflow owns -- so the checkout coming back
+        # would publish an adjudicated commit without anything revalidating
+        # the operator authorization behind it.
+        self._seed(**{
+            support.KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA,
+            _KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+        })
+
+        self._run_gate(
+            added_lines=support.OVERSIZED_ADDITIONS,
+            candidate_commit=_RECONCILED_THEN_MOVING,
+        )
+
+        pinned = self._pinned()
+        self.assertEqual(pinned[support.PARK_REASON], _CANDIDATE_MOVED)
+        self.assertEqual(pinned[_KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertIsNone(pinned[_KEY_APPROVED_BASIS])
+
     def test_a_restored_checkout_publishes_on_it(self) -> None:
         # And what the complete record buys: the poll after an operator puts
         # the worktree back reads one commit owed a push and the grounds it is
@@ -251,22 +307,6 @@ class LateGatePushTest(support._GateCase, unittest.TestCase):
         self._assert_no_agent(mocks)
         self._assert_unmeasured(mocks)
         self._assert_published(mocks)
-
-    def test_an_unmeasured_branch_is_named_too(self) -> None:
-        # The switch keeps a candidate out of the MEASUREMENT; it does not
-        # make it unnameable. A push named against nothing publishes whatever
-        # the branch has become by the time git runs it, and leaves nothing on
-        # the issue afterwards saying which commit that was -- so the checkout
-        # names it where the gate did not.
-        with patch.object(config, _DECOMPOSE, False):
-            mocks = self._run_gate()
-
-        self._assert_unmeasured(mocks)
-        self.assertEqual(
-            mocks[support.PUSH_BRANCH].call_args.kwargs["revision"],
-            MEASURED_CANDIDATE_SHA,
-        )
-
 
 class LateGateTelemetryTest(support._GateCase, unittest.TestCase):
     """One call, two streams, and a record that joins without pinned state."""

@@ -709,6 +709,15 @@ The keys that matter for the state machine fall into a few groups:
   stops the tick ahead of the stage handler on every poll — and the notice taken on that side says the command is
   the only reply that stage reads while the park stands.
 
+  A checkout the publication seam would REFUSE holds this park rather than passing through it. That seam reads the
+  tree before any verdict can be recorded and parks under a reason of its own, which on every other road is right
+  and here would take `late_unauthorized_exemption` off and move the watermark past the command still standing — so
+  the operator who fixes the checkout is asked to authorize the same commit again, on an issue now waiting for a
+  different reply. So `late_recovery` asks the seam's own questions first: the worktree on this host, and its tree
+  provably carrying nothing loose (a reading that established nothing is refused beside a dirty one, since it is no
+  evidence of a clean tree). None of the three is anybody's decision, so all three leave the park, the command and
+  the record exactly as found, and the poll after any of them is fixed publishes on the command already written.
+
   The park, its command, and the routing that answers it are in place; the size gate does not yet route a candidate
   into it, since the publication policy that makes an exemption half a bypass is a separate change.
 
@@ -1668,9 +1677,12 @@ rather than preserving.
   its own — including on the **implementing** seam, where nothing froze a publication head to lease a push against,
   so the gate's own debt writer declines and the seam mints its own. That happens in one place for two callers: the
   publication that names the commit it is about to push, and the guard that refuses a checkout which has left the
-  approved commit, which stands exactly where that publication would have recorded one. Either carries the grounds
-  of an approval already standing for that very commit and records `unmeasured` where none does, so a candidate a
-  receipt or an exemption admitted is never parked as a commit with no account of what its push rests on. So it
+  approved commit, which stands exactly where that publication would have recorded one. Neither invents grounds.
+  An approval already standing for that very commit is carried as it reads — an *unknown* one included, since
+  promoting a legacy record to `unmeasured` would turn "fall back to the exemption" into debt this workflow owns
+  and nothing would ever revalidate. Where none stands, the grounds come off the exemption CLAIM: presence rather
+  than readability, so a field a hand edit truncated still leaves the adjudication's debt, and only an issue
+  carrying no such field at all leaves `unmeasured`. So it
   freezes by presence — as the whole pair, `late_approved_lease` included, because the two go
   down in one write and a lease standing alone is the damage the dispatcher parks on a tick later, by which time a
   hold keyed to the commit alone would have rebased and force-pushed the branch that park is about. One approval is

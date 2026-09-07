@@ -1324,9 +1324,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             outcomes a fresh disposition does and decides nothing the gate would have decided. A
                             checkout that is GONE stops all three before that seam, and what it costs differs by
                             what the park was waiting for: a reading can be asked for again, so the measurement
-                            park re-parks saying the commit is not on this host, while re-parking the
-                            authorization one would take its reason off and move the watermark past the command
-                            still standing -- so that road holds exactly as found, writing nothing
+                            park lets the seam park under a reason of its own, while the seam's reason would
+                            take the authorization park's off and its notice would move the watermark past the
+                            command still standing -- so that road asks the seam's own questions first, the
+                            worktree on this host and its tree provably carrying nothing loose, and holds
+                            exactly as found wherever the answer is no
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names
@@ -1647,9 +1649,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the records standing beside them; the two bases that gesture IS behind are named as
                             one group, since what a reader decides is whether a debt has to be revalidated
                             rather than which owner granted it, and the one write the implementing seam mints a
-                            debt through -- carrying the grounds of an approval already standing for that very
-                            commit and recording `unmeasured` where none does, so the publication and the guard
-                            that refuses a moved checkout leave one debt rather than two -- plus
+                            debt through, so the publication and the guard that refuses a moved checkout leave
+                            one debt rather than two. That write never INVENTS grounds: an approval already
+                            standing for the very commit is carried as it reads, an unknown one included, since
+                            promoting a legacy record to `unmeasured` would turn "fall back to the exemption"
+                            into debt this workflow owns and nobody would revalidate; and where none stands the
+                            grounds come off the exemption CLAIM -- presence rather than readability, so a field
+                            a hand edit truncated still leaves the adjudication's debt -- falling to
+                            `unmeasured` only on an issue carrying no such field at all -- plus
                             the one park shape every unreadable reading takes, worded on the side of publication it
                             was taken on, the typed failure both sinks carry under the stage the reading happened in
                             -- carrying the step that stopped and the line it wrote wherever the refusal was a
