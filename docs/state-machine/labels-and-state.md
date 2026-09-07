@@ -1809,9 +1809,8 @@ rather than preserving.
   handoff staged second, so no comment a write could land from ever carries both. The count is what the
   `:package: squashed N commits to 1` notice is worded from, so a notice that was owed and did not post leaves it
   standing; and past the relabel the issue belongs to `documenting`, which never runs the recovery that would
-  answer a claim left there. A tick that dies before that
-  write comes back to the same branch and the same answer — an already-published collapse is finished as the leased
-  no-op it is, and an untouched branch is squashed afresh.
+  answer a claim left there. A tick that dies before that write comes back to the same branch and the same answer —
+  an already-published collapse is finished as the leased no-op it is, and an untouched branch is squashed afresh.
 - **Settled handoff.** `late_collapse_handoff_sha` is what that write leaves in the claim's place, on the
   [`handoffs`](../../orchestrator/workflow/late_split/handoffs.py) owner beside the group above rather than among
   it, and it exists for the one boundary that group cannot cover: the relabel is a second call, and an issue left on
