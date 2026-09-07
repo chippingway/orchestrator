@@ -97,6 +97,13 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
 def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
     """Retire the generation a small candidate never needed, and publish.
 
+    The debt it leaves is recorded as this gate's own READING, which is what
+    makes spending it a repeat rather than a bypass: the count came back at or
+    below the ceiling, so nobody's permission was involved and the tick that
+    comes back after a crash owes nobody a question before it pushes. The
+    owner granting an approval is the only one that can say that, which is why
+    the basis is written here rather than inferred by whoever reads it.
+
     The record is dropped rather than left standing, and it has to be: a
     frozen candidate freezes this branch out of the ordinary base refresh, and
     a generation carried into the stages that close the issue is one a later
@@ -134,7 +141,10 @@ def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
         generation.threshold,
     )
     _parks._approve(
-        gate.state, generation.candidate_sha, _frozen_lease(gate),
+        gate.state,
+        generation.candidate_sha,
+        _frozen_lease(gate),
+        _parks.LateApprovalBasis.READING,
     )
     return _retired(gate, generation, _late_state.read_late_spends(gate.state))
 
@@ -485,6 +495,13 @@ def _stages_unmeasured_debt(
     Answering rather than writing is also what keeps the caller's write
     honest: an owner that staged nothing has nothing of this to make durable
     and says so, instead of spending a request on a comment it did not change.
+
+    What the debt RESTS on is the UNMEASURED basis, which is what every road
+    reaching here is: a rewrite permit, a supersession the switch let past, a
+    receipt the remote already carries. Each of those is a record this
+    workflow made for itself and re-derives on the next tick, so it answers
+    for its own bypass and nothing about the debt it leaves has to be
+    revalidated before the tick after a crash spends it.
     """
     if _parks._approved_commit(gate.state) == candidate_sha:
         return False
@@ -495,7 +512,9 @@ def _stages_unmeasured_debt(
         "standing at %s; recording the debt before the push that pays it",
         gate.issue.number, candidate_sha, lease,
     )
-    _parks._approve(gate.state, candidate_sha, lease)
+    _parks._approve(
+        gate.state, candidate_sha, lease, _parks.LateApprovalBasis.UNMEASURED,
+    )
     _late_state.write_late_spends(gate.state, gate.spends.fields)
     return True
 

@@ -53,7 +53,6 @@ from orchestrator.workflow.stages.implementing import (
     handoff as _handoff,
     late_parks as _late_parks,
     models as _models,
-    state as _state,
 )
 
 log = logging.getLogger("orchestrator.workflow")
@@ -153,11 +152,13 @@ def _recorded_intent(
     it is right up to the moment the push lands -- the same field an approval
     writes, spent by the same handoff, and read by the same pre-spawn proof if
     this tick does not get that far. A record already naming it is left alone,
-    which is every road the gate proved and decided a commit on.
+    which is every road the gate proved and decided a commit on, and which is
+    also what keeps the grounds those roads recorded: the write below is for a
+    debt this owner is minting, not for one it is re-asserting.
     """
     if _late_parks._approved_commit(state) == published:
         return published
-    state.set(_state._APPROVED_SHA, published)
+    _owes_the_handoff(state, published)
     gh.write_pinned_state(issue, state)
     return published
 
@@ -257,12 +258,23 @@ def _owes_the_handoff(
 ) -> None:
     """Record the commit a checkout this stage may not hand on still owes.
 
-    The commit and no lease, which is what an INITIAL publication can promise:
-    the push above is the one that opened this pull request, and the head the
+    The whole approval group rather than the commit alone, because that is
+    what a later tick reads it as: a commit with a lease left over from some
+    other attempt beside it is the pair disagreeing with itself, and one with
+    no account of its grounds is a debt whose provenance the tick that spends
+    it has to guess.
+
+    The lease is empty, which is what an INITIAL publication can promise: the
+    push above is the one that opened this pull request, and the head the
     quiet republication would be pinned to is whatever that push reads off the
     remote for itself when it runs. A pull request the remote already carried
     is the other side of the gate, and it records both -- the reconciliation
     ahead of every handler reads the pair as the claim it is, and half of one
     there is damage rather than a debt.
+
+    Which grounds it rests on, and the carrying rule behind them, belong to
+    the approval group's own owner -- this seam has a second caller in the
+    guard that refuses a moved checkout, and a debt written two ways would be
+    two debts.
     """
-    state.set(_state._APPROVED_SHA, published)
+    _late_parks._owes_a_publication(state, published)

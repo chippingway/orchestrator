@@ -147,7 +147,10 @@ def granted_state() -> dict:
     _rewrites.record_rewrite_authorization(
         state, GRANTED_REPLAY, CONTRIBUTION_DIGEST,
     )
-    _parks._approve(state, REPLAYED_HEAD, ADJUDICATED_HEAD)
+    _parks._approve(
+        state, REPLAYED_HEAD, ADJUDICATED_HEAD,
+        _parks.LateApprovalBasis.UNMEASURED,
+    )
     return state.data
 
 

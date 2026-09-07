@@ -319,7 +319,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             on, since the object the rewrite produced is on no remote yet and a verdict rotated
                             onto it there would be stranded by a push that failed. What SPENDS a permission is
                             `record_rewrite_publication`, staged into the write that receipts the landed push: the
-                            exemption, the identity beside it, and the phase move to `published` in one statement,
+                            exemption, the identity beside it, the operator authorization that made that exemption
+                            a bypass, and the phase move to `published` in one statement,
                             since a reader is entitled to find them agreeing. Both writes live here rather than at
                             the seam that decides, so the reader is the writer's own gate -- a publication is
                             recorded only over a permission this build can read back whole and still finds
@@ -356,7 +357,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             have taken anyway. The write refuses the same terms rather than recording them and replaces
                             the whole group in one statement, so a record is never half about one candidate and half
                             about another; every other field on the pinned comment, an unknown one and a legacy
-                            exemption group included, is left verbatim by both the write and the clear
+                            exemption group included, is left verbatim by both the write and the clear. What the
+                            gate reads it FOR is the half of a bypass the exemption is not, so it moves with that
+                            exemption: `carry_publication_override` re-points the pair onto the commit a workflow
+                            rewrite produced -- the candidate and the base, and no other term, since the size, the
+                            ceiling and the comment are what a human decided and the digest already describes the
+                            rewritten pair -- while a comment with no readable authorization on it, and one about
+                            some other commit, are each left exactly as found. The terms a caller offers answer for
+                            themselves through `unusable_terms`, so a caller that has not decided to record yet
+                            gets the same refusal the write would have raised
     collapses.py            the three terms a squash says it is about to collapse, written before the reset that
                             destroys them and deliberately outside the group a cleared generation drops: the head
                             being collapsed -- the rollback target, and the head the force-push behind it is leased
@@ -1588,7 +1597,21 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             one is where the step a notice named is dropped -- every failure-prone step is behind
                             that line, and the record it clears from is the one an oversized candidate is
                             adjudicated from
-      late_parks.py         the one park shape every unreadable reading takes, worded on the side of publication it
+      late_parks.py         the approval group -- the commit a publication is owed, the head it is pinned to, and
+                            the bounded basis saying which owner granted it, so a later reader tells this gate's
+                            own count from a debt an operator's gesture is behind rather than inferring it from
+                            the records standing beside them; the two bases that gesture IS behind are named as
+                            one group, since what a reader decides is whether a debt has to be revalidated
+                            rather than which owner granted it, and the one write the implementing seam mints a
+                            debt through, so the publication and the guard that refuses a moved checkout leave
+                            one debt rather than two. That write never INVENTS grounds: an approval already
+                            standing for the very commit is carried as it reads, an unknown one included, since
+                            promoting a legacy record to `unmeasured` would turn "fall back to the exemption"
+                            into debt this workflow owns and nobody would revalidate; and where none stands the
+                            grounds come off the exemption CLAIM -- presence rather than readability, so a field
+                            a hand edit truncated still leaves the adjudication's debt -- falling to
+                            `unmeasured` only on an issue carrying no such field at all -- plus
+                            the one park shape every unreadable reading takes, worded on the side of publication it
                             was taken on, the typed failure both sinks carry under the stage the reading happened in
                             -- carrying the step that stopped and the line it wrote wherever the refusal was a
                             reading, and the family alone where it was a record nobody may act on --
@@ -1633,7 +1656,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             where the publication stands and only the handoff stops so review never reads the
                             descendant; every one of them parked under the one reason a moved checkout earns,
                             named after the commit to go back to or the paths to clear, and settled by the
-                            worktree rather than by a reply
+                            worktree rather than by a reply. The moved-head refusal writes the whole approval
+                            group as it parks, through the same owner the publication mints one with: it stands
+                            exactly where that publication would have recorded the debt this seam owes, so a
+                            candidate a receipt or an exemption admitted would otherwise be parked as a commit
+                            with no account of what its push rests on
       checkout_recovery.py  what a handoff refused for its checkout waits to see back, and the only park in
                             this stage settled by a worktree rather than by a reply: the commit the size gate
                             approved under the checkout's own head, with a provably clean tree around it --

@@ -27,6 +27,9 @@ from orchestrator.workflow.late_split.models import LateFailure
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
+from orchestrator.workflow.stages.implementing import (
+    late_parks as _gate_parks,
+)
 from tests.workflow.fixtures import LABEL_DECOMPOSING, LABEL_IMPLEMENTING
 from tests.workflow.stages.decomposition.late_settlement_support import (
     ERROR,
@@ -104,6 +107,20 @@ class SingleReconciliationTest(GuardedLateCase, unittest.TestCase):
         self._settle()
 
         self.assertEqual(self._pinned().get(KEYS.approved_sha), CANDIDATE_SHA)
+
+    def test_the_debt_says_who_is_behind_it(self) -> None:
+        # This write and the exemption beside it go down in one breath, so the
+        # approval is that adjudication wearing another field and is worth
+        # exactly what the exemption is worth. Left for a later reader to
+        # infer from the records around it, a debt this gate's own count
+        # earned on an issue that happens to carry an exemption would read the
+        # same, and be refused against a base that has moved since.
+        self._settle()
+
+        self.assertEqual(
+            self._pinned().get(KEYS.approved_basis),
+            str(_gate_parks.LateApprovalBasis.ADJUDICATION),
+        )
 
     def test_the_generation_it_settles_is_retired(self) -> None:
         # Left standing, it would keep pinning the decomposing label and keep

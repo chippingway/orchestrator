@@ -45,6 +45,7 @@ from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github import client as _client, pinned_state as _pinned_state
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.stages.implementing import (
+    late_parks as _late_parks,
     models as _models,
     state as _state,
 )
@@ -216,7 +217,14 @@ def _moved_off_the_candidate(
     # park names a SHA in prose and the operator who does exactly the right
     # thing gets no acknowledgement for it: ordinary ticks stay parked and a
     # bare continue is refused as one with no guidance on it.
-    state.set(_state._APPROVED_SHA, approved.candidate_sha)
+    #
+    # The whole approval group, because this refusal stands exactly where the
+    # publication would have minted one: the debt an unmeasured candidate owes
+    # on this seam is written past this line, and a candidate admitted by a
+    # receipt or an exemption reaches here with nothing yet recorded. Written
+    # as the commit alone, the tick that comes back to this park would have to
+    # infer whose decision the push it is about to make rests on.
+    _late_parks._owes_a_publication(state, approved.candidate_sha)
     return True
 
 

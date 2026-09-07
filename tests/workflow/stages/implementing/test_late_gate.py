@@ -20,6 +20,7 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit
+from orchestrator.workflow.stages.implementing import late_parks as _parks
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_VALIDATING,
@@ -32,6 +33,11 @@ from tests.workflow.fixtures import (
 from tests.workflow.stages.implementing import late_gate_test_support as support
 
 _OTHER_SHA = "d" * SHA_LENGTH
+_KEY_APPROVED_SHA = "late_approved_sha"
+# The stage's own receipt, which admits a commit the remote already carries
+# without a reading -- and which leaves this seam's debt to the publication.
+_KEY_RECEIPT_SHA = "implementing_published_sha"
+_KEY_APPROVED_BASIS = "late_approved_basis"
 _DECOMPOSING = (support.GATE_ISSUE_NUMBER, LABEL_DECOMPOSING)
 _STAGE_IMPLEMENTING = "implementing"
 _DECOMPOSE = "DECOMPOSE"
@@ -46,6 +52,15 @@ _PUBLISHED_SHA = "late_published_sha"
 _MOVING_HEAD = (
     FrozenCommit(sha=MEASURED_CANDIDATE_SHA),
     FrozenCommit(sha=_OTHER_SHA),
+)
+
+# The same race one reading further in, for an issue whose record already
+# names a commit: the reconciliation ahead of the spawn proves it before the
+# gate sees the issue at all, so the descendant is the third answer rather
+# than the second.
+_RECONCILED_THEN_MOVING = (
+    FrozenCommit(sha=MEASURED_CANDIDATE_SHA),
+    *_MOVING_HEAD,
 )
 
 class LateGateVerdictTest(support._GateCase, unittest.TestCase):
@@ -221,6 +236,78 @@ class LateGatePushTest(support._GateCase, unittest.TestCase):
         )
 
 
+class MovedCheckoutDebtTest(support._GateCase, unittest.TestCase):
+    """What the park a moved checkout takes records about the push it owes.
+
+    The refusal stands exactly where the publication would have minted that
+    debt, so the group it writes is the only account a later tick has of what
+    the push it is about to make rests on -- and the one thing it may not do
+    is invent one the record never carried.
+    """
+
+    def test_a_moved_checkout_says_what_it_rests_on(self) -> None:
+        # The refusal stands exactly where the publication would have minted
+        # the debt this seam owes: a candidate the RECEIPT admitted skipped
+        # the reading, the gate's own debt writer declines here because no
+        # publication was frozen to lease a push against, and the intent that
+        # would have recorded one is never reached. Written as the commit
+        # alone, the tick that comes back to this park would have to infer
+        # whose decision the push it is about to make rests on.
+        self._seed(**{_KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA})
+
+        mocks = self._run_gate(
+            added_lines=support.OVERSIZED_ADDITIONS,
+            candidate_commit=_MOVING_HEAD,
+        )
+
+        self._assert_unmeasured(mocks)
+        self._assert_held(mocks)
+        pinned = self._pinned()
+        self.assertEqual(pinned[support.PARK_REASON], _CANDIDATE_MOVED)
+        self.assertEqual(pinned[_KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertEqual(
+            pinned[_KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.UNMEASURED),
+        )
+
+    def test_a_legacy_debt_is_not_upgraded(self) -> None:
+        # The shape an older build left: the exempt commit named as owed a
+        # push, with no account of what that debt rests on. Stamped
+        # `unmeasured` as the park goes up, it would stop reading as unknown
+        # and become debt this workflow owns -- so the checkout coming back
+        # would publish an adjudicated commit without anything revalidating
+        # the operator authorization behind it.
+        self._seed(**{
+            support.KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA,
+            _KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+        })
+
+        self._run_gate(
+            added_lines=support.OVERSIZED_ADDITIONS,
+            candidate_commit=_RECONCILED_THEN_MOVING,
+        )
+
+        pinned = self._pinned()
+        self.assertEqual(pinned[support.PARK_REASON], _CANDIDATE_MOVED)
+        self.assertEqual(pinned[_KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertIsNone(pinned[_KEY_APPROVED_BASIS])
+
+    def test_a_restored_checkout_publishes_on_it(self) -> None:
+        # And what the complete record buys: the poll after an operator puts
+        # the worktree back reads one commit owed a push and the grounds it is
+        # owed on, and publishes without asking the size question again.
+        self._seed(**{_KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA})
+        self._run_gate(
+            added_lines=support.OVERSIZED_ADDITIONS,
+            candidate_commit=_MOVING_HEAD,
+        )
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_no_agent(mocks)
+        self._assert_unmeasured(mocks)
+        self._assert_published(mocks)
+
 class LateGateTelemetryTest(support._GateCase, unittest.TestCase):
     """One call, two streams, and a record that joins without pinned state."""
 
@@ -374,6 +461,48 @@ class LateGateSwitchTest(support._GateCase, unittest.TestCase):
         self._assert_measured(mocks)
         self._assert_held(mocks)
         self.assertIn(_DECOMPOSING, self.github.label_history)
+
+    def test_the_debt_it_mints_says_what_it_rests_on(self) -> None:
+        # The switch is the one road that proves no candidate at all, so the
+        # commit the debt names comes off the CHECKOUT rather than off a gate
+        # verdict -- and the publication mints the approval itself. Read where
+        # a crash leaves one standing: the push failed, so nothing spent it,
+        # and the tick that comes back to it would otherwise have to guess
+        # whether a human's gesture stands behind a debt it spends without
+        # asking anybody.
+        with patch.object(config, _DECOMPOSE, False):
+            self._run_gate(push_branch=False)
+
+        pinned = self._pinned()
+        self.assertEqual(pinned[_KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertEqual(
+            pinned[_KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.UNMEASURED),
+        )
+
+    def test_a_restart_publishes_it_without_measuring(self) -> None:
+        # And what the record buys, end to end. A fresh process reads the
+        # comment that crash left -- the park answered, the switch since
+        # turned back on, a count seeded well past the ceiling -- and finds
+        # one commit named as owed a push. Read as work nobody has ruled on
+        # instead, the branch the first tick was publishing would be routed
+        # to adjudication.
+        with patch.object(config, _DECOMPOSE, False):
+            self._run_gate(push_branch=False)
+        self._seed(**{
+            key: written for key, written in self._pinned().items()
+            if key not in (support.AWAITING_HUMAN, support.PARK_REASON)
+        })
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_no_agent(mocks)
+        self._assert_unmeasured(mocks)
+        self._assert_published(mocks)
+        self.assertNotIn(_DECOMPOSING, self.github.label_history)
+        pinned = self._pinned()
+        self.assertIsNone(pinned[_KEY_APPROVED_SHA])
+        self.assertIsNone(pinned[_KEY_APPROVED_BASIS])
 
 
 if __name__ == "__main__":

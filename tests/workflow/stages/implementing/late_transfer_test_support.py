@@ -340,7 +340,10 @@ def granted(state, **overrides) -> _rewrites.LateRewrite:
     """
     permitted = rewrite(**overrides)
     _rewrites.record_rewrite_authorization(state, permitted, ACCEPTED_DIGEST)
-    _parks._approve(state, permitted.to_sha, permitted.lease)
+    _parks._approve(
+        state, permitted.to_sha, permitted.lease,
+        _parks.LateApprovalBasis.UNMEASURED,
+    )
     return permitted
 
 
