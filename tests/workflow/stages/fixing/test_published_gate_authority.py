@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import unittest
 
-from tests.workflow.fixtures import _legacy_exemption
+from tests.workflow.fixtures import _authorize_command, _legacy_exemption
 from tests.workflow.stages.fixing import (
     fixing_test_support as fixing,
     published_gate_support as support,
@@ -36,6 +36,16 @@ patch = fixing.patch
 # tells the remote standing on the accepted commit from somebody else's push
 # landing there.
 _KEY_APPROVED_SHA = support.KEY_APPROVED_SHA
+
+# The head that approval was pinned to, which is what makes the debt one the
+# reconciliation ahead of every handler goes back for -- the only road a
+# parked issue on these stages has back to the gate.
+_KEY_APPROVED_LEASE = support.KEY_APPROVED_LEASE
+
+_KEY_OVERRIDE_CANDIDATE_SHA = "late_override_candidate_sha"
+
+# The comment a human writes the authorization in, past the park's own notice.
+_AUTHORIZING_COMMENT = 7300
 
 PARK_UNAUTHORIZED_EXEMPTION = "late_unauthorized_exemption"
 
@@ -99,6 +109,67 @@ class UndeliveredExemptionTest(unittest.TestCase, _SizeGateFixtureMixin):
             pinned[fixing.PARK_REASON], PARK_UNAUTHORIZED_EXEMPTION,
         )
         self.assertEqual(self.scenario.github.label_history, [])
+
+
+class ParkedAcrossPollsTest(unittest.TestCase, _SizeGateFixtureMixin):
+    """The park a published pull request takes, and the poll behind it.
+
+    Nothing on these stages goes back for a parked candidate except the debt
+    reconciliation the dispatcher runs ahead of every handler, so both halves
+    of the recovery live in one poll: the guards in front of it have to leave
+    the issue where the park put it, and the command a human writes has to
+    reach the gate through it.
+    """
+
+    def setUp(self) -> None:
+        self.scenario = self._seed_fix_round(**{
+            **_legacy_exemption(),
+            _KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+            _KEY_APPROVED_LEASE: fixing.PR_HEAD_SHA,
+        })
+        self.mocks = self._measured(added_lines=PAST_THE_CEILING)
+
+    def test_the_poll_behind_it_leaves_the_label(self) -> None:
+        # A record answering "oversized" is what this workflow means by an
+        # adjudication in flight: the dispatcher puts `workflow:decomposing`
+        # back over one before any stage sees the issue, and the park would be
+        # gone by the time anything could answer it. So the count the park
+        # took is deliberately not durable, and this is where that bites.
+        self._measured(added_lines=PAST_THE_CEILING)
+
+        self.assertEqual(self.scenario.github.label_history, [])
+        self.assertEqual(
+            self._pinned(self.scenario)[fixing.PARK_REASON],
+            PARK_UNAUTHORIZED_EXEMPTION,
+        )
+
+    def test_a_later_command_publishes(self) -> None:
+        # The command reaches the gate on the road the debt reconciliation
+        # opens, which is the only one these stages have while the park
+        # stands. What it earns is the record and the push in one poll.
+        self._authorize()
+
+        mocks = self._measured(added_lines=PAST_THE_CEILING)
+
+        self._assert_pushed_once(mocks)
+        pinned = self._pinned(self.scenario)
+        self.assertEqual(
+            pinned[_KEY_OVERRIDE_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA,
+        )
+        self.assertFalse(pinned[fixing.AWAITING_HUMAN])
+
+    def _authorize(self) -> None:
+        """One trusted whole-comment authorization past the park's notice."""
+        self.scenario.issue.comments.append(fixing.FakeComment(
+            id=_AUTHORIZING_COMMENT,
+            body=_authorize_command(MEASURED_CANDIDATE_SHA),
+            user=fixing.FakeUser(fixing.ALICE),
+        ))
+
+    def _measured(self, **run_options):
+        """One whole poll of this issue under the fixture's own ceiling."""
+        with patch.object(config, support.MAX_ADDED_LINES, CEILING):
+            return self._poll(self.scenario, **run_options)[1]
 
 
 if __name__ == "__main__":

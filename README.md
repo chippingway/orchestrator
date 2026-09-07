@@ -244,6 +244,8 @@ where you put it rather than greeted a second time, so nothing runs again until 
   issue takes wherever it publishes from when its committed candidate carries an exemption an older build recorded
   without an operator's decision behind it. The record is left exactly as found either way — nothing is deleted or
   rewritten to take that park — and a change measuring at or below the ceiling publishes without the command at all.
+  On that park the last thing you write is what counts: a command you correct, and guidance you then decide against,
+  are both superseded by the command posted after them.
   `<commit>` is the candidate's full git object id — an
   abbreviation is refused, since nothing here ever writes one. The park comment names the commit, and spells the whole
   command out ready to copy. Nothing else authorizes a publication:

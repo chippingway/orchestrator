@@ -237,13 +237,13 @@ def _holds_candidate(gate: _records._Gate) -> _records._GateVerdict:
     found it, rather than durably unparking an issue whose reading still has
     not happened.
 
-    One park IS answered here, and it is the one no reading could answer: an
-    adjudicated candidate held because nothing says a human authorized it.
-    What ends that is a command somebody wrote, so it is read once the
-    candidate is proved and before anything is decided about it -- at this
-    seam rather than at one stage's own recovery, since the park is taken
-    wherever a candidate is published from and every one of those seams has to
-    be able to end it.
+    One park IS answered past here, and it is the one no reading could answer:
+    an adjudicated candidate held because nothing says a human authorized it.
+    What ends that is a command somebody wrote, and it is read where the
+    reading is -- `late_verdict` behind this owner -- because the terms an
+    authorization is recorded on are the pair that was counted, the count, and
+    the ceiling it was counted against. Answering it at the door instead would
+    write those from a record rather than from a reading.
     """
     recorded = _records._entered(
         gate, _late_state.read_late_generation(gate.state),
@@ -255,7 +255,6 @@ def _holds_candidate(gate: _records._Gate) -> _records._GateVerdict:
         return _unnameable(gate, recorded, candidate)
     if _moved_off_the_caller(gate, recorded, candidate.sha):
         return _records._HELD
-    _authority._authorized_by_a_reply(gate, candidate.sha)
     return _decided(gate, recorded, candidate.sha)
 
 
@@ -346,7 +345,7 @@ def _approved_on_a_reading(
     """
     if _parks._approved_commit(gate.state) != candidate_sha:
         return False
-    if _authority._unauthorized_exemption(gate.state, candidate_sha):
+    if _authority._unauthorized_debt(gate.state, candidate_sha):
         return False
     return not _transfer._licensed_by_a_permit(gate.state)
 

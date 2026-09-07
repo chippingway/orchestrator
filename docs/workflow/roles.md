@@ -911,10 +911,17 @@ whose authorization was hand-edited or half-written. The candidate there is meas
 below the ceiling it publishes on its count, and past it the issue parks `late_unauthorized_exemption` rather than
 going back to an adjudication that has already answered. The park deletes nothing, so the exemption an
 authorization would be checked against is still there, and it is answered by the same whole-comment command under
-the same trust and staleness rules — read at the size gate itself, so whichever seam took the park can end it. What
-that command earns there is the same `late_override_*` group written from the gate's own reading: the pair it froze,
-the additions it counted, the ceiling they were counted against, the digest recomputed between that pair, and the
-comment it was written in. The one candidate the park never holds is a commit the pull request already stands on,
+the same trust and staleness rules — read where the reading is, so whichever seam took the park can end it: on
+`workflow:implementing` the parked tick reaches it through the disposition's own recovery, and on the five stages
+that publish onto an open pull request through the debt reconciliation the dispatcher runs ahead of every handler.
+What that command earns there is the same `late_override_*` group written from the gate's own reading: the pair it
+froze, the additions it counted, the ceiling they were counted against, the digest recomputed between that pair, and
+the comment it was written in — and the park itself keeps the pair and not the count, since a generation answering
+*oversized* is what the dispatcher restores `workflow:decomposing` over. The LAST fresh trusted reply decides, unlike
+the adjudication park above, where a whole conversation is read at once: guidance written after a command outranks
+it, a command written after guidance replaces it, and a command naming another commit is answered under a scoped
+receipt and consumed — those five stages move the watermark by no other means, so a reply left standing would refuse
+every command behind it. The one candidate the park never holds is a commit the pull request already stands on,
 where the push would move nothing and only the bookkeeping behind a publication that has happened is left.
 
 Everything the command does not prove is answered on the thread and consumed — the human asked for something this

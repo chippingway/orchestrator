@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from enum import StrEnum
 from types import MappingProxyType
 
 from github.Issue import Issue
@@ -76,6 +77,30 @@ from orchestrator.workflow.stages.implementing import (
 log = logging.getLogger("orchestrator.workflow")
 
 PARK_MEASUREMENT_FAILED = "late_measurement_failed"
+
+
+class LateApprovalBasis(StrEnum):
+    """What one approval on this issue rests on, said by the owner granting it.
+
+    A bounded vocabulary rather than a flag, because the readers ask different
+    questions of it and a boolean would have to be renamed the first time a
+    third road approved anything.
+
+    `READING` is this gate's own count coming back at or below the ceiling.
+    `UNMEASURED` is a publication that skipped the count on a record the gate
+    recognized -- an exemption an operator authorized, a rewrite permit, a
+    switched-off candidate, a receipt already on the remote. `ADJUDICATION` is
+    the publication debt an authorized settlement records beside the exemption
+    it writes, which is the one an unreadable authorization takes down with it.
+
+    A value from anywhere else, and an approval an older binary wrote with no
+    basis at all, read back as no basis -- and what a reader does with that is
+    fall back to the exemption, which is the only evidence such a record left.
+    """
+
+    READING = "reading"
+    UNMEASURED = "unmeasured"
+    ADJUDICATION = "adjudication"
 
 # The steps a lost reading is retried quietly for, and the only two. Both name
 # the transport between this host and the base -- a remote that would not
@@ -671,16 +696,47 @@ def _approved_lease(state: PinnedState) -> str:
     ) or ""
 
 
-def _approve(state: PinnedState, candidate_sha: str, lease: str) -> None:
-    """Record the commit a publication is owed, and what it is pinned to.
+def _approved_basis(state: PinnedState) -> str:
+    """What the standing approval rests on, or "" where the record cannot say.
 
-    The pair is written together because it is spent together and means
+    Read fail-closed like every other late field: only a value this build's
+    own vocabulary carries reads back, so a hand edit and a spelling from
+    somewhere else are both "no basis" rather than a basis nothing checked.
+
+    "" is also the honest answer for an approval an older binary wrote, which
+    carried no basis at all. What a reader owes such a record is the answer it
+    can still defend -- the exemption beside it -- rather than a guess dressed
+    as provenance.
+    """
+    written = state.get(_state._APPROVED_BASIS)
+    if written in tuple(LateApprovalBasis):
+        return str(written)
+    return ""
+
+
+def _approve(
+    state: PinnedState,
+    candidate_sha: str,
+    lease: str,
+    basis: LateApprovalBasis,
+) -> None:
+    """Record the commit a publication is owed, what pins it, and its grounds.
+
+    The three are written together because they are spent together and mean
     nothing apart: a lease with no approval names a head nobody owes a push
-    for, and an approval whose lease was dropped is the one that force-pushes
-    over whatever the pull request has become.
+    for, an approval whose lease was dropped is the one that force-pushes over
+    whatever the pull request has become, and one whose basis was dropped is a
+    debt a later tick has to GUESS the provenance of -- which is the guess
+    that publishes an adjudication's debt as though this gate had counted it.
+
+    The basis is handed in rather than derived, because the owner granting an
+    approval is the only one that knows: the records standing around it are
+    the same on every road, and a reader can tell them apart only if the
+    writer said so.
     """
     state.set(_state._APPROVED_SHA, candidate_sha)
     state.set(_state._APPROVED_LEASE, lease or None)
+    state.set(_state._APPROVED_BASIS, str(basis))
 
 
 def _forget_approval(state: PinnedState) -> None:
@@ -694,6 +750,7 @@ def _forget_approval(state: PinnedState) -> None:
     """
     state.set(_state._APPROVED_SHA, None)
     state.set(_state._APPROVED_LEASE, None)
+    state.set(_state._APPROVED_BASIS, None)
     _late_state.write_late_spends(state, ())
 
 

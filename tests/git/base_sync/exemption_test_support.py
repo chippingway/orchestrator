@@ -37,6 +37,7 @@ from tests.git.base_sync.refresh_test_support import (
     ISSUE,
     _patched,
 )
+from tests.support.authorization import _authorize
 
 SHA_LENGTH = 40
 DIGEST_LENGTH = 64
@@ -122,13 +123,23 @@ def readings(test_case) -> Readings:
 
 
 def adjudicated(
-    test_case, *, identity: bool = True, accepted: str = BEFORE_SHA,
+    test_case,
+    *,
+    identity: bool = True,
+    authorized: bool = True,
+    accepted: str = BEFORE_SHA,
 ) -> None:
     """Record the verdict a settled `single` left, on the head it accepted.
 
     `identity=False` is the legacy shape: a comment written before the
     semantic record existed, so the exact commit is exempt and nothing on it
     says what that commit contributes.
+
+    `authorized=False` is the other legacy shape, one policy further back: an
+    exemption a `single` verdict recorded before an operator's own decision
+    was required at publication. An exemption is half a bypass, so a rewrite
+    of that commit earns no transfer and the replay is measured like any
+    other candidate.
 
     `accepted` is the commit a human ruled on, and it defaults to the head the
     rebase finds because that is the ordinary case rather than the rule. A
@@ -145,4 +156,6 @@ def adjudicated(
             candidate_sha=accepted,
             fingerprint=ACCEPTED_DIGEST,
         )
+    if authorized:
+        _authorize(state, accepted, ACCEPTED_BASE_SHA, ACCEPTED_DIGEST)
     test_case.gh.write_pinned_state(issue, state)

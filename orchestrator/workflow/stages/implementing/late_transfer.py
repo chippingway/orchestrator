@@ -17,8 +17,11 @@ So the exemption may MOVE, and this owner is the whole of what it may move on.
 A permit is granted only when every one of these holds, and the answer is a
 refusal the moment one does not:
 
-* the commit the rewrite came from is the exact commit this issue exempts, and
-  the semantic record beside it is whole -- the frozen pair the adjudication
+* the commit the rewrite came from is the exact commit this issue exempts, an
+  operator authorization stands behind that exemption -- it is half a bypass
+  without one, and a move would hand the rewrite a permission the accepted
+  commit never had -- and
+  the semantic record beside it is whole: the frozen pair the adjudication
   was taken between, the digest of what lay between them, and the scheme it
   was taken under;
 * the evidence names a rewrite kind this build authorizes, from a stage that
@@ -129,6 +132,7 @@ from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     formats as _formats,
+    overrides as _overrides,
     rewrites as _rewrites,
 )
 from orchestrator.workflow.stages.implementing import (
@@ -190,6 +194,10 @@ _REPLACED_PUBLICATION = (
 _MOVED_REMOTE = (
     "the force-push is leased against `{lease}` and pull request #{number} "
     "stands at `{standing}`"
+)
+
+_UNAUTHORIZED_EXEMPTION = (
+    "no operator authorization stands behind the exemption for `{accepted}`"
 )
 
 _UNREADABLE_AUTHORIZATION = (
@@ -406,6 +414,7 @@ def _permit(
     them for a transfer something cheaper has already refused.
     """
     for question in (
+        _unauthorized_exemption,
         _unusable_evidence,
         _unreadable_authorization,
         _disagreeing_publication,
@@ -421,6 +430,34 @@ def _permit(
         return permit
     disagreeing = _disagreeing_authorization(gate, permit.fingerprint)
     return _Permit(refusal=disagreeing) if disagreeing else permit
+
+
+def _unauthorized_exemption(
+    gate: _records._Gate, rewrite: _rewrites.LateRewrite,
+) -> str:
+    """Why the exemption this would move licenses nothing, or "".
+
+    An exemption is half a bypass: it says an ADJUDICATOR ruled the change one
+    coherent whole, and the operator authorization beside it is what says a
+    human agreed to publish past the ceiling. A commit only the exemption
+    names is one the ordinary gate measures, so moving that exemption onto a
+    rewrite would hand the rewritten commit a permission the accepted one
+    never had -- and this owner's grant is the one road that skips the reading
+    without any record naming the commit in advance.
+
+    Asked first because it costs one read of the pinned comment and because
+    every question behind it is about a move that may not happen anyway. The
+    record an older binary left is what reaches it: a `single` verdict wrote
+    the exemption alone before a human's own decision was required at
+    publication, and so does any comment whose authorization this build cannot
+    read back whole.
+
+    Refused, nothing moves and the rewritten commit is measured by the
+    ordinary cumulative gate exactly as every other refusal here leaves it.
+    """
+    if _overrides.is_authorized(gate.state, rewrite.from_sha):
+        return ""
+    return _UNAUTHORIZED_EXEMPTION.format(accepted=rewrite.from_sha)
 
 
 def _unreadable_authorization(

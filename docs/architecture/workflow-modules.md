@@ -1276,12 +1276,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             cannot read whole -- goes to the ordinary cumulative reading. Also what an oversized
                             reading of one earns: a park rather than a route back to the adjudication, since the
                             change has been ruled already and what is missing is the person, taken without deleting,
-                            migrating, or repairing a field and announced once per pair. And the park's own answer
+                            migrating, or repairing a field, announced once per pair, and taken without making the
+                            COUNT durable -- a generation answering "oversized" is what the dispatcher restores
+                            `workflow:decomposing` over, so a park carrying one would be relabelled out from under
+                            itself on the next poll. And the park's own answer
                             -- a trusted whole-comment `/orchestrator authorize-oversized <commit>` naming the
                             parked candidate, recorded from the gate's own reading (the pair it froze, the count it
                             took, the ceiling it was counted against, the digest recomputed between that pair, and
                             the comment it was written in) in the write that takes the park off and consumes the
-                            reply
+                            reply. The LAST fresh trusted reply is what decides, and a command naming another
+                            commit is answered under a scoped receipt and consumed rather than ignored: the seams
+                            that publish onto an open pull request move the watermark by no other means, so a reply
+                            left standing would refuse every command posted behind it. Also whether the debt on a
+                            commit is one an authorization has to stand behind, read off the approval's own
+                            recorded basis rather than inferred from the records beside it
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names
@@ -1412,7 +1420,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             own frozen tip answers the second of those beside it and covers more: a crash
                             between a push and its receipt leaves no receipt to date, and what says the pull
                             request carries the commit there is the reading this tick took of it
-      late_transfer.py      whether a rewrite may carry an adjudication's exemption onto the object it produced,
+      late_transfer.py      whether a rewrite may carry an adjudication's exemption onto the object it produced --
+                            asked first of the operator authorization behind that exemption, since a transfer is
+                            the one road past the reading no record names in advance and moving an exemption
+                            nothing authorizes would hand the rewrite a permission the accepted commit never had --
                             rather than have the same change measured past the same ceiling and adjudicated a
                             second time with a pull request already open over the work. A permit is granted only
                             over a whole semantic record whose exempt commit IS the one the rewrite came from,
@@ -1598,7 +1609,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             one is where the step a notice named is dropped -- every failure-prone step is behind
                             that line, and the record it clears from is the one an oversized candidate is
                             adjudicated from
-      late_parks.py         the one park shape every unreadable reading takes, worded on the side of publication it
+      late_parks.py         the approval group -- the commit a publication is owed, the head it is pinned to, and
+                            the bounded basis saying which owner granted it, so a later reader tells this gate's own
+                            count from an authorized settlement's publication debt rather than inferring it from the
+                            records standing beside them -- plus
+                            the one park shape every unreadable reading takes, worded on the side of publication it
                             was taken on, the typed failure both sinks carry under the stage the reading happened in
                             -- carrying the step that stopped and the line it wrote wherever the refusal was a
                             reading, and the family alone where it was a record nobody may act on --

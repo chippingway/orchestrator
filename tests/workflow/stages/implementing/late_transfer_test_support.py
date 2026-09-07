@@ -31,7 +31,6 @@ from orchestrator.git.measurement.models import (
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
-    overrides as _overrides,
     rewrites as _rewrites,
 )
 from orchestrator.workflow.stages.implementing import (
@@ -40,6 +39,7 @@ from orchestrator.workflow.stages.implementing import (
     state as _state,
 )
 from orchestrator.workflow.state import WorkflowLabel
+from tests.support.authorization import _authorize
 from tests.support.fakes import (
     FakeGitHubClient,
     FakeLabel,
@@ -79,13 +79,6 @@ LEASED_SHA = "9" * SHA_LENGTH
 ACCEPTED_DIGEST = "e" * DIGEST_LENGTH
 OTHER_DIGEST = "f" * DIGEST_LENGTH
 
-# The terms the operator authorization beside the exemption was granted on:
-# the reading that made the accepted candidate oversized, and the comment the
-# decision was written in. An exemption alone lets nothing past the gate, so a
-# settled `single` leaves both.
-AUTHORIZED_ADDITIONS = 4200
-AUTHORIZED_THRESHOLD = 4000
-AUTHORIZING_COMMENT_ID = 5150
 
 WORKTREE = Path("/tmp/orchestrator-test-late-transfer")
 
@@ -194,17 +187,7 @@ def adjudicated(
     state = github.read_pinned_state(issue)
     _exemption.record_exemption(state, ACCEPTED_SHA)
     if authorized:
-        _overrides.record_publication_override(
-            state,
-            _overrides.LateOversizedPublication(
-                candidate_sha=ACCEPTED_SHA,
-                base_sha=base,
-                fingerprint=digest,
-                additions=AUTHORIZED_ADDITIONS,
-                threshold=AUTHORIZED_THRESHOLD,
-                comment_id=AUTHORIZING_COMMENT_ID,
-            ),
-        )
+        _authorize(state, ACCEPTED_SHA, base, digest)
     if identity:
         _exemption.record_semantic_identity(
             state,
@@ -368,7 +351,10 @@ def granted(state, **overrides) -> _rewrites.LateRewrite:
     """
     permitted = rewrite(**overrides)
     _rewrites.record_rewrite_authorization(state, permitted, ACCEPTED_DIGEST)
-    _parks._approve(state, permitted.to_sha, permitted.lease)
+    _parks._approve(
+        state, permitted.to_sha, permitted.lease,
+        _parks.LateApprovalBasis.UNMEASURED,
+    )
     return permitted
 
 

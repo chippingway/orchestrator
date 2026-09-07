@@ -328,6 +328,7 @@ def _recorded_debt(context: _LateContext) -> None:
         context.state,
         context.generation.candidate_sha,
         _settled_lease(context),
+        _gate_parks.LateApprovalBasis.ADJUDICATION,
     )
 
 

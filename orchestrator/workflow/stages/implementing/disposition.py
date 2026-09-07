@@ -366,24 +366,26 @@ def _try_recover_unauthorized_exemption_park(
     than a reading, so what settles it is the command they wrote -- and the
     work is committed already, so this must never reach the spawn below.
 
-    The command is recognized here and acted on inside the gate, which is
-    where the terms of an authorization come from: the pair that was counted,
-    the count, and the ceiling it was counted against are the very record that
-    park persisted, and only the owner holding it can write an authorization a
-    later reader could hold to a decision. So this owes the routing and
-    nothing else -- the committed work goes back through the same publication
-    seam it came out of, and the gate's own answer decides what happens.
+    The command is recognized here and acted on where the READING is, because
+    that is where the terms of an authorization come from: an operator
+    authorizes a change of this size against this ceiling, and only the owner
+    that counts one can say either. So this owes the routing and nothing else
+    -- the committed work goes back through the same publication seam it came
+    out of, and the gate answer decides what happens, including the sentence a
+    command naming another commit earns.
 
-    Every other reply is left alone. A comment carrying words is guidance,
-    which resumes the developer against it, and one naming another commit is
-    not an authorization for the candidate this issue is holding.
+    A reply whose last word is not the command is left alone, and it is the
+    ordinary resume that feeds it to the developer. Only the seams that
+    publish onto a pull request the remote already carries reach the gate
+    without passing a stage handler at all, and their own debt reconciliation
+    is what brings this park back there.
 
     The park flags are deliberately NOT cleared here. The write that records
     the authorization is the write that takes them off, so a tick that could
     not fingerprint the pair leaves the issue exactly as parked as it found
     it, rather than durably unparking an issue nothing published.
     """
-    if not _late_authority._answers_the_authorization_park(gh, issue, state):
+    if _late_authority._read_the_park(gh, issue, state) is None:
         return False
     wt = _worktree_paths._worktree_path(spec, issue.number)
     if not wt.exists():

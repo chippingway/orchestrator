@@ -643,16 +643,34 @@ The keys that matter for the state machine fall into a few groups:
   question and risk a `split` cutting children out of work somebody decided ships whole — what is missing is the
   human, not the verdict. Nothing is deleted, migrated, or repaired to take it: the exemption, its identity, the
   approval that names the commit a push is owed for, and every other field are left exactly as found, since the
-  record is what an authorization would be checked against. What answers it is a trusted whole-comment
-  `/orchestrator authorize-oversized <commit>` naming the parked candidate, read at the gate itself rather than at
-  one stage's recovery so that whichever seam took the park can end it. What that command earns is the
-  `late_override_*` group written from the gate's OWN reading — the pair it froze, the additions it counted, and the
-  ceiling they were counted against — beside the digest recomputed between that pair and the comment the
+  record is what an authorization would be checked against.
+
+  What the park does **not** make durable is the count, and that is the difference between it and an adjudication. A
+  generation carrying a reading past its ceiling is what this workflow means by *an adjudication in flight*: the
+  dispatcher restores `workflow:decomposing` over one before any stage sees the issue
+  (`late_relabel._adjudicating`), the coordinator owns every later tick, and a fresh adjudicator is paid for. So
+  what stays on the comment is the pair the freeze recorded and nothing else, and the reading is re-taken by the
+  tick that acts — which is the tick whose terms an authorization has to be written from anyway. Left durable, the
+  park would be relabelled out from under itself on the very next poll and nothing could ever answer it.
+
+  What answers it is a trusted whole-comment `/orchestrator authorize-oversized <commit>` naming the parked
+  candidate, read where the reading is — `late_verdict` behind the gate — so whichever seam took the park can end
+  it. On `workflow:implementing` the parked tick reaches it through `disposition`'s own recovery; on the five that
+  publish onto a pull request the remote already carries it arrives through the debt reconciliation the dispatcher
+  runs ahead of every handler, which is the only road those stages have while a park stands. What the command earns
+  is the `late_override_*` group written from the gate's OWN reading — the pair it froze, the additions it counted,
+  and the ceiling they were counted against — beside the digest recomputed between that pair and the comment the
   authorization was written in, in the same write as the park coming down and the reply being consumed. A reading
   this host cannot fingerprint leaves the park and the command exactly where they are, which costs a poll rather
-  than a decision. Guidance outranks the command in the same batch, and a command naming another commit authorizes
-  nothing: both leave the ordinary resume to feed what a human wrote to the developer. One candidate is never held
-  by any of it — a commit the pull request this call froze is ALREADY standing on, where the push would move nothing
+  than a decision.
+
+  The **last** fresh trusted reply is what decides, and reading it any other way poisons the park. Guidance written
+  after a command outranks it — the safe reading of somebody who asked to publish and then asked for a change is the
+  one that publishes nothing — and a command written after guidance is the decision that replaced it. A command
+  naming another commit is answered on the thread under a receipt scoped to the reply it answers, and **consumed**:
+  those five stages never move the watermark by any other means, so a reply left standing would be in every later
+  batch and would refuse the correct command behind it for as long as the park stood. One candidate is never held by
+  any of it — a commit the pull request this call froze is ALREADY standing on, where the push would move nothing
   and what is left is the bookkeeping behind a publication that has happened. `late_evidence_missing` is the
   adjudication's counterpart, taken
   under `workflow:decomposing` before the hold or any spawn: the checkout is there and one of the two recorded
@@ -1577,8 +1595,11 @@ rather than preserving.
   `single` verdict used to record this field by itself — and what a hand-edited or half-written authorization costs,
   which are one answer on purpose: a bypass nobody can show the terms of is worth what a bypass nobody granted is
   worth. The same rule reaches the publication debt beside it, since the settlement writes the exemption and
-  `late_approved_sha` in one breath; a gate-owned approval, which is every one for a candidate the reading found at
-  or below the ceiling, is untouched by it. Nothing about the compatibility deletes, migrates, or repairs a record,
+  `late_approved_sha` in one breath — read off that approval's own recorded `late_approved_basis` rather than
+  inferred from the exemption, so a gate-owned approval keeps its bypass on an issue that still carries a legacy
+  exemption and a settlement's debt loses it even where somebody hand-edited the exemption away. And it reaches the
+  rewrite transfer, which asks for the pair before it grants a permit: an exemption nothing authorizes may not move
+  onto the object a squash or a rebase produced. Nothing about the compatibility deletes, migrates, or repairs a record,
   and nothing about it touches work that is over: it is asked at publication rather than as a pass over comments
   nobody is publishing from, and a merged or closed issue is finalized before any handler reaches the gate.
 
@@ -1603,7 +1624,18 @@ rather than preserving.
 
   It shares that window with `late_approved_sha`, and the two are not duplicates of each other. The approval is
   written in the same breath and answers a different question: *this commit is owed a push, and no other may be pushed
-  in its place*. So it freezes by presence — as the whole pair, `late_approved_lease` included, because the two go
+  in its place*. Which is also why that approval carries `late_approved_basis` — `reading`, `unmeasured`, or
+  `adjudication`, written by whichever owner granted it. The gate spends an approval without asking anyone, and an
+  authorized settlement's debt is the exemption wearing another field rather than a count this gate took, so the two
+  have to be told apart. Inferred from the records standing around them — *an approval naming a commit some exemption
+  also names is the settlement's* — it is wrong in both directions: a candidate the gate measured at or below the
+  ceiling on an issue still carrying an older binary's exemption would have its own approval refused and be re-judged
+  against a base that has moved, and a settlement's debt whose exemption somebody hand-edited would read as the gate's
+  own and publish unmeasured. Read fail-closed like every other late field, so a value from outside that vocabulary is
+  no basis at all — and so is an approval an older binary wrote, where the exemption is the only evidence left and is
+  read conservatively. Written, dropped, and spent with the approval it describes, never on its own.
+
+  The approval freezes the branch by presence — as the whole pair, `late_approved_lease` included, because the two go
   down in one write and a lease standing alone is the damage the dispatcher parks on a tick later, by which time a
   hold keyed to the commit alone would have rebased and force-pushed the branch that park is about. One approval is
   set aside all the same, and it is the refresh's own rather than a stage's: where `late_approved_lease` IS a
@@ -1794,7 +1826,11 @@ rather than preserving.
 
   The gate reads it beside `late_exempt_sha`, and that pairing is what makes the exemption a bypass at all: the
   exemption says which change was ruled one whole and this says who agreed to publish it past the ceiling, so a
-  commit only one of them names is measured. It therefore MOVES with the exemption. `record_rewrite_publication`
+  commit only one of them names is measured. `late_transfer` asks the same pair before it grants anything, and it is
+  the first question a permit answers: a transfer is the one road past the reading that no record names in advance,
+  so moving an exemption nothing authorizes would hand the rewritten commit a permission the accepted one never had.
+  Refused there, nothing moves and the rewrite is measured by the ordinary cumulative gate, which is what every other
+  refusal in that owner leaves behind. It therefore MOVES with the exemption. `record_rewrite_publication`
   carries it onto the pair a workflow rewrite produced in the same statement that rotates the exemption and the
   identity — the candidate and the base, and nothing else, since the additions, the ceiling and the comment are what
   a human decided rather than facts about an object, and the digest already describes the rewritten pair (a transfer

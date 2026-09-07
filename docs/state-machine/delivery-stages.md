@@ -1241,10 +1241,16 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        (`implementing_published_sha`). The first is asked as a PAIR because the exemption is an agent's answer and
        half a bypass: a commit only it names -- an older binary's automatic exemption, or one whose authorization
        this build cannot read whole -- is measured like any other candidate, and the approval beside it defers on
-       the same reading where it is that settlement's own publication debt rather than a count this gate took. At
+       the same reading where its own `late_approved_basis` says an authorized settlement granted it rather than a
+       count this gate took. The rewrite transfer asks the same pair first, so an exemption nothing authorizes never
+       moves onto the object a squash or a rebase produced. At
        or below the ceiling such a candidate publishes on its count, boundary inclusive; past it the issue parks
        `late_unauthorized_exemption` and waits for a trusted whole-comment `/orchestrator authorize-oversized
-       <commit>`, rather than being routed back into an adjudication that has already answered. The one thing that
+       <commit>`, rather than being routed back into an adjudication that has already answered. That park keeps the
+       frozen PAIR and deliberately not the count: a generation answering "oversized" is what the dispatcher reads
+       as a live adjudication and puts `workflow:decomposing` back over, so a durable one would relabel the park out
+       from under itself on the next poll. The reading is re-taken by the tick that acts, which is the tick an
+       authorization's terms have to come from anyway. The one thing that
        still publishes there is a commit the pull request this call froze is already standing on, where the push
        moves nothing and only the bookkeeping behind it is left. So does every candidate while `DECOMPOSE=off` — except
        one this issue has a recorded generation for *that same commit*, one it owes a push for, and

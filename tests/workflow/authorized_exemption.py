@@ -8,6 +8,9 @@ operator authorized that publication on. Every stage whose tests put an
 accepted commit in front of the size gate needs both, so they are spelled once
 here rather than once per stage -- a seed carrying the exemption alone is the
 LEGACY shape, and cases about that ask for it by name.
+
+The terms one is granted on are the writer's under `tests/support/`, since the
+stage fixtures here and the git-side ones have to agree about them.
 """
 from __future__ import annotations
 
@@ -16,6 +19,7 @@ from orchestrator.workflow.late_split import (
     exemption as _exemption,
     overrides as _overrides,
 )
+from tests.support.authorization import _authorize
 from tests.workflow.repo_values import (
     CONTRIBUTION_DIGEST,
     MEASURED_BASE_SHA,
@@ -28,18 +32,6 @@ from tests.workflow.repo_values import (
 # have to agree, or a case about a record that MATCHES would be seeded with
 # one that does not.
 ACCEPTED_DIGEST = CONTRIBUTION_DIGEST
-
-# The reading a human was shown when they authorized, and the ceiling it was
-# counted against. Strictly past it, because a record at or under its own
-# threshold describes a candidate the gate publishes untouched and reads back
-# as no authorization at all.
-AUTHORIZED_ADDITIONS = 9123
-AUTHORIZED_THRESHOLD = 4000
-
-# The comment the authorization was written in, which is what makes it
-# attributable.
-AUTHORIZING_COMMENT_ID = 5150
-
 
 def _authorized_exemption(
     candidate_sha: str = MEASURED_CANDIDATE_SHA,
@@ -70,17 +62,7 @@ def _authorized_exemption(
             candidate_sha=candidate_sha,
             fingerprint=ACCEPTED_DIGEST,
         )
-    _overrides.record_publication_override(
-        seeded,
-        _overrides.LateOversizedPublication(
-            candidate_sha=candidate_sha,
-            base_sha=base_sha,
-            fingerprint=ACCEPTED_DIGEST,
-            additions=AUTHORIZED_ADDITIONS,
-            threshold=AUTHORIZED_THRESHOLD,
-            comment_id=AUTHORIZING_COMMENT_ID,
-        ),
-    )
+    _authorize(seeded, candidate_sha, base_sha, ACCEPTED_DIGEST)
     return seeded.data
 
 

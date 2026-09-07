@@ -15,6 +15,7 @@ from orchestrator.git.measurement.models import (
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
+    overrides as _overrides,
     rewrites as _rewrites,
 )
 from orchestrator.workflow.stages.implementing import (
@@ -296,6 +297,19 @@ class RefusedEvidenceTest(_TransferCase, unittest.TestCase):
         self.assertEqual(self._carried(), "")
         self._assert_untouched()
 
+    def test_an_unauthorized_one_carries_nothing(self) -> None:
+        # An exemption is half a bypass: it says an ADJUDICATOR ruled the
+        # change one whole, and the operator authorization beside it is what
+        # says a human agreed to publish past the ceiling. A commit only the
+        # exemption names is one the ordinary gate measures, so moving that
+        # exemption onto a rewrite would hand the rewritten commit a
+        # permission the accepted one never had -- and this grant is the one
+        # road past the reading no record names in advance.
+        self._adjudicated(authorized=False)
+
+        self.assertEqual(self._carried(), "")
+        self._assert_untouched()
+
     def test_unusable_evidence_refuses(self) -> None:
         for described, overrides in _UNUSABLE_EVIDENCE.items():
             with self.subTest(evidence=described):
@@ -551,6 +565,21 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
             _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
         )
 
+    def test_a_legacy_permission_is_revalidated_away(self) -> None:
+        # The crash road asked over a comment that never carried an operator
+        # authorization: the permission the grant left names the rewrite, but
+        # the exemption it would move licenses nothing, so the permit refuses
+        # on the re-ask and the ordinary cumulative gate measures the rewrite.
+        _overrides.clear_publication_override(self.state)
+        self.github.write_pinned_state(self.issue, self.state)
+
+        self.assertEqual(
+            _transfer._carried_over(self.recovery, REWRITTEN_SHA), "",
+        )
+        self.assertFalse(
+            _gate._approved_on_a_reading(self.recovery, REWRITTEN_SHA),
+        )
+
     def test_an_unreadable_published_record_defers(self) -> None:
         # `published` is recognized only from a record this build can vouch
         # for entirely. Announced over fields nothing else here understands,
@@ -595,7 +624,10 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
         # back through a measurement, which is the re-decision the bypass
         # exists to prevent.
         _support.spent(self.state)
-        _parks._approve(self.state, STRANGER_SHA, LEASED_SHA)
+        _parks._approve(
+            self.state, STRANGER_SHA, LEASED_SHA,
+            _parks.LateApprovalBasis.UNMEASURED,
+        )
 
         self.assertFalse(_transfer._licensed_by_a_permit(self.state))
         self.assertTrue(

@@ -76,13 +76,22 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     other, and one that comes back at or below the ceiling publishes on the
     count exactly as it always did.
 
-    An oversized one is held either way, and only WHERE differs. A candidate
-    nothing has ruled on goes to the adjudication. One an exemption already
-    names has been ruled on -- what it is missing is the human, not the
-    verdict -- so sending it back would pay for a second adjudicator over an
-    answered question and risk a `split` cutting children out of work
-    somebody decided ships whole. It parks for the authorization instead,
-    which `late_authority` owns.
+    An oversized one is held, and only WHERE differs. A candidate nothing has
+    ruled on goes to the adjudication. One an exemption already names has been
+    ruled on -- what it is missing is the human, not the verdict -- so sending
+    it back would pay for a second adjudicator over an answered question and
+    risk a `split` cutting children out of work somebody decided ships whole.
+    It waits for the authorization instead, which `late_authority` owns: the
+    park, the command that ends one, and the answer a command naming another
+    commit earns.
+
+    A candidate that command DID name publishes down the accepted road rather
+    than one of its own, and that is what makes it the same publication every
+    other candidate gets: the generation is retired ahead of the effects it
+    licenses, the commit a push is owed for is recorded, and what the caller
+    still owed rides the same write. What made it publishable is on the
+    comment by then, so a tick that dies past this point comes back to a
+    commit the exemption and the authorization both name.
 
     A count in hand is what a measurement park was waiting for, so this is
     where one is retired -- here and at the unmeasured verdict beside it, and
@@ -104,13 +113,22 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     settled = _parks._measured(generation)
     if not settled.is_oversized:
         return _accepted(gate, settled)
-    if _authority._unauthorized_exemption(gate.state, settled.candidate_sha):
-        return _authority._parked_for_authorization(gate, settled)
-    return _routed(gate, settled)
+    if not _authority._unauthorized_exemption(gate.state, settled.candidate_sha):
+        return _routed(gate, settled)
+    if not _authority._authorizes_the_park(gate, settled):
+        return True
+    return _accepted(gate, settled)
 
 
 def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
-    """Retire the generation a small candidate never needed, and publish.
+    """Retire the generation a published candidate no longer needs, and push.
+
+    Two candidates reach it and both have had the size question ANSWERED: one
+    the reading found at or below the ceiling, and one past it that an
+    operator authorized on the reading this very call took. Neither needs a
+    record any more, and the approval each earns is this gate's own -- a count
+    it took and a permission it was shown -- which is what its recorded basis
+    says and why a later tick spends it without asking anyone.
 
     The record is dropped rather than left standing, and it has to be: a
     frozen candidate freezes this branch out of the ordinary base refresh, and
@@ -150,6 +168,7 @@ def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
     )
     _parks._approve(
         gate.state, generation.candidate_sha, _frozen_lease(gate),
+        _parks.LateApprovalBasis.READING,
     )
     return _retired(gate, generation, _late_state.read_late_spends(gate.state))
 
@@ -510,7 +529,9 @@ def _stages_unmeasured_debt(
         "standing at %s; recording the debt before the push that pays it",
         gate.issue.number, candidate_sha, lease,
     )
-    _parks._approve(gate.state, candidate_sha, lease)
+    _parks._approve(
+        gate.state, candidate_sha, lease, _parks.LateApprovalBasis.UNMEASURED,
+    )
     _late_state.write_late_spends(gate.state, gate.spends.fields)
     return True
 

@@ -17,11 +17,12 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import run_ledger as _run_ledger
+from orchestrator.workflow.engine import dispatch as _dispatch, run_ledger as _run_ledger
 from orchestrator.workflow.late_split import lineage as _lineage, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from tests.support.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
 from tests.workflow.fixtures import (
+    _TEST_SPEC,
     LABEL_IMPLEMENTING,
     MEASURED_BASE_SHA,
     MEASURED_CANDIDATE_SHA,
@@ -301,10 +302,15 @@ class _GateCase(
         """Replace this issue's pinned state with the one a test is about."""
         self.github.seed_state(GATE_ISSUE_NUMBER, **state)
 
-    def _reply(self, body: str) -> None:
-        """Add one trusted human comment past the consumed watermark."""
+    def _reply(self, body: str, comment_id: int = REPLY_COMMENT_ID) -> None:
+        """Add one trusted human comment past the consumed watermark.
+
+        The id is a parameter because the batches that decide anything have
+        more than one reply in them: which of them is the LAST word is what a
+        standing park is answered by.
+        """
         self.issue.comments.append(
-            FakeComment(REPLY_COMMENT_ID, body, user=FakeUser(TRUSTED_AUTHOR)),
+            FakeComment(comment_id, body, user=FakeUser(TRUSTED_AUTHOR)),
         )
 
     def _run_gate(self, worktree: Path = TEMP_WORKTREE_ROOT, **run_options):
@@ -323,6 +329,28 @@ class _GateCase(
         ):
             return self._run_implementing(
                 self.github, self.issue, **run_options,
+            )
+
+    def _poll(self, **run_options):
+        """One whole poll of this issue, guards and all.
+
+        The dispatcher rather than the handler, because the guards in front of
+        it are what a second tick actually meets: an issue whose record reads
+        as a live adjudication is put back on `workflow:decomposing` there,
+        before any stage sees it. A park that survives one call of its own
+        handler and not one poll is a park nothing can answer.
+        """
+        run_options.setdefault("has_new_commits", True)
+        run_options.setdefault("run_agent", _agent(last_message="implemented"))
+        with patch.object(
+            _worktree_paths, WORKTREE_PATH, return_value=TEMP_WORKTREE_ROOT,
+        ):
+            return self._run(
+                lambda: _dispatch._route_issue_to_handler(
+                    self.github, _TEST_SPEC, self.issue,
+                    self.github.workflow_label(self.issue),
+                ),
+                **run_options,
             )
 
     def _pinned(self) -> dict:
@@ -388,9 +416,12 @@ class _LegacyExemptionCase(_GateCase):
     def _park_awaiting_authorization(self, reply: str = "", **recorded) -> None:
         """Seed the park an oversized one takes, and any reply to it.
 
-        The generation carries the reading the park was taken on, because that
-        is what an authorization is written from: the pair, the count, and the
-        ceiling it was counted against are the terms a human is deciding over.
+        The generation carries the PAIR and no count, which is exactly what
+        the park leaves: a record answering "oversized" is what this workflow
+        means by an adjudication in flight, and the dispatcher puts
+        `workflow:decomposing` back over one before any stage runs. So the
+        reading is re-taken by the tick that acts, and a case that seeds one
+        here would be seeding a park no poll of a real issue could survive.
         """
         self._seed(**{
             AWAITING_HUMAN: True,
@@ -399,7 +430,7 @@ class _LegacyExemptionCase(_GateCase):
             "dev_agent": "codex",
             "dev_session_id": DEV_SESSION,
             **_legacy_exemption(),
-            **recorded_generation(additions=OVERSIZED_ADDITIONS),
+            **recorded_generation(),
             **recorded,
         })
         if reply:

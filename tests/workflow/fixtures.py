@@ -123,9 +123,6 @@ _manifest = _value_helpers._manifest
 _open_pr_for = _value_helpers._open_pr_for
 _state_with_pr_number = _value_helpers._state_with_pr_number
 
-AUTHORIZED_ADDITIONS = _authorized_exemption_values.AUTHORIZED_ADDITIONS
-AUTHORIZED_THRESHOLD = _authorized_exemption_values.AUTHORIZED_THRESHOLD
-AUTHORIZING_COMMENT_ID = _authorized_exemption_values.AUTHORIZING_COMMENT_ID
 _authorize_command = _authorized_exemption_values._authorize_command
 _authorized_exemption = _authorized_exemption_values._authorized_exemption
 _damaged_authorization = _authorized_exemption_values._damaged_authorization

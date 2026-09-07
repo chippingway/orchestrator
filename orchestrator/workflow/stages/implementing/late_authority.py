@@ -70,15 +70,17 @@ ceiling, and the only owner that can say either is the one that counted.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 
 from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.git.measurement import fingerprint as _fingerprint
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.comments import filter_trusted
+from orchestrator.github.comments import carries_own_marker, filter_trusted
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
+    comments as _comments,
     guards as _guards,
     messages as _messages,
 )
@@ -108,6 +110,25 @@ PARK_UNAUTHORIZED_EXEMPTION = "late_unauthorized_exemption"
 # gate's log line reads it: the pull request is standing on it already, so
 # there is nothing for a push to add and nothing for a hold to hold back.
 _ON_ITS_PULL_REQUEST = "is the commit its pull request already stands on"
+
+# Stamped on the answer one refused command earns, and scoped to the reply it
+# was written for. The sentence and the write that consumes that reply cannot
+# be made one operation, so a tick that says it and then fails to record it
+# reads the same reply again on the next poll -- and the receipt already on the
+# thread is what keeps that second reading from saying the same thing twice. An
+# HTML comment, so it is invisible in the rendered thread.
+_REFUSED_MARKER = (
+    "<!--orchestrator-unauthorized-exemption-refused"
+    ":issue={issue}:read={read}-->"
+)
+
+_WRONG_CANDIDATE = (
+    "{mentions} that authorization names a commit this issue is not holding, "
+    "so nothing was published and nothing was recorded. The candidate waiting "
+    "on a decision is `{candidate}`. Post `/orchestrator authorize-oversized "
+    "{candidate}` as the entire comment to publish it as it stands, or reply "
+    "with the change to make and the developer is resumed against it."
+)
 
 _PARK_NOTICE = (
     "{mentions} this issue's committed implementation adds {additions} lines "
@@ -201,6 +222,90 @@ def _already_on_its_pull_request(
     return _ON_ITS_PULL_REQUEST
 
 
+def _unauthorized_debt(state: PinnedState, candidate_sha: str) -> bool:
+    """Whether the push this commit is owed rests on an unauthorized exemption.
+
+    Asked of the approval's own recorded basis rather than of the records
+    standing around it, because provenance is a thing only the owner that
+    granted an approval knows. The settlement writes the exemption and the
+    debt in one breath, so its approval is that adjudication wearing another
+    field and is worth exactly what the exemption is worth; every other
+    approval on this issue is the gate's own answer brought back by a crash,
+    and no human was ever owed a decision about one.
+
+    Inferred from the exemption alone it is wrong in both directions, and
+    both are reachable. A candidate the gate measured at or below the ceiling
+    on an issue that still carries an older binary's exemption earns a
+    genuine gate approval -- refusing it would re-judge a settled reading
+    against a base that has moved since, which is the one thing the approval
+    bypass exists to prevent. And a settlement's debt whose exemption
+    somebody hand-edited would read as the gate's own and publish unmeasured,
+    which is the one thing this rule exists to prevent.
+
+    An authorization covering the commit ends the question ahead of either:
+    the debt is authorized whatever granted it.
+
+    A record with no basis on it is an approval an older binary wrote, and
+    there the exemption is the only evidence left -- so it is read, and read
+    conservatively: a commit that exemption names is treated as the
+    adjudication's debt.
+    """
+    if _overrides.is_authorized(state, candidate_sha):
+        return False
+    basis = _parks._approved_basis(state)
+    if basis:
+        return basis == _parks.LateApprovalBasis.ADJUDICATION
+    return _exemption.is_exempt(state, candidate_sha)
+
+
+@dataclass(frozen=True)
+class _Answer:
+    """The last word a human has written on a standing authorization park.
+
+    Only the LAST fresh reply is read, and that is the whole of the rule.
+    Every earlier one has been superseded by it: an operator who names one
+    commit and then another has decided about the second, and one who writes
+    guidance and then the command has changed their mind toward publishing.
+    Reading the batch as a set instead is what poisons a park -- a reply that
+    matches nothing is never consumed on the seams that publish onto a pull
+    request the remote already carries, so it would stand in every later batch
+    and refuse a correct command forever.
+
+    `named` is the commit that reply authorizes, whole or empty -- an
+    abbreviation names no commit here, since nothing in this domain writes
+    one. `comment_id` is the reply itself, which is both the watermark an
+    answer consumes and the address a recorded authorization is attributable
+    to.
+    """
+
+    named: str
+    comment_id: int
+
+
+def _authorizes_the_park(
+    gate: _records._Gate, generation: LateGeneration,
+) -> bool:
+    """Whether a human has told this oversized candidate to publish as it is.
+
+    The one answer an adjudicated candidate with nobody behind it can get, and
+    the whole of what a tick does with it. False is held either way -- the
+    park taken or re-taken, or a reply answered and consumed -- and True is a
+    candidate the caller publishes exactly as it publishes one the reading let
+    through.
+
+    Asked here rather than at the gate's door because this is the only owner
+    holding a reading: an operator authorizes a change of THIS size against
+    THAT ceiling, and the terms of the record are the pair this call froze,
+    the additions it counted, and the ceiling it counted them against.
+    """
+    answer = _read_the_park(gate.gh, gate.issue, gate.state)
+    if answer is None:
+        return not _parked_for_authorization(gate, generation)
+    if answer.named != generation.candidate_sha:
+        return not _refused(gate, generation, answer)
+    return _recorded_authorization(gate, generation, answer)
+
+
 def _parked_for_authorization(
     gate: _records._Gate, generation: LateGeneration,
 ) -> bool:
@@ -214,18 +319,22 @@ def _parked_for_authorization(
     out of work somebody already decided ships whole. What is missing is a
     person, so this asks for one.
 
-    The measurement is made durable first, exactly as the routed hold makes
-    it: the notice names a size and a ceiling, and the command that answers it
-    is recorded against the very pair that was counted, so a tick dying
-    between the two has to come back to the reading rather than to a park
-    describing numbers nothing kept.
+    The COUNT is deliberately not made durable, and that is the difference
+    between a park and an adjudication. A generation carrying a reading past
+    its ceiling is exactly what this workflow means by "an adjudication in
+    flight": the dispatcher restores `workflow:decomposing` over one, the
+    coordinator owns every later tick of it, and a fresh adjudicator is paid
+    for. A candidate waiting on an operator is none of those, so what stays on
+    the comment is the pair the freeze already recorded and nothing else --
+    the reading is re-taken on the tick that acts, which is the tick whose
+    terms an authorization has to be written from anyway.
 
-    Said ONCE per pair. The park stands until a human answers it and the same
-    reading is re-taken on every poll behind it, so repeating the notice would
-    mention the same people once a poll about a decision they have already
-    been asked for. A record already parked for this over this candidate is
-    held quietly instead; a park over some OTHER candidate is a different
-    question and is announced.
+    Said ONCE per pair. The seams that publish onto a pull request the remote
+    already carries re-enter this gate on every poll behind the park, so
+    repeating the notice would mention the same people once a poll about a
+    decision they have already been asked for. A record already parked for
+    this over this candidate is held quietly instead, and that quiet road
+    writes nothing at all.
 
     Nothing is deleted. The exemption, the identity beside it, the approval
     that names the commit a push is owed for, and every other field stay
@@ -233,7 +342,8 @@ def _parked_for_authorization(
     checked against, and a park that repaired the pinned comment on the way
     would destroy the evidence it exists to ask about.
     """
-    told = _stands_over(gate, generation)
+    if _stands_over(gate, generation):
+        return True
     log.warning(
         "issue=#%d exempts candidate %s on a record no operator "
         "authorization stands behind; holding %d lines against a ceiling of "
@@ -241,9 +351,6 @@ def _parked_for_authorization(
         gate.issue.number, generation.candidate_sha,
         generation.additions, generation.threshold,
     )
-    _parks._persisted(gate, generation)
-    if told:
-        return True
     _guards._park_awaiting_human(
         gate.gh, gate.issue, gate.state,
         _PARK_NOTICE.format(
@@ -271,9 +378,9 @@ def _stands_over(
     developer's fresh commit has moved past, and the human holding the issue
     has never been told about the candidate now in hand.
 
-    Read off the durable record rather than the generation being written, so
-    the comparison is what a previous tick left rather than what this one is
-    about to leave.
+    Read off the durable record, which the freeze ahead of this call has
+    already written the pair onto -- so what is compared is the commit the
+    park is about rather than a count nothing persists.
     """
     if gate.state.get(_state._PARK_REASON) != PARK_UNAUTHORIZED_EXEMPTION:
         return False
@@ -283,27 +390,21 @@ def _stands_over(
     return recorded.candidate_sha == generation.candidate_sha
 
 
-def _authorized_by_a_reply(gate: _records._Gate, candidate_sha: str) -> None:
-    """Record what an operator wrote on this park, if they wrote it.
-
-    Asked inside the gate rather than at one seam's recovery, because the park
-    is taken wherever a candidate is published from and every one of those
-    seams has to be able to end it. It costs one local read on every other
-    call: a comment with no park of ours on it never reaches the thread.
+def _recorded_authorization(
+    gate: _records._Gate, generation: LateGeneration, answer: _Answer,
+) -> bool:
+    """Record what an operator authorized, take the park off, consume the reply.
 
     The terms are this gate's OWN reading and nothing the record already
-    carried. The generation the park persisted names the pair that was
-    counted, the additions that reading took, and the ceiling it was counted
-    against, and the digest is recomputed between that pair here -- so what
-    goes down is a change of this size against this ceiling, which is the
-    claim an authorization has to be answerable as. A record whose candidate
-    has moved, or that carries no reading at all, authorizes nothing: the park
-    below it will be re-taken over whatever is actually in hand.
+    carried: the pair it froze, the additions it counted, the ceiling they
+    were counted against, and the digest recomputed between that pair here --
+    so what goes down is a change of this size against this ceiling, which is
+    the claim an authorization has to be answerable as.
 
-    A contribution this host cannot fingerprint leaves the park standing and
-    the command unconsumed. Nothing about that is the operator's doing, so the
-    next tick takes the same reading again rather than asking somebody to
-    authorize the same change twice.
+    A contribution this host cannot fingerprint records nothing and leaves the
+    park and the command exactly where they are. Nothing about that is the
+    operator's doing, so the next tick takes the same reading again rather
+    than asking somebody to authorize the same change twice.
 
     The record, the park coming down, and the reply being consumed ride one
     write, for the reason every other authorization does: the record without
@@ -312,123 +413,144 @@ def _authorized_by_a_reply(gate: _records._Gate, candidate_sha: str) -> None:
     record without the watermark leaves the same comment able to authorize
     whatever is parked next.
     """
-    replies = _answers_the_authorization_park(gate.gh, gate.issue, gate.state)
-    if not replies:
-        return
-    recorded = _late_state.read_late_generation(gate.state)
-    if not _measured_this_candidate(recorded, candidate_sha):
-        return
-    if not _unauthorized_exemption(gate.state, candidate_sha):
-        return
     contribution = _fingerprint._fingerprint_contribution(
-        gate.worktree, recorded.base_sha, recorded.candidate_sha,
+        gate.worktree, generation.base_sha, generation.candidate_sha,
     )
     if not contribution.is_fingerprinted:
         log.warning(
             "issue=#%d cannot fingerprint what the authorized candidate %s "
             "contributes (%s); leaving the authorization unread and the "
             "candidate parked",
-            gate.issue.number, candidate_sha, contribution.failure,
+            gate.issue.number, generation.candidate_sha, contribution.failure,
         )
-        return
-    _records_the_authorization(gate, recorded, contribution, replies)
-
-
-def _measured_this_candidate(
-    recorded: LateGeneration, candidate_sha: str,
-) -> bool:
-    """Whether the record carries a reading of the commit in hand.
-
-    What an authorization is written from, so every term of it has to be
-    there: the pair the digest is taken between, and a count strictly past the
-    ceiling it was counted against. A record naming another candidate belongs
-    to a question this commit has moved past, and one whose reading is at or
-    under its own ceiling describes a candidate the gate publishes untouched
-    -- neither is a bypass anybody had to grant, and the writer below refuses
-    both rather than recording an authorization a later reader could not hold
-    to anything.
-    """
-    if recorded.candidate_sha != candidate_sha or not recorded.base_sha:
         return False
-    return recorded.is_oversized
-
-
-def _records_the_authorization(
-    gate: _records._Gate,
-    recorded: LateGeneration,
-    contribution,
-    replies: list,
-) -> None:
-    """Put the authorization down, take the park off, and consume the reply.
-
-    One write, and the order inside it is the order a reader needs: the
-    evidence, then the flag that says somebody is still owed a question, then
-    the watermark that says which comment was acted on. The comment named is
-    the last of the replies this park was answered by -- an operator who wrote
-    the command twice made one decision, and the record names the gesture the
-    tick actually read.
-    """
-    comment_id = max(reply.id for reply in replies)
     _overrides.record_publication_override(
         gate.state,
         _overrides.LateOversizedPublication(
             candidate_sha=contribution.candidate_sha,
             base_sha=contribution.base_sha,
             fingerprint=contribution.digest,
-            additions=recorded.additions,
-            threshold=recorded.threshold,
-            comment_id=comment_id,
+            additions=generation.additions,
+            threshold=generation.threshold,
+            comment_id=answer.comment_id,
         ),
     )
     log.info(
         "issue=#%d had its adjudicated candidate %s authorized to publish "
         "unsplit by a trusted operator in comment %d; recording the terms it "
         "was measured on and letting it past the gate",
-        gate.issue.number, recorded.candidate_sha, comment_id,
+        gate.issue.number, generation.candidate_sha, answer.comment_id,
     )
+    _consumed(gate, answer)
     gate.state.set(_state._AWAITING_HUMAN, False)
     gate.state.set(_state._PARK_REASON, None)
-    gate.state.set(_state._LAST_ACTION_COMMENT_ID, comment_id)
     gate.gh.write_pinned_state(gate.issue, gate.state)
+    return True
 
 
-def _answers_the_authorization_park(
+def _refused(
+    gate: _records._Gate, generation: LateGeneration, answer: _Answer,
+) -> bool:
+    """Say why this command changed nothing, and leave the park standing.
+
+    A command naming a commit this issue is not holding is the ordinary way an
+    authorization fails: an id copied out of a notice about work a resumed
+    developer has since moved past. A bypass may license exactly what a human
+    looked at, so it authorizes nothing -- and the human is owed the reason
+    and the command that would have worked.
+
+    Consumed on the way out, and that consumption is the point rather than a
+    tidiness. The seams that publish onto a pull request the remote already
+    carries reach this gate through a debt reconciliation that stops before
+    their own handler, so nothing else on those issues ever moves the
+    watermark: a reply left unconsumed would stand in every later batch and
+    the correct command behind it would never be the last word.
+
+    The sentence and the write that consumes it are two operations, so the
+    sentence carries a receipt scoped to the reply it answers and the thread
+    is asked for that receipt before it is written a second time -- the same
+    at-most-once discipline every other answer in this repository has.
+    """
+    log.info(
+        "issue=#%d was told to authorize %s and is holding %s; answering the "
+        "command and leaving the park where it stands",
+        gate.issue.number, answer.named, generation.candidate_sha,
+    )
+    marker = _REFUSED_MARKER.format(
+        issue=gate.issue.number, read=answer.comment_id,
+    )
+    if not _already_answered(gate, marker):
+        said = _WRONG_CANDIDATE.format(
+            mentions=config.HITL_MENTIONS,
+            candidate=generation.candidate_sha,
+        )
+        _comments._post_issue_comment(
+            gate.gh, gate.issue, gate.state, f"{said}\n\n{marker}",
+        )
+    _consumed(gate, answer)
+    gate.gh.write_pinned_state(gate.issue, gate.state)
+    return True
+
+
+def _already_answered(gate: _records._Gate, marker: str) -> bool:
+    """Whether this thread already carries OUR answer to this reading.
+
+    Both halves of the receipt are asked -- the scoped marker and the author
+    -- since an HTML comment is plain text anybody may paste, and read from
+    anybody it would silence a sentence a human is owed.
+    """
+    return carries_own_marker(
+        gate.issue.get_comments(),
+        marker,
+        bot_login=getattr(gate.gh, "_bot_login", None),
+    )
+
+
+def _consumed(gate: _records._Gate, answer: _Answer) -> None:
+    """Record the reply this tick acted on as read.
+
+    Staged rather than written, so it lands with whatever else the caller is
+    recording or not at all: a watermark moved without the answer beside it
+    would drop a command nobody acted on.
+    """
+    gate.state.set(_state._LAST_ACTION_COMMENT_ID, answer.comment_id)
+
+
+def _read_the_park(
     gh: GitHubClient, issue: Issue, state: PinnedState,
-) -> list:
-    """The operator authorizations written on this park, if any.
+) -> _Answer | None:
+    """The command a human has written on this park, or None if none has.
 
-    Empty for everything else, and each exclusion is its own answer. An issue
+    None for everything else, and each exclusion is its own answer. An issue
     parked for another reason is not this park's to end; a thread with nothing
     new on it is a human who has not replied yet; an outsider's comment is not
     in the reading at all, so nothing they post can authorize anything; and a
-    reply carrying real words is guidance, which belongs to the ordinary
-    resume that feeds it to the developer rather than to a bypass taken behind
-    their back.
+    last word that is not the whole command is guidance, which belongs to the
+    ordinary resume that feeds it to the developer rather than to a bypass
+    taken behind their back.
 
-    Guidance outranks an authorization in the same batch for the reason it
-    does wherever the two meet: they say opposite things -- one that the
-    change publishes as it stands, the other that it has to be different --
-    and the safe reading of a human who wrote both publishes nothing.
-
-    The command has to name the candidate the park is about. One naming
-    another commit is the ordinary way this fails -- an id copied out of a
-    notice about work the developer has since been resumed over -- and it is
-    left to the ordinary road rather than acted on, since a bypass may license
-    exactly what a human looked at.
+    The LAST fresh reply decides, because it is the last thing the human said.
+    Guidance written after a command outranks it -- the safe reading of
+    somebody who asked to publish and then asked for a change is the one that
+    publishes nothing -- and a command written after guidance is the decision
+    that replaced it. Read as a set instead, one stale reply would refuse
+    every command posted behind it for as long as the park stood.
     """
     if state.get(_state._PARK_REASON) != PARK_UNAUTHORIZED_EXEMPTION:
-        return []
+        return None
     if not state.get(_state._AWAITING_HUMAN):
-        return []
+        return None
     replies = filter_trusted(
         gh.comments_after(issue, state.get(_state._LAST_ACTION_COMMENT_ID)),
     )
-    named = _late_state.read_late_generation(state).candidate_sha
-    if not replies or not named:
-        return []
-    if not all(_names(reply) == named for reply in replies):
-        return []
-    return replies
+    if not replies:
+        return None
+    last = replies[-1]
+    named = _names(last)
+    identified = _payloads.as_identity(getattr(last, "id", 0))
+    if not named or identified is None:
+        return None
+    return _Answer(named=named, comment_id=identified)
 
 
 def _names(reply) -> str:
