@@ -17,6 +17,7 @@ from orchestrator.git import worktrees as _worktrees_package
 # because that is the split the map draws: only the last of them writes.
 from orchestrator.git.worktrees import (
     attribution,
+    branch_probes,
     claims,
     cleanup,
     creation,
@@ -51,6 +52,7 @@ _ABSENT_TARGETS = (_AGGREGATE_HUB, _LIFECYCLE_SPELLING)
 _MODULES = (
     "orchestrator.git.worktrees",
     "orchestrator.git.worktrees.attribution",
+    "orchestrator.git.worktrees.branch_probes",
     "orchestrator.git.worktrees.claims",
     "orchestrator.git.worktrees.cleanup",
     "orchestrator.git.worktrees.creation",
@@ -183,11 +185,11 @@ _OWNER_DEFINED = (
     ("_INDEX", evidence),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LISTED", attribution),
-    ("_LOCAL_BRANCH_PREFIX", probes),
+    ("_LOCAL_BRANCH_PREFIX", branch_probes),
     ("_LOCAL_REF_PREFIX", evidence),
     ("_LOCAL_REF_PREFIX", reclaim),
     ("_OPEN_PULL_REQUEST", claims),
-    ("_ORCHESTRATOR_BRANCH_REFS", probes),
+    ("_ORCHESTRATOR_BRANCH_REFS", branch_probes),
     ("_ORCHESTRATOR_REMOTE_REFS", discovery),
     ("_OUTCOMES", maintenance),
     ("_QUIET_PERIOD_SECONDS", maintenance),
@@ -285,7 +287,7 @@ _OWNER_DEFINED = (
     ("_legacy_worktree_path", paths),
     ("_local_branch_tip", evidence),
     ("_local_issue_inventory", inventory),
-    ("_local_orchestrator_branches", probes),
+    ("_local_orchestrator_branches", branch_probes),
     ("_maintained_candidate", maintenance),
     ("_maintained_candidates", maintenance),
     ("_maintenance_candidates", discovery),
@@ -300,7 +302,7 @@ _OWNER_DEFINED = (
     ("_published_tip", evidence),
     ("_quiet_checkout", evidence),
     ("_read_artifacts", eligibility),
-    ("_read_orchestrator_refs", probes),
+    ("_read_orchestrator_refs", branch_probes),
     ("_read_state", claims),
     ("_reclaimed", maintenance),
     ("_record_attribution", attribution),
@@ -347,8 +349,8 @@ _OWNER_DEFINED = (
 # The owners that report, each binding the channel an operator's level and
 # handler selection is keyed on.
 _REPORTING_OWNERS = (
-    attribution, claims, cleanup, creation, decomposition, discovery,
-    evidence, inventory, maintenance, probes, reclaim, terminal,
+    attribution, branch_probes, claims, cleanup, creation, decomposition,
+    discovery, evidence, inventory, maintenance, probes, reclaim, terminal,
 )
 
 

@@ -28,7 +28,13 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git.worktrees import discovery, maintenance, paths, probes
+from orchestrator.git.worktrees import (
+    branch_probes,
+    discovery,
+    maintenance,
+    paths,
+    probes,
+)
 from orchestrator.git.worktrees.models import (
     MaintenanceCandidate,
     MaintenanceResult,
@@ -243,7 +249,7 @@ class _MaintenanceTestCase(unittest.TestCase):
 
     def local_branches(self) -> tuple[str, ...]:
         """Every orchestrator-owned branch the clone still carries."""
-        return probes._local_orchestrator_branches(self.clone) or ()
+        return branch_probes._local_orchestrator_branches(self.clone) or ()
 
     def remote_branches(self) -> tuple[str, ...]:
         """Every orchestrator-owned branch the remote still carries."""

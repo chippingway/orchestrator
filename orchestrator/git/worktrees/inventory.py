@@ -43,7 +43,12 @@ from itertools import chain
 from pathlib import Path
 
 from orchestrator import config
-from orchestrator.git.worktrees import attribution, paths, probes
+from orchestrator.git.worktrees import (
+    attribution,
+    branch_probes,
+    paths,
+    probes,
+)
 from orchestrator.git.worktrees.models import ArtifactInventory, IssueArtifacts
 
 # The channel is named for the worktree-lifecycle domain rather than for this
@@ -262,7 +267,9 @@ def _root_inventory(
     )
     if not reportable:
         return ArtifactInventory(issues=(), refused=())
-    branches = probes._local_orchestrator_branches(reportable[0].target_root)
+    branches = branch_probes._local_orchestrator_branches(
+        reportable[0].target_root,
+    )
     if branches is None:
         return ArtifactInventory(
             issues=(), refused=tuple(spec.slug for spec in reportable),

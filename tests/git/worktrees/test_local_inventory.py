@@ -18,7 +18,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from orchestrator.git.worktrees import inventory, paths, probes
+from orchestrator.git.worktrees import branch_probes, inventory, paths, probes
 from tests.git.worktrees.artifact_test_support import (
     COLLIDING_SLUGS,
     GADGET_SLUG,
@@ -53,7 +53,7 @@ IGNORED_BRANCHES = (
 def _listing(branches):
     """Answer every clone's branch listing with `branches`."""
     with patch.object(
-        probes, "_local_orchestrator_branches", return_value=branches,
+        branch_probes, "_local_orchestrator_branches", return_value=branches,
     ) as listed:
         yield listed
 

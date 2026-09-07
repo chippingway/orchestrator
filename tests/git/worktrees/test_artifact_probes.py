@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """The two local reads under the artifact scan, and what a failed one answers.
 
-Driven against real clones and real directories: these are the only two places
-the scan touches the host, so a regression in the `for-each-ref` arguments, in
-the ref-name stripping, or in which failures count as "read nothing" surfaces
-here rather than in a caller's mock.
+The branch listing is ``branch_probes``' and the checkout enumeration is
+``probes``', and both are driven against real clones and real directories:
+these are the only two places the scan touches the host, so a regression in
+the `for-each-ref` arguments, in the ref-name stripping, or in which failures
+count as "read nothing" surfaces here rather than in a caller's mock.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.git.worktrees import probes
+from orchestrator.git.worktrees import branch_probes, probes
 from tests.git.worktrees.artifact_test_support import (
     LIFECYCLE_LOGGER,
     WIDGET_SLUG,
@@ -65,7 +66,7 @@ class OrchestratorBranchListingTest(unittest.TestCase):
         for branch in (namespaced, legacy, UNRELATED_BRANCH):
             self.world.branch(root, branch)
 
-        listed = probes._local_orchestrator_branches(root)
+        listed = branch_probes._local_orchestrator_branches(root)
 
         # Branch names as the derivations spell them, and nothing from
         # outside the namespace.
@@ -83,14 +84,14 @@ class OrchestratorBranchListingTest(unittest.TestCase):
         self.world.tag(root, namespaced)
 
         self.assertEqual(
-            probes._local_orchestrator_branches(root), (namespaced,),
+            branch_probes._local_orchestrator_branches(root), (namespaced,),
         )
 
     def test_a_clone_with_none_answers_empty(self) -> None:
         root = self.world.clone(CLONE_NAME)
         self.world.branch(root, UNRELATED_BRANCH)
 
-        self.assertEqual(probes._local_orchestrator_branches(root), ())
+        self.assertEqual(branch_probes._local_orchestrator_branches(root), ())
 
     def test_an_unreadable_store_answers_none(self) -> None:
         # A directory that is not a repository: git runs and refuses. The
@@ -100,7 +101,7 @@ class OrchestratorBranchListingTest(unittest.TestCase):
         plain.mkdir()
 
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
-            self.assertIsNone(probes._local_orchestrator_branches(plain))
+            self.assertIsNone(branch_probes._local_orchestrator_branches(plain))
 
     def test_a_warned_listing_answers_none(self) -> None:
         # git skips a ref it cannot parse, warns about it, and exits zero all
@@ -113,14 +114,14 @@ class OrchestratorBranchListingTest(unittest.TestCase):
         )
 
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
-            self.assertIsNone(probes._local_orchestrator_branches(root))
+            self.assertIsNone(branch_probes._local_orchestrator_branches(root))
 
     def test_an_unspawnable_read_answers_none(self) -> None:
         # The clone's path does not exist, so the read never runs at all --
         # the failure git itself never gets to report.
         with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING):
             self.assertIsNone(
-                probes._local_orchestrator_branches(self.world.path("gone")),
+                branch_probes._local_orchestrator_branches(self.world.path("gone")),
             )
 
 
