@@ -32,8 +32,9 @@ this path:
    what they add against `MAX_ADDED_LINES` and then pushes the branch and opens the PR. A candidate past that ceiling
    is held unpublished and sent back to `workflow:decomposing` to be adjudicated. Split there, it becomes children
    that reuse the work already committed, each owning its own implementation, tests and documentation and each sized
-   to land under the ceiling; adjudicated as *one* change — a verdict that has to say why no safe split of the work
-   was available — nothing is published and the issue waits for you, because publishing an oversized change unsplit is
+   to land under the ceiling — a child issue states the all-path budget its slice was proposed at; adjudicated as
+   *one* change — a verdict that has to say why no safe split of the work was available — nothing is published and
+   the issue waits for you, because publishing an oversized change unsplit is
    a decision the orchestrator does not make for itself. The commit, its worktree and any pull request it stands under
    are left exactly as they are, no further decomposer is spawned against them, and replying with what to change
    resumes the dev agent and re-measures what comes back — or

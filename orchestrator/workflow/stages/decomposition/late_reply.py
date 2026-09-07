@@ -47,10 +47,11 @@ and it is bounded -- a real count of at least one line, strictly below the
 ceiling this candidate was measured against -- because a split whose children
 are each still oversized is not a split, and the cheapest place to catch one
 that says so is while it is still a reply rather than after it has become
-issues. The number is judged here and kept nowhere: what decides whether a
-child is oversized is the cumulative measurement of that child's own diff, so
-what is being checked is whether the proposal is actionable and never whether
-a later measurement is allowed to disagree with it.
+issues. What is judged here is whether the proposal is ACTIONABLE, and never
+whether a later measurement may disagree with it: what decides that a child is
+oversized is the cumulative measurement of that child's own diff. The number
+itself travels past this owner -- the record keeps it and the child issue
+states it -- so the slice a developer is handed says what it was sized at.
 
 The ceiling comes from the generation the reply is about rather than from
 configuration, so an answer is judged against the number its own prompt
@@ -79,10 +80,14 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from orchestrator.workflow.late_split import events as _events, formats as _formats
+from orchestrator.workflow.late_split import events as _events
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import LateVerdict
-from orchestrator.workflow.stages.decomposition import manifest as _manifest, validation as _validation
+from orchestrator.workflow.stages.decomposition import (
+    late_budget as _budget,
+    manifest as _manifest,
+    validation as _validation,
+)
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateAdjudication,
 )
@@ -98,7 +103,6 @@ _DECISION = "decision"
 _CATEGORY = "category"
 _QUESTION = "question"
 _SPLIT_BLOCKER = "split_blocker"
-_ESTIMATE = "estimated_added_lines"
 
 _SINGLE_DECISION = "single"
 _SPLIT_DECISION = "split"
@@ -120,12 +124,12 @@ _NO_SPLIT_BLOCKER = (
 )
 
 _NO_ESTIMATE = (
-    f"child {{0}} needs an `{_ESTIMATE}` of at least one whole line"
+    f"child {{0}} needs an `{_budget.ESTIMATE}` of at least one whole line"
 )
 
 _ESTIMATE_PAST_CEILING = (
-    f"child {{0}} declares an `{_ESTIMATE}` of {{1}}, which is not below the "
-    "{2}-line ceiling this split has to get under"
+    f"child {{0}} declares an `{_budget.ESTIMATE}` of {{1}}, which is not "
+    "below the {2}-line ceiling this split has to get under"
 )
 
 
@@ -221,16 +225,18 @@ def _estimates_error(
 ) -> str | None:
     """Return the first child whose declared addition budget is not one.
 
-    A count rather than anything that converts to one: a bool, a float, and a
-    numeric string are all values nothing estimated, and a child sized by one
-    of them is a child nobody sized. Zero and below are refused for the same
-    reason -- no slice of an oversized candidate adds nothing -- and a number
-    at or past the ceiling is refused because a child that big is this same
-    adjudication again with an issue number in front of it.
+    What a budget IS is the shared owner's, since the record this reply
+    becomes and the child issue it creates both read one back. What an absent
+    one costs is this owner's alone: a fresh reply that declared no size for a
+    slice is refused, because a proposal nobody sized can still be re-asked
+    for the price of the run that is already over.
+
+    A number at or past the ceiling is refused beside it, because a child that
+    big is this same adjudication again with an issue number in front of it.
     """
     for child_index, child in enumerate(children):
-        estimated = child.get(_ESTIMATE)
-        if not _formats.whole_number(estimated) or estimated < 1:
+        estimated = _budget.declared_budget(child)
+        if estimated is None:
             return _NO_ESTIMATE.format(child_index)
         if threshold is not None and estimated >= threshold:
             return _ESTIMATE_PAST_CEILING.format(

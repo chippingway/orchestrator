@@ -38,6 +38,7 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     KEY_CONSUMERS,
     KEY_LINKS_ANNOUNCED,
     KEY_PR_NUMBER,
+    MULTI_LEVEL_CHILDREN,
     SNAPSHOT_REF,
     SUPERSESSION_MARKER,
     HeldPlanPrSplitCase,
@@ -258,6 +259,24 @@ class ActivationTest(LateSplitCase, unittest.TestCase):
         first, second = self.github.created_child_issues
         self.assertEqual(label_of(self.github, first.number), WorkflowLabel.READY)
         self.assertEqual(label_of(self.github, second.number), WorkflowLabel.BLOCKED)
+
+    def test_a_multi_level_plan_frees_one_root(self) -> None:
+        # Every slice behind a prerequisite waits for it, the one two levels
+        # down included: a walk that released a child whose own dependency is
+        # still open would start work on an interface nothing has built.
+        self._transact(children=MULTI_LEVEL_CHILDREN)
+
+        self.assertEqual(
+            [
+                label_of(self.github, child.number)
+                for child in self.github.created_child_issues
+            ],
+            [
+                WorkflowLabel.READY,
+                WorkflowLabel.BLOCKED,
+                WorkflowLabel.BLOCKED,
+            ],
+        )
 
     def test_activation_follows_the_parent_label(self) -> None:
         # A crash between them must not leave a runnable child under a parent

@@ -15,10 +15,12 @@ from orchestrator.workflow.stages.decomposition import (
     late_models as _models,
     late_session as _session,
 )
+from orchestrator.workflow.stages.decomposition.late_budget import ESTIMATE
 from tests.workflow.fixtures import BACKEND_CODEX
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     CYCLE_ID,
+    FIRST_ESTIMATE,
     GENERATION_NUMBER,
     KEYS,
     LATE_ARGS,
@@ -26,6 +28,7 @@ from tests.workflow.stages.decomposition.late_test_support import (
     LATE_SPEC,
     OTHER_SHA,
     ROLE_DECOMPOSER,
+    SECOND_ESTIMATE,
     SPLIT_BLOCKER,
     late_generation,
 )
@@ -43,9 +46,18 @@ FIRST_BODY = "a"
 SECOND_BODY = "b"
 
 SPLIT_CHILDREN = (
-    {TITLE: FIRST_TITLE, BODY: FIRST_BODY},
-    {TITLE: SECOND_TITLE, BODY: SECOND_BODY, DEPENDS_ON: [0]},
+    {TITLE: FIRST_TITLE, BODY: FIRST_BODY, ESTIMATE: FIRST_ESTIMATE},
+    {
+        TITLE: SECOND_TITLE,
+        BODY: SECOND_BODY,
+        DEPENDS_ON: [0],
+        ESTIMATE: SECOND_ESTIMATE,
+    },
 )
+
+# A budget nothing estimated: a numeric string is not a count, and a slice
+# sized by one is a slice nobody sized.
+UNESTIMATED = "400"
 
 # What the comment has left over in the boundary case below: less than the
 # sentence a `single` goes on to owe the thread, so a padded comment that
@@ -53,9 +65,20 @@ SPLIT_CHILDREN = (
 _ROOM_LEFT = 512
 
 
-def recorded_child(title: str = FIRST_TITLE, body: str = FIRST_BODY) -> dict:
-    """One child as the pinned comment records it, fields and all."""
-    return {TITLE: title, BODY: body, DEPENDS_ON: []}
+def recorded_child(
+    title: str = FIRST_TITLE,
+    body: str = FIRST_BODY,
+    estimated: int | None = FIRST_ESTIMATE,
+) -> dict:
+    """One child as the pinned comment records it, fields and all.
+
+    `estimated` of None is the slice that declared no budget, which is what
+    a manifest written before this domain kept them reads back as.
+    """
+    recorded = {TITLE: title, BODY: body, DEPENDS_ON: []}
+    if estimated is not None:
+        recorded[ESTIMATE] = estimated
+    return recorded
 
 
 def _completed_run(**overrides) -> _models._LateRun:
@@ -155,21 +178,59 @@ class LateResultRecordTest(unittest.TestCase):
             state.get(KEYS.children),
             [
                 recorded_child(),
-                {TITLE: SECOND_TITLE, BODY: SECOND_BODY, DEPENDS_ON: [0]},
+                {
+                    TITLE: SECOND_TITLE,
+                    BODY: SECOND_BODY,
+                    DEPENDS_ON: [0],
+                    ESTIMATE: SECOND_ESTIMATE,
+                },
             ],
         )
 
     def test_a_manifest_carries_only_its_own_fields(self) -> None:
-        # Rewritten from the three fields a child issue is created out of, so
-        # nothing an agent put beside them lands in the comment humans read.
+        # Rewritten from the fields a child issue is created out of, so
+        # nothing an agent put beside them lands in the comment humans read
+        # -- and the budget that issue states is one of them.
         state = PinnedState()
 
         _session._record_late_result(state, _models._LateAdjudication(
             verdict=LateVerdict.SPLIT,
-            children=({TITLE: FIRST_TITLE, BODY: FIRST_BODY, "notes": "x"},),
+            children=({
+                TITLE: FIRST_TITLE,
+                BODY: FIRST_BODY,
+                ESTIMATE: FIRST_ESTIMATE,
+                "notes": "x",
+            },),
         ))
 
         self.assertEqual(state.get(KEYS.children), [recorded_child()])
+
+    def test_a_slice_nobody_sized_records_no_budget(self) -> None:
+        # A value that is not a count is one nothing estimated, and writing it
+        # back would put a size in the comment as though an agent had given
+        # it. A manifest recorded before this domain kept budgets is the same
+        # record, so both read back the same way.
+        state = PinnedState()
+
+        _session._record_late_result(state, _models._LateAdjudication(
+            verdict=LateVerdict.SPLIT,
+            children=(
+                {TITLE: FIRST_TITLE, BODY: FIRST_BODY},
+                {
+                    TITLE: SECOND_TITLE,
+                    BODY: SECOND_BODY,
+                    ESTIMATE: UNESTIMATED,
+                },
+            ),
+        ))
+
+        self.assertEqual(
+            state.get(KEYS.children),
+            [
+                recorded_child(estimated=None),
+                recorded_child(SECOND_TITLE, SECOND_BODY, estimated=None),
+            ],
+        )
 
     def test_a_single_records_what_stopped_a_split(self) -> None:
         # The one thing a human deciding about an oversized candidate cannot
@@ -206,6 +267,10 @@ class LateResultRecordTest(unittest.TestCase):
             [FIRST_TITLE, SECOND_TITLE],
         )
         self.assertEqual(recovered.children[1][DEPENDS_ON], [0])
+        self.assertEqual(
+            [child[ESTIMATE] for child in recovered.children],
+            [FIRST_ESTIMATE, SECOND_ESTIMATE],
+        )
 
     def test_a_recovered_single_reports_a_reason(self) -> None:
         # A result recorded before this domain kept an explanation is still
@@ -398,13 +463,27 @@ class LateRunAnswersTest(unittest.TestCase):
 
                 self.assertFalse(run.answers(late_generation()))
 
-    def test_a_complete_split_reads_answered(self) -> None:
-        # A recorded manifest carries the three fields a child issue is
-        # created out of and nothing else -- no per-child addition budget,
-        # which is a rule about a fresh reply rather than about a record. A
-        # live issue's split was written before any budget was asked for, and
-        # reading it as no manifest at all would send a candidate that has
-        # already been adjudicated round again.
+    def test_a_split_with_no_budgets_reads_answered(self) -> None:
+        # A live issue's split was recorded before this domain kept budgets,
+        # and the rules a record is read through ask for none. Reading such a
+        # manifest as no manifest at all would send a candidate that has
+        # already been adjudicated round again, for a run free to decide
+        # something else entirely.
+        unsized = recorded_child(estimated=None)
+        run = _session._read_late_run(PinnedState(data={
+            KEYS.run_cycle_id: CYCLE_ID,
+            KEYS.source_sha: CANDIDATE_SHA,
+            KEYS.run_generation: GENERATION_NUMBER,
+            KEYS.verdict: str(LateVerdict.SPLIT),
+            KEYS.children: [unsized],
+        }))
+
+        self.assertTrue(run.answers(late_generation()))
+        self.assertEqual(run.children, (unsized,))
+
+    def test_a_budgeted_split_reads_back_whole(self) -> None:
+        # The manifest the transaction creates children from, so the budget
+        # each child issue states has to survive the record it is read out of.
         run = _session._read_late_run(PinnedState(data={
             KEYS.run_cycle_id: CYCLE_ID,
             KEYS.source_sha: CANDIDATE_SHA,
@@ -415,6 +494,7 @@ class LateRunAnswersTest(unittest.TestCase):
 
         self.assertTrue(run.answers(late_generation()))
         self.assertEqual(run.children, (recorded_child(),))
+        self.assertEqual(run.children[0][ESTIMATE], FIRST_ESTIMATE)
 
 
 if __name__ == "__main__":

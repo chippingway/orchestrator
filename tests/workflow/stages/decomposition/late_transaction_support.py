@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 from dataclasses import replace
+from types import MappingProxyType
 
 from orchestrator.workflow.late_split import lineage as _lineage, state as _late_state
 from orchestrator.workflow.stages.decomposition import (
@@ -39,21 +40,48 @@ from tests.workflow.stages.decomposition.late_seam_support import (
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CYCLE_ID,
+    FIRST_ESTIMATE,
     GENERATION_NUMBER,
     LATE_ISSUE_NUMBER,
     PLAN_PR_BODY,
     PLAN_PR_NUMBER,
+    SECOND_ESTIMATE,
     late_generation,
+    proposed_slice,
     seed_late_issue,
     seed_plan_pr,
 )
 
 # The manifest every case splits into, and the dependency between its two
-# children -- so activation has one child to release and one to hold.
+# children -- so activation has one child to release and one to hold. Each
+# slice declares the budget the reply contract requires of it, since that is
+# the manifest the transaction is handed on every road that reaches it.
 CHILDREN = (
-    {"title": "A", "body": "the first slice", "depends_on": []},
-    {"title": "B", "body": "the second slice", "depends_on": [0]},
+    proposed_slice("A", "the first slice", FIRST_ESTIMATE),
+    proposed_slice("B", "the second slice", SECOND_ESTIMATE, depends_on=(0,)),
 )
+
+# What the slice at the bottom of the chain below says it will add.
+THIRD_ESTIMATE = 300
+
+# A plan whose dependencies run two levels deep: the prerequisite that may
+# land dormant, the consumer that waits on it, and the slice that waits on
+# that one. A single level cannot show a graph recorded for a child that is
+# neither the root nor a leaf of it.
+MULTI_LEVEL_CHILDREN = (
+    proposed_slice("A", "the dormant prerequisite", FIRST_ESTIMATE),
+    proposed_slice(
+        "B", "the slice that consumes it", SECOND_ESTIMATE, depends_on=(0,),
+    ),
+    proposed_slice(
+        "C", "the slice that activates the pair", THIRD_ESTIMATE,
+        depends_on=(1,),
+    ),
+)
+
+# The graph that plan records: one entry per child that waits on another, and
+# none for the prerequisite nothing gates.
+MULTI_LEVEL_GRAPH = MappingProxyType({"1": [0], "2": [1]})
 
 SNAPSHOT_REF = (
     f"refs/orchestrator/late-split/issue-{LATE_ISSUE_NUMBER}"

@@ -8,6 +8,7 @@ from dataclasses import replace
 from types import MappingProxyType
 
 from orchestrator.workflow.late_split.models import MAX_LINEAGE_DEPTH
+from orchestrator.workflow.stages.decomposition.late_budget import ESTIMATE
 from orchestrator.workflow.stages.decomposition.late_models import (
     _LateDisposition,
 )
@@ -34,6 +35,8 @@ from tests.workflow.stages.decomposition.late_transaction_support import (
     KEY_EXPECTED_CHILDREN,
     KEY_PARENT_NUMBER,
     KEY_UMBRELLA,
+    MULTI_LEVEL_CHILDREN,
+    MULTI_LEVEL_GRAPH,
     PARK_CHILDREN_FAILED,
     SNAPSHOT_REF,
     LateSplitCase,
@@ -53,6 +56,20 @@ CHERRY_PICK = "git cherry-pick"
 COPY_PATHS = "git checkout"
 
 NO_HUNK_SPLITTING = "Do **not** split hunks mechanically"
+
+# The key a declared slice carries its scope under, read where a case checks
+# the issue body that slice was opened with.
+BODY = "body"
+
+# What a child issue states the size of its own slice under, and the sentence
+# beside it that says which of that slice's paths the number covers.
+BUDGET_HEADING = "Estimated all-path addition budget"
+
+ALL_PATHS = "No path is excluded from it"
+
+# The slice a manifest recorded before this domain kept budgets reads back as:
+# scope and nothing about a size.
+UNSIZED_SLICE = MappingProxyType({"title": "A", BODY: "only slice"})
 
 # The children an earlier decomposition of this same issue left behind, and
 # the graph it recorded over them.
@@ -203,7 +220,7 @@ class PriorDecompositionTest(SplitChildrenCase, unittest.TestCase):
     def test_the_earlier_graph_does_not_survive(self) -> None:
         # A graph indexed against another manifest would hold this split's
         # children behind dependencies that are not theirs.
-        self._transact(children=({"title": "A", "body": "only slice"},))
+        self._transact(children=(dict(UNSIZED_SLICE),))
 
         self.assertIsNone(self._pinned().get(KEY_DEP_GRAPH))
 
@@ -245,7 +262,7 @@ class ChildInheritanceTest(SplitChildrenCase, unittest.TestCase):
                 ancestry_of(self.github, child.number).scope
                 for child in self.github.created_child_issues
             ],
-            [child["body"] for child in CHILDREN],
+            [child[BODY] for child in CHILDREN],
         )
 
     def test_a_re_seed_leaves_child_work_alone(self) -> None:
@@ -275,7 +292,7 @@ class ChildBodyTest(SplitChildrenCase, unittest.TestCase):
     """A child's body says where the work is and how it may be reused."""
 
     def test_it_opens_on_the_declared_slice(self) -> None:
-        self.assertTrue(self._body().startswith(CHILDREN[0]["body"]))
+        self.assertTrue(self._body().startswith(CHILDREN[0][BODY]))
 
     def test_it_names_the_snapshot_and_both_commits(self) -> None:
         body = self._body()
@@ -294,10 +311,82 @@ class ChildBodyTest(SplitChildrenCase, unittest.TestCase):
         self.assertIn(COPY_PATHS, body)
         self.assertIn(NO_HUNK_SPLITTING, body)
 
+    def test_it_states_the_budget_it_was_sized_at(self) -> None:
+        # The developer implementing the slice is the one who has to keep to
+        # it, and the parent's pinned comment is not somewhere they read.
+        body = self._body()
+        estimated = CHILDREN[0][ESTIMATE]
+
+        self.assertIn(f"{BUDGET_HEADING}: {estimated} lines", body)
+        self.assertTrue(body.startswith(CHILDREN[0][BODY]))
+
+    def test_the_budget_says_which_paths_it_counts(self) -> None:
+        # Read as implementation alone it would leave out the tests and the
+        # documentation the same slice owes, and come back as a change nobody
+        # can review on its own.
+        body = self._body()
+
+        self.assertIn(ALL_PATHS, body)
+        for path in ("tests", "documentation"):
+            with self.subTest(path=path):
+                self.assertIn(path, body)
+
+    def test_a_slice_nobody_sized_states_no_budget(self) -> None:
+        # What a manifest recorded before this domain kept budgets reads back
+        # as -- and those still create children, with everything else about
+        # the slice unchanged.
+        self._transact(children=(dict(UNSIZED_SLICE),))
+
+        body = first_child(self.github).body
+        self.assertNotIn(BUDGET_HEADING, body)
+        self.assertTrue(body.startswith(UNSIZED_SLICE[BODY]))
+        self.assertIn(SNAPSHOT_REF, body)
+
     def _body(self) -> str:
         """The body the first slice's child was opened with."""
         self._transact()
         return first_child(self.github).body
+
+
+class MultiLevelPlanTest(SplitChildrenCase, unittest.TestCase):
+    """A plan whose dependencies run two levels deep, materialized whole."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._transact(children=MULTI_LEVEL_CHILDREN)
+        self.created = list(self.github.created_child_issues)
+
+    def test_the_register_keeps_the_manifest_order(self) -> None:
+        # The graph indexes into the register positionally, so a child
+        # recorded out of order is a dependency naming another slice's issue.
+        self.assertEqual(
+            self._recorded(), [child.number for child in self.created],
+        )
+        self.assertEqual(len(self.created), len(MULTI_LEVEL_CHILDREN))
+
+    def test_every_level_of_the_graph_is_recorded(self) -> None:
+        self.assertEqual(self._pinned()[KEY_DEP_GRAPH], MULTI_LEVEL_GRAPH)
+
+    def test_a_slice_owns_its_scope_and_budget(self) -> None:
+        for index, child in enumerate(self.created):
+            with self.subTest(slice=index):
+                declared = MULTI_LEVEL_CHILDREN[index]
+                estimated = declared[ESTIMATE]
+                self.assertTrue(child.body.startswith(declared[BODY]))
+                self.assertIn(
+                    f"{BUDGET_HEADING}: {estimated} lines", child.body,
+                )
+
+    def test_every_slice_reuses_one_candidate(self) -> None:
+        # The snapshot is immutable and shared: each child reuses the same
+        # commit, however deep in the plan its own slice sits.
+        for child in self.created:
+            with self.subTest(child=child.number):
+                seeded = ancestry_of(self.github, child.number)
+                self.assertEqual(seeded.snapshot_ref, SNAPSHOT_REF)
+                self.assertEqual(seeded.snapshot_sha, CANDIDATE_SHA)
+                self.assertEqual(seeded.parent_issue, LATE_ISSUE_NUMBER)
+                self.assertIn(CHERRY_PICK, child.body)
 
 
 class LineageDepthTest(SplitChildrenCase, unittest.TestCase):
