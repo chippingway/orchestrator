@@ -39,11 +39,12 @@ which is prose and belongs on the issue thread rather than in the state every
 stage shares.
 
 The explanation is the one of those a record may be missing and still be an
-answer. Results written before this domain kept one are on live issues, and
-the reply contract does not refuse an outcome that omitted it, so the absence
-reads back as the stand-in the carrier beside it spells rather than as an
-incomplete result -- because what re-running the adjudicator would recover is
-prose, at the price of a second run free to decide something else entirely.
+answer. A fresh reply that omits it never reaches here -- the reply contract
+refuses one -- but results written before this domain kept an explanation are
+on live issues, and that absence reads back as the stand-in the carrier beside
+it spells rather than as an incomplete result, because what re-running the
+adjudicator would recover is prose, at the price of a second run free to
+decide something else entirely.
 
 Both ends of that are bounded rather than trusted. What a recorded outcome is
 measured against is the whole comment the write would produce -- the preserved

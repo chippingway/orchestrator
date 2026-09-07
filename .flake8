@@ -67,6 +67,7 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/split.py:WPS202
     orchestrator/workflow/stages/decomposition/umbrella.py:WPS202
     orchestrator/workflow/stages/decomposition/validation.py:WPS202
+    orchestrator/workflow/stages/decomposition/late_reply.py:WPS202
     orchestrator/workflow/stages/discussion/run.py:WPS202
     orchestrator/workflow/stages/discussion/terminal.py:WPS202
     orchestrator/workflow/stages/implementing/disposition.py:WPS202
@@ -136,4 +137,5 @@ per-file-ignores =
     tests/workflow/stages/implementing/test_late_gate_retry.py:WPS202
     tests/workflow/stages/decomposition/test_late_unsplit_notice.py:WPS202,WPS204
     tests/workflow/stages/decomposition/late_content_support.py:WPS202
+    tests/workflow/stages/decomposition/late_test_support.py:WPS202
     tests/workflow/stages/decomposition/test_late_authorize.py:WPS201,WPS202,WPS204

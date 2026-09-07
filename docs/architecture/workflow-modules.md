@@ -1017,10 +1017,22 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             outlives neither the children still to be released nor the branch still to be
                             deleted
       late_prompt.py        the late-only prompt: the committed candidate, the frozen diff, the measurement, the
-                            lineage, and the three outcomes with the bounds they are judged against and the one
-                            field name they are answered under, read off the parser that reads the reply
+                            lineage, and the three outcomes with the bounds they are judged against and the two
+                            field names they are answered under, read off the parser that reads the reply -- the
+                            human decision a `single` requires and the explanation it owes for it, the
+                            dependency-ordered slices and dormant prerequisites a split has to consider before
+                            that answer, what every child body owns, and the addition budget each child declares
+                            under this generation's own ceiling -- the figure its own JSON template shows scaled
+                            to that ceiling, since a template is copied verbatim and a standing one would be a
+                            child the reply contract refuses wherever the ceiling is narrower than it
       late_reply.py         the late reply's own fence, its three structured decisions, and the envelope and split rules
-                            it borrows from the initial mode
+                            it borrows from the initial mode -- plus the two rules that are this owner's alone and
+                            are asked of a fresh reply and of nothing recorded: the explanation a `single` owes for
+                            why no safe split is available, without which the verdict a human has to act on carries
+                            none of what it turns on, and the per-child addition budget, required and bounded
+                            against the ceiling this candidate was measured at. Neither is asked of a record: the
+                            borrowed validator also reads back manifests written before any budget existed, and a
+                            `single` recorded before the explanation was kept still answers, with a stand-in
       late_content.py       WHICH content the two late-local fingerprints are taken over -- the title and body, and
                             the trusted-thread run the ratcheting watermark covers -- what a comparison against a
                             recorded baseline says moved, the floor a comment has to clear to be a REPLY rather

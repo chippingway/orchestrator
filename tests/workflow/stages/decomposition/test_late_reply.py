@@ -8,20 +8,32 @@ import unittest
 from orchestrator.workflow.late_split.events import LateVerdictCategory
 from orchestrator.workflow.late_split.models import LateVerdict
 from orchestrator.workflow.stages.decomposition import (
-    late_models as _models,
     late_reply as _late_reply,
     manifest as _manifest,
 )
+from orchestrator.workflow.stages.decomposition.late_reply import _ESTIMATE, _SPLIT_BLOCKER
 from tests.workflow.fixtures import _manifest as _initial_block
 from tests.workflow.stages.decomposition.late_test_support import (
+    FIRST_ESTIMATE,
     QUESTION_REPLY,
+    SECOND_ESTIMATE,
     SINGLE_REPLY,
     SPLIT_BLOCKER,
     SPLIT_REPLY,
+    THRESHOLD,
     late_block,
+    split_reply_of,
 )
 
 SINGLE_PAYLOAD = '{"decision": "single", "rationale": "fits"}'
+
+# The same outcome as a LATE reply carries it: the explanation the late
+# contract requires and the initial one has no field for.
+LATE_SINGLE_PAYLOAD = (
+    '{"decision": "single", "rationale": "fits", '
+    f'"{_SPLIT_BLOCKER}": "{SPLIT_BLOCKER}"}}'
+)
+
 
 # One reply per way a late block fails to be an answer, each with the fragment
 # the park message has to carry.
@@ -52,20 +64,48 @@ _REFUSED_REPLIES = (
         late_block('{"decision": "question", "category": "unsafe_split"}'),
         "non-empty question",
     ),
+    (
+        "a single with no explanation",
+        late_block(SINGLE_PAYLOAD),
+        f"requires a non-empty {_SPLIT_BLOCKER}",
+    ),
+    (
+        "a single explained with whitespace",
+        late_block(f'{{"decision": "single", "{_SPLIT_BLOCKER}": "  "}}'),
+        f"requires a non-empty {_SPLIT_BLOCKER}",
+    ),
+    (
+        "a single explained with something that is not text",
+        late_block(f'{{"decision": "single", "{_SPLIT_BLOCKER}": [1, 2]}}'),
+        "no safe split of this work is available",
+    ),
+    (
+        "a child with no budget",
+        split_reply_of(None),
+        f"child 0 needs an `{_ESTIMATE}`",
+    ),
+    (
+        "a budget that is a string",
+        split_reply_of("300"),
+        f"child 0 needs an `{_ESTIMATE}`",
+    ),
+    ("a budget that is a bool", split_reply_of(True), "child 0 needs"),
+    ("a budget of nothing", split_reply_of(FIRST_ESTIMATE, 0), "child 1 needs"),
+    (
+        "a budget at the ceiling",
+        split_reply_of(THRESHOLD),
+        f"is not below the {THRESHOLD}-line ceiling",
+    ),
 )
 
 
 # What each outcome says stopped a split: the reply, and the pair of what the
 # adjudication carries and what a reader of the verdict is told. Only a
-# `single` is an answer about a split that did not happen, and one that
-# omitted the field is still an answer.
+# `single` is an answer about a split that did not happen, and one that named
+# no obstacle is refused above rather than parsed into a verdict with nothing
+# under it.
 _SPLIT_BLOCKERS = (
     ("explained", SINGLE_REPLY, (SPLIT_BLOCKER, SPLIT_BLOCKER)),
-    (
-        "unexplained",
-        late_block(SINGLE_PAYLOAD),
-        ("", _models.UNRECORDED_SPLIT_BLOCKER),
-    ),
     ("split", SPLIT_REPLY, ("", "")),
     ("question", QUESTION_REPLY, ("", "")),
 )
@@ -75,7 +115,9 @@ class LateReplyTest(unittest.TestCase):
     """What each of the three structured outcomes parses to."""
 
     def test_single_carries_rationale_and_category(self) -> None:
-        adjudication, error = _late_reply._parse_late_reply(SINGLE_REPLY)
+        adjudication, error = _late_reply._parse_late_reply(
+            SINGLE_REPLY, THRESHOLD,
+        )
 
         self.assertIsNone(error)
         self.assertEqual(adjudication.verdict, LateVerdict.SINGLE)
@@ -88,13 +130,14 @@ class LateReplyTest(unittest.TestCase):
 
     def test_what_each_verdict_says_stopped_a_split(self) -> None:
         # A `single` carries the reason as a field rather than as prose around
-        # the block, which nothing keeps. One that omitted it still decides --
-        # refusing the outcome would buy a second agent run to recover prose
-        # -- and the reader is told there is no reason instead of being shown
-        # nothing.
+        # the block, which nothing keeps, and it is the only verdict that
+        # answers about a split that did not happen: the other two carry
+        # nothing under it and tell a reader nothing.
         for name, reply, expected in _SPLIT_BLOCKERS:
             with self.subTest(case=name):
-                adjudication, refusal = _late_reply._parse_late_reply(reply)
+                adjudication, refusal = _late_reply._parse_late_reply(
+                    reply, THRESHOLD,
+                )
 
                 self.assertIsNone(refusal)
                 self.assertEqual(
@@ -106,7 +149,9 @@ class LateReplyTest(unittest.TestCase):
                 )
 
     def test_split_carries_the_children_it_proposed(self) -> None:
-        adjudication, error = _late_reply._parse_late_reply(SPLIT_REPLY)
+        adjudication, error = _late_reply._parse_late_reply(
+            SPLIT_REPLY, THRESHOLD,
+        )
 
         self.assertIsNone(error)
         self.assertEqual(adjudication.verdict, LateVerdict.SPLIT)
@@ -117,7 +162,9 @@ class LateReplyTest(unittest.TestCase):
         self.assertEqual(adjudication.children[1]["depends_on"], [0])
 
     def test_question_carries_what_it_asks(self) -> None:
-        adjudication, error = _late_reply._parse_late_reply(QUESTION_REPLY)
+        adjudication, error = _late_reply._parse_late_reply(
+            QUESTION_REPLY, THRESHOLD,
+        )
 
         self.assertIsNone(error)
         self.assertEqual(adjudication.verdict, LateVerdict.QUESTION)
@@ -142,13 +189,14 @@ class LateReplyTest(unittest.TestCase):
                         '{"decision": "question", '
                         f'{declared}"question": "which half?"}}'
                     ),
+                    THRESHOLD,
                 )
                 self.assertIsNone(error)
                 self.assertEqual(adjudication.category, expected)
 
     def test_an_absent_category_stays_absent(self) -> None:
         adjudication, error = _late_reply._parse_late_reply(
-            late_block(SINGLE_PAYLOAD),
+            late_block(LATE_SINGLE_PAYLOAD), THRESHOLD,
         )
 
         self.assertIsNone(error)
@@ -157,9 +205,48 @@ class LateReplyTest(unittest.TestCase):
     def test_every_refusal_names_why(self) -> None:
         for name, reply, fragment in _REFUSED_REPLIES:
             with self.subTest(case=name):
-                adjudication, error = _late_reply._parse_late_reply(reply)
+                adjudication, error = _late_reply._parse_late_reply(
+                    reply, THRESHOLD,
+                )
                 self.assertIsNone(adjudication)
                 self.assertIn(fragment, error)
+
+
+class LateBudgetTest(unittest.TestCase):
+    """The addition budget every proposed child has to declare."""
+
+    def test_a_split_keeps_the_budgets_declared(self) -> None:
+        # What each child said it would add across all of its paths travels
+        # with the manifest that proposed it, so what was judged is what the
+        # agent wrote rather than a number read back off something else.
+        proposed, refusal = _late_reply._parse_late_reply(
+            SPLIT_REPLY, THRESHOLD,
+        )
+
+        self.assertIsNone(refusal)
+        self.assertEqual(
+            [child[_ESTIMATE] for child in proposed.children],
+            [FIRST_ESTIMATE, SECOND_ESTIMATE],
+        )
+
+    def test_an_unknown_ceiling_still_requires_one(self) -> None:
+        # A generation that cannot say what it was measured against refuses
+        # nothing on size -- there is no number to be past -- and still
+        # refuses a child that declared no budget at all, since a missing one
+        # is a protocol failure whatever the bound is.
+        oversized, refusal = _late_reply._parse_late_reply(
+            split_reply_of(THRESHOLD * 2), None,
+        )
+
+        self.assertIsNone(refusal)
+        self.assertEqual(oversized.child_count, 1)
+
+        unsized, error = _late_reply._parse_late_reply(
+            split_reply_of(None), None,
+        )
+
+        self.assertIsNone(unsized)
+        self.assertIn(_ESTIMATE, error)
 
 
 class ModeSeparationTest(unittest.TestCase):
@@ -167,7 +254,7 @@ class ModeSeparationTest(unittest.TestCase):
 
     def test_an_initial_manifest_is_not_a_late_reply(self) -> None:
         adjudication, error = _late_reply._parse_late_reply(
-            _initial_block(SINGLE_PAYLOAD),
+            _initial_block(SINGLE_PAYLOAD), THRESHOLD,
         )
 
         self.assertIsNone(adjudication)
