@@ -17,7 +17,8 @@ from orchestrator.git import publication as _publication_package
 _PACKAGE = "orchestrator.git.publication"
 
 _OWNERS = (
-    "models", "planning", "probes", "resume", "rewrite", "squash", "titles",
+    "models", "planning", "probes", "resume", "rewrite", "squash", "standing",
+    "titles",
 )
 
 _MODULES = (_PACKAGE, *(f"{_PACKAGE}.{owner}" for owner in _OWNERS))
@@ -98,7 +99,6 @@ _DEFINED = MappingProxyType({
         "_MOVED_UNDER_THE_RECORD",
         "_RACED_THE_RECORD",
         "_UNRECORDED_COLLAPSE",
-        "_claims_a_collapse",
         "_handed_back",
         "_moved_under_the_reading",
         "_raced_the_record",
@@ -106,6 +106,9 @@ _DEFINED = MappingProxyType({
         "_squash_and_force_push",
         "_squashed_or_resumed",
         "_still_the_planned_checkout",
+    ),
+    "standing": (
+        "_claims_a_collapse",
         "_tells_the_caller_where_the_branch_is",
         "_where_the_branch_stands",
     ),
@@ -174,10 +177,10 @@ class CleanProcessImportTest(unittest.TestCase):
 
     `probes` depends only on the config and git command owners, `titles` only
     on `probes`, `planning` on both of them plus the verification probes, and
-    `rewrite` / `resume` / `squash` layer on top, so importing any one of them
-    first must not need a name a half-run module has not defined yet. A
-    subprocess per module gives each a clean `sys.modules` no other test has
-    already populated, exposing an import-order cycle a package-first suite
+    `rewrite` / `resume` / `standing` / `squash` layer on top, so importing any
+    one of them first must not need a name a half-run module has not defined
+    yet. A subprocess per module gives each a clean `sys.modules` no other test
+    has already populated, exposing an import-order cycle a package-first suite
     run would mask.
     """
 
