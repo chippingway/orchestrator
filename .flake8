@@ -28,6 +28,7 @@ per-file-ignores =
     orchestrator/workflow/late_split/rewrites.py:WPS202
     orchestrator/workflow/late_split/lineage.py:WPS202
     orchestrator/workflow/late_split/collapses.py:WPS202
+    orchestrator/workflow/late_split/exemption.py:WPS202
     orchestrator/workflow/late_split/overrides.py:WPS202
     orchestrator/workflow/engine/comments.py:WPS202
     orchestrator/workflow/engine/observations.py:WPS202
@@ -136,6 +137,7 @@ per-file-ignores =
     tests/workflow/stages/implementing/late_transfer_test_support.py:WPS202
     tests/workflow/stages/implementing/late_gate_test_support.py:WPS202
     tests/workflow/stages/implementing/test_late_authority.py:WPS214
+    tests/workflow/stages/fixing/test_published_gate_authority.py:WPS214
     tests/workflow/stages/conflicts/test_replay_real_git.py:WPS201
     tests/workflow/stages/conflicts/test_settled_round.py:WPS202
     tests/workflow/stages/decomposition/test_late_cleanup_publication.py:WPS201

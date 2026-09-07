@@ -62,18 +62,27 @@ def _reading_debt() -> dict:
         _KEY_APPROVED_BASIS: str(_parks.LateApprovalBasis.READING),
     }
 
-# What an operator writes to end the park, and the two replies that are not
-# it: a paragraph mentioning the command, and the command for a commit this
-# issue is not holding.
+# What an operator writes to end the park, and the three replies that are not
+# it: a paragraph mentioning the command, the command for a commit this issue
+# is not holding, and the command with an id nothing here could read.
 _AUTHORIZE = _authorize_command()
 _AUTHORIZE_IN_PROSE = f"looks fine to me, so: {_AUTHORIZE}"
 _AUTHORIZE_ANOTHER = _authorize_command(_OTHER_SHA)
+# The command as somebody types it from a `git log` line: recognized, and
+# naming no commit this domain could compare anything against.
+_AUTHORIZE_ABBREVIATED = _authorize_command(
+    MEASURED_CANDIDATE_SHA[:_ABBREVIATED],
+)
 
 # The reply ids the fixture posts. Two, because the batches that matter are
 # the ones with a word after the first: a command a human corrected, and
 # guidance they then decided against.
 _REPLY_ID = support.REPLY_COMMENT_ID
 _LATER_REPLY_ID = support.REPLY_COMMENT_ID + 1
+
+# The half of the notice that differs by the side of publication it is taken
+# on: an offer only the seam with a resume behind it may make.
+_RESUMED_AGAINST_IT = "the developer is resumed against it"
 
 
 class UnauthorizedExemptionTest(
@@ -160,20 +169,34 @@ class UnauthorizedExemptionTest(
                 self._assert_held(mocks)
 
     def test_a_damaged_exemption_frees_nothing(self) -> None:
-        # The crash state the other way round. An approval's provenance is
-        # what the record SAYS rather than what the fields beside it imply, so
-        # a settlement's debt whose exemption somebody hand-edited is still
-        # the settlement's -- read from the exemption alone it would look like
-        # this gate's own answer and publish unmeasured.
-        self._seed(**{
-            **_adjudication_debt(),
-            _KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA[:_ABBREVIATED],
-        })
+        # The crash state the other way round, and the two shapes it comes in.
+        # A recorded basis says the debt is the settlement's whatever the
+        # exemption beside it reads as. Without one -- an approval an older
+        # binary wrote -- the exemption is the only evidence there is, and a
+        # field this build cannot read is not the same thing as an issue that
+        # never entered an adjudication: it CLAIMS one and cannot say which
+        # commit, which is exactly what a hand edit of that one field
+        # produces. Read alike, the truncated record is the shape that
+        # publishes an adjudication's debt unmeasured.
+        for described, debt in (
+            ("recorded as the adjudication's", _adjudication_debt()),
+            ("an older binary's, with no basis", {
+                _KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+            }),
+        ):
+            with self.subTest(debt=described):
+                self.setUp()
+                self._seed(**{
+                    **debt,
+                    _KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA[:_ABBREVIATED],
+                })
 
-        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+                mocks = self._run_gate(
+                    added_lines=support.OVERSIZED_ADDITIONS,
+                )
 
-        self._assert_measured(mocks)
-        self._assert_held(mocks)
+                self._assert_measured(mocks)
+                self._assert_held(mocks)
 
     def test_a_gate_owned_approval_still_bypasses(self) -> None:
         # And the approval this gate owns is untouched, exemption or no
@@ -250,6 +273,10 @@ class AuthorizationParkTest(support._LegacyExemptionCase, unittest.TestCase):
         self._assert_waiting_for_authorization()
 
     def test_the_notice_names_the_command(self) -> None:
+        # Before there is a pull request the ordinary resume is still in front
+        # of this issue, so the notice offers the other reply too -- and it is
+        # true here: guidance falls through the park's own recovery to the
+        # road that feeds it to the developer.
         self._seed_legacy()
 
         self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
@@ -260,6 +287,7 @@ class AuthorizationParkTest(support._LegacyExemptionCase, unittest.TestCase):
         self.assertIn(_AUTHORIZE, said)
         self.assertIn(str(support.OVERSIZED_ADDITIONS), said)
         self.assertIn(str(config.MAX_ADDED_LINES), said)
+        self.assertIn(_RESUMED_AGAINST_IT, said)
 
 
 class AuthorizationRecoveryTest(
@@ -355,6 +383,24 @@ class AuthorizationRecoveryTest(
         mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
 
         self.assertNotIn(support.KEY_OVERRIDE_CANDIDATE_SHA, self._pinned())
+        self._assert_held(mocks)
+        self._assert_waiting_for_authorization()
+        self.assertIn(
+            MEASURED_CANDIDATE_SHA, self.github.posted_comments[-1][1],
+        )
+        self.assertEqual(
+            self._pinned()[support.LAST_ACTION_COMMENT_ID], _REPLY_ID,
+        )
+
+    def test_an_abbreviated_command_is_answered(self) -> None:
+        # A command nobody could act on is still a gesture this park owes an
+        # answer to. Dropped as though it were guidance, an operator who
+        # abbreviated would be left with a silent park, a thread that never
+        # said why, and a reply standing in every later batch.
+        self._park_awaiting_authorization(_AUTHORIZE_ABBREVIATED)
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
         self._assert_held(mocks)
         self._assert_waiting_for_authorization()
         self.assertIn(

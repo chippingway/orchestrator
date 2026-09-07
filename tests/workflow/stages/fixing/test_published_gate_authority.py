@@ -44,10 +44,18 @@ _KEY_APPROVED_LEASE = support.KEY_APPROVED_LEASE
 
 _KEY_OVERRIDE_CANDIDATE_SHA = "late_override_candidate_sha"
 
-# The comment a human writes the authorization in, past the park's own notice.
-_AUTHORIZING_COMMENT = 7300
+# The two comments a human writes past the park's own notice: prose, and the
+# authorization after it. Ordered, because which of them is the LAST word is
+# what a standing park is answered by.
+_PROSE_COMMENT = 7300
+_AUTHORIZING_COMMENT = 7301
 
 PARK_UNAUTHORIZED_EXEMPTION = "late_unauthorized_exemption"
+
+# The half of the park notice that differs by the side of publication it was
+# taken on: the offer this seam may not make, and what it says instead.
+_RESUMED_AGAINST_IT = "the developer is resumed against it"
+_REACHES_NO_AGENT = "prose here reaches no agent"
 
 
 class DeliveredExemptionTest(unittest.TestCase, _SizeGateFixtureMixin):
@@ -129,6 +137,17 @@ class ParkedAcrossPollsTest(unittest.TestCase, _SizeGateFixtureMixin):
         })
         self.mocks = self._measured(added_lines=PAST_THE_CEILING)
 
+    def test_the_notice_promises_no_resume(self) -> None:
+        # The park is re-entered here through the debt reconciliation, which
+        # stops the tick ahead of the stage handler on every poll -- so prose
+        # on this thread reaches no agent, and a notice offering a resume
+        # would have somebody writing into a thread nothing reads.
+        said = self._said_last()
+
+        self.assertIn(_authorize_command(MEASURED_CANDIDATE_SHA), said)
+        self.assertNotIn(_RESUMED_AGAINST_IT, said)
+        self.assertIn(_REACHES_NO_AGENT, said)
+
     def test_the_poll_behind_it_leaves_the_label(self) -> None:
         # A record answering "oversized" is what this workflow means by an
         # adjudication in flight: the dispatcher puts `workflow:decomposing`
@@ -158,18 +177,50 @@ class ParkedAcrossPollsTest(unittest.TestCase, _SizeGateFixtureMixin):
         )
         self.assertFalse(pinned[fixing.AWAITING_HUMAN])
 
+    def test_prose_holds_the_park_and_runs_nothing(self) -> None:
+        # What the notice above promises, pinned: guidance on this seam is not
+        # carried anywhere. The debt reconciliation owns the tick ahead of the
+        # stage handler while the candidate is unmeasured and unpushed, so the
+        # park simply stands -- and the command posted after it is still the
+        # last word, which is what keeps the prose from poisoning the park.
+        self._said("please reduce this change instead")
+
+        handled, _ = self._polled(added_lines=PAST_THE_CEILING)
+
+        self.assertFalse(handled)
+        self.assertEqual(
+            self._pinned(self.scenario)[fixing.PARK_REASON],
+            PARK_UNAUTHORIZED_EXEMPTION,
+        )
+        self._authorize()
+        self._assert_pushed_once(self._measured(added_lines=PAST_THE_CEILING))
+
+    def _said_last(self) -> str:
+        """What this issue's thread was told most recently."""
+        posted = self.scenario.github.posted_comments
+        return posted[-1][1]
+
     def _authorize(self) -> None:
         """One trusted whole-comment authorization past the park's notice."""
+        self._said(
+            _authorize_command(MEASURED_CANDIDATE_SHA),
+            comment_id=_AUTHORIZING_COMMENT,
+        )
+
+    def _said(self, body: str, comment_id: int = _PROSE_COMMENT) -> None:
+        """One trusted human reply past the park's own notice."""
         self.scenario.issue.comments.append(fixing.FakeComment(
-            id=_AUTHORIZING_COMMENT,
-            body=_authorize_command(MEASURED_CANDIDATE_SHA),
-            user=fixing.FakeUser(fixing.ALICE),
+            id=comment_id, body=body, user=fixing.FakeUser(fixing.ALICE),
         ))
 
     def _measured(self, **run_options):
         """One whole poll of this issue under the fixture's own ceiling."""
+        return self._polled(**run_options)[1]
+
+    def _polled(self, **run_options):
+        """That poll, reported with whether the stage handler was reached."""
         with patch.object(config, support.MAX_ADDED_LINES, CEILING):
-            return self._poll(self.scenario, **run_options)[1]
+            return self._poll(self.scenario, **run_options)
 
 
 if __name__ == "__main__":

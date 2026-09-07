@@ -138,6 +138,31 @@ def read_exemption(state: PinnedState) -> str | None:
     )
 
 
+def claims_an_exemption(state: PinnedState) -> bool:
+    """Whether this comment CLAIMS an adjudication accepted something.
+
+    Presence rather than truth, and it is a different question from
+    `read_exemption`. That one answers which commit is exempt and reads
+    fail-closed, so a truncated or hand-edited field comes back as no
+    exemption -- which is right where the question is "may this commit
+    publish", since a value naming no commit may license none.
+
+    It is the wrong reading for a caller asking whose DECISION a record is
+    about. An issue that never entered an adjudication carries no field at
+    all; one whose field cannot be read carries the claim that an adjudication
+    happened and no way to say which commit it was about. Read as the same
+    answer, the second becomes the first, and a debt an authorized settlement
+    recorded beside it reads as one this gate took for itself.
+
+    The key being THERE is the whole test rather than the value under it being
+    something, because a pinned comment is JSON: a field can be present and
+    `null`, which a hand edit and an older binary writing a value this one
+    reads as nothing both produce, and that is exactly the minimal damaged
+    claim this exists to catch.
+    """
+    return LATE_EXEMPT_SHA in state.data
+
+
 def record_exemption(state: PinnedState, candidate_sha: str) -> None:
     """Exempt exactly this commit from the size gate.
 

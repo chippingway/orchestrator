@@ -245,7 +245,10 @@ where you put it rather than greeted a second time, so nothing runs again until 
   without an operator's decision behind it. The record is left exactly as found either way — nothing is deleted or
   rewritten to take that park — and a change measuring at or below the ceiling publishes without the command at all.
   On that park the last thing you write is what counts: a command you correct, and guidance you then decide against,
-  are both superseded by the command posted after them.
+  are both superseded by the command posted after them, and a command nobody could act on is answered on the thread
+  rather than ignored. Whether prose does anything there depends on where the issue is: before it has a pull request
+  a reply resumes the developer, and once one carries the work the command is the only reply that stage reads — the
+  park comment says which of the two you are looking at.
   `<commit>` is the candidate's full git object id — an
   abbreviation is refused, since nothing here ever writes one. The park comment names the commit, and spells the whole
   command out ready to copy. Nothing else authorizes a publication:

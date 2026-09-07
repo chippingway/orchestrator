@@ -919,9 +919,14 @@ froze, the additions it counted, the ceiling they were counted against, the dige
 the comment it was written in — and the park itself keeps the pair and not the count, since a generation answering
 *oversized* is what the dispatcher restores `workflow:decomposing` over. The LAST fresh trusted reply decides, unlike
 the adjudication park above, where a whole conversation is read at once: guidance written after a command outranks
-it, a command written after guidance replaces it, and a command naming another commit is answered under a scoped
-receipt and consumed — those five stages move the watermark by no other means, so a reply left standing would refuse
-every command behind it. The one candidate the park never holds is a commit the pull request already stands on,
+it, a command written after guidance replaces it, and a reply that IS the command is answered whatever it goes on to
+say — another commit, or an abbreviation, which names none — under a scoped receipt, and consumed. Those five stages
+move the watermark by no other means, so a reply left standing would refuse every command behind it. What guidance
+is worth differs by seam and the notice says which: before there is a pull request it reaches the developer through
+the park's own recovery, and past one the debt reconciliation stops the tick ahead of the stage handler on every
+poll, so the notice taken there says the command is the only reply that stage reads.
+
+The one candidate the park never holds is a commit the pull request already stands on,
 where the push would move nothing and only the bookkeeping behind a publication that has happened is left.
 
 Everything the command does not prove is answered on the thread and consumed — the human asked for something this

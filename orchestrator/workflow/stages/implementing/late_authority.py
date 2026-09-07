@@ -66,6 +66,17 @@ comment the authorization was made in. The terms are the gate's own reading
 rather than anything the record already carried, which is what makes them
 answerable -- an operator authorizes a change of THIS size against THAT
 ceiling, and the only owner that can say either is the one that counted.
+
+The LAST fresh trusted reply decides. A command that IS the command earns an
+answer whatever it goes on to say -- the right commit publishes, an
+abbreviation or another commit gets the sentence saying so and is consumed --
+because a reply left unanswered on a seam that moves the watermark by no other
+means would stand in every later batch and refuse the correct command behind
+it. Anything else is guidance, and what that is worth differs by seam, so the
+notices say what is true on each: before there is a pull request the ordinary
+resume is still in front of the issue and prose reaches the developer, while
+past one the debt reconciliation stops the tick ahead of the stage handler on
+every poll and nothing would carry those words to an agent.
 """
 from __future__ import annotations
 
@@ -122,12 +133,34 @@ _REFUSED_MARKER = (
     ":issue={issue}:read={read}-->"
 )
 
+# What every notice here ends on, worded on the side of publication the park
+# was taken on. Before there is a pull request the ordinary resume is still in
+# front of this issue, so prose reaches the developer and the sentence says so.
+# Past one it is not: the debt reconciliation that brings a parked issue back
+# to this gate stops the tick ahead of the stage handler on every poll, so
+# nothing on that road would ever carry a human's words to an agent -- and a
+# notice promising otherwise would have somebody writing into a thread nothing
+# reads.
+_HOW_TO_DECIDE = (
+    "Post `/orchestrator authorize-oversized {candidate}` as the entire "
+    "comment -- the whole comment and the commit spelled in full -- to "
+    "publish it as it stands, or reply with the change to make and the "
+    "developer is resumed against it."
+)
+
+_HOW_TO_DECIDE_PUBLISHED = (
+    "Post `/orchestrator authorize-oversized {candidate}` as the entire "
+    "comment -- the whole comment and the commit spelled in full -- and it "
+    "joins the pull request. That command is the only reply this stage reads "
+    "while the park stands: nothing else on the issue runs until the commit "
+    "is published, so prose here reaches no agent."
+)
+
 _WRONG_CANDIDATE = (
-    "{mentions} that authorization names a commit this issue is not holding, "
-    "so nothing was published and nothing was recorded. The candidate waiting "
-    "on a decision is `{candidate}`. Post `/orchestrator authorize-oversized "
-    "{candidate}` as the entire comment to publish it as it stands, or reply "
-    "with the change to make and the developer is resumed against it."
+    "{mentions} that command does not name the commit this issue is waiting "
+    "on -- an abbreviation is refused too, since nothing here ever writes "
+    "one -- so nothing was published and nothing was recorded. The candidate "
+    "waiting on a decision is `{candidate}`. "
 )
 
 _PARK_NOTICE = (
@@ -139,9 +172,7 @@ _PARK_NOTICE = (
     "answering that it should is exactly what the ceiling is there to catch. "
     "Nothing was pushed, nothing was discarded, and nothing on the record was "
     "removed: the commit is still in the worktree and the adjudication that "
-    "accepted it is still recorded. Post `/orchestrator authorize-oversized "
-    "{candidate}` as the entire comment to publish it as it stands, or reply "
-    "with the change to make and the developer is resumed against it."
+    "accepted it is still recorded. "
 )
 
 
@@ -247,15 +278,26 @@ def _unauthorized_debt(state: PinnedState, candidate_sha: str) -> bool:
 
     A record with no basis on it is an approval an older binary wrote, and
     there the exemption is the only evidence left -- so it is read, and read
-    conservatively: a commit that exemption names is treated as the
-    adjudication's debt.
+    conservatively. A commit that exemption names is the adjudication's debt.
+    So is a comment that CLAIMS an exemption and cannot say which commit it is
+    about: a truncated or hand-edited field is not the same thing as an issue
+    that never entered an adjudication, and reading the two alike is how a
+    settlement's debt with a damaged exemption beside it publishes unmeasured
+    -- the shape a hand edit reaches by touching the one field the bypass
+    would otherwise have turned on. An issue carrying no exemption field at
+    all is that other thing, and its approval is the gate's own.
     """
     if _overrides.is_authorized(state, candidate_sha):
         return False
     basis = _parks._approved_basis(state)
     if basis:
         return basis == _parks.LateApprovalBasis.ADJUDICATION
-    return _exemption.is_exempt(state, candidate_sha)
+    if _exemption.is_exempt(state, candidate_sha):
+        return True
+    return (
+        _exemption.claims_an_exemption(state)
+        and _exemption.read_exemption(state) is None
+    )
 
 
 @dataclass(frozen=True)
@@ -271,11 +313,14 @@ class _Answer:
     request the remote already carries, so it would stand in every later batch
     and refuse a correct command forever.
 
-    `named` is the commit that reply authorizes, whole or empty -- an
-    abbreviation names no commit here, since nothing in this domain writes
-    one. `comment_id` is the reply itself, which is both the watermark an
-    answer consumes and the address a recorded authorization is attributable
-    to.
+    `named` is the commit that reply authorizes, whole or EMPTY. Empty is a
+    command nobody could act on -- an abbreviation, or an argument that is not
+    an object id at all, since nothing in this domain abbreviates -- and it is
+    carried rather than dropped: it can never equal the candidate, so it takes
+    the refusal road and the human gets the sentence and the command that
+    would have worked. `comment_id` is the reply itself, which is both the
+    watermark an answer consumes and the address a recorded authorization is
+    attributable to.
     """
 
     named: str
@@ -358,12 +403,36 @@ def _parked_for_authorization(
             additions=generation.additions,
             threshold=generation.threshold,
             candidate=generation.candidate_sha,
-        ),
+        ) + _decided_by(gate, generation.candidate_sha),
         reason=PARK_UNAUTHORIZED_EXEMPTION,
     )
     gate.state.set(_state._PARK_REASON, PARK_UNAUTHORIZED_EXEMPTION)
     gate.gh.write_pinned_state(gate.issue, gate.state)
     return True
+
+
+def _decided_by(gate: _records._Gate, candidate_sha: str) -> str:
+    """What every notice here asks for, on the side of publication it is on.
+
+    Both halves say the command and spell it out ready to copy; they differ
+    about the OTHER reply, and the difference is what is actually true rather
+    than a matter of tone.
+
+    Before there is a pull request the ordinary resume is still in front of
+    this issue: a reply that is not the command falls through the park's own
+    recovery to the road that feeds guidance to the developer, so the notice
+    offers it. Past one it does not. A parked issue on the stages that publish
+    onto a pull request the remote already carries reaches this gate through
+    the debt reconciliation, which stops the tick ahead of the stage handler
+    on every poll -- so nothing there would carry a human's words to an agent,
+    and a notice offering it would have somebody writing into a thread nothing
+    reads.
+
+    Read off the entry this call was taken on, which is the same fact the
+    measurement park's own two wordings are chosen by.
+    """
+    asked = _HOW_TO_DECIDE if gate.entry is None else _HOW_TO_DECIDE_PUBLISHED
+    return asked.format(candidate=candidate_sha)
 
 
 def _stands_over(
@@ -483,7 +552,7 @@ def _refused(
         said = _WRONG_CANDIDATE.format(
             mentions=config.HITL_MENTIONS,
             candidate=generation.candidate_sha,
-        )
+        ) + _decided_by(gate, generation.candidate_sha)
         _comments._post_issue_comment(
             gate.gh, gate.issue, gate.state, f"{said}\n\n{marker}",
         )
@@ -529,6 +598,12 @@ def _read_the_park(
     ordinary resume that feeds it to the developer rather than to a bypass
     taken behind their back.
 
+    A command nobody could ACT on is not one of those, and it is answered
+    rather than dropped: the argument is held to a whole object id, and one
+    that is not gets the same sentence a command for another commit gets. Read
+    as guidance instead, an operator who abbreviated would be left with a
+    silent park and a thread that never said why.
+
     The LAST fresh reply decides, because it is the last thing the human said.
     Guidance written after a command outranks it -- the safe reading of
     somebody who asked to publish and then asked for a change is the one that
@@ -546,11 +621,26 @@ def _read_the_park(
     if not replies:
         return None
     last = replies[-1]
-    named = _names(last)
     identified = _payloads.as_identity(getattr(last, "id", 0))
-    if not named or identified is None:
+    if not _is_the_command(last) or identified is None:
         return None
-    return _Answer(named=named, comment_id=identified)
+    return _Answer(named=_names(last), comment_id=identified)
+
+
+def _is_the_command(reply) -> bool:
+    """Whether this reply is the whole command, whatever it went on to say.
+
+    Asked apart from what the command NAMES, because the two decide different
+    things. A comment that is not the command is guidance and is left for the
+    road that feeds it to a developer. One that IS the command is a gesture
+    this park owes an answer to -- and that holds just as much when nobody
+    could act on it, since a human who typed an abbreviation is owed the
+    sentence saying so rather than a park that goes on standing in silence.
+
+    A reply with no id is neither: a record made from it would name a comment
+    nothing can locate, which is the one thing an authorization may not be.
+    """
+    return _messages._authorized_oversized_candidate(reply) is not None
 
 
 def _names(reply) -> str:
@@ -558,7 +648,8 @@ def _names(reply) -> str:
 
     A comment that is not the whole command answers "", and so does one whose
     argument is not a whole git object id: nothing here abbreviates, so an
-    abbreviation is the mismatch it is rather than a prefix to compare.
+    abbreviation is the mismatch it is rather than a prefix to compare -- and
+    the mismatch is what earns the sentence, since "" is never a candidate.
     """
     written = _messages._authorized_oversized_candidate(reply)
     if written is None:

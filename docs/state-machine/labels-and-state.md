@@ -666,10 +666,21 @@ The keys that matter for the state machine fall into a few groups:
 
   The **last** fresh trusted reply is what decides, and reading it any other way poisons the park. Guidance written
   after a command outranks it — the safe reading of somebody who asked to publish and then asked for a change is the
-  one that publishes nothing — and a command written after guidance is the decision that replaced it. A command
-  naming another commit is answered on the thread under a receipt scoped to the reply it answers, and **consumed**:
-  those five stages never move the watermark by any other means, so a reply left standing would be in every later
-  batch and would refuse the correct command behind it for as long as the park stood. One candidate is never held by
+  one that publishes nothing — and a command written after guidance is the decision that replaced it. A reply that
+  IS the command earns an answer whatever it goes on to say: the right commit publishes, and one naming another
+  commit — or an abbreviation, which names none, since nothing here ever writes one — is answered on the thread
+  under a receipt scoped to the reply it answers, and **consumed**. Those five stages never move the watermark by
+  any other means, so a reply left standing would be in every later batch and would refuse the correct command
+  behind it for as long as the park stood.
+
+  What guidance is worth differs by the side of publication the park was taken on, and the notice says which it is
+  rather than promising one answer everywhere. Before there is a pull request the ordinary resume is still in front
+  of the issue: a reply that is not the command falls through the park's own recovery, reaches the developer, and
+  re-freezes whatever comes back. Past one it does not — the debt reconciliation that brings a parked issue back to
+  the gate stops the tick ahead of the stage handler on every poll, so nothing there would carry a human's words to
+  an agent — and the notice taken on that side says the command is the only reply it reads while the park stands.
+
+  One candidate is never held by
   any of it — a commit the pull request this call froze is ALREADY standing on, where the push would move nothing
   and what is left is the bookkeeping behind a publication that has happened. `late_evidence_missing` is the
   adjudication's counterpart, taken

@@ -287,7 +287,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             pinned comment, the receipt the transaction stamps into a child's body and the one a
                             reclamation leaves on its thread, and the reader that turns the first back into a
                             lineage when the pinned write that would have recorded one never landed
-    exemption.py            the one commit an accepted candidate publishes under, and the semantic identity of what
+    exemption.py            the one commit an accepted candidate publishes under, whether the comment CLAIMS one at
+                            all -- presence rather than truth, which is the reading a caller asking whose DECISION
+                            a record is about needs, since a field a hand edit truncated is not an issue that never
+                            entered an adjudication -- and the semantic identity of what
                             that commit contributes beside it -- the frozen pair it was adjudicated between, the
                             canonical digest of the contribution between them, and the version that digest was taken
                             under. Both written, read, and compared fail-closed and deliberately outside the group a
@@ -1284,12 +1287,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             parked candidate, recorded from the gate's own reading (the pair it froze, the count it
                             took, the ceiling it was counted against, the digest recomputed between that pair, and
                             the comment it was written in) in the write that takes the park off and consumes the
-                            reply. The LAST fresh trusted reply is what decides, and a command naming another
-                            commit is answered under a scoped receipt and consumed rather than ignored: the seams
-                            that publish onto an open pull request move the watermark by no other means, so a reply
-                            left standing would refuse every command posted behind it. Also whether the debt on a
-                            commit is one an authorization has to stand behind, read off the approval's own
-                            recorded basis rather than inferred from the records beside it
+                            reply. The LAST fresh trusted reply is what decides, and a reply that IS the command
+                            is answered whatever it goes on to say -- another commit, or an abbreviation, which
+                            names none -- under a scoped receipt, and consumed rather than ignored: the seams that
+                            publish onto an open pull request move the watermark by no other means, so a reply left
+                            standing would refuse every command posted behind it. The notices are worded on the
+                            side of publication the park was taken on, since guidance reaches a developer only
+                            where the ordinary resume is still in front of the issue -- past a pull request the
+                            debt reconciliation stops the tick ahead of the stage handler on every poll, and a
+                            notice offering a resume there would be one nothing could keep. Also whether the debt
+                            on a commit is one an authorization has to stand behind, read off the approval's own
+                            recorded basis, and off whether the comment CLAIMS an exemption it cannot read where an
+                            older binary's approval recorded no basis at all -- a field a hand edit truncated is not
+                            an issue that never entered an adjudication, and reading the two alike publishes that
+                            debt unmeasured
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names
