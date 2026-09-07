@@ -64,7 +64,7 @@ last is held by the loader itself rather than by a check.
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
   `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three `git/measurement/` owners
   that log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the twelve
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the thirteen
   `git/worktrees/` owners that log, plus `runtime/artifacts.py` and `runtime/artifact_records.py` above them — when a
   maintenance pass ran, why it did not, and the record one candidate's answer could not be written as are facts about
   the same artifacts the owners under it report on, so an operator filtering for what
