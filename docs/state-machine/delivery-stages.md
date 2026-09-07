@@ -1987,16 +1987,17 @@ publication context at all.
 - **Unmeasured but published** → the same debt, for the same window. A candidate an adjudication exempted, or one a
   fresh commit superseded with the switch off, froze no generation of its own, so between the gate letting it through
   and the push that carries it there is committed work on the branch and nothing on the issue naming it. So
-  `late_approved_sha`, its lease, and `late_spends` go down before the push, and the reconciliation ahead of every
-  handler pays them: without that a tick dying in the window comes back to an issue that has published nothing,
-  resumes a developer over the head the pull request already carries, and hands the gate a candidate whose two
-  readings of that publication no longer agree. Recorded only where the push will MOVE the publication — one that
-  finds the pull request already standing on the commit has nothing to receive, and a debt written there would be
-  paid by a republication closing a round the tick that really published it already closed — and never over a debt
-  the issue already carries for that commit, whose lease was frozen by the tick that granted it. The head it is
-  recorded against is the one the push is pinned to, which is the entry's where there is one and the CALLER's where
-  the switch kept the candidate out of the gate: nothing froze a publication there, but the push still moves one, so
-  the window is the same and `DECOMPOSE=off` decides the measurement rather than the account of what a push put where.
+  `late_approved_sha`, its lease, its `unmeasured` basis, and `late_spends` go down before the push, and the
+  reconciliation ahead of every handler pays them: without that a tick dying in the window comes back to an issue that
+  has published nothing, resumes a developer over the head the pull request already carries, and hands the gate a
+  candidate whose two readings of that publication no longer agree. Recorded only where the push will MOVE the
+  publication — one that finds the pull request already standing on the commit has nothing to receive, and a debt
+  written there would be paid by a republication closing a round the tick that really published it already closed —
+  and never over a debt the issue already carries for that commit, whose lease was frozen by the tick that granted it.
+  The head it is recorded against is the one the push is pinned to, which is the entry's where there is one and the
+  CALLER's where the switch kept the candidate out of the gate: nothing froze a publication there, but the push still
+  moves one, so the window is the same and `DECOMPOSE=off` decides the measurement rather than the account of what a
+  push put where.
 - **Strictly past it** → nothing is pushed. The pull request stays on the head it was standing on, the measurement and
   the entry are made durable, a notice naming the pull request and that head goes on the issue, and the label moves to
   `workflow:decomposing` — from whichever of `workflow:validating` / `in_review` / `workflow:fixing` /
