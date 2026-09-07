@@ -33,6 +33,10 @@ from tests.workflow.repo_values import (
 # one that does not.
 ACCEPTED_DIGEST = CONTRIBUTION_DIGEST
 
+# A digest of the same shape that no reading of this world ever takes: what a
+# hand edit leaves behind when it writes a term that has to LOOK like one.
+FABRICATED_DIGEST = "f" * len(CONTRIBUTION_DIGEST)
+
 def _authorized_exemption(
     candidate_sha: str = MEASURED_CANDIDATE_SHA,
     base_sha: str = MEASURED_BASE_SHA,
@@ -75,6 +79,23 @@ def _legacy_exemption(candidate_sha: str = MEASURED_CANDIDATE_SHA) -> dict:
     seeded = PinnedState(data={})
     _exemption.record_exemption(seeded, candidate_sha)
     return seeded.data
+
+
+def _fabricated_authorization(
+    candidate_sha: str = MEASURED_CANDIDATE_SHA,
+) -> dict:
+    """An authorization whose every term reads back and none of it is true.
+
+    The hand edit a shape check cannot catch: the candidate is the commit in
+    hand, the base and the digest are whole values of the right length, the
+    comment id is an identity, and the count is past its ceiling -- so the
+    group parses, names this candidate, and describes a decision nobody made
+    over a pair nobody froze. The digest is the one term the objects answer,
+    and it is the one this seeds wrong.
+    """
+    seeded = _authorized_exemption(candidate_sha)
+    seeded[_overrides.LATE_OVERRIDE_FINGERPRINT] = FABRICATED_DIGEST
+    return seeded
 
 
 def _damaged_authorization(candidate_sha: str = MEASURED_CANDIDATE_SHA) -> dict:

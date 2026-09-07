@@ -126,6 +126,7 @@ _state_with_pr_number = _value_helpers._state_with_pr_number
 _authorize_command = _authorized_exemption_values._authorize_command
 _authorized_exemption = _authorized_exemption_values._authorized_exemption
 _damaged_authorization = _authorized_exemption_values._damaged_authorization
+_fabricated_authorization = _authorized_exemption_values._fabricated_authorization
 _legacy_exemption = _authorized_exemption_values._legacy_exemption
 
 _agent = _patch_models._agent

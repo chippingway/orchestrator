@@ -1270,12 +1270,19 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       late_authority.py     whether an adjudicated commit has a human behind it, which is the half of a bypass the
                             exemption is not: an exemption records an agent's verdict that the change is one whole,
                             and a guard against agents publishing past the ceiling may not be waived by one. So the
-                            two are asked together, by the same one-commit rule, and a candidate only the exemption
-                            names -- an older binary's automatic record, or one whose authorization this build
-                            cannot read whole -- goes to the ordinary cumulative reading. Also whether the publication
+                            two are asked together, by the same one-commit rule, and the authorization is PROVED
+                            rather than parsed -- its digest re-taken between the pair it names and held to what it
+                            records, since every other term is the pinned comment agreeing with itself and a hand
+                            edit arranges that as easily as a crash. A candidate only the exemption
+                            names -- an older binary's automatic record, one whose authorization this build cannot
+                            read whole, and one whose recorded pair no longer contributes what the digest was taken
+                            over -- goes to the ordinary cumulative reading. Also whether the publication
                             DEBT such a commit leaves may be spent, read off the approval's own recorded basis
                             rather than inferred from the records beside it: an authorized settlement's debt and one
-                            a human granted at the gate are revalidated, and the gate's own count is not. Where an
+                            a human granted at the gate are revalidated, and the gate's own count is not. Which
+                            basis an unmeasured publication records is decided HERE too, at the write rather than
+                            threaded down from whichever road reached it, since every one of them ends at the same
+                            write and only one is an operator's. Where an
                             older binary's approval recorded no basis at all the exemption is the only evidence
                             left, and it is read for the CLAIM rather than for the commit -- a field a hand edit
                             truncated is not an issue that never entered an adjudication, and reading the two alike

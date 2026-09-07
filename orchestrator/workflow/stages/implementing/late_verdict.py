@@ -114,7 +114,7 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     settled = _parks._measured(generation)
     if not settled.is_oversized:
         return _accepted(gate, settled, _parks.LateApprovalBasis.READING)
-    if not _authority._unauthorized_exemption(gate.state, settled.candidate_sha):
+    if not _authority._unauthorized_exemption(gate, settled.candidate_sha):
         return _routed(gate, settled)
     if not _consent._authorizes_the_park(gate, settled):
         return True
@@ -530,6 +530,14 @@ def _stages_unmeasured_debt(
     Answering rather than writing is also what keeps the caller's write
     honest: an owner that staged nothing has nothing of this to make durable
     and says so, instead of spending a request on a comment it did not change.
+
+    What the debt RESTS on is asked here rather than handed down from the road
+    that reached it, because every one of those roads ends at this write and
+    only one of them is an operator's. A commit an exemption and an
+    authorization both vouch for leaves a debt that may be spent only while
+    that authorization can still be read; recorded as ordinary unmeasured
+    debt, a record damaged between here and the push would bypass the
+    cumulative gate as though this gate had counted it.
     """
     if _parks._approved_commit(gate.state) == candidate_sha:
         return False
@@ -541,7 +549,8 @@ def _stages_unmeasured_debt(
         gate.issue.number, candidate_sha, lease,
     )
     _parks._approve(
-        gate.state, candidate_sha, lease, _parks.LateApprovalBasis.UNMEASURED,
+        gate.state, candidate_sha, lease,
+        _authority._debt_basis(gate, candidate_sha),
     )
     _late_state.write_late_spends(gate.state, gate.spends.fields)
     return True

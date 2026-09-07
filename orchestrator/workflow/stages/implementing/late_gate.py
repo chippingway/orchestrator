@@ -436,7 +436,7 @@ def _already_decided(gate: _records._Gate, candidate_sha: str) -> str:
     So the commit is recognized rather than re-read, the pull request that
     already carries it is reused, and the relabel is finished.
     """
-    if _authority._publishes_on_an_exemption(gate.state, candidate_sha):
+    if _authority._publishes_on_an_exemption(gate, candidate_sha):
         return _ADJUDICATED
     delivered = _authority._already_on_its_pull_request(gate, candidate_sha)
     if delivered:

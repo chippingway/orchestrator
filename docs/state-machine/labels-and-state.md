@@ -655,7 +655,11 @@ The keys that matter for the state machine fall into a few groups:
 
   What answers it is a trusted whole-comment `/orchestrator authorize-oversized <commit>` naming the parked
   candidate, read where the reading is — `late_verdict` behind the gate — so whichever seam took the park can end
-  it. On `workflow:implementing` the parked tick reaches it through `disposition`'s own recovery; on the five that
+  it. The park's own notice moves the watermark to the id of the comment it POSTED rather than to whatever the
+  thread ends on afterwards, since a reply landing between those two operations is the answer being thrown away by
+  the question.
+
+  On `workflow:implementing` the parked tick reaches it through `disposition`'s own recovery; on the five that
   publish onto a pull request the remote already carries it arrives through the debt reconciliation the dispatcher
   runs ahead of every handler, which is the only road those stages have while a park stands. What the command earns
   is the `late_override_*` group written from the gate's OWN reading — the pair it froze, the additions it counted,
@@ -1606,7 +1610,11 @@ rather than preserving.
   It is half of a bypass and never the whole of one. What it records is that an adjudication ruled the change one
   coherent whole, which is an AGENT's answer, and a guard against agents putting unreviewed bulk on a pull request
   may not be waived by an agent saying it should be. The other half is the `late_override_*` group below, which
-  records the human who read the change and agreed. The gate asks for both, by the same one-commit rule, and a
+  records the human who read the change and agreed — and the gate takes that group's own digest AGAIN, between the
+  pair it names, before it lets anything past. Every other term of an authorization is the pinned comment agreeing
+  with itself, which a hand edit and a half-written crash both arrange: a group naming this candidate over a base
+  nobody froze, with a digest of nothing and a comment id somebody typed, reads back whole. The digest is the one
+  term the objects answer. The gate asks for all of it, by the same one-commit rule, and a
   candidate only this field names goes to the ordinary cumulative reading: at or below the ceiling it publishes
   exactly as any small candidate does, and past it the issue parks `late_unauthorized_exemption` for the
   authorization. That is what an older binary's automatic exemption gets — a live issue can carry one, since a
@@ -1658,7 +1666,12 @@ rather than preserving.
   no basis at all — and so is an approval an older binary wrote, where the exemption is the only evidence left. There
   it is read for the CLAIM rather than for the commit: an issue that never entered an adjudication carries no
   `late_exempt_sha` at all, while one whose field a hand edit truncated carries the claim that an adjudication
-  happened and no way to say which commit it was about. Read alike, that truncated record is the shape that publishes
+  happened and no way to say which commit it was about. Which basis an unmeasured publication records is decided at
+  the write rather than handed down from whichever road reached it, since every one of them ends at that write and
+  only one is an operator's — and the claim an unproven landing puts back reads the standing basis BEFORE the write
+  that pays and drops the debt it replaces, or an operator's gesture would come back as ordinary debt.
+
+  Read alike, that truncated record is the shape that publishes
   an adjudication's debt unmeasured — a hand edit of the one field a bypass turns on. Written, dropped, and spent
   with the approval it describes, never on its own.
 
@@ -1873,7 +1886,12 @@ rather than preserving.
 
   The record is durable evidence and nothing more: what a candidate publishes under is decided by the gate and by
   `late_exempt_sha` beside this group, and what recording an authorization buys is that a human's gesture survives a
-  crash, a cleared generation, and a fresh process. The settlement that publishes reads it back, compares every
+  crash, a cleared generation, and a fresh process. Every reader that acts on one re-takes the digest rather than
+  believing the group's shape — the settlement that publishes, and the size gate on every later tick that would let
+  the commit past without a reading. That is the only term the OBJECTS answer, so it is the only one a hand edit
+  cannot supply, and a reading this host cannot take refuses on the same footing as one that disagrees: both cost
+  the candidate the measurement the gate would have taken anyway, and neither touches the record. The settlement
+  reads it back, compares every
   frozen term — the candidate, the base, the additions and the threshold — against the generation in hand, and then
   fingerprints the contribution AGAIN and holds it to `late_override_fingerprint`. That last comparison is what the
   digest is recorded for: the other terms are the pinned comment agreeing with itself, while the digest is answered

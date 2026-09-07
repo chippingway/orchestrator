@@ -27,6 +27,7 @@ from functools import partial
 
 from orchestrator.workflow.stages.implementing import (
     late_debt as _late_debt,
+    late_parks as _parks,
     late_push as _late_push,
     late_reconcile as _late_reconcile,
 )
@@ -63,6 +64,11 @@ PUBLICATION_PAID = "_publication_paid"
 TICK_DIED = "the tick died around the settlement"
 
 KEY_SPENDS = "late_spends"
+
+# What the approval a publication records rests on: an operator's gesture
+# rather than a count this gate took, which is what keeps a record damaged in
+# the crash window behind it from being spent as ordinary debt.
+KEY_APPROVED_BASIS = "late_approved_basis"
 
 # What the in_review fix route leaves `review_round` at: reset to zero, since
 # the round before the fix is the one the reviewer approved.
@@ -237,6 +243,62 @@ class _ReconciliationCase(
     """
 
 
+class UnmeasuredDebtBasisTest(_ReconciliationCase):
+    """Whose decision the debt an unmeasured publication leaves rests on.
+
+    An approval is spent by the tick that comes back after a crash without
+    anybody being asked, so what it RESTS on is the whole of what decides
+    whether it may be. This publication is an operator's rather than the
+    gate's own count, and the record has to say so on both sides of the write
+    that pays it.
+    """
+
+    def test_the_debt_says_what_it_rests_on(self) -> None:
+        # This one is an operator's rather than the gate's, and the record has
+        # to say so. Written as ordinary unmeasured debt it would be spent by
+        # the tick after the crash without anybody being asked -- so an
+        # authorization damaged in that same window would bypass the
+        # cumulative gate as though this gate had counted the change.
+        scenario = self._exempt_publication()
+
+        self._crashes(scenario, settling=False)
+
+        self.assertEqual(
+            self._pinned(scenario)[KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.AUTHORIZATION),
+        )
+
+    def test_an_unproven_landing_keeps_that_basis(self) -> None:
+        # The push landed and the checkout stopped being what went out, so the
+        # claim goes back for the commit now on the pull request. What it
+        # rests on is what the debt it replaces rested on, read BEFORE the
+        # write that pays and drops that debt -- read after, an operator's
+        # gesture would be recorded as ordinary unmeasured debt and spent by
+        # the next tick without anybody being asked.
+        scenario = self._exempt_publication()
+
+        self._run_fix_round(
+            scenario,
+            candidate_commit=(
+                support.FrozenCommit(sha=MEASURED_CANDIDATE_SHA),
+                support.FrozenCommit(sha=support.MOVED_AFTER_PUSH),
+            ),
+        )
+
+        pinned = self._pinned(scenario)
+        self.assertEqual(
+            pinned[support.KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA,
+        )
+        self.assertEqual(
+            pinned[KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.AUTHORIZATION),
+        )
+
+
+    _crashes = UnmeasuredDebtTest._crashes
+    _exempt_publication = UnmeasuredDebtTest._exempt_publication
+
+
 class UnmeasuredDebtRetryTest(_ReconciliationCase):
     """The tick after the one that pushed and recorded nothing else."""
 
@@ -345,6 +407,21 @@ class ClosedMidFlightTest(ObservedCloseCase, _ReconciliationCase):
             )
 
         mocks[support.COUNT_ADDED_LINES].assert_not_called()
+        mocks[PUSH_BRANCH].assert_not_called()
+
+    def test_a_close_at_the_push_seam_holds(self) -> None:
+        # The last window of all, and the narrowest one the code can observe:
+        # the latch lands on the step immediately before the branch update,
+        # past every guard the roads above this asked. A push there is the one
+        # thing a closed issue may never earn, and nothing further along could
+        # refuse it -- the next call IS the update.
+        scenario = self._crashed_before_the_settlement()
+
+        with self._racing(_late_push, "_repinned"):
+            mocks = self._route_to_the_stage(
+                scenario.github, scenario.github.get_issue(ISSUE),
+            )
+
         mocks[PUSH_BRANCH].assert_not_called()
 
     def _racing(self, owner, step: str):

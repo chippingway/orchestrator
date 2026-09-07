@@ -21,6 +21,7 @@ import unittest
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FingerprintFailure
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.stages.implementing import (
     late_consent as _consent,
     late_parks as _parks,
@@ -34,9 +35,10 @@ from tests.workflow.fixtures import (
     _authorize_command,
     _authorized_exemption,
     _damaged_authorization,
+    _fabricated_authorization,
     _legacy_exemption,
 )
-from tests.workflow.interleaving import _RacesTheStep
+from tests.workflow.interleaving import _RacesPastTheStep, _RacesTheStep
 from tests.workflow.stages.implementing import (
     late_authority_test_support as legacy,
     late_gate_test_support as support,
@@ -118,6 +120,38 @@ class UnauthorizedExemptionTest(
 
                 self._assert_measured(mocks)
                 self._assert_held(mocks)
+
+    def test_a_fabricated_authorization_is_measured(self) -> None:
+        # Every term of an authorization but one is the pinned comment
+        # agreeing with itself, which a hand edit arranges as easily as a
+        # crash: a group naming this candidate over a base nobody froze, with
+        # a digest of nothing and a comment id somebody typed, parses whole.
+        # The digest is the one term the OBJECTS answer, so it is re-taken
+        # between the pair the record names and held to what the record says.
+        self._seed(**_fabricated_authorization())
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_measured(mocks)
+        self._assert_held(mocks)
+
+    def test_a_reading_nobody_can_take_is_measured(self) -> None:
+        # A store that cannot hand back the content between two commits it
+        # holds refuses on the same footing as a digest that disagrees: what
+        # neither is, is grounds for a bypass. The authorization stays exactly
+        # where it is, so a host that comes back publishes what it says.
+        self._seed(**_authorized_exemption())
+
+        mocks = self._run_gate(
+            contribution_digest=FingerprintFailure.CONTENT_ABSENT,
+            added_lines=support.OVERSIZED_ADDITIONS,
+        )
+
+        self._assert_measured(mocks)
+        self._assert_held(mocks)
+        self.assertIn(
+            support.KEY_OVERRIDE_CANDIDATE_SHA, self._pinned(),
+        )
 
     def test_an_authorized_one_still_publishes(self) -> None:
         # The other side of the same rule, so the refusals above are about the
@@ -325,6 +359,29 @@ class AuthorizationParkTest(legacy._LegacyExemptionCase, unittest.TestCase):
 
         self.assertNotIn(_DECOMPOSING, self.github.label_history)
         self._assert_waiting_for_authorization()
+
+    def test_a_reply_landing_as_it_parks_survives(self) -> None:
+        # The park posts its notice and then records how far the thread has
+        # been read, and those are two operations. An operator replying
+        # between them -- with the very command the notice just asked for --
+        # would become the watermark if it were read off the thread's tip, and
+        # would be skipped for good: the answer thrown away by the question.
+        self._seed_legacy()
+        landed = []
+        racing = _RacesPastTheStep(
+            _guards._comments._post_issue_comment,
+            lambda: landed.append(self._reply(_AUTHORIZE)),
+        )
+
+        with support.patch.object(
+            _guards._comments, "_post_issue_comment", racing,
+        ):
+            self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self.assertEqual(len(landed), 1)
+        self.assertLess(
+            self._pinned()[support.LAST_ACTION_COMMENT_ID], landed[0],
+        )
 
     def test_the_notice_names_the_command(self) -> None:
         # Before there is a pull request the ordinary resume is still in front

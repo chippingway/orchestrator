@@ -106,6 +106,17 @@ def _publishes(
     records the debt for it beforehand, so a crash there leaves an approval
     the reconciliation ahead of the next handler pays as a leased no-op and
     then re-proves here.
+
+    A close a poll observed is refused immediately before the push and nowhere
+    else in this owner, because that is the only point at which the answer is
+    still true: every guard above spends a reading, a diff or a request after
+    it, and a close landing in one of those windows would be answered one push
+    too late. What a closed issue may never earn is exactly this effect, so
+    the refusal is HELD -- nothing pushed, nothing relabelled, nothing
+    announced -- and the record is left exactly as it stands for the cleanup a
+    latched close is owed. Asked of the process-wide latch rather than of the
+    issue, which is the snapshot the tick opened with and cannot say what a
+    later poll saw.
     """
     gate = _replace(
         gate,
@@ -117,6 +128,14 @@ def _publishes(
     if published.held:
         return _PushedCandidate(held=True)
     published = _repinned(published)
+    if gate.close_was_observed:
+        log.warning(
+            "repo=%s issue=#%d was observed closed before its branch was "
+            "pushed; refusing the push rather than putting work on an issue "
+            "nobody wants",
+            gate.spec.slug, gate.issue.number,
+        )
+        return _PushedCandidate(held=True)
     if not _pushed(gate, branch, published):
         return _PushedCandidate()
     # The proof comes first and its answer rides the settlement's own write,
@@ -345,9 +364,14 @@ A process that died in that window would leave a paid debt standing,
     settling = _owes_a_settlement(gate.state, landed)
     if not (settling or unproven or rotation.staged):
         return
+    # Read before the drop below takes them: the accepted road keeps the head
+    # this push replaced on the approval's own lease, and the claim an
+    # unproven landing puts back rests on whatever granted the debt this one
+    # is paying. Read after the drop, that claim would say `unmeasured` for a
+    # debt an operator's gesture was behind -- and a record damaged in the
+    # window behind this write would then bypass the gate as ordinary debt.
+    standing = _parks._standing_basis(gate.state)
     if settling:
-        # Read before the drop below takes it: the accepted road keeps the
-        # head this push replaced on the approval's own lease.
         superseded = (
             gate.entry.published_sha if gate.entry
             else _parks._approved_lease(gate.state)
@@ -356,9 +380,7 @@ A process that died in that window would leave a paid debt standing,
         _parks._forget_approval(gate.state)
         _parks._record_publication(gate.state, landed, superseded)
     if unproven:
-        _parks._approve(
-            gate.state, landed, landed, _parks._standing_basis(gate.state),
-        )
+        _parks._approve(gate.state, landed, landed, standing)
     gate.gh.write_pinned_state(gate.issue, gate.state)
     _rotation._reports_the_transfer(gate, rotation)
 

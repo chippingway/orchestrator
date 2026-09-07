@@ -57,7 +57,9 @@ squash of a legacy one gains nothing it did not have.
 """
 from __future__ import annotations
 
-from orchestrator.github.pinned_state import PinnedState
+import logging
+
+from orchestrator.git.measurement import fingerprint as _fingerprint
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     overrides as _overrides,
@@ -68,6 +70,8 @@ from orchestrator.workflow.stages.implementing import (
     late_transfer as _transfer,
 )
 
+log = logging.getLogger("orchestrator.workflow")
+
 # Why a commit an unauthorized exemption names still publishes, spelled as the
 # gate's log line reads it: the pull request is standing on it already, so
 # there is nothing for a push to add and nothing for a hold to hold back.
@@ -75,9 +79,9 @@ _ON_ITS_PULL_REQUEST = "is the commit its pull request already stands on"
 
 
 def _publishes_on_an_exemption(
-    state: PinnedState, candidate_sha: str,
+    gate: _records._Gate, candidate_sha: str,
 ) -> bool:
-    """Whether an adjudication AND an operator both name this commit.
+    """Whether an adjudication AND an operator both vouch for this commit.
 
     The claim the gate skips the reading on, and it is deliberately two
     records rather than one. The exemption says the change was ruled one
@@ -89,30 +93,84 @@ def _publishes_on_an_exemption(
     Both are exact-SHA claims and neither is widened here. A commit made on
     top of an accepted one carries work nobody ruled on and nobody read, so it
     matches neither and is measured as the fresh candidate it is.
+
+    And neither is BELIEVED on its own shape. Every term of an authorization
+    but one is the pinned comment agreeing with itself, which a hand edit and
+    a half-written crash can both arrange: a group naming this candidate over
+    a base nobody froze, with a digest of nothing and a comment id somebody
+    typed, reads back whole and licenses an unmeasured push of work no human
+    ever saw. The digest is the one term the OBJECTS answer, so it is
+    re-taken here between the pair the record names and held to what the
+    record says -- the same proof the settlement that wrote it took, asked
+    again because this call happens on a later poll, on a later process, and
+    on a host that never held the content between that pair.
+
+    A reading this host cannot take refuses on the same footing as one that
+    disagrees, and what that costs is the measurement the gate would have
+    taken anyway.
     """
-    if not _exemption.is_exempt(state, candidate_sha):
+    if not _exemption.is_exempt(gate.state, candidate_sha):
         return False
-    return _overrides.is_authorized(state, candidate_sha)
+    if not _overrides.is_authorized(gate.state, candidate_sha):
+        return False
+    return _contributes_what_was_authorized(gate)
 
 
-def _unauthorized_exemption(state: PinnedState, candidate_sha: str) -> bool:
+def _contributes_what_was_authorized(gate: _records._Gate) -> bool:
+    """Whether the pair a human authorized still contributes what they read.
+
+    Taken over the pair the RECORD names rather than over anything the
+    checkout stands on or a base read now: the worktree is writable for the
+    whole of an adjudication and for every tick after it, so its head says
+    nothing about what was authorized, and a base read now names a change
+    nobody decided about.
+
+    Silent about every way it can fail, because they are one answer. A digest
+    that disagrees is a record somebody edited or one taken under rules this
+    build reads differently; a reading this host could not take is a store an
+    operator repairs rather than a decision anybody made. Neither is grounds
+    for a bypass, and both cost the candidate a measurement rather than the
+    decision behind it -- the authorization stays exactly where it is, and a
+    host that comes back publishes what it says without asking anyone twice.
+    """
+    override = _overrides.read_publication_override(gate.state)
+    contribution = _fingerprint._fingerprint_contribution(
+        gate.worktree,
+        override.publication.base_sha,
+        override.publication.candidate_sha,
+    )
+    if contribution.digest == override.publication.fingerprint:
+        return True
+    log.warning(
+        "issue=#%d authorizes candidate %s over a contribution this host "
+        "does not read back as the one it was authorized on (%s); measuring "
+        "it rather than publishing a bypass nothing vouches for",
+        gate.issue.number,
+        override.publication.candidate_sha,
+        contribution.failure or "the digest disagrees",
+    )
+    return False
+
+
+def _unauthorized_exemption(gate: _records._Gate, candidate_sha: str) -> bool:
     """Whether this commit is exempt on a record no human stands behind.
 
     True for the record an older binary wrote, where a `single` verdict
     recorded an exemption on its own, and true for one whose authorization
     this build cannot read back whole -- a member missing, a field
     hand-edited, a digest taken under a scheme this build does not compute, a
-    reading at or under its own ceiling. Those are one answer on purpose: a
-    bypass nobody can show the terms of is worth exactly what a bypass nobody
-    granted is worth, and the cost of both is the measurement the gate would
-    have taken anyway.
+    reading at or under its own ceiling, and a recorded pair that no longer
+    contributes the change the digest was taken over. Those are one answer on
+    purpose: a bypass nobody can show the terms of is worth exactly what a
+    bypass nobody granted is worth, and the cost of both is the measurement
+    the gate would have taken anyway.
 
     False for every candidate no exemption names, which is the ordinary one.
     Nothing here is a claim about a commit this issue never adjudicated.
     """
-    if not _exemption.is_exempt(state, candidate_sha):
+    if not _exemption.is_exempt(gate.state, candidate_sha):
         return False
-    return not _overrides.is_authorized(state, candidate_sha)
+    return not _publishes_on_an_exemption(gate, candidate_sha)
 
 
 def _already_on_its_pull_request(
@@ -151,7 +209,7 @@ def _already_on_its_pull_request(
     return _ON_ITS_PULL_REQUEST
 
 
-def _unauthorized_debt(state: PinnedState, candidate_sha: str) -> bool:
+def _unauthorized_debt(gate: _records._Gate, candidate_sha: str) -> bool:
     """Whether the push this commit is owed rests on an unauthorized exemption.
 
     Asked of the approval's own recorded basis rather than of the records
@@ -171,8 +229,11 @@ def _unauthorized_debt(state: PinnedState, candidate_sha: str) -> bool:
     somebody hand-edited would read as the gate's own and publish unmeasured,
     which is the one thing this rule exists to prevent.
 
-    An authorization covering the commit ends the question ahead of either:
-    the debt is authorized whatever granted it.
+    An authorization covering the commit ends the question whichever way the
+    basis reads -- and it is the whole authorization that ends it, proved
+    against the objects rather than read off the record, since a group naming
+    this candidate over terms nobody froze is exactly the hand edit a bypass
+    turns on.
 
     Two bases answer yes, and they are the two an operator's gesture is behind
     -- the settlement's own debt, and the debt a candidate past the ceiling
@@ -193,31 +254,47 @@ def _unauthorized_debt(state: PinnedState, candidate_sha: str) -> bool:
     would otherwise have turned on. An issue carrying no exemption field at
     all is that other thing, and its approval is the gate's own.
     """
-    if _overrides.is_authorized(state, candidate_sha):
-        return False
-    basis = _parks._approved_basis(state)
+    basis = _parks._approved_basis(gate.state)
     if basis:
-        return basis in _parks.AUTHORIZED_BASES
-    if _exemption.is_exempt(state, candidate_sha):
-        return True
-    return _claims_an_adjudication(state)
-
-
-def _claims_an_adjudication(state: PinnedState) -> bool:
-    """Whether the record says one happened and cannot say what about.
-
-    Presence and truth asked together, because the answer is the gap between
-    them. `read_exemption` is fail-closed, so a truncated or hand-edited field
-    comes back as no exemption -- right for a caller deciding whether a commit
-    may publish, and wrong for one deciding whose DECISION a debt is. An issue
-    that never entered an adjudication carries no field; one whose field
-    cannot be read carries the claim that an adjudication happened and no way
-    to say which commit it was about, which is exactly what a hand edit of the
-    one field a bypass turns on produces.
-    """
-    if not state.carries(_exemption.LATE_EXEMPT_SHA):
+        return (
+            basis in _parks.AUTHORIZED_BASES
+            and not _publishes_on_an_exemption(gate, candidate_sha)
+        )
+    if _exemption.is_exempt(gate.state, candidate_sha):
+        return not _publishes_on_an_exemption(gate, candidate_sha)
+    # Presence and truth asked together, because the answer is the gap
+    # between them. `read_exemption` is fail-closed, so a truncated or
+    # hand-edited field comes back as no exemption -- right for a caller
+    # deciding whether a commit may publish, and wrong for one deciding whose
+    # DECISION a debt is. An issue that never entered an adjudication carries
+    # no field; one whose field cannot be read carries the claim that an
+    # adjudication happened and no way to say which commit it was about.
+    if not gate.state.carries(_exemption.LATE_EXEMPT_SHA):
         return False
-    return _exemption.read_exemption(state) is None
+    return _exemption.read_exemption(gate.state) is None
+
+
+def _debt_basis(
+    gate: _records._Gate, candidate_sha: str,
+) -> _parks.LateApprovalBasis:
+    """What the debt an unmeasured publication owes rests on.
+
+    Asked where the debt is WRITTEN rather than threaded down from whichever
+    of the roads past the measurement this is, because every one of them ends
+    at the same write and only one of them is an operator's: the commit an
+    exemption and an authorization both vouch for. Recorded as ordinary
+    unmeasured debt, that one is spent by the tick after a crash without
+    anybody being asked -- so a record damaged in the window between the write
+    and the push would bypass the cumulative gate as though the gate had
+    counted it.
+
+    Everything else IS ordinary. A rewrite permit's debt defers to the permit
+    rather than to a basis, a switched-off candidate skipped a reading nobody
+    took, and a receipt names a push the remote already has.
+    """
+    if _publishes_on_an_exemption(gate, candidate_sha):
+        return _parks.LateApprovalBasis.AUTHORIZATION
+    return _parks.LateApprovalBasis.UNMEASURED
 
 
 def _approved_on_a_reading(
@@ -256,6 +333,6 @@ def _approved_on_a_reading(
     """
     if _parks._approved_commit(gate.state) != candidate_sha:
         return False
-    if _unauthorized_debt(gate.state, candidate_sha):
+    if _unauthorized_debt(gate, candidate_sha):
         return False
     return not _transfer._licensed_by_a_permit(gate.state)

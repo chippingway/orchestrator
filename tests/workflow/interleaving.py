@@ -36,3 +36,22 @@ class _RacesTheStep:
     def __call__(self, *called: Any, **options: Any) -> Any:
         self._raced()
         return self._wrapped(*called, **options)
+
+
+class _RacesPastTheStep:
+    """One thing that happens the instant a step returns, just after it runs.
+
+    The other half of the window `_RacesTheStep` opens, for a case whose event
+    has to land after the step did its work rather than before: a reply posted
+    once a notice is on the thread and before the write that records how far
+    the thread has been read.
+    """
+
+    def __init__(self, wrapped: Callable, raced: Callable) -> None:
+        self._wrapped = wrapped
+        self._raced = raced
+
+    def __call__(self, *called: Any, **options: Any) -> Any:
+        answered = self._wrapped(*called, **options)
+        self._raced()
+        return answered
