@@ -17,11 +17,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
+from orchestrator.git.measurement.models import FrozenCommit
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.git.worktrees import paths as _worktree_paths
+from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.implementing import (
     disposition as _disposition,
+    late_consent as _consent,
     late_recovery as _recovery,
     state as _state,
 )
@@ -44,6 +47,18 @@ _MISSING_WORKTREE = Path("/tmp/orchestrator-test-late-recovery-gone")
 _CLEAN_TREE = _WorktreeStatus(readable=True)
 _DIRTY_TREE = _WorktreeStatus(readable=True, paths=("src/left_behind.py",))
 _UNREADABLE_TREE = _WorktreeStatus(readable=False)
+
+# A commit the checkout is standing on that the park's own record does not
+# name: work that replaced what an operator decided about.
+_MOVED_HEAD_SHA = "e" * support.SHA_LENGTH
+
+# A reading the ceiling lets through, so the seam's answer to a head nobody
+# authorized is a push rather than a park.
+_SMALL_ADDITIONS = 12
+
+# The sentence a command naming another commit earns, receipt and all, as the
+# tick that died before recording it left it on the thread.
+_REFUSAL = "that names another commit\n\n{marker}"
 
 
 @dataclass
@@ -232,6 +247,91 @@ class UnpublishableCheckoutHoldTest(support._ParkedCase, unittest.TestCase):
         routed.published.assert_called_once()
 
     _recovers = UnauthorizedExemptionRecoveryTest._recovers
+
+
+class SeamHeldParkTest(support._ParkedCase, unittest.TestCase):
+    """The park survives whatever the real publication seam does with it.
+
+    Driven through a whole tick rather than against a mocked seam, because
+    every one of these is the seam itself refusing: a tree it reads for a
+    second time, a head it proves for itself, a sentence an earlier tick
+    posted and never recorded. A double in its place answers none of them.
+    """
+
+    def test_a_second_read_keeps_the_park(self) -> None:
+        # The tree is read once before the seam is entered and again inside
+        # it, and everything between is time something can write in. The
+        # seam's own refusal parks under a reason of its own and its notice
+        # moves the watermark past the command -- so the park is put back
+        # rather than merely guarded, and the operator who cleans the tree is
+        # not asked to authorize the same commit twice.
+        self._seed(**support.measured_pair())
+        self._reply(support.AUTHORIZE)
+
+        mocks = self._run_tick(tree_states=(_CLEAN_TREE, _DIRTY_TREE))
+
+        self._assert_still_parked(mocks)
+
+    def test_a_moved_head_keeps_the_park(self) -> None:
+        # A clean checkout standing somewhere else passes every question about
+        # the tree and is still not the commit anybody authorized: the record
+        # froze one pair and the notice named it. Read small, the seam would
+        # PUSH whatever it found there -- which is the one refusal the park
+        # being put back afterwards cannot undo, since the work is on the
+        # remote by then.
+        self._seed(**support.measured_pair())
+        self._reply(support.AUTHORIZE)
+
+        mocks = self._run_tick(
+            candidate_commit=FrozenCommit(sha=_MOVED_HEAD_SHA),
+            added_lines=_SMALL_ADDITIONS,
+        )
+
+        self._assert_still_parked(mocks)
+
+    def test_a_stranded_receipt_resumes_nobody(self) -> None:
+        # The sentence a refused command earns is posted before the write that
+        # records posting it, so a tick dying between the two leaves it on the
+        # thread with nothing saying it is ours. Read as somebody's word it is
+        # the last reply and not the command, so the tick is handed back and
+        # the ordinary resume spawns a developer against our own refusal.
+        self._seed(**support.measured_pair())
+        answered = self._reply(support.AUTHORIZE_ANOTHER)
+        said = self._strand_a_refusal(answered)
+
+        mocks = self._run_tick()
+
+        self._assert_still_parked(mocks)
+        self.assertEqual(
+            self._pinned()[_state._LAST_ACTION_COMMENT_ID], said,
+        )
+
+    def _strand_a_refusal(self, answered: int) -> int:
+        """Post the refusal a lost write never recorded, and say which it is.
+
+        Through the owner that posts every one of them, so the comment is
+        exactly what the tick that died would have left -- and then the state
+        is thrown away rather than written, which is the write that was lost.
+        """
+        posted = _comments._post_issue_comment(
+            self.github, self.issue, self._state(),
+            _REFUSAL.format(marker=_consent._REFUSED_MARKER.format(
+                issue=support.ISSUE_NUMBER, read=answered,
+            )),
+        )
+        return posted.id
+
+    def _assert_still_parked(self, mocks) -> None:
+        """Nobody was resumed, nothing was published, and the park stands."""
+        mocks[support.RUN_AGENT].assert_not_called()
+        mocks[support.PUSH_BRANCH].assert_not_called()
+        pinned = self._pinned()
+        self.assertTrue(pinned[_state._AWAITING_HUMAN])
+        self.assertEqual(
+            pinned[_state._PARK_REASON],
+            support._command.PARK_UNAUTHORIZED_EXEMPTION,
+        )
+        self.assertEqual(self.github.label_history, [])
 
 
 if __name__ == "__main__":

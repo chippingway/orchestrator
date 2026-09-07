@@ -46,11 +46,13 @@ from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
+from orchestrator.github.comments import authored_by_us
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.stages.implementing import (
     checkout_recovery as _checkout_recovery,
     disposition as _disposition,
     late_command as _late_command,
+    late_consent as _late_consent,
     late_evidence as _late_evidence,
     late_parks as _late_parks,
     models as _models,
@@ -59,6 +61,21 @@ from orchestrator.workflow.stages.implementing import (
 )
 
 log = logging.getLogger("orchestrator.workflow")
+
+_AUTHORIZATION_PARK = _late_command.PARK_UNAUTHORIZED_EXEMPTION
+
+# What says who is waiting on this issue and for what, plus how far the thread
+# they are waiting on has been read. The three travel together because a park
+# put back without its watermark is one whose command has been consumed.
+_PARK_FIELDS = (
+    _state._AWAITING_HUMAN,
+    _state._PARK_REASON,
+    _state._LAST_ACTION_COMMENT_ID,
+)
+
+_AUTHORIZED_RECOVERY = (
+    "(orchestrator recovery: publishing the candidate an operator authorized)"
+)
 
 
 def _try_recover_late_measurement_park(
@@ -196,7 +213,7 @@ def _try_recover_unauthorized_exemption_park(
     developer over an implementation that is committed already.
     """
     if _late_command._read_the_park(gh, issue, state) is None:
-        return False
+        return _answered_and_lost(gh, issue, state)
     wt = _worktree_paths._worktree_path(spec, issue.number)
     unpublishable = _unpublishable_checkout(wt)
     if unpublishable:
@@ -207,23 +224,118 @@ def _try_recover_unauthorized_exemption_park(
             issue.number, unpublishable,
         )
         return True
-    _, _, _, dev_sid = _session_read._read_dev_session(state)
-    agent_result = AgentResult(
-        session_id=dev_sid,
-        last_message=(
-            "(orchestrator recovery: publishing the candidate an operator "
-            "authorized)"
+    _publishes_under_the_park(gh, spec, issue, state, wt)
+    return True
+
+
+def _answered_and_lost(gh: GitHubClient, issue: Issue, state: PinnedState) -> bool:
+    """Own a tick whose own refusal is the last word on the thread.
+
+    The sentence a refused command earns is posted before the write that
+    records posting it, so a tick dying between the two leaves that sentence
+    on the thread with nothing on the comment saying it is ours: the ledger
+    entry went down in the very write that was lost. Every reader past it
+    treats what it cannot attribute as somebody's word -- rightly, since
+    attributing on a body anybody can paste is how a retraction gets deleted
+    -- so the reading finds a last word that is not the command, hands the
+    tick back, and the ordinary resume spawns a developer against the
+    orchestrator's own refusal.
+
+    So the receipt is read HERE instead, where being ours decides only who
+    owns the tick and never who authorized anything. It is scoped to this
+    issue, and what it buys is exactly the write that was lost: the thread is
+    consumed up to our sentence and the park is left standing, so the poll
+    after it reads whatever a human has written since.
+
+    Forged, it costs its own author the reply they wrote under it and leaves
+    the park standing -- which is why it may answer this question and not the
+    other one.
+    """
+    marker = _late_consent._REFUSED_MARKER_PREFIX.format(issue=issue.number)
+    stamped = [
+        seen
+        for seen in gh.comments_after(
+            issue, state.get(_state._LAST_ACTION_COMMENT_ID),
+        )
+        if marker in (getattr(seen, "body", "") or "")
+    ]
+    said = max(
+        (
+            int(getattr(seen, "id", 0) or 0)
+            for seen in stamped
+            if authored_by_us(seen, bot_login=getattr(gh, "_bot_login", None))
         ),
-        exit_code=0,
-        timed_out=False,
-        stdout="",
-        stderr="",
+        default=0,
     )
-    _disposition._publish_committed_work(
-        gh, spec, issue, state, _models._RecoveredWork(agent_result, wt),
+    if not said:
+        return False
+    log.info(
+        "issue=#%d carries this stage's own refusal in comment %d with no "
+        "watermark behind it; recording the reading that tick lost rather "
+        "than handing our own words to a developer",
+        issue.number, said,
     )
+    state.set(_state._LAST_ACTION_COMMENT_ID, said)
     gh.write_pinned_state(issue, state)
     return True
+
+
+def _publishes_under_the_park(
+    gh: GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    state: PinnedState,
+    wt,
+) -> None:
+    """Hand the committed work to the seam, and keep this park whatever it does.
+
+    The seam refuses for reasons of its own -- a tree that stopped being
+    provably clean between the reading above and its own, a candidate it could
+    not measure -- and each refusal parks under a reason of its own and posts
+    a notice that moves the watermark past whatever it finds. On every other
+    road that is exactly right. Here it takes this park's reason off and
+    consumes the command still standing, so an operator who fixes the checkout
+    is asked to authorize the same commit again on an issue now waiting for a
+    different reply.
+
+    The questions above cannot close that on their own, because the sharpest
+    of them is a RACE: the tree is read once here and again inside the seam,
+    and everything between is time something can write in. So the park is put
+    back rather than merely guarded -- whatever the seam refused for, and
+    however it refused.
+
+    Put back only where the seam left somebody waiting under another reason.
+    A seam that PUBLISHED has ended this park deliberately and its record is
+    the one that stands; a seam that took the park off entirely has done the
+    same. What is restored is the pair that says who is waiting and for what,
+    and the watermark, since a command consumed is a decision thrown away --
+    the notice the seam posted stays on the thread, which is what tells the
+    operator what to fix.
+    """
+    held = {key: state.get(key) for key in _PARK_FIELDS}
+    _disposition._publish_committed_work(
+        gh, spec, issue, state, _models._RecoveredWork(
+            AgentResult(
+                session_id=_session_read._read_dev_session(state)[-1],
+                last_message=_AUTHORIZED_RECOVERY,
+                exit_code=0,
+                timed_out=False,
+                stdout="",
+                stderr="",
+            ),
+            wt,
+        ),
+    )
+    reason = state.get(_state._PARK_REASON)
+    if state.get(_state._AWAITING_HUMAN) and reason != _AUTHORIZATION_PARK:
+        log.info(
+            "issue=#%d had its authorization park replaced by the "
+            "publication seam's own refusal (%s); putting the park and the "
+            "command back so a decision already made is not asked for twice",
+            issue.number, reason or "no reason at all",
+        )
+        state.data.update(held)
+    gh.write_pinned_state(issue, state)
 
 
 def _unpublishable_checkout(worktree) -> str:
@@ -241,19 +353,24 @@ def _unpublishable_checkout(worktree) -> str:
     Three answers under one rule: the checkout has to be on this host, and its
     tree has to be PROVABLY carrying nothing loose. A reading that established
     nothing is refused beside a tree that is dirty, since it is not evidence
-    of a clean one -- and none of the three is anybody's decision, so all
-    three leave the park, the command and the record exactly as found and the
-    poll after an operator fixes any of them publishes on the command they
-    already wrote.
+    of a clean one -- and neither is anybody's decision, so both leave the
+    park, the command and the record exactly as found, and the poll after an
+    operator fixes either publishes on the command they already wrote.
+
+    Everything the seam refuses PAST this reading is answered by the park
+    being put back rather than by a wider question here: the tree is read
+    again inside the seam, so no reading taken before it can promise what that
+    one finds.
     """
     if not worktree.exists():
         return "is not on this host"
     tree = _verification_probes._worktree_status(worktree)
-    if tree.is_clean:
-        return ""
-    if not tree.readable:
-        return "has a tree this host could not read"
-    return "carries work no push would publish"
+    if not tree.is_clean:
+        return (
+            "carries work no push would publish" if tree.readable
+            else "has a tree this host could not read"
+        )
+    return ""
 
 
 def _try_recover_moved_candidate_park(

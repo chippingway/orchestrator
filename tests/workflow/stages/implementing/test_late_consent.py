@@ -66,7 +66,7 @@ class AuthorizationParkTest(_ConsentCase, unittest.TestCase):
     """What an oversized reading of an adjudicated candidate is held under."""
 
     def test_it_holds_and_says_so_once(self) -> None:
-        self._unparked()
+        self._seed(parked=False)
 
         self.assertFalse(self._authorizes())
 
@@ -101,7 +101,7 @@ class AuthorizationParkTest(_ConsentCase, unittest.TestCase):
         # An operator authorizes a change of THIS size against THAT ceiling,
         # so the notice carries the reading the tick took rather than a record
         # read back off the comment.
-        self._unparked()
+        self._seed(parked=False)
 
         self._authorizes()
 
@@ -114,7 +114,7 @@ class AuthorizationParkTest(_ConsentCase, unittest.TestCase):
     def test_the_notice_offers_a_resume(self) -> None:
         # Before there is one the ordinary resume is still in front of the
         # issue, so a reply that is not the command reaches the developer.
-        self._unparked()
+        self._seed(parked=False)
 
         self._authorizes()
 
@@ -126,7 +126,7 @@ class AuthorizationParkTest(_ConsentCase, unittest.TestCase):
         # every poll, so nothing there would carry a human's words to an agent
         # -- and a notice offering it would have somebody writing into a
         # thread nothing reads.
-        self._unparked()
+        self._seed(parked=False)
 
         self._authorizes(entry=support.PUBLISHED_ENTRY)
 
@@ -140,7 +140,7 @@ class AuthorizationParkTest(_ConsentCase, unittest.TestCase):
         # ask about -- and a generation carrying a reading past its ceiling is
         # what the dispatcher restores `workflow:decomposing` over, so the
         # park would be relabelled out from under itself on the next poll.
-        self._unparked()
+        self._seed(parked=False)
 
         self._authorizes()
 

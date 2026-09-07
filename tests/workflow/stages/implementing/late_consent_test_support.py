@@ -19,7 +19,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
@@ -35,6 +37,8 @@ from tests.workflow.fixtures import (
     MEASURED_BASE_SHA,
     MEASURED_CANDIDATE_SHA,
     SHA_LENGTH,
+    _agent,
+    _PatchedWorkflowMixin,
 )
 
 ISSUE_NUMBER = 612
@@ -55,6 +59,11 @@ STRANGER_SHA = "d" * SHA_LENGTH
 # types when they abbreviate. Nothing in this domain writes one, so it is the
 # mismatch it is rather than a prefix to compare.
 ABBREVIATED = 7
+
+# The two seams a case asks whether this tick spent: a developer run and the
+# push that would have published the candidate.
+RUN_AGENT = "run_agent"
+PUSH_BRANCH = "_push_branch"
 
 TRUSTED_AUTHOR = "alice"
 OUTSIDER = "mallory"
@@ -124,7 +133,7 @@ def measured_pair(**overrides) -> dict:
     return recorded.data
 
 
-class _ParkedCase:
+class _ParkedCase(_PatchedWorkflowMixin):
     """An issue holding one adjudicated candidate nobody has authorized."""
 
     def setUp(self) -> None:
@@ -134,21 +143,20 @@ class _ParkedCase:
         self.github.seed_state(ISSUE_NUMBER)
         self._seed()
 
-    def _seed(self, **state) -> None:
-        """Replace the pinned comment with the one a case is about."""
-        self.github.seed_state(ISSUE_NUMBER, **{
+    def _seed(self, *, parked: bool = True, **state) -> None:
+        """Replace the pinned comment with the one a case is about.
+
+        `parked=False` is the same issue with nothing standing on it, which is
+        what the cases about ENTERING this park are seeded with.
+        """
+        standing = {
             _state._AWAITING_HUMAN: True,
             _state._PARK_REASON: _command.PARK_UNAUTHORIZED_EXEMPTION,
-            _state._LAST_ACTION_COMMENT_ID: PRIOR_ACTION_COMMENT_ID,
-            KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA,
-            **state,
-        })
-
-    def _unparked(self, **state) -> None:
-        """The same issue with nothing standing on it, for the door cases."""
+        } if parked else {}
         self.github.seed_state(ISSUE_NUMBER, **{
             _state._LAST_ACTION_COMMENT_ID: PRIOR_ACTION_COMMENT_ID,
             KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA,
+            **standing,
             **state,
         })
 
@@ -160,11 +168,29 @@ class _ParkedCase:
         )
         return identified
 
-    def _state(self) -> PinnedState:
-        return self.github.read_pinned_state(self.issue)
-
     def _pinned(self) -> dict:
         return self.github.pinned_data(ISSUE_NUMBER)
+
+    def _run_tick(self, worktree: Path = TEMP_WORKTREE_ROOT, **run_options):
+        """Run one whole implementing tick over this parked issue.
+
+        The seams the recovery hands its answer to are the real ones, which is
+        the only way a case can see what the publication below does to a park
+        it was entered under.
+        """
+        run_options.setdefault("has_new_commits", True)
+        run_options.setdefault(
+            "run_agent", _agent(last_message="implemented"),
+        )
+        with patch.object(
+            _worktree_paths, "_worktree_path", return_value=worktree,
+        ):
+            return self._run_implementing(
+                self.github, self.issue, **run_options,
+            )
+
+    def _state(self) -> PinnedState:
+        return self.github.read_pinned_state(self.issue)
 
     def _gate(self, state: PinnedState | None = None, **entered):
         """The gate call this park was taken on, or is being answered from."""

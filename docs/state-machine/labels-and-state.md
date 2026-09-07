@@ -715,8 +715,25 @@ The keys that matter for the state machine fall into a few groups:
   the operator who fixes the checkout is asked to authorize the same commit again, on an issue now waiting for a
   different reply. So `late_recovery` asks the seam's own questions first: the worktree on this host, and its tree
   provably carrying nothing loose (a reading that established nothing is refused beside a dirty one, since it is no
-  evidence of a clean tree). None of the three is anybody's decision, so all three leave the park, the command and
-  the record exactly as found, and the poll after any of them is fixed publishes on the command already written.
+  evidence of a clean tree). Neither is anybody's decision, so both leave the park, the command and the record
+  exactly as found, and the poll after either is fixed publishes on the command already written.
+
+  Asking first cannot close it, because the sharpest case is a RACE: that tree is read again inside the seam, and
+  everything between the two readings is time something can write in. So the park is put BACK rather than merely
+  guarded — `awaiting_human`, `park_reason` and `last_action_comment_id` are held across the seam and restored
+  wherever it left somebody waiting under another reason, whatever it refused for. A seam that published, or that
+  took the park off outright, has ended this park deliberately and its record stands. The notice the seam posted
+  stays on the thread either way, which is what tells the operator what to fix.
+
+  One more window is this stage's own. The sentence a refused command earns is posted before the write that records
+  posting it and moves the watermark, so a tick dying between the two leaves that sentence on the thread with
+  nothing on the comment saying it is ours — the `orchestrator_comment_ids` entry went down in the very write that
+  was lost. Every reader past it treats what it cannot attribute as somebody's word, so the reading finds a last
+  word that is not the command, hands the tick back, and the ordinary resume spawns a developer against the
+  orchestrator's own refusal. The recovery reads that receipt by its own issue-scoped marker instead — where being
+  ours decides who owns the tick and never who authorized anything — consumes the thread up to it, and leaves the
+  park standing. Forged, the marker costs its author the reply they wrote under it and leaves the park standing,
+  which is why it may answer that question and not the other one.
 
   The park, its command, and the routing that answers it are in place; the size gate does not yet route a candidate
   into it, since the publication policy that makes an exemption half a bypass is a separate change.

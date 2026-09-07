@@ -1328,7 +1328,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             take the authorization park's off and its notice would move the watermark past the
                             command still standing -- so that road asks the seam's own questions first, the
                             worktree on this host and its tree provably carrying nothing loose, and holds
-                            exactly as found wherever the answer is no
+                            exactly as found wherever the answer is no. Asking first cannot close it, since the
+                            tree is read again INSIDE the seam, so the park, its reason and its watermark are
+                            held across that call and put back wherever it left somebody waiting under another
+                            reason. Also where this stage's own refusal receipt is read back: a sentence posted
+                            by a tick that died before recording it is one no reader can attribute, so the
+                            resume would spawn a developer against it -- read here by its issue-scoped marker,
+                            it consumes the thread up to itself and leaves the park standing, which is the one
+                            question a marker anybody may paste is allowed to answer
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names

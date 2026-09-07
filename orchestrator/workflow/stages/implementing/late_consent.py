@@ -82,10 +82,16 @@ log = logging.getLogger("orchestrator.workflow")
 # reads the same reply again on the next poll -- and the receipt already on the
 # thread is what keeps that second reading from saying the same thing twice. An
 # HTML comment, so it is invisible in the rendered thread.
-_REFUSED_MARKER = (
-    "<!--orchestrator-unauthorized-exemption-refused"
-    ":issue={issue}:read={read}-->"
+# Everything one of these receipts shares, whatever reply it answers. The
+# recovery beside this reads the thread for it: a receipt on the thread with
+# no watermark behind it is a tick that said its sentence and lost the write
+# that recorded saying it, and what that tick still owes is the watermark
+# rather than another sentence.
+_REFUSED_MARKER_PREFIX = (
+    "<!--orchestrator-unauthorized-exemption-refused:issue={issue}:"
 )
+
+_REFUSED_MARKER = f"{_REFUSED_MARKER_PREFIX}read={{read}}-->"
 
 # What every notice here ends on, worded on the side of publication the park
 # was taken on. Before there is a pull request the ordinary resume is still in
