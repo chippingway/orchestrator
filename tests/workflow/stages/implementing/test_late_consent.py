@@ -206,14 +206,26 @@ class AuthorizedCandidateTest(_ConsentCase, unittest.TestCase):
         # An operator who authorizes and then changes their mind has decided
         # about the second thing. The marker their retraction happens to carry
         # -- pasted, or quoted off a comment of ours -- is a body anybody can
-        # write, so treating it as proof of authorship would delete the
-        # retraction from the reading and publish on consent withdrawn.
-        self._reply(support.AUTHORIZE)
-        self._reply(f"actually, hold off\n\n{_ORCH_MARKER}")
+        # write, and the account it is written from may be the very token this
+        # orchestrator posts under. Treating either as proof of authorship
+        # deletes the retraction from the reading and publishes on consent
+        # withdrawn.
+        for described, author in (
+            ("their own account", support.TRUSTED_AUTHOR),
+            ("the shared bot login", self.github._bot_login),
+        ):
+            with self.subTest(written_from=described):
+                self.setUp()
+                self._reply(support.AUTHORIZE, author=author)
+                self._reply(
+                    f"actually, hold off\n\n{_ORCH_MARKER}", author=author,
+                )
 
-        self.assertFalse(self._authorizes())
+                self.assertFalse(self._authorizes())
 
-        self.assertNotIn(support.KEY_OVERRIDE_CANDIDATE_SHA, self._pinned())
+                self.assertNotIn(
+                    support.KEY_OVERRIDE_CANDIDATE_SHA, self._pinned(),
+                )
 
     def test_a_reply_landing_mid_write_survives(self) -> None:
         # The reading picked the last word the thread had when it looked, and
@@ -278,14 +290,18 @@ class RefusedCommandTest(_ConsentCase, unittest.TestCase):
         )
 
     def test_the_same_reply_is_answered_once(self) -> None:
-        # The sentence and the write that consumes it are two operations, so a
-        # tick that says it and then fails to record it reads the same reply
-        # again. The receipt already on the thread is what keeps that second
-        # reading from saying the same thing twice.
+        # The sentence and the write that consumes it are two operations, and
+        # a tick that says the first and dies before the second loses both the
+        # watermark and the ledger entry naming what it posted -- they are
+        # staged into one write. The poll after that finds our own sentence
+        # standing as the last word it can attribute to nobody, which is no
+        # command, so it holds the park it is already standing on and says
+        # nothing rather than mentioning the same people twice.
         self._reply(support.AUTHORIZE_ANOTHER)
         self._authorizes()
         self._seed(**{
             _state._LAST_ACTION_COMMENT_ID: support.PRIOR_ACTION_COMMENT_ID,
+            **support.measured_pair(),
         })
 
         self._authorizes()

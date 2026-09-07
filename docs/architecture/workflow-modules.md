@@ -1306,12 +1306,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             never in the reading: an outsider, a comment with no id, and the orchestrator itself
                             -- the park notice spells the command out ready to copy, so our own sentences are
                             exactly what a reader matching on that syntax would mistake for one. Being ours is
-                            PROVED rather than read off a body, because the last-reply rule makes dropping a
-                            comment the same act as deleting what its author said: a retraction taken for one of
-                            ours never happened, and the authorization beneath it becomes the last word and
-                            publishes on consent withdrawn. So the ledger of ids this process recorded posting is
-                            what answers, the marker anybody may paste answers only beside a matching author
-                            login, and a client with no login of its own is refused rather than waved through
+                            PROVED by the recorded id and by nothing else, because the last-reply rule makes
+                            dropping a comment the same act as deleting what its author said: a retraction taken
+                            for one of ours never happened, and the authorization beneath it becomes the last
+                            word and publishes on consent withdrawn. The marker is text anybody may paste, and
+                            the author login is the shared-PAT hazard named where that ledger is defined -- a
+                            reviewer posting from the token's own account matches it exactly, and they are the
+                            one whose consent this park collects. A comment the ledger cannot vouch for stays in
+                            the reading, which leaves the park standing rather than publishing
       late_recovery.py      the three parks the size gate takes, answered ahead of every spawn because the work
                             in question is committed already: one owed another READING, which a trusted bare
                             `/orchestrator continue` asks for; one owed another LOOK at the checkout, which no

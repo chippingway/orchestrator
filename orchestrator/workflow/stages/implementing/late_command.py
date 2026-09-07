@@ -29,14 +29,16 @@ a reader matching on that syntax would mistake for one. And a comment with no
 id is neither: a record made from it would name a comment nothing can locate,
 which is the one thing an authorization may not be.
 
-Being ours is PROVED rather than read off a body, because the last-reply rule
-makes dropping a comment the same act as deleting what its author said. A
+Being ours is PROVED rather than read off a comment, because the last-reply
+rule makes dropping one the same act as deleting what its author said. A
 retraction taken for one of ours is a retraction that never happened, and the
 authorization under it becomes the last word and publishes -- consent
 withdrawn and acted on anyway. So the ledger of ids this process recorded
-posting is what answers, and the marker anybody can paste answers only beside
-an author login that matches ours. A comment neither can vouch for stays in
-the reading and, not being the command, leaves the park standing.
+posting is the whole of the evidence: the marker is text anybody may paste,
+and the author login is a token this repository says outright may be shared
+with the human whose consent this park collects. A comment the ledger cannot
+vouch for stays in the reading and, not being the command, leaves the park
+standing.
 """
 from __future__ import annotations
 
@@ -45,11 +47,7 @@ from dataclasses import dataclass
 from github.Issue import Issue
 
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.comments import (
-    authored_by_us,
-    carries_own_marker,
-    filter_trusted,
-)
+from orchestrator.github.comments import carries_own_marker, filter_trusted
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     comments as _comments,
@@ -146,7 +144,7 @@ class _Answer:
             identified = _payloads.as_identity(getattr(landed, _COMMENT_ID, 0))
             if identified is None or identified > said:
                 break
-            if not _ours(landed, gate.gh, gate.state):
+            if not _ours(landed, gate.state):
                 break
             reached = identified
         return reached
@@ -189,8 +187,7 @@ def _read_the_park(
         issue, state.get(_state._LAST_ACTION_COMMENT_ID),
     )
     replies = [
-        reply for reply in filter_trusted(examined)
-        if not _ours(reply, gh, state)
+        reply for reply in filter_trusted(examined) if not _ours(reply, state)
     ]
     if not replies:
         return None
@@ -225,8 +222,8 @@ def _furthest_read(examined: list, at_least: int) -> int:
     return max(read)
 
 
-def _ours(reply, gh: GitHubClient, state: PinnedState) -> bool:
-    """Whether the orchestrator itself wrote this reply, PROVED.
+def _ours(reply, state: PinnedState) -> bool:
+    """Whether the orchestrator itself POSTED this reply, by its recorded id.
 
     Dropped before anything here reads a thread, because nothing this process
     posts is ever somebody's decision -- and a park notice spells the command
@@ -241,34 +238,32 @@ def _ours(reply, gh: GitHubClient, state: PinnedState) -> bool:
     publish on consent that had been withdrawn. Over-filtering is how this
     park publishes something nobody agreed to.
 
-    So the marker alone is not evidence. It is plain text in a public thread
-    and anybody may paste it -- deliberately, or by quoting a comment of ours
-    that carries one. What answers instead is the bounded ledger of ids this
-    orchestrator recorded posting, which is a fact about what this process
-    DID rather than about what a body says, and which nothing a commenter
-    writes can put itself into.
+    So the ledger of ids `_post_issue_comment` records is the whole of the
+    evidence. It is a fact about what this process DID, and nothing a
+    commenter writes can put itself into it.
 
-    The marker still answers for the one comment the ledger cannot: an id
-    evicted past its cap, or written before the ledger existed. There it is
-    asked TOGETHER with the author, which is the same pair every other receipt
-    in this repository is read from -- and unlike those, a client with no
-    login of its own is refused rather than waved through, since with nothing
-    to compare against the marker would be the whole of the proof again.
+    Neither of the other two signals may stand in for it, and both are
+    refused rather than accepted as a weaker second best. The marker is plain
+    text in a public thread that anybody may paste, or quote off a comment of
+    ours that carries one. And the author login is the shared-PAT hazard this
+    repository already names where that ledger is defined: the token belongs
+    to a human, so a reviewer posting from the same account matches it
+    exactly, and a retraction they wrote under a quoted marker would be read
+    as the orchestrator talking to itself. The two together are no better,
+    since the human who shares the login is the one whose consent this park
+    exists to collect.
 
-    Anything else is somebody's word and stays in the reading. What that costs
-    at worst is a comment of ours standing as the last reply, which is not the
-    command, so the park goes on standing and waits -- the safe direction for
-    a question only a human can answer.
+    Anything the ledger cannot vouch for is somebody's word and stays in the
+    reading -- including a comment of ours whose id has been evicted past the
+    ledger's bound. What that costs at worst is one of our own sentences
+    standing as the last reply, which is not the command, so the park goes on
+    standing and waits. That is the safe direction for a question only a human
+    can answer, and it is the one this owner fails in.
     """
     identified = _payloads.as_identity(getattr(reply, _COMMENT_ID, 0))
-    if identified is not None and identified in _comments._orchestrator_ids(state):
-        return True
-    if _comments._ORCH_COMMENT_MARKER not in (getattr(reply, "body", "") or ""):
+    if identified is None:
         return False
-    bot_login = getattr(gh, "_bot_login", None)
-    return bot_login is not None and authored_by_us(
-        reply, bot_login=bot_login,
-    )
+    return identified in _comments._orchestrator_ids(state)
 
 
 def _is_the_command(reply) -> bool:

@@ -25,8 +25,6 @@ from tests.workflow.stages.implementing import (
     late_consent_test_support as support,
 )
 
-_BOT_LOGIN = "_bot_login"
-
 
 class ReadTheParkTest(support._ParkedCase, unittest.TestCase):
     """The command a human has written on this park, or nothing."""
@@ -170,18 +168,20 @@ class OrchestratorAuthorshipTest(support._ParkedCase, unittest.TestCase):
         ):
             self.assertIsNone(self._read())
 
-    def test_a_login_free_client_refuses_the_marker(self) -> None:
-        # With no login to compare against, the marker would be the whole of
-        # the proof again -- so it is refused rather than waved through, which
-        # is the opposite of what every other receipt in this repository does
-        # with a client that cannot name itself.
-        self._reply(support.AUTHORIZE)
+    def test_a_shared_login_hides_no_retraction(self) -> None:
+        # The token this orchestrator posts under belongs to a human, and this
+        # repository says so where the id ledger is defined. A reviewer who
+        # shares that account matches the bot login exactly, so a retraction
+        # they wrote under a quoted marker would read as the orchestrator
+        # talking to itself -- and the reviewer whose consent this park exists
+        # to collect is precisely the one that hazard silences.
+        self._reply(support.AUTHORIZE, author=self.github._bot_login)
         self._reply(
             f"actually, hold off\n\n{_comments._ORCH_COMMENT_MARKER}",
+            author=self.github._bot_login,
         )
 
-        with patch.object(self.github, _BOT_LOGIN, None):
-            self.assertIsNone(self._read())
+        self.assertIsNone(self._read())
 
     def test_our_own_comment_does_not_mask_a_command(self) -> None:
         # The other direction, and the reason this filter exists: a sentence
@@ -192,19 +192,19 @@ class OrchestratorAuthorshipTest(support._ParkedCase, unittest.TestCase):
 
         self.assertEqual(self._read().comment_id, acted)
 
-    def test_an_evicted_id_still_reads_as_ours(self) -> None:
-        # The ledger is bounded, so a comment of ours old enough to have been
-        # evicted has only the marker left -- and there it is asked together
-        # with the author, which is the pair every other receipt here is read
-        # from.
-        acted = self._reply(support.AUTHORIZE)
+    def test_an_unrecorded_comment_is_not_ours(self) -> None:
+        # What failing closed costs, stated so nobody trades it back: a
+        # comment of ours the ledger cannot vouch for -- an id evicted past
+        # its bound -- stays in the reading, and being no command it leaves
+        # the park standing rather than letting the reply beneath it publish.
+        self._reply(support.AUTHORIZE)
         self.issue.comments.append(FakeComment(
             self.github.next_reply_id(self.issue),
             f"an older notice\n\n{_comments._ORCH_COMMENT_MARKER}",
             user=FakeUser(self.github._bot_login),
         ))
 
-        self.assertEqual(self._read().comment_id, acted)
+        self.assertIsNone(self._read())
 
     def _we_reply(self, body: str) -> int:
         """Post one comment the way this workflow posts every one of them.

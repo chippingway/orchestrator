@@ -685,17 +685,22 @@ The keys that matter for the state machine fall into a few groups:
   thread ends on afterwards, since a reply landing between those two operations is the answer being thrown away by
   the question.
 
-  Our own comments are dropped from the reading, and being ours is **proved** rather than read off a body. The park
+  Our own comments are dropped from the reading, and being ours is **proved** by `orchestrator_comment_ids` alone —
+  the bounded ledger of ids `_post_issue_comment` records, which is a fact about what this process DID. The park
   notice spells the command out ready to copy, so a reader matching on that syntax would mistake our sentences for
   somebody's decision — but the last-reply rule makes dropping a comment the same act as deleting what its author
   said, so over-filtering here is how the park publishes something nobody agreed to: a trusted retraction taken for
-  one of ours never happened, and the authorization beneath it becomes the last word. The `<!--orchestrator-comment-->`
-  marker cannot carry that weight, since it is plain text anybody may paste or quote off a comment of ours. What
-  answers is `orchestrator_comment_ids`, the bounded ledger of ids this process recorded posting, which is a fact
-  about what it DID; the marker answers only for an id evicted past that cap, and only beside an author login
-  matching ours — and unlike every other receipt here, a client with no login of its own is refused rather than
-  waved through, since the marker would otherwise be the whole of the proof again. A comment neither can vouch for
-  stays in the reading and, not being the command, leaves the park standing.
+  one of ours never happened, and the authorization beneath it becomes the last word.
+
+  Neither of the other two signals may stand in for that ledger, and both are refused rather than taken as a weaker
+  second best. The `<!--orchestrator-comment-->` marker is plain text anybody may paste, or quote off a comment of
+  ours. And the author login is the shared-PAT hazard this repository names where the ledger itself is defined: the
+  token belongs to a human, so a reviewer posting from that account matches it exactly, and a retraction they wrote
+  under a quoted marker would read as the orchestrator talking to itself. The two together are no better, since the
+  human who shares the login is the one whose consent this park exists to collect. What failing closed costs is a
+  comment of ours the ledger cannot vouch for — an id evicted past its bound — staying in the reading, where, not
+  being the command, it leaves the park standing and waiting. That is the safe direction for a question only a
+  human can answer.
 
   What guidance is worth differs by the side of publication the park was taken on, and the notice says which it is
   rather than promising one answer everywhere. Before there is a pull request the ordinary resume is still in front
