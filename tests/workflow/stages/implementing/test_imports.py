@@ -23,6 +23,7 @@ _HANDLER_OWNER = "handler"
 
 _OWNERS = (
     "checkout_guards",
+    "checkout_recovery",
     "continue_command",
     "dev_pr",
     "disposition",

@@ -57,6 +57,7 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.stages.implementing import (
+    checkout_recovery as _checkout_recovery,
     late_evidence as _late_evidence,
     late_gate as _late_gate,
     late_parks as _late_parks,
@@ -384,7 +385,7 @@ def _try_recover_moved_candidate_park(
     wt = _worktree_paths._worktree_path(spec, issue.number)
     if not wt.exists():
         return False
-    if not _late_evidence._restored_checkout(issue, state, wt):
+    if not _checkout_recovery._restored_checkout(issue, state, wt):
         return False
     state.set(_state._AWAITING_HUMAN, False)
     state.set(_state._PARK_REASON, None)

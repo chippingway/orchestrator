@@ -8,8 +8,8 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.workflow.late_split import exemption as _exemption
 from orchestrator.workflow.stages.implementing import (
+    checkout_recovery as _checkout_recovery,
     disposition as _disposition,
-    late_evidence as _late_evidence,
 )
 from tests.git.base_sync.real_git_test_support import (
     _RefreshBaseRealGitFixture,
@@ -142,7 +142,7 @@ class RefreshLateHandoffRealGitTest(
 
         self.assertEqual(approved, self._wt_head())
         self.assertEqual(
-            _late_evidence._restored_checkout(
+            _checkout_recovery._restored_checkout(
                 self._gh.get_issue(FIXTURE_ISSUE), self._pinned(), self._wt,
             ),
             approved,

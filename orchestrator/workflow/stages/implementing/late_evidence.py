@@ -24,9 +24,10 @@ from pathlib import Path
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.git.measurement import commits as _measurement_commits
-from orchestrator.git.measurement.models import MeasurementFailure
-from orchestrator.git.verification import probes as _verification_probes
+from orchestrator.git.measurement import (
+    commits as _measurement_commits,
+    models as _measurement_models,
+)
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import guards as _guards
@@ -131,7 +132,7 @@ def _holds_missing_candidate(
     return _parks._parked(
         gate,
         _records._reportable(gate, recorded),
-        MeasurementFailure.CANDIDATE_ABSENT,
+        _measurement_models.MeasurementFailure.CANDIDATE_ABSENT,
         _missing_candidate_park(recorded),
     )
 
@@ -192,7 +193,7 @@ def _holds_moved_candidate(
     gate = _records._gate(gh, spec, issue, state, worktree)
     return _parks._parked(
         gate, _records._reportable(gate, recorded),
-        MeasurementFailure.CANDIDATE_UNREADABLE,
+        _measurement_models.MeasurementFailure.CANDIDATE_UNREADABLE,
         _moved_head_park(recorded),
     )
 
@@ -354,51 +355,3 @@ def _holds_unpublished_commit(
     )
     state.set(_state._PARK_REASON, _state._CANDIDATE_MOVED)
     return True
-
-
-def _restored_checkout(
-    issue: Issue, state: PinnedState, worktree: Path,
-) -> str:
-    """The approved commit this checkout is back on, or "" if it is not.
-
-    The one refusal in this stage a human cannot answer with words. What
-    publication parked on was a checkout it could not hand to review -- one
-    that had left the commit the size gate approved, or one carrying work
-    beside it that no push would publish -- and what settles it is the
-    checkout being that commit and nothing else again, so the park writes the
-    commit down and this is the proof taken against what it wrote.
-
-    Both halves of "this checkout" are asked, because the park it answers is
-    taken on either of them. A head somewhere else is one; a tree carrying
-    work no push would publish -- or one nothing could read at all -- is the
-    other, and it is the half that can be true with the head never having
-    moved. Republishing on the head alone would take the very reading
-    publication refused on and walk it straight back into the same refusal,
-    posting a fresh notice every poll for a checkout that has not changed.
-
-    Asked silently and answered silently. A park still waiting costs one local
-    `rev-parse` and one `status` a tick and says nothing on the thread, which
-    is what lets the question be asked every tick rather than only when a
-    human asks it: the checkout coming back is enough on its own, and an
-    operator who leaves it where it is is not told so once a poll.
-    """
-    approved = _payloads.as_hex(
-        state.get(_state._APPROVED_SHA), _formats.COMMIT_LENGTHS,
-    )
-    if not approved:
-        return ""
-    proved = _measurement_commits._prove_candidate_commit(worktree, _HEAD)
-    if not (proved.is_frozen and proved.sha == approved):
-        log.debug(
-            "issue=#%s is still not on the approved commit %s; leaving the "
-            "park where it is", issue.number, approved,
-        )
-        return ""
-    if _verification_probes._worktree_status(worktree).is_clean:
-        return approved
-    log.debug(
-        "issue=#%s is back on the approved commit %s but its tree is not "
-        "provably clean; leaving the park where it is",
-        issue.number, approved,
-    )
-    return ""
