@@ -21,6 +21,7 @@ _TICK_OWNER = f"orchestrator.workflow.engine.{_TICK}"
 
 _ENGINE_OWNERS = (
     "comments",
+    "community",
     "dispatch",
     "drift",
     "guards",

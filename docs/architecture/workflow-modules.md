@@ -67,6 +67,18 @@ workflow/                   publishes the two label vocabularies, `guard_transit
   engine/                   what every stage is driven by
     comments.py             the orchestrator marker, the capped id ledger both posters write, and the trusted-author
                             thread read every prompt quotes
+    community.py            the open pull requests this orchestrator never opened, which is why the tick sweeps
+                            them itself: one opened by somebody else carries no pinned state for a handler to
+                            consult, so nothing dispatches it. `ALLOWED_ISSUE_AUTHORS` decides there is anything
+                            to sweep at all -- empty, the sweep returns before it costs a request -- and every
+                            open PR from outside it earns one `workflow:community_contribution` label and one
+                            HITL ping, with the ping posted BEFORE the label that dedups it, since a label
+                            written ahead of a comment that failed would suppress that ping forever. Both
+                            spellings of the label are read, so a PR the bootstrap rename could not reach is
+                            recognized rather than pinged twice; a Bot author is skipped outright, its PR being
+                            structural rather than a contribution. The enumeration and each per-PR step are
+                            caught separately, so one PR's failure costs that PR's ping and never the sweep or
+                            the tick around it
     dispatch.py             one tick's pollable issues turned into handler calls: the observation a refused
                             fan-out submit was carrying -- latched from the poll's own closed reading and dropped
                             again only where the RECORD positively says there is nothing to end, since the probe
@@ -223,8 +235,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             quotes the numbers the refusal was made on
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
                             share, and the two entry-time finalizers
-    tick.py                 one repo's polling pass: the base refresh, the community-contribution sweep, the
-                            skill-catalog emission, and the scheduler handoff or in-tick execution behind them
+    tick.py                 one repo's polling pass and the order it drives: the base refresh, the
+                            community-contribution sweep above, the skill-catalog emission, and the scheduler
+                            handoff or in-tick execution behind them
     usage.py                the tracked agent run: the request model, the launch fingerprint taken off it and the
                             stage / role identity a charge is recorded under,
                             the required budget every caller names the issue and its pinned state through, the circuit

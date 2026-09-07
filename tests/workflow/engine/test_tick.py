@@ -1,14 +1,14 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The tick owner's per-tick pass order."""
+"""The tick owner's per-tick pass order, and the collaborators it hands to."""
 from __future__ import annotations
 
 import functools
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from orchestrator.skills import catalog
-from orchestrator.workflow.engine import dispatch, tick
+from orchestrator.workflow.engine import community, dispatch, tick
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.git_owners import seam_patch
 from tests.workflow.repo_values import _TEST_SPEC
@@ -53,7 +53,7 @@ class TickPassOrderTest(unittest.TestCase):
         with (
             seam_patch(_REFRESH_BASE, recorder.pass_named("refresh")),
             patch.object(
-                tick, "_sweep_community_contribution_prs",
+                community, "_sweep_community_contribution_prs",
                 recorder.pass_named("sweep"),
             ),
             patch.object(
@@ -70,6 +70,22 @@ class TickPassOrderTest(unittest.TestCase):
         ):
             tick.tick(FakeGitHubClient(), _TEST_SPEC, scheduler=scheduler)
         return recorder.calls
+
+
+class TickInvokesSweepTest(unittest.TestCase):
+    """`tick` must drive the community-contribution sweep on every tick so a
+    newly-opened outsider PR is labeled without the operator having to take
+    action.
+    """
+
+    def test_tick_calls_sweep_after_refresh(self) -> None:
+        gh = FakeGitHubClient()
+        refresh = MagicMock()
+        sweep = MagicMock()
+        with seam_patch(_REFRESH_BASE, refresh), \
+             patch.object(community, "_sweep_community_contribution_prs", sweep):
+            tick.tick(gh, _TEST_SPEC)
+        sweep.assert_called_once_with(gh, _TEST_SPEC)
 
 
 if __name__ == "__main__":
