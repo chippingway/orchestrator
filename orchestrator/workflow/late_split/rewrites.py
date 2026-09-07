@@ -102,6 +102,7 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     formats as _formats,
+    overrides as _overrides,
     payloads as _payloads,
 )
 from orchestrator.workflow.state import (
@@ -678,14 +679,27 @@ def _unusable_terms(rewrite: LateRewrite, fingerprint: str) -> str:
 def record_rewrite_publication(state: PinnedState) -> LateRewrite:
     """Spend the permission standing here, carrying the exemption with it.
 
-    The one write in this domain that MOVES a verdict, and the three fields it
-    moves go down in one statement because a reader is entitled to find them
+    The one write in this domain that MOVES a verdict, and every field it
+    moves goes down in one statement because a reader is entitled to find them
     agreeing: the exemption becomes the commit the rewrite produced, the
     identity beside it becomes what that commit contributes over its own base,
-    and the phase says the transfer is over. Split across writes, a crash
-    between any two leaves a comment whose phase and whose commit disagree --
-    which every reader here refuses, and rightly, since it cannot be told from
-    a hand edit.
+    the authorization an operator granted for the accepted commit follows the
+    exemption onto the same pair, and the phase says the transfer is over.
+    Split across writes, a crash between any two leaves a comment whose phase
+    and whose commit disagree -- which every reader here refuses, and rightly,
+    since it cannot be told from a hand edit.
+
+    The authorization travels because the exemption is not on its own what
+    lets a candidate past the gate: a commit an exemption names and no
+    authorization stands behind is one the gate measures. Left on the accepted
+    commit, an operator's decision would stop covering the object the workflow
+    replaced it with, and a rewrite nobody has to decide about again would be
+    held for a decision that was already made. What moves with it is the pair
+    alone -- the size, the ceiling, and the comment are what a human decided
+    rather than facts about an object -- and a comment carrying no
+    authorization moves nothing, which is the legacy record's answer and the
+    right one: an exemption no gesture stands behind gains none by being
+    carried.
 
     Held to the RECORD rather than to the caller. The permission is read back
     whole and has to still be outstanding, so what is spent is a transfer this
@@ -723,6 +737,9 @@ def record_rewrite_publication(state: PinnedState) -> LateRewrite:
         base_sha=rewrite.to_base_sha,
         candidate_sha=rewrite.to_sha,
         fingerprint=authorization.fingerprint,
+    )
+    _overrides.carry_publication_override(
+        state, rewrite.from_sha, rewrite.to_sha, rewrite.to_base_sha,
     )
     state.set(LATE_REWRITE_PHASE, str(LateRewritePhase.PUBLISHED))
     return rewrite

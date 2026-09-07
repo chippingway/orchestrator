@@ -1566,7 +1566,37 @@ rather than preserving.
 
   It shares that window with `late_approved_sha`, and the two are not duplicates of each other. The approval is
   written in the same breath and answers a different question: *this commit is owed a push, and no other may be pushed
-  in its place*. So it freezes by presence — as the whole pair, `late_approved_lease` included, because the two go
+  in its place*. Which is also why it carries `late_approved_basis` — `reading`, `unmeasured`, `adjudication`, or
+  `authorization`, written by whichever owner granted it. The gate spends an approval after a crash without asking
+  anybody, so what one RESTS on is the only thing that can decide whether it may be spent. `reading` is this gate's
+  own count coming back at or below the ceiling, written by `late_verdict`. `unmeasured` is a publication that
+  skipped the count on a record this workflow made for itself and re-derives on the next tick — a rewrite permit, a
+  switched-off candidate, a receipt already on the remote — so each answers for its own bypass. The other two are
+  the ones an operator's gesture is behind, and they are named as one group because what a reader decides is whether
+  a debt has to be revalidated rather than which owner granted it: `adjudication` is the publication debt an
+  authorized settlement records beside the exemption it writes, and `authorization` is the debt a candidate past the
+  ceiling earns where a human authorizes it at the gate itself — the count behind that one really was this gate's,
+  so recording it as an ordinary `reading` would be true and useless. No road writes `authorization` yet.
+
+  Inferred from the records standing around them — *an approval naming a commit some exemption also names is the
+  settlement's* — it is wrong in both directions: a candidate the gate measured at or below the ceiling on an issue
+  still carrying an older build's exemption would have its own approval refused and be re-judged against a base that
+  has moved, and a settlement's debt whose exemption somebody hand-edited would read as the gate's own. So the owner
+  granting one says which it is. Read fail-closed like every other late field, so a value from outside that
+  vocabulary is no basis at all — and so is an approval an older build wrote, which carried none, where the
+  exemption beside it is the only evidence left. The claim an unproven landing puts back reads the standing basis
+  BEFORE the write that pays and drops the debt it replaces, since read after it that claim would say `unmeasured`
+  for a debt an operator's gesture was behind. Written, dropped, and spent with the approval it describes, never on
+  its own — including on the **implementing** seam, where nothing froze a publication head to lease a push against,
+  so the gate's own debt writer declines and the seam mints its own. That happens in one place for two callers: the
+  publication that names the commit it is about to push, and the guard that refuses a checkout which has left the
+  approved commit, which stands exactly where that publication would have recorded one. Neither invents grounds.
+  An approval already standing for that very commit is carried as it reads — an *unknown* one included, since
+  promoting a legacy record to `unmeasured` would turn "fall back to the exemption" into debt this workflow owns
+  and nothing would ever revalidate. Where none stands, the grounds come off the exemption CLAIM: presence rather
+  than readability, so a field a hand edit truncated still leaves the adjudication's debt, and only an issue
+  carrying no such field at all leaves `unmeasured`. So it
+  freezes by presence — as the whole pair, `late_approved_lease` included, because the two go
   down in one write and a lease standing alone is the damage the dispatcher parks on a tick later, by which time a
   hold keyed to the commit alone would have rebased and force-pushed the branch that park is about. One approval is
   set aside all the same, and it is the refresh's own rather than a stage's: where `late_approved_lease` IS a
@@ -1754,6 +1784,28 @@ rather than preserving.
   whole group in one statement so a record is never half about one candidate and half about the one before it. It
   touches the fields this owner names and no others, so an unknown field and an exemption group an older binary
   wrote are preserved verbatim by both the write and the clear.
+
+  It MOVES with the exemption. `record_rewrite_publication` carries it onto the pair a workflow rewrite produced in
+  the same statement that rotates the exemption and the identity, because the two are one claim in two halves: the
+  exemption says which commit may publish without a reading, and this says whose gesture licensed it. Left behind, a
+  rewrite nobody has to decide about again would be held for a decision that was already made. What moves is the
+  candidate and the base and nothing else — the additions, the ceiling they were counted against, and the comment
+  the authorization was written in are what a human decided rather than facts about an object, and the digest
+  already describes the rewritten pair, since a transfer is granted only over contributions that fingerprint alike.
+  `carry_publication_override` is silent where there is nothing to move: a comment carrying no authorization this
+  build can read whole has none to carry, which is the legacy record's answer and the right one, and one whose
+  authorization is about some other commit is left exactly as found rather than redirected onto a commit nobody
+  granted it for.
+
+  What the group outlives is the generation and the process, and those are the only two. A cleared generation leaves
+  it standing — it is what a generation is cleared AGAINST, so a clear that took it would send an authorized
+  candidate back into the adjudication a human already answered — and so does a crash, since the terms are on the
+  pinned comment rather than in the tick that proved them. A **`late_restart`** is neither: its projection
+  (`late_restart._projected`) is a whitelist keeping only the orchestrator's own comment ids and the cumulative
+  spend and run-ledger counters, so this group goes with `late_exempt_sha`, the generation, the parks, and
+  everything else the cancelled cycle wrote. That is the right answer rather than an oversight — the fresh cycle has
+  adjudicated nothing, so there is no verdict for an authorization to be half of, and a bypass carried across a
+  cancellation would license a candidate nobody has read.
 
   The record is durable evidence and nothing more: what a candidate publishes under is decided by the gate and by
   `late_exempt_sha` beside this group, and what recording an authorization buys is that a human's gesture survives a

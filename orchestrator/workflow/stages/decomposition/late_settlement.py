@@ -320,6 +320,13 @@ def _recorded_debt(context: _LateContext) -> None:
     on that commit. Recording it there would leave a debt nothing will ever
     pay -- the push is skipped -- and a debt on the record freezes this
     branch out of the pre-tick base refresh for the rest of the issue's life.
+
+    What the debt RESTS on is the adjudication, and it is recorded rather than
+    left to be inferred. This write and the exemption beside it go down in one
+    breath, so the approval is that adjudication wearing another field and is
+    worth exactly what the exemption is worth -- while a reader that guessed
+    from the records standing around it would answer the same for a debt this
+    gate's own count earned on an issue that happens to carry an exemption.
     """
     if context.already_published:
         _gate_parks._forget_approval(context.state)
@@ -328,6 +335,7 @@ def _recorded_debt(context: _LateContext) -> None:
         context.state,
         context.generation.candidate_sha,
         _settled_lease(context),
+        _gate_parks.LateApprovalBasis.ADJUDICATION,
     )
 
 

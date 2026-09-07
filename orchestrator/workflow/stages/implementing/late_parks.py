@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from enum import StrEnum
 from types import MappingProxyType
 
 from github.Issue import Issue
@@ -62,6 +63,7 @@ from orchestrator.workflow.engine import (
 )
 from orchestrator.workflow.late_split import (
     events as _events,
+    exemption as _exemption,
     formats as _formats,
     payloads as _payloads,
     state as _late_state,
@@ -76,6 +78,58 @@ from orchestrator.workflow.stages.implementing import (
 log = logging.getLogger("orchestrator.workflow")
 
 PARK_MEASUREMENT_FAILED = "late_measurement_failed"
+
+
+class LateApprovalBasis(StrEnum):
+    """What one approval on this issue rests on, said by the owner granting it.
+
+    A bounded vocabulary rather than a flag, because the readers ask different
+    questions of it and a boolean would have to be renamed the first time a
+    third road approved anything.
+
+    `READING` is this gate's own count coming back at or below the ceiling.
+    `UNMEASURED` is a publication that skipped the count on a record this
+    workflow made for itself and can re-derive: a rewrite permit, a
+    switched-off candidate, a receipt already on the remote. Each of those
+    answers for its own bypass on the next tick, so nothing about the debt
+    they leave has to be revalidated before it is spent.
+
+    The other two are the ones an operator's authorization stands behind, and
+    they are apart from `READING` for exactly that reason: an approval is
+    spent by the tick that comes back after a crash, and one that RESTS on an
+    authorization may only be spent while that authorization can still be
+    read. `ADJUDICATION` is the publication debt an authorized settlement
+    records beside the exemption it writes. `AUTHORIZATION` is the debt a
+    candidate past the ceiling earns when an operator authorizes it at the
+    gate itself -- the count behind it was this gate's own, so recording it as
+    a reading would be true and useless: what let it through was the human,
+    and a record damaged before the push would have it publish unmeasured. No
+    owner grants that last one, since no road at the gate collects an
+    operator's authorization; it is spelled here so the readers deciding what
+    an approval rests on are written against the whole vocabulary rather than
+    against the members that happen to have a writer.
+
+    A value from anywhere else, and an approval an older binary wrote with no
+    basis at all, read back as no basis -- and what a reader does with that is
+    fall back to the exemption, which is the only evidence such a record left.
+    """
+
+    READING = "reading"
+    UNMEASURED = "unmeasured"
+    ADJUDICATION = "adjudication"
+    AUTHORIZATION = "authorization"
+
+
+# The two an operator's gesture is behind, which may be spent only while that
+# gesture can still be read. Named as a group because that is the question a
+# reader has of the basis -- whether a debt has to be revalidated, rather than
+# which owner granted it -- so the membership is stated once here instead of
+# being re-derived by each of them. Nothing reads it while the gate has no road
+# collecting an authorization, and it is the whole of what the two share.
+AUTHORIZED_BASES = frozenset((
+    LateApprovalBasis.ADJUDICATION,
+    LateApprovalBasis.AUTHORIZATION,
+))
 
 # The steps a lost reading is retried quietly for, and the only two. Both name
 # the transport between this host and the base -- a remote that would not
@@ -671,16 +725,140 @@ def _approved_lease(state: PinnedState) -> str:
     ) or ""
 
 
-def _approve(state: PinnedState, candidate_sha: str, lease: str) -> None:
-    """Record the commit a publication is owed, and what it is pinned to.
+def _approved_basis(state: PinnedState) -> str:
+    """What the standing approval rests on, or "" where the record cannot say.
 
-    The pair is written together because it is spent together and means
+    Read fail-closed like every other late field: only a value this build's
+    own vocabulary carries reads back, so a hand edit and a spelling from
+    somewhere else are both "no basis" rather than a basis nothing checked.
+
+    "" is also the honest answer for an approval an older binary wrote, which
+    carried no basis at all. What a reader owes such a record is the answer it
+    can still defend -- the exemption beside it -- rather than a guess dressed
+    as provenance.
+    """
+    written = state.get(_state._APPROVED_BASIS)
+    if written in tuple(LateApprovalBasis):
+        return str(written)
+    return ""
+
+
+def _approve(
+    state: PinnedState,
+    candidate_sha: str,
+    lease: str,
+    basis: LateApprovalBasis | None,
+) -> None:
+    """Record the commit a publication is owed, what pins it, and its grounds.
+
+    The three are written together because they are spent together and mean
     nothing apart: a lease with no approval names a head nobody owes a push
-    for, and an approval whose lease was dropped is the one that force-pushes
-    over whatever the pull request has become.
+    for, an approval whose lease was dropped is the one that force-pushes over
+    whatever the pull request has become, and one whose basis was dropped is a
+    debt a later tick has to GUESS the provenance of -- which is the guess
+    that publishes an adjudication's debt as though this gate had counted it.
+
+    The basis is handed in rather than derived, because the owner granting an
+    approval is the only one that knows: the records standing around it are
+    the same on every road, and a reader can tell them apart only if the
+    writer said so.
+
+    `None` is a caller that has an approval to re-record and NO grounds to
+    record for it, which is the shape an older build left. It goes down as an
+    absence rather than as a value, because the two say opposite things to the
+    reader: a basis names a decision, while an absence hands the question to
+    the exemption beside it -- and a caller inventing one here would answer a
+    question it was never in a position to.
     """
     state.set(_state._APPROVED_SHA, candidate_sha)
     state.set(_state._APPROVED_LEASE, lease or None)
+    state.set(_state._APPROVED_BASIS, None if basis is None else str(basis))
+
+
+def _owes_a_publication(state: PinnedState, candidate_sha: str) -> None:
+    """Record that this commit is owed a push, on whatever grounds it has.
+
+    The write for a caller holding one commit and no lease, which is the
+    implementing seam: nothing froze a publication head there because there is
+    no pull request yet, and the push that opens one reads the remote for
+    itself. The gate's own debt writer declines for exactly that reason, so
+    this seam mints its own -- and it has two callers, since the publication
+    that normally does it is skipped whenever the checkout stopped being the
+    commit that was approved.
+
+    The grounds are CARRIED where an approval already stands for this very
+    commit, since nothing about a checkout that moved changes what the
+    publication was allowed on -- and an approval that never said what it
+    rested on is carried as saying nothing, not upgraded. An older build wrote
+    exactly that shape, and what a reader owes it is the exemption beside it
+    rather than a claim this write invented: turned into `unmeasured` here, a
+    legacy record would stop being read as unknown and become debt this
+    workflow owns, which is a bypass nobody would ever revalidate.
+
+    Where no approval stands for the commit, the grounds are the record's.
+    The exemption CLAIM decides -- presence, not readability, since a field a
+    hand edit truncated still says an adjudication happened and only fails to
+    say which commit -- so a comment carrying one leaves the adjudication's
+    debt, to be revalidated like every other debt a human's gesture is behind.
+    A comment carrying none leaves `unmeasured`, which is what every road
+    reaching here on such an issue is: a receipt the remote already carries, a
+    permit, a candidate the switch kept out of the gate -- records this
+    workflow made for itself and re-derives on the next tick, so each answers
+    for its own bypass.
+
+    The whole group goes down either way rather than the commit alone. A
+    commit with a lease left over from some other attempt beside it is the
+    pair disagreeing with itself, which the reconciliation ahead of the next
+    handler reads as damage.
+    """
+    if _approved_commit(state) == candidate_sha:
+        _approve(state, candidate_sha, "", _standing_basis(state))
+        return
+    _approve(state, candidate_sha, "", _minted_basis(state))
+
+
+def _minted_basis(state: PinnedState) -> LateApprovalBasis:
+    """What a debt this seam mints for a commit no approval names rests on.
+
+    Read off the exemption CLAIM rather than off the commit it names, and
+    conservatively: an issue that never entered an adjudication carries no
+    such field, while one whose field is unreadable carries the claim that one
+    happened and no way to say what it was about. Read alike, the second is
+    how an adjudication's publication debt comes to be recorded as this
+    workflow's own -- the one write a later reader spends without asking
+    anybody.
+
+    What the conservative answer costs is a measurement on an issue whose
+    adjudication is long over and whose candidate this gate really did admit
+    for itself. What the other answer costs is the bypass.
+    """
+    if state.carries(_exemption.LATE_EXEMPT_SHA):
+        return LateApprovalBasis.ADJUDICATION
+    return LateApprovalBasis.UNMEASURED
+
+
+def _standing_basis(state: PinnedState) -> LateApprovalBasis | None:
+    """What the standing approval rests on, or None where it cannot say.
+
+    The debt a caller re-records is the one that was already there -- the same
+    commit, now the head the pull request stands on -- so what it rests on is
+    whatever granted it. Carried forward rather than re-decided, since nothing
+    about a checkout that stopped being what went out changes the grounds a
+    publication was allowed on.
+
+    None where the record never said, and where a hand edit left a value from
+    outside this build's vocabulary. Both are the same fact -- this comment
+    cannot show what its approval rests on -- and the answer a reader owes
+    that fact is the exemption beside it. Answered `unmeasured` instead, an
+    unknown would be promoted to a decision nobody made: the reader would stop
+    falling back, and a legacy `late_approved_sha` standing over the very
+    commit an exemption names would read as debt this workflow owns and be
+    spent without anybody being asked.
+    """
+    standing = _approved_basis(state)
+    if not standing:
+        return None
+    return LateApprovalBasis(standing)
 
 
 def _forget_approval(state: PinnedState) -> None:
@@ -694,6 +872,7 @@ def _forget_approval(state: PinnedState) -> None:
     """
     state.set(_state._APPROVED_SHA, None)
     state.set(_state._APPROVED_LEASE, None)
+    state.set(_state._APPROVED_BASIS, None)
     _late_state.write_late_spends(state, ())
 
 

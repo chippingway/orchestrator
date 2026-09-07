@@ -31,8 +31,14 @@ AUTHORIZING_COMMENT_ID = 4242
 CONTRIBUTION_DIGEST = "e" * DIGEST_LENGTH
 
 # A commit made on top of the authorized one: work nobody read, carried by an
-# object no authorization names.
+# object no authorization names. It stands in for a rewrite's product too --
+# what makes the two different is the record that explains the object, and
+# there is no such record here.
 DESCENDANT_SHA = "d" * SHA_LENGTH
+
+# The base a rewrite replays the accepted contribution over. Its own commit,
+# since the whole of what a carried authorization moves is the pair.
+REWRITTEN_BASE_SHA = "9" * SHA_LENGTH
 
 # A digest cut in half: hex, and a hash of nothing anything could be compared
 # against, which is why the field is read at its exact length.
@@ -221,6 +227,24 @@ class RefusedAuthorizationTest(unittest.TestCase):
 
                 self.assertEqual(state.data, {})
 
+    def test_the_terms_answer_for_themselves(self) -> None:
+        # Asked of the group rather than beside the writer, so a caller that
+        # has not decided to record yet gets the same answer as one that has
+        # -- and gets the term and the type it arrived as, never the value,
+        # since a refusal about an unvouched-for value is read by a log.
+        for described, replaced in _REFUSED_TERMS.items():
+            with self.subTest(term=described):
+                refusal = authorized_publication(**replaced).unusable_terms
+
+                self.assertTrue(refusal)
+                for named in replaced.values():
+                    self.assertNotIn(str(named), refusal)
+
+    def test_whole_terms_answer_nothing(self) -> None:
+        # The other side of it, so the refusals above are about the term that
+        # was replaced rather than about the property refusing everything.
+        self.assertEqual(authorized_publication().unusable_terms, "")
+
     def test_omitted_terms_are_refused(self) -> None:
         # Every field defaults to a value this domain refuses, so a caller
         # that named none of them is told it has no authorization to record.
@@ -276,6 +300,48 @@ class AuthorizationLifetimeTest(unittest.TestCase):
 
         self.assertEqual(state.data, {"pr_number": 12})
         self.assertIsNone(_overrides.read_publication_override(state))
+
+    def test_a_rewrite_carries_it_onto_the_new_pair(self) -> None:
+        # The exemption moves onto the object a workflow rewrite replaced the
+        # accepted commit with, and the authorization has to move with it: a
+        # commit an exemption names and no authorization stands behind is one
+        # the gate measures, so left behind it would hold a rewrite nobody has
+        # to decide about again. The pair moves and nothing else does -- the
+        # size, the ceiling, and the comment are what a human decided, and the
+        # digest already describes the rewritten pair, since a transfer is
+        # granted only over contributions that fingerprint alike.
+        state = authorized_state()
+
+        _overrides.carry_publication_override(
+            state, CANDIDATE_SHA, DESCENDANT_SHA, REWRITTEN_BASE_SHA,
+        )
+
+        carried = _overrides.read_publication_override(state).publication
+        self.assertEqual(carried.candidate_sha, DESCENDANT_SHA)
+        self.assertEqual(carried.base_sha, REWRITTEN_BASE_SHA)
+        self.assertEqual(carried.fingerprint, CONTRIBUTION_DIGEST)
+        self.assertEqual(carried.additions, ADDITIONS)
+        self.assertEqual(carried.threshold, THRESHOLD)
+        self.assertEqual(carried.comment_id, AUTHORIZING_COMMENT_ID)
+        self.assertFalse(_overrides.is_authorized(state, CANDIDATE_SHA))
+
+    def test_a_record_it_may_not_redirect_is_left(self) -> None:
+        # Two comments this write may not touch: one carrying no
+        # authorization this build can read whole, and one whose
+        # authorization is about some other commit. Redirected, either would
+        # become a bypass for a candidate nobody granted one for.
+        for shape, state in (
+            ("damaged", damaged_state({_FINGERPRINT_KEY: None})),
+            ("another candidate", authorized_state()),
+        ):
+            with self.subTest(shape=shape):
+                before = dict(state.data)
+
+                _overrides.carry_publication_override(
+                    state, DESCENDANT_SHA, CANDIDATE_SHA, REWRITTEN_BASE_SHA,
+                )
+
+                self.assertEqual(state.data, before)
 
     def test_every_other_field_is_left_verbatim(self) -> None:
         # The pinned comment is shared, and an authorization is only ever

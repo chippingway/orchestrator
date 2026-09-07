@@ -109,8 +109,9 @@ CANCELLED = replace(
 
 # One pinned key from every family a restart drops: the sessions, the pull
 # request and branch, the children and the dependency graph, the snapshot this
-# issue was cut from, the parks, the drift baseline, the counters, the launch
-# a charge was taken for, and the timestamps.
+# issue was cut from, the exemption and the authorization that let one
+# oversized candidate past the size gate, the parks, the drift baseline, the
+# counters, the launch a charge was taken for, and the timestamps.
 CARRIED_OVER = MappingProxyType({
     "dev_session_id": "dev-sess",
     "decomposer_session_id": "dec-sess",
@@ -126,6 +127,7 @@ CARRIED_OVER = MappingProxyType({
         "refs/orchestrator/late-split/issue-7/cycle-1/gen-0"
     ),
     "late_exempt_sha": CANDIDATE_SHA,
+    "late_override_candidate_sha": CANDIDATE_SHA,
     "awaiting_human": True,
     "park_reason": "late_question",
     "user_content_hash": "5f4dcc3b5aa765d61d8327deb882cf99",

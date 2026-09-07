@@ -142,6 +142,7 @@ class _StateKeys:
     published_sha: str = "late_published_sha"
     approved_sha: str = "late_approved_sha"
     approved_lease: str = "late_approved_lease"
+    approved_basis: str = "late_approved_basis"
     # The publishing stage's own receipt rather than a late field: it is what
     # says a commit REACHED the remote, which is the evidence a settlement
     # resumed past its own push is recognized by.

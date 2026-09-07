@@ -46,7 +46,8 @@ refusal is reported under is `late_records`, the pair a count is taken over is
 `late_evidence`, what a measured candidate earns -- the push, the
 `workflow:decomposing` hold, and the retirement each is durable behind -- is
 `late_verdict`, and the one park shape every unreadable reading takes, with
-the typed failure both sinks carry, is `late_parks`.
+the typed failure both sinks carry and the approval group whose basis says
+which owner granted a publication debt, is `late_parks`.
 
 A candidate the remote already carries is the same gate one seam further on,
 and ten more owners divide it the way the seam itself divides: what a call

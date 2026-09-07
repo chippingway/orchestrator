@@ -101,6 +101,26 @@ _CANDIDATE_MOVED = "late_candidate_moved"
 # by the adjudication that supersedes it.
 _APPROVED_SHA = "late_approved_sha"
 
+# What the approval beside it RESTS on, so a later tick can tell the gate's own
+# answer from an adjudication's publication debt without inferring it from the
+# records standing around them. The two are written in different places and
+# mean different things: a reading this gate took needs nobody's permission to
+# be spent, while a debt an authorized settlement recorded is the exemption
+# wearing another field and is worth exactly what that exemption is worth.
+#
+# Inferred instead -- "an approval naming a commit some exemption also names is
+# the settlement's" -- it is wrong in both directions: a candidate the gate
+# measured small on an issue that still carries an older binary's exemption
+# would have its own approval refused and be re-judged against a base that has
+# moved, and a settlement's debt whose exemption somebody hand-edited would
+# read as the gate's own and publish unmeasured. So the owner that grants one
+# says which it is, and only a value from this build's own vocabulary reads
+# back: an approval an older binary wrote carries none, and the exemption is
+# the only evidence left for those.
+#
+# Written, dropped, and spent with the approval it describes, never on its own.
+_APPROVED_BASIS = "late_approved_basis"
+
 # The head the pull request stood on when the approval beside it was written,
 # for a candidate the gate approved on the PUBLISHED side. It outlives the
 # generation that froze it for exactly as long as the push it licenses is

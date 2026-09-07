@@ -76,7 +76,7 @@ what a candidate publishes under is decided where publications are.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 from orchestrator.git.measurement.models import FINGERPRINT_FORMAT
@@ -161,6 +161,56 @@ class LateOversizedPublication:
     additions: int = 0
     threshold: int = 0
     comment_id: int = 0
+
+    @property
+    def unusable_terms(self) -> str:
+        """Why these are not terms an authorization may be written on, or "".
+
+        One answer for every term, because a caller that cannot name any of
+        them has the same problem: it is asking this domain to record evidence
+        a later reader could not check, and that reader's move on unreadable
+        evidence is to let unmeasured work reach a pull request.
+
+        Asked of the terms themselves rather than beside the writer, since
+        what makes a group unusable is a fact about the group: the same answer
+        is owed whether it is about to be recorded or was handed in by a
+        caller that has not decided yet.
+
+        A refusal names the term and the type it arrived as, never the value.
+        An exception message is read by a log, and a log is one step over from
+        the surfaces a refusal about an unvouched-for value was protecting.
+        """
+        named = (
+            (self.candidate_sha, _formats.COMMIT_LENGTHS),
+            (self.base_sha, _formats.COMMIT_LENGTHS),
+            (self.fingerprint, _formats.DIGEST_LENGTHS),
+        )
+        for given, lengths in named:
+            if not _formats.is_hex_of(given, lengths):
+                return f"an authorized publication is not one ({type(given).__name__})"
+        return self._unusable_measurement
+
+    @property
+    def _unusable_measurement(self) -> str:
+        """Why the reading behind these terms is not one, or "".
+
+        The half of the answer above that is about numbers rather than about
+        object ids, spelled apart because it is where the domain rule lives: a
+        record at or under its own threshold describes a candidate the gate
+        publishes untouched, which is a decision nobody had to make and so no
+        authorization to record.
+        """
+        for counted in (self.additions, self.threshold):
+            if not _formats.whole_number(counted) or counted < 0:
+                return f"an authorized measurement is not one ({type(counted).__name__})"
+        if self.additions <= self.threshold:
+            return "an authorized publication is not one the gate would stop"
+        if not _formats.whole_number(self.comment_id) or self.comment_id <= 0:
+            return (
+                "an authorizing comment is not an identity "
+                f"({type(self.comment_id).__name__})"
+            )
+        return ""
 
 
 @dataclass(frozen=True)
@@ -263,7 +313,7 @@ def record_publication_override(
     lets it land together with whatever else that caller is recording, or not
     at all.
     """
-    refusal = _unusable_terms(publication)
+    refusal = publication.unusable_terms
     if refusal:
         raise _formats.InvalidLateValue(refusal)
     recorded = {
@@ -279,37 +329,38 @@ def record_publication_override(
         state.set(key, given)
 
 
-def _unusable_terms(publication: LateOversizedPublication) -> str:
-    """Why these terms are not ones an authorization may be written on, or "".
+def carry_publication_override(
+    state: PinnedState, from_sha: str, to_sha: str, base_sha: str,
+) -> None:
+    """Move an authorization onto the commit a rewrite replaced its own with.
 
-    One answer for every term, because a caller that cannot name any of them
-    has the same problem: it is asking this domain to record evidence a later
-    reader could not check, and that reader's move on unreadable evidence is
-    to let unmeasured work reach a pull request.
+    Written wherever the exemption beside it moves, and never on its own,
+    because the two are one claim in two halves: the exemption says which
+    commit may publish without a reading, and this says whose gesture licensed
+    it. Left behind, the rewritten commit would carry a verdict with no
+    authorization standing for it, and the gate would stop a publication an
+    operator has already decided.
 
-    A refusal names the term and the type it arrived as, never the value. An
-    exception message is read by a log, and a log is one step over from the
-    surfaces a refusal about an unvouched-for value was protecting.
+    What moves is the pair the digest was taken between and nothing else. The
+    additions, the ceiling they were counted against, and the comment the
+    authorization was made in are what a human decided rather than facts about
+    an object, and they are the same decision over either commit. The digest
+    moves unchanged for the same reason: the permit that licenses a rewrite is
+    granted only over contributions that fingerprint alike, so the digest
+    already describes the rewritten pair.
+
+    Silent where there is nothing to move -- a comment carrying no
+    authorization this build can read whole, and one whose authorization is
+    about some other commit. Neither is a record this write may repair or
+    redirect: an authorization is bound to the candidate a human read, and one
+    pointed at a commit nobody granted it for is the shape it may never take.
     """
-    named = (
-        (publication.candidate_sha, _formats.COMMIT_LENGTHS),
-        (publication.base_sha, _formats.COMMIT_LENGTHS),
-        (publication.fingerprint, _formats.DIGEST_LENGTHS),
-    )
-    for given, lengths in named:
-        if not _formats.is_hex_of(given, lengths):
-            return f"an authorized publication is not one ({type(given).__name__})"
-    for counted in (publication.additions, publication.threshold):
-        if not _formats.whole_number(counted) or counted < 0:
-            return f"an authorized measurement is not one ({type(counted).__name__})"
-    if publication.additions <= publication.threshold:
-        return "an authorized publication is not one the gate would stop"
-    if not _formats.whole_number(publication.comment_id) or publication.comment_id <= 0:
-        return (
-            "an authorizing comment is not an identity "
-            f"({type(publication.comment_id).__name__})"
-        )
-    return ""
+    override = read_publication_override(state)
+    if override is None or override.publication.candidate_sha != from_sha:
+        return
+    record_publication_override(state, replace(
+        override.publication, candidate_sha=to_sha, base_sha=base_sha,
+    ))
 
 
 def clear_publication_override(state: PinnedState) -> None:

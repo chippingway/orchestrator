@@ -345,9 +345,14 @@ A process that died in that window would leave a paid debt standing,
     settling = _owes_a_settlement(gate.state, landed)
     if not (settling or unproven or rotation.staged):
         return
+    # Read before the drop below takes them: the accepted road keeps the head
+    # this push replaced on the approval's own lease, and the claim an
+    # unproven landing puts back rests on whatever granted the debt this one
+    # is paying. Read after the drop, that claim would say `unmeasured` for a
+    # debt an operator's gesture was behind, which is provenance no reader
+    # past this write could recover.
+    standing = _parks._standing_basis(gate.state)
     if settling:
-        # Read before the drop below takes it: the accepted road keeps the
-        # head this push replaced on the approval's own lease.
         superseded = (
             gate.entry.published_sha if gate.entry
             else _parks._approved_lease(gate.state)
@@ -356,7 +361,7 @@ A process that died in that window would leave a paid debt standing,
         _parks._forget_approval(gate.state)
         _parks._record_publication(gate.state, landed, superseded)
     if unproven:
-        _parks._approve(gate.state, landed, landed)
+        _parks._approve(gate.state, landed, landed, standing)
     gate.gh.write_pinned_state(gate.issue, gate.state)
     _rotation._reports_the_transfer(gate, rotation)
 
