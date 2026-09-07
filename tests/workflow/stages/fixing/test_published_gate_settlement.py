@@ -26,13 +26,14 @@ import unittest
 from functools import partial
 
 from orchestrator.workflow.stages.implementing import (
+    late_authority as _late_authority,
     late_debt as _late_debt,
     late_parks as _parks,
     late_push as _late_push,
     late_reconcile as _late_reconcile,
 )
 from tests.workflow.fixtures import _authorized_exemption
-from tests.workflow.interleaving import _RacesTheStep
+from tests.workflow.interleaving import _AnswersOnce, _RacesTheStep
 from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.repo_values import TEST_REPO_SLUG
 from tests.workflow.stages.fixing import (
@@ -262,6 +263,27 @@ class UnmeasuredDebtBasisTest(_ReconciliationCase):
         scenario = self._exempt_publication()
 
         self._crashes(scenario, settling=False)
+
+        self.assertEqual(
+            self._pinned(scenario)[KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.AUTHORIZATION),
+        )
+
+    def test_a_second_proof_cannot_downgrade_it(self) -> None:
+        # The gate admits this candidate on a proof it took itself, and the
+        # debt records THAT answer rather than one taken again at the write.
+        # Asked twice, a store that stopped answering in between would record
+        # an operator's bypass as ordinary unmeasured debt -- and the tick
+        # after this crash spends ordinary debt without asking anyone.
+        scenario = self._exempt_publication()
+        proving = _AnswersOnce(
+            _late_authority._contributes_what_was_authorized, False,
+        )
+
+        with patch.object(
+            _late_authority, "_contributes_what_was_authorized", proving,
+        ):
+            self._crashes(scenario, settling=False)
 
         self.assertEqual(
             self._pinned(scenario)[KEY_APPROVED_BASIS],

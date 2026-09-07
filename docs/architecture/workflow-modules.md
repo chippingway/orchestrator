@@ -1280,9 +1280,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             DEBT such a commit leaves may be spent, read off the approval's own recorded basis
                             rather than inferred from the records beside it: an authorized settlement's debt and one
                             a human granted at the gate are revalidated, and the gate's own count is not. Which
-                            basis an unmeasured publication records is decided HERE too, at the write rather than
-                            threaded down from whichever road reached it, since every one of them ends at the same
-                            write and only one is an operator's. Where an
+                            basis an unmeasured publication records is decided by the gate that ADMITTED the
+                            candidate and travels on its verdict, never re-derived at the write -- proving an
+                            authorization is a git reading, and a second reading is a second chance to fail. Where an
                             older binary's approval recorded no basis at all the exemption is the only evidence
                             left, and it is read for the CLAIM rather than for the commit -- a field a hand edit
                             truncated is not an issue that never entered an adjudication, and reading the two alike
@@ -1329,9 +1329,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             publication seam the committed work came out of, so a recovery reaches exactly the
                             outcomes a fresh disposition does and decides nothing the gate would have decided
       late_transfer.py      whether a rewrite may carry an adjudication's exemption onto the object it produced --
-                            asked first of the operator authorization behind that exemption, since a transfer is
-                            the one road past the reading no record names in advance and moving an exemption
-                            nothing authorizes would hand the rewrite a permission the accepted commit never had --
+                            asked of the operator authorization behind that exemption through the gate's own owner,
+                            and PROVED rather than parsed, since a transfer is the one road past the reading no
+                            record names in advance and a group naming the accepted commit over a pair nobody read
+                            would hand the rewrite a permission the accepted commit never had. Asked among the
+                            fingerprints rather than at the door, because proving one is a fingerprint --
                             rather than have the same change measured past the same ceiling and adjudicated a
                             second time with a pull request already open over the work. A permit is granted only
                             over a whole semantic record whose exempt commit IS the one the rewrite came from,

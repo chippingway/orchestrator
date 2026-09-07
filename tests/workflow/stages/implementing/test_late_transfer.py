@@ -297,6 +297,18 @@ class RefusedEvidenceTest(_TransferCase, unittest.TestCase):
         self.assertEqual(self._carried(), "")
         self._assert_untouched()
 
+    def test_a_fabricated_one_carries_nothing(self) -> None:
+        # Every term of an authorization but the digest is the pinned comment
+        # agreeing with itself, and this grant is the one road past the
+        # reading that no record names in advance. Believed on its shape, a
+        # group naming the accepted commit over a pair nobody read would move
+        # the exemption onto a rewrite and publish an oversized change no
+        # human ever saw.
+        self._adjudicated(authorized=OTHER_DIGEST)
+
+        self.assertEqual(self._carried(), "")
+        self._assert_untouched()
+
     def test_an_unauthorized_one_carries_nothing(self) -> None:
         # An exemption is half a bypass: it says an ADJUDICATOR ruled the
         # change one whole, and the operator authorization beside it is what

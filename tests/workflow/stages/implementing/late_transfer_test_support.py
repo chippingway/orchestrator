@@ -153,7 +153,7 @@ class Adjudicated:
 def adjudicated(
     *,
     identity: bool = True,
-    authorized: bool = True,
+    authorized: str | bool = True,
     digest: str = ACCEPTED_DIGEST,
     base: str = MERGE_BASE_SHA,
     labels: tuple | None = None,
@@ -169,6 +169,11 @@ def adjudicated(
     authorization was required at publication. The exemption is there and no
     gesture stands behind it, so the accepted commit goes to the ordinary
     cumulative gate like any other candidate.
+
+    A DIGEST there is the hand edit a shape check cannot catch: the group
+    parses, names the accepted commit, and describes a decision nobody made
+    over a pair nobody read. `True` writes the identity's own, since the two
+    describe one contribution wherever a real settlement wrote them.
 
     `base` is the pair's other end, replaceable because it is the one field a
     hand edit can move without the record refusing to read back: a whole
@@ -187,7 +192,10 @@ def adjudicated(
     state = github.read_pinned_state(issue)
     _exemption.record_exemption(state, ACCEPTED_SHA)
     if authorized:
-        _authorize(state, ACCEPTED_SHA, base, digest)
+        _authorize(
+            state, ACCEPTED_SHA, base,
+            digest if authorized is True else authorized,
+        )
     if identity:
         _exemption.record_semantic_identity(
             state,

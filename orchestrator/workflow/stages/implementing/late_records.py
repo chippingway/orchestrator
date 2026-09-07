@@ -265,8 +265,20 @@ class _GateVerdict:
     gate, and a candidate the gate then lets through publishes on the count
     rather than on the exemption.
 
-    The two are separate because the write past the push turns on the second
-    and only the second. A permission standing on the comment is evidence a
+    `basis` is what ADMITTED this candidate, carried as the wire value the
+    approval group records. It travels for the reason the commit does: the
+    caller's next step records a debt, and only the answer that let the
+    candidate past can say what that debt rests on. Re-derived at the write
+    instead, a proof that succeeded here and fails a moment later -- a store
+    that stopped answering between the two readings -- would record an
+    operator's bypass as ordinary unmeasured debt, which the tick after a
+    crash then spends without asking anyone.
+
+    Empty for every road that decided nothing to carry, and read back as the
+    ordinary unmeasured basis there.
+
+    The first two are separate because the write past the push turns on the
+    second and only the second. A permission standing on the comment is evidence a
     permit was once granted, not that it still holds: a repointed pull
     request, a relabelled issue, a moved remote, or a contribution that no
     longer fingerprints alike each refuse it while the ordinary reading may
@@ -278,6 +290,7 @@ class _GateVerdict:
     held: bool
     candidate_sha: str = ""
     permitted_sha: str = ""
+    basis: str = ""
 
 
 # What every held answer is, since a hold names no commit: there is nothing

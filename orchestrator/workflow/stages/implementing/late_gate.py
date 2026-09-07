@@ -275,6 +275,15 @@ def _decided(
     already calls decided has nothing left to earn. Refused, the candidate
     falls through to the measurement exactly as it always did.
 
+    What ADMITTED the candidate travels with it, because this is the only
+    place that knows and because a second answer taken later is a second
+    chance to fail: proving an operator's authorization is a git reading, and
+    a store that stopped answering between the gate's proof and the write that
+    records the debt would leave that bypass looking like ordinary unmeasured
+    debt -- which the tick after a crash spends without asking anyone. One
+    answer here is a human's; every other road past the measurement is this
+    workflow's own record, and each of those already answers for itself.
+
     The permit's answer is kept APART from the other three rather than folded
     into the one reason, because the two license different things. All four
     say the candidate may publish without a reading; only the permit says a
@@ -288,6 +297,10 @@ def _decided(
     decided = _needs_no_measuring(gate, recorded, candidate_sha)
     permitted = decided or _transfer._carried_over(gate, candidate_sha)
     if permitted:
+        admitted = (
+            _parks.LateApprovalBasis.AUTHORIZATION if decided == _ADJUDICATED
+            else _parks.LateApprovalBasis.UNMEASURED
+        )
         log.info(
             "issue=#%d candidate %s %s; publishing it without a reading",
             gate.issue.number, candidate_sha, permitted,
@@ -295,6 +308,7 @@ def _decided(
         return _verdict_owner._unmeasured_verdict(
             gate, recorded, candidate_sha,
             permitted_sha="" if decided else candidate_sha,
+            basis=str(admitted),
         )
     answered = (
         recorded.candidate_sha == candidate_sha

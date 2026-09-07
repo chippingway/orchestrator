@@ -274,29 +274,6 @@ def _unauthorized_debt(gate: _records._Gate, candidate_sha: str) -> bool:
     return _exemption.read_exemption(gate.state) is None
 
 
-def _debt_basis(
-    gate: _records._Gate, candidate_sha: str,
-) -> _parks.LateApprovalBasis:
-    """What the debt an unmeasured publication owes rests on.
-
-    Asked where the debt is WRITTEN rather than threaded down from whichever
-    of the roads past the measurement this is, because every one of them ends
-    at the same write and only one of them is an operator's: the commit an
-    exemption and an authorization both vouch for. Recorded as ordinary
-    unmeasured debt, that one is spent by the tick after a crash without
-    anybody being asked -- so a record damaged in the window between the write
-    and the push would bypass the cumulative gate as though the gate had
-    counted it.
-
-    Everything else IS ordinary. A rewrite permit's debt defers to the permit
-    rather than to a basis, a switched-off candidate skipped a reading nobody
-    took, and a receipt names a push the remote already has.
-    """
-    if _publishes_on_an_exemption(gate, candidate_sha):
-        return _parks.LateApprovalBasis.AUTHORIZATION
-    return _parks.LateApprovalBasis.UNMEASURED
-
-
 def _approved_on_a_reading(
     gate: _records._Gate, candidate_sha: str,
 ) -> bool:

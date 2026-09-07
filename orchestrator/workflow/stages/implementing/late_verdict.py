@@ -418,6 +418,7 @@ def _unmeasured_verdict(
     recorded: LateGeneration,
     candidate_sha: str = "",
     permitted_sha: str = "",
+    basis: str = "",
 ) -> _records._GateVerdict:
     """Publish a candidate this gate did not measure -- unless a close beat it.
 
@@ -445,6 +446,14 @@ def _unmeasured_verdict(
     this, it reaches the stage the publication hands the issue to as a flag
     describing a question nobody is waiting on.
 
+    `basis` is handed back the same way and for a sharper reason: it says what
+    ADMITTED the candidate, and only the answer that admitted it can say. Any
+    road that re-asked here would be taking the proof a SECOND time, and a
+    proof that succeeded at the gate and fails a moment later -- a store that
+    stopped answering in between -- would record an operator's bypass as
+    ordinary unmeasured debt, which the tick after a crash spends without
+    asking anyone.
+
     `permitted_sha` is handed straight back rather than derived, because only
     the caller knows which of the roads past the measurement this is. A
     transfer's is the one road whose publication may MOVE a human's verdict,
@@ -456,16 +465,19 @@ def _unmeasured_verdict(
     _supersedes_approval(gate, candidate_sha)
     if _superseded(gate, recorded):
         return _records._HELD
-    _owed_by_an_unmeasured_push(gate, candidate_sha, _frozen_lease(gate))
+    _owed_by_an_unmeasured_push(
+        gate, candidate_sha, _frozen_lease(gate), basis,
+    )
     return _records._GateVerdict(
         held=False,
         candidate_sha=candidate_sha,
         permitted_sha=permitted_sha,
+        basis=basis,
     )
 
 
 def _owed_by_an_unmeasured_push(
-    gate: _records._Gate, candidate_sha: str, lease: str,
+    gate: _records._Gate, candidate_sha: str, lease: str, basis: str = "",
 ) -> None:
     """Name the commit an unmeasured publication owes a push for, durably.
 
@@ -509,12 +521,12 @@ def _owed_by_an_unmeasured_push(
     that instead. What the switch decides is the measurement; the account of
     what a push is putting where is not its to turn off.
     """
-    if _stages_unmeasured_debt(gate, candidate_sha, lease):
+    if _stages_unmeasured_debt(gate, candidate_sha, lease, basis):
         gate.gh.write_pinned_state(gate.issue, gate.state)
 
 
 def _stages_unmeasured_debt(
-    gate: _records._Gate, candidate_sha: str, lease: str,
+    gate: _records._Gate, candidate_sha: str, lease: str, basis: str = "",
 ) -> bool:
     """Put the debt an unmeasured push owes in memory, and say whether it did.
 
@@ -531,13 +543,19 @@ def _stages_unmeasured_debt(
     honest: an owner that staged nothing has nothing of this to make durable
     and says so, instead of spending a request on a comment it did not change.
 
-    What the debt RESTS on is asked here rather than handed down from the road
-    that reached it, because every one of those roads ends at this write and
-    only one of them is an operator's. A commit an exemption and an
-    authorization both vouch for leaves a debt that may be spent only while
-    that authorization can still be read; recorded as ordinary unmeasured
-    debt, a record damaged between here and the push would bypass the
-    cumulative gate as though this gate had counted it.
+    What the debt RESTS on is handed DOWN from the answer that admitted the
+    candidate rather than re-derived here, and that difference is the whole of
+    it. A commit an exemption and an authorization both vouch for leaves a
+    debt that may be spent only while that authorization can still be read --
+    but proving one is a git reading, and a second reading is a second chance
+    to fail. Re-asked here, a store that stopped answering between the gate's
+    proof and this write would record an operator's bypass as ordinary
+    unmeasured debt, and the tick after a crash would spend it without asking
+    anyone. Handed down, the record says what the gate actually decided on.
+
+    A road that carried nothing records the ordinary unmeasured basis, and so
+    does a value from outside this build's own vocabulary: what a caller
+    cannot name is not a claim the record may carry.
     """
     if _parks._approved_commit(gate.state) == candidate_sha:
         return False
@@ -548,10 +566,10 @@ def _stages_unmeasured_debt(
         "standing at %s; recording the debt before the push that pays it",
         gate.issue.number, candidate_sha, lease,
     )
-    _parks._approve(
-        gate.state, candidate_sha, lease,
-        _authority._debt_basis(gate, candidate_sha),
-    )
+    admitted = _parks.LateApprovalBasis.UNMEASURED
+    if basis in tuple(_parks.LateApprovalBasis):
+        admitted = _parks.LateApprovalBasis(basis)
+    _parks._approve(gate.state, candidate_sha, lease, admitted)
     _late_state.write_late_spends(gate.state, gate.spends.fields)
     return True
 

@@ -132,10 +132,10 @@ from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     formats as _formats,
-    overrides as _overrides,
     rewrites as _rewrites,
 )
 from orchestrator.workflow.stages.implementing import (
+    late_authority as _authority,
     late_records as _records,
     late_verdict as _verdict_owner,
     state as _state,
@@ -412,15 +412,22 @@ def _permit(
     because they are the heaviest reading in the domain -- every object either
     contribution names is read back in full -- and there is no point taking
     them for a transfer something cheaper has already refused.
+
+    The operator authorization behind the exemption is asked with them rather
+    than at the door for that same reason: proving one is a fingerprint, since
+    every other term of an authorization is the pinned comment agreeing with
+    itself. Its own reading is the first of the three, because a transfer that
+    may not happen at all should not pay for the two that compare
+    contributions.
     """
     for question in (
-        _unauthorized_exemption,
         _unusable_evidence,
         _unreadable_authorization,
         _disagreeing_publication,
         _unproven_checkout,
         _unproven_lease,
         _unconfirmed_owner,
+        _unauthorized_exemption,
     ):
         refusal = question(gate, rewrite)
         if refusal:
@@ -445,9 +452,19 @@ def _unauthorized_exemption(
     never had -- and this owner's grant is the one road that skips the reading
     without any record naming the commit in advance.
 
-    Asked first because it costs one read of the pinned comment and because
-    every question behind it is about a move that may not happen anyway. The
-    record an older binary left is what reaches it: a `single` verdict wrote
+    PROVED rather than parsed, which is why this is asked among the
+    fingerprints rather than at the door. Every term of an authorization but
+    the digest is the pinned comment agreeing with itself, and a hand edit
+    arranges that as easily as a crash: a group naming the accepted commit
+    over a base nobody froze, with a digest of nothing, reads back whole and
+    would license this grant -- and past the grant an oversized change no
+    human ever saw publishes on a rewrite the gate never measured. The digest
+    is the one term the objects answer, so it is re-taken between the pair the
+    record names and held to what the record says. Asked through the owner the
+    GATE asks it through, so an authorization means the same thing on both
+    roads past the measurement.
+
+    The record an older binary left reaches it too: a `single` verdict wrote
     the exemption alone before a human's own decision was required at
     publication, and so does any comment whose authorization this build cannot
     read back whole.
@@ -455,7 +472,7 @@ def _unauthorized_exemption(
     Refused, nothing moves and the rewritten commit is measured by the
     ordinary cumulative gate exactly as every other refusal here leaves it.
     """
-    if _overrides.is_authorized(gate.state, rewrite.from_sha):
+    if _authority._publishes_on_an_exemption(gate, rewrite.from_sha):
         return ""
     return _UNAUTHORIZED_EXEMPTION.format(accepted=rewrite.from_sha)
 

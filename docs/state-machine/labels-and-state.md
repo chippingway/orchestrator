@@ -1624,8 +1624,10 @@ rather than preserving.
   `late_approved_sha` in one breath — read off that approval's own recorded `late_approved_basis` rather than
   inferred from the exemption, so a gate-owned approval keeps its bypass on an issue that still carries a legacy
   exemption and a settlement's debt loses it even where somebody hand-edited the exemption away. And it reaches the
-  rewrite transfer, which asks for the pair before it grants a permit: an exemption nothing authorizes may not move
-  onto the object a squash or a rebase produced. Nothing about the compatibility deletes, migrates, or repairs a record,
+  rewrite transfer, which asks for the proved pair before it grants a permit: an exemption nothing authorizes, and
+  one whose authorization no reading of the objects backs, may not move onto the object a squash or a rebase
+  produced. That question is asked among the transfer's fingerprints rather than at its door, since proving an
+  authorization IS one. Nothing about the compatibility deletes, migrates, or repairs a record,
   and nothing about it touches work that is over: it is asked at publication rather than as a pass over comments
   nobody is publishing from, and a merged or closed issue is finalized before any handler reaches the gate.
 
@@ -1667,9 +1669,11 @@ rather than preserving.
   it is read for the CLAIM rather than for the commit: an issue that never entered an adjudication carries no
   `late_exempt_sha` at all, while one whose field a hand edit truncated carries the claim that an adjudication
   happened and no way to say which commit it was about. Which basis an unmeasured publication records is decided at
-  the write rather than handed down from whichever road reached it, since every one of them ends at that write and
-  only one is an operator's — and the claim an unproven landing puts back reads the standing basis BEFORE the write
-  that pays and drops the debt it replaces, or an operator's gesture would come back as ordinary debt.
+  the gate that ADMITTED the candidate and handed down to the write with it, never re-derived there: proving an
+  authorization is a git reading, so a second reading is a second chance to fail, and a store that stopped answering
+  between the two would record an operator's bypass as ordinary debt for the next tick to spend without asking
+  anyone. The claim an unproven landing puts back reads the standing basis BEFORE the write
+  that pays and drops the debt it replaces, for the same reason one step over.
 
   Read alike, that truncated record is the shape that publishes
   an adjudication's debt unmeasured — a hand edit of the one field a bypass turns on. Written, dropped, and spent
