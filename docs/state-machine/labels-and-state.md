@@ -685,6 +685,12 @@ The keys that matter for the state machine fall into a few groups:
   thread ends on afterwards, since a reply landing between those two operations is the answer being thrown away by
   the question.
 
+  Which comment is the pinned record is named by its **id** on every read this park takes, never by its marker. The
+  marker fallback hides each comment that merely QUOTES it — an operator pasting a payload back to ask about it, a
+  retraction written under one — and a reply hidden from this reading is a reply whose author never spoke: the stale
+  command beneath it becomes the last word and publishes on consent that had been withdrawn. The consumption walk
+  names it for the same reason one step over, since a reply it stepped past would be consumed unread.
+
   Our own comments are dropped from the reading, and being ours is **proved** by `orchestrator_comment_ids` alone —
   the bounded ledger of ids `_post_issue_comment` records, which is a fact about what this process DID. The park
   notice spells the command out ready to copy, so a reader matching on that syntax would mistake our sentences for

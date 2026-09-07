@@ -329,6 +329,26 @@ class RefusedCommandTest(_ConsentCase, unittest.TestCase):
             self._pinned()[_state._LAST_ACTION_COMMENT_ID], corrected[0],
         )
 
+    def test_a_quoted_record_survives_the_refusal(self) -> None:
+        # The same window, for a reply the consumption walk reads rather than
+        # the reading. Told to find the pinned comment by its marker, that
+        # walk treats a reply quoting one as the record, steps straight over
+        # it, and consumes it unread -- so a retraction written while this
+        # tick was posting would be lost for good.
+        self._reply(support.AUTHORIZE_ANOTHER)
+        landed = []
+        racing = _RacesTheStep(
+            _comments._post_issue_comment,
+            lambda: landed.append(self._reply(support.QUOTES_THE_RECORD)),
+        )
+
+        with patch.object(_comments, _POST_ISSUE_COMMENT, racing):
+            self.assertFalse(self._authorizes())
+
+        self.assertLess(
+            self._pinned()[_state._LAST_ACTION_COMMENT_ID], landed[0],
+        )
+
     def test_the_corrected_command_publishes(self) -> None:
         # And the other half of it: the reply the refusal did not swallow is
         # the last fresh word on the next reading, so the poll after the race

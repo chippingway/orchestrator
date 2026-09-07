@@ -255,7 +255,9 @@ def _answered_and_lost(gh: GitHubClient, issue: Issue, state: PinnedState) -> bo
     stamped = [
         seen
         for seen in gh.comments_after(
-            issue, state.get(_state._LAST_ACTION_COMMENT_ID),
+            issue,
+            state.get(_state._LAST_ACTION_COMMENT_ID),
+            state_comment_id=state.comment_id,
         )
         if marker in (getattr(seen, "body", "") or "")
     ]

@@ -1305,7 +1305,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             abbreviation the sentence saying so instead of a silent park. Three authors are
                             never in the reading: an outsider, a comment with no id, and the orchestrator itself
                             -- the park notice spells the command out ready to copy, so our own sentences are
-                            exactly what a reader matching on that syntax would mistake for one. Being ours is
+                            exactly what a reader matching on that syntax would mistake for one. The pinned
+                            record is named by its ID on both reads rather than by its marker, since that
+                            fallback hides every comment merely QUOTING one and a reply hidden from this
+                            reading is a reply whose author never spoke. Being ours is
                             PROVED by the recorded id and by nothing else, because the last-reply rule makes
                             dropping a comment the same act as deleting what its author said: a retraction taken
                             for one of ours never happened, and the authorization beneath it becomes the last

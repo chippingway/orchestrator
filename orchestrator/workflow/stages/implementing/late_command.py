@@ -136,11 +136,21 @@ class _Answer:
         wrote it, or an earlier one did and this reading examined it. A tick
         that posted nothing walks nothing and answers with what it read, which
         costs no request and is every other road here.
+
+        The pinned comment is named by its ID, for the reason the reading
+        behind this names it: told to find it by its marker instead, the read
+        hides every comment that merely QUOTES that marker -- so a reply
+        somebody pasted a payload into would be walked straight over and
+        consumed unread.
         """
         if said <= self.watermark:
             return self.watermark
         reached = self.watermark
-        for landed in gate.gh.comments_after(gate.issue, self.watermark):
+        for landed in gate.gh.comments_after(
+            gate.issue,
+            self.watermark,
+            state_comment_id=gate.state.comment_id,
+        ):
             identified = _payloads.as_identity(getattr(landed, _COMMENT_ID, 0))
             if identified is None or identified > said:
                 break
@@ -178,13 +188,23 @@ def _read_the_park(
     publishes nothing -- and a command written after guidance is the decision
     that replaced it. Read as a set instead, one stale reply would refuse
     every command posted behind it for as long as the park stood.
+
+    Which makes naming the pinned comment by its ID part of that rule rather
+    than a detail of the fetch. A read that has to find it by its marker
+    instead treats every comment merely QUOTING that marker as the record --
+    an operator pasting a payload back to ask about it, a retraction written
+    under one -- and a reply hidden from this reading is a reply whose author
+    never spoke. The stale command beneath it would become the last word and
+    publish on consent that had been withdrawn.
     """
     if state.get(_state._PARK_REASON) != PARK_UNAUTHORIZED_EXEMPTION:
         return None
     if not state.get(_state._AWAITING_HUMAN):
         return None
     examined = gh.comments_after(
-        issue, state.get(_state._LAST_ACTION_COMMENT_ID),
+        issue,
+        state.get(_state._LAST_ACTION_COMMENT_ID),
+        state_comment_id=state.comment_id,
     )
     replies = [
         reply for reply in filter_trusted(examined) if not _ours(reply, state)

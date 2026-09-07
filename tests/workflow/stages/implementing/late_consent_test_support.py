@@ -22,7 +22,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.github.pinned_state import PinnedState
+from orchestrator.github.pinned_state import PINNED_STATE_MARKER, PinnedState
 from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from orchestrator.workflow.stages.implementing import (
@@ -81,6 +81,11 @@ AUTHORIZE_ABBREVIATED = _COMMAND.format(
     commit=MEASURED_CANDIDATE_SHA[:ABBREVIATED],
 )
 GUIDANCE = "make it smaller, please"
+
+# A reply that merely QUOTES the pinned comment's marker -- an operator
+# pasting a payload back to ask about it, or writing under one they copied.
+# The record is named by its id, so this is somebody's word like any other.
+QUOTES_THE_RECORD = f"hold off -- this issue says {PINNED_STATE_MARKER} ... -->"
 
 KEY_OVERRIDE_CANDIDATE_SHA = "late_override_candidate_sha"
 KEY_OVERRIDE_BASE_SHA = "late_override_base_sha"

@@ -66,6 +66,17 @@ class ReadTheParkTest(support._ParkedCase, unittest.TestCase):
 
         self.assertEqual(answer.comment_id, decided)
 
+    def test_a_quoted_record_hides_no_reply(self) -> None:
+        # The pinned comment is named by its ID, so a reply that merely quotes
+        # its marker stays in the reading. Found by the marker instead, that
+        # reply would read as the record itself and vanish -- and the stale
+        # authorization beneath it would become the last word and publish on
+        # consent that had been withdrawn.
+        self._reply(support.AUTHORIZE)
+        self._reply(support.QUOTES_THE_RECORD)
+
+        self.assertIsNone(self._read())
+
     def test_the_watermark_is_what_was_looked_at(self) -> None:
         # Every comment the fetch returned counts, filtered-out ones included:
         # what a watermark records is what has been LOOKED at, and an
