@@ -32,10 +32,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
-from orchestrator.git.publication import (
-    probes as _publication_probes,
-    titles as _titles,
-)
+from orchestrator.git.publication import titles as _titles
 from orchestrator.github import client as _client, pinned_state as _pinned_state
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.implementing import (
@@ -84,7 +81,7 @@ def _derive_pr_title(spec: config.RepoSpec, issue: Issue, wt: Path) -> str:
     recognizable `<type>:` prefix, one is inferred from recent base-branch
     history (`_infer_subject_prefix`) and applied to the issue title.
     """
-    first_subject = _publication_probes._first_commit_subject(spec, wt)
+    first_subject = _titles._first_commit_subject(spec, wt)
     fallback_prefix = _titles._infer_subject_prefix(spec, wt, issue)
     return _titles._pr_title_from_commit_or_issue(
         issue, first_subject, fallback_prefix,

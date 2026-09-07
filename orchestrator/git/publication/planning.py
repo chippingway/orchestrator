@@ -23,7 +23,7 @@ from github.Issue import Issue
 
 from orchestrator import config
 from orchestrator.git import commands
-from orchestrator.git.publication import probes, titles
+from orchestrator.git.publication import titles
 from orchestrator.git.verification import probes as verification_probes
 
 
@@ -126,7 +126,7 @@ def _squash_message(
     is for a first subject carrying no reusable prefix.
     """
     first_subject = subjects[0] if subjects else ""
-    if probes._is_prefixed_subject(first_subject):
+    if titles._is_prefixed_subject(first_subject):
         return f"{first_subject}\n"
     fallback_prefix = titles._infer_subject_prefix(spec, worktree, issue)
     subject = titles._pr_title_from_commit_or_issue(

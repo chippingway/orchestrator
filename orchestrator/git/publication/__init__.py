@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Branch-publication domain owners.
 
-Branch inspection -- ahead/behind counts, commit-subject reads, and the
-subject-shape predicates they feed -- lives in ``probes``; prefix inference
-and PR-title selection live in ``titles``; the preconditions a squash is
+Branch geometry -- ahead/behind counts and the fork point a contribution is
+read over -- lives in ``probes``; what a published subject line may say and
+which one gets written -- the prefix vocabulary, the predicates over it, the
+commit-subject reads they are applied to, and the inference and PR-title
+selection above them -- lives in ``titles``; the preconditions a squash is
 planned from, the commit count among them, live in ``planning``; the reset,
 commit, force-push, and rollback that spend that plan live in ``rewrite``;
 what a squash an earlier tick did not finish is owed lives in ``resume``;
@@ -27,9 +29,10 @@ in one place here.
 No facade of this domain's own sits beside the package, and nothing above it
 republishes these names either, so each answers on the owner that defines it
 and a test intercepting one targets that owner -- ``probes`` for base sync's
-divergence check, for the ahead/behind reads the documenting, conflicts, and
-validating stages take, and for the first-commit subject behind a fresh dev
-PR, ``titles`` for the two helpers that PR falls back to, and ``squash`` for
-validating's squash. ``orchestrator.branch_publication`` names only the logger
-``rewrite`` reports on -- an operator's filter prefix rather than a module path.
+divergence check and for the ahead/behind and fork-point reads the
+documenting, conflicts, and validating stages take, ``titles`` for the
+first-commit subject behind a fresh dev PR and the two helpers that PR falls
+back to, and ``squash`` for validating's squash.
+``orchestrator.branch_publication`` names only the logger ``rewrite`` reports
+on -- an operator's filter prefix rather than a module path.
 """

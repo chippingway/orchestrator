@@ -29,10 +29,7 @@ from __future__ import annotations
 
 import logging
 
-from orchestrator.git.publication import (
-    probes as _publication_probes,
-    titles as _titles,
-)
+from orchestrator.git.publication import titles as _titles
 from orchestrator.workflow.stages.discussion import (
     models as _models,
     publication_parks as _publication_parks,
@@ -152,7 +149,7 @@ def _plan_pr_title(
     The issue title and the prefix inferred from recent base history are the
     same two fallbacks every other PR here falls to.
     """
-    first_subject = _publication_probes._first_commit_subject(
+    first_subject = _titles._first_commit_subject(
         run.spec, artifact.worktree,
     )
     fallback_prefix = _titles._infer_subject_prefix(
