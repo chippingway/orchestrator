@@ -538,16 +538,18 @@ orchestrator/
                         and what a pass over one of those candidates answers with: the three outcomes it can
                         end in, the closed reason that fixes which, and the record carrying both beside the
                         artifact the reason names
-      probes.py         the local reads a scan is built from: the `refs/heads/orchestrator/` listing, the
-                        checkout directories under both roots -- the spec's own and, once for the whole host, the
-                        flat `WORKTREES_DIR` every entry shared before namespacing -- a real directory under the
-                        exact name, never a symlink into a tree the creators never wrote, read through the `lstat`
-                        that reports what the
-                        `is_dir` predicates suppress -- each answering "could not read", listing and entry alike
-                        and a listing that warned about a ref it skipped included, apart from "nothing here"; and
-                        the one read that is not a listing, which git directory a checkout and a clone share, since
-                        a flat checkout's name says nothing about whose it is and a named one's claim has to be
-                        tested. Both halves of the domain ask that one, so it is defined once and here
+      branch_probes.py  the branch read a scan is built from: the `refs/heads/orchestrator/` listing in one clone,
+                        named as the derivations spell it rather than as git's shortest unambiguous form, and
+                        answering "could not read" -- a listing that warned about a ref it skipped included, since
+                        what came back is then short by exactly that branch -- apart from "nothing here"
+      probes.py         the checkout reads a scan is built from: the directories under both roots -- the spec's own
+                        and, once for the whole host, the flat `WORKTREES_DIR` every entry shared before
+                        namespacing -- a real directory under the exact name, never a symlink into a tree the
+                        creators never wrote, read through the `lstat` that reports what the `is_dir` predicates
+                        suppress -- each answering "could not read", listing and entry alike, apart from "nothing
+                        here"; and the one read that is not a listing, which git directory a checkout and a clone
+                        share, since a flat checkout's name says nothing about whose it is and a named one's claim
+                        has to be tested. Both halves of the domain ask that one, so it is defined once and here
       attribution.py    which configured repository a discovered artifact belongs to, by re-deriving each spec's
                         own name for it; a name several entries could own -- every legacy flat branch on a shared
                         clone, every checkout directory two lossily-sanitized slugs are handed -- is attributed to
@@ -693,10 +695,11 @@ off a facade:
   what its absence costs; this package decides only what a snapshot ref IS and refuses everything outside it.
 - `worktrees/` — the creators call `commands`, `locks`, `branch_transport`, and their `paths` / `recovery` siblings;
   `decomposition` resolves its own path helper; `terminal` composes its local teardown from `cleanup`. The read-only
-  scan sits on the same owners: `inventory` calls `probes` and `attribution`, and `paths` itself for the checkout path
-  it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against, and only `probes`
-  reaches `commands` and `locks`. `models` carries only data. Nothing in the scan writes, fetches, or names GitHub,
-  which is what lets a caller take it at any point in a tick. The classification over it keeps that split visible:
+  scan sits on the same owners: `inventory` calls `branch_probes`, `probes`, and `attribution`, and `paths` itself for
+  the checkout path it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against,
+  and only the two probe owners reach `commands` — `branch_probes` the `locks` its listing is taken under as well.
+  `models` carries only data. Nothing in the scan writes, fetches, or names GitHub, which is what lets a caller take
+  it at any point in a tick. The classification over it keeps that split visible:
   `evidence` calls `commands`, `locks`, `paths`, `probes` for the clone-identity read the scan owns, both
   `git/verification/` tree reads (the status one, and the
   ignored-path one git leaves out of it and out of its own refusal to remove a dirty worktree), and
