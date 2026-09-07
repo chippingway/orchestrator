@@ -31,6 +31,7 @@ from orchestrator.git.measurement.models import (
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
+    overrides as _overrides,
     rewrites as _rewrites,
 )
 from orchestrator.workflow.stages.implementing import (
@@ -77,6 +78,14 @@ LEASED_SHA = "9" * SHA_LENGTH
 # What the accepted contribution fingerprints to, and what an unequal one does.
 ACCEPTED_DIGEST = "e" * DIGEST_LENGTH
 OTHER_DIGEST = "f" * DIGEST_LENGTH
+
+# The terms the operator authorization beside the exemption was granted on:
+# the reading that made the accepted candidate oversized, and the comment the
+# decision was written in. An exemption alone lets nothing past the gate, so a
+# settled `single` leaves both.
+AUTHORIZED_ADDITIONS = 4200
+AUTHORIZED_THRESHOLD = 4000
+AUTHORIZING_COMMENT_ID = 5150
 
 WORKTREE = Path("/tmp/orchestrator-test-late-transfer")
 
@@ -151,6 +160,7 @@ class Adjudicated:
 def adjudicated(
     *,
     identity: bool = True,
+    authorized: bool = True,
     digest: str = ACCEPTED_DIGEST,
     base: str = MERGE_BASE_SHA,
     labels: tuple | None = None,
@@ -160,6 +170,12 @@ def adjudicated(
     `identity=False` is the legacy shape: a comment written before the
     semantic record existed, or one whose fingerprint could not be taken, so
     only the exact commit is exempt.
+
+    `authorized=False` is the OTHER legacy shape, one policy further back: an
+    exemption a `single` verdict recorded before an operator's own
+    authorization was required at publication. The exemption is there and no
+    gesture stands behind it, so the accepted commit goes to the ordinary
+    cumulative gate like any other candidate.
 
     `base` is the pair's other end, replaceable because it is the one field a
     hand edit can move without the record refusing to read back: a whole
@@ -177,6 +193,18 @@ def adjudicated(
     github.seed_state(ISSUE_NUMBER, **{_state._PR_NUMBER: PR_NUMBER})
     state = github.read_pinned_state(issue)
     _exemption.record_exemption(state, ACCEPTED_SHA)
+    if authorized:
+        _overrides.record_publication_override(
+            state,
+            _overrides.LateOversizedPublication(
+                candidate_sha=ACCEPTED_SHA,
+                base_sha=base,
+                fingerprint=digest,
+                additions=AUTHORIZED_ADDITIONS,
+                threshold=AUTHORIZED_THRESHOLD,
+                comment_id=AUTHORIZING_COMMENT_ID,
+            ),
+        )
     if identity:
         _exemption.record_semantic_identity(
             state,

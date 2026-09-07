@@ -1234,10 +1234,19 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        `workflow:decomposing` with nothing pushed and no pull request opened; at or below it publishes as below and
        the generation is dropped, leaving `late_retired_cycle_id` so the next candidate cannot answer to the same
        cycle number. Three commits skip the measurement because this workflow already decided about them, each
-       named exactly and only by its own record: the one an authorized settlement accepted (`late_exempt_sha`,
-       which an adjudicator's own `single` never writes -- that parks for the decision), the one the
+       named exactly and only by its own record: the one an authorized settlement accepted (`late_exempt_sha`
+       *and* the `late_override_*` terms an operator authorized that publication on, which an adjudicator's own
+       `single` never writes -- that parks for the decision), the one the
        gate approved and has still to push (`late_approved_sha`), and the one this stage already pushed
-       (`implementing_published_sha`). So does every candidate while `DECOMPOSE=off` — except
+       (`implementing_published_sha`). The first is asked as a PAIR because the exemption is an agent's answer and
+       half a bypass: a commit only it names -- an older binary's automatic exemption, or one whose authorization
+       this build cannot read whole -- is measured like any other candidate, and the approval beside it defers on
+       the same reading where it is that settlement's own publication debt rather than a count this gate took. At
+       or below the ceiling such a candidate publishes on its count, boundary inclusive; past it the issue parks
+       `late_unauthorized_exemption` and waits for a trusted whole-comment `/orchestrator authorize-oversized
+       <commit>`, rather than being routed back into an adjudication that has already answered. The one thing that
+       still publishes there is a commit the pull request this call froze is already standing on, where the push
+       moves nothing and only the bookkeeping behind it is left. So does every candidate while `DECOMPOSE=off` — except
        one this issue has a recorded generation for *that same commit*, one it owes a push for, and
        one **answering a reading the gate itself recorded**. A generation naming some OTHER candidate is one a
        resumed developer's fresh commit has moved past, and the fresh commit is new work: published untouched with

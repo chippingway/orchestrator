@@ -903,6 +903,20 @@ the reply being consumed are ONE write — a park cleared without the record wou
 into the adjudication a human just answered, and a record without the consumed watermark would let the same comment
 authorize a second candidate later.
 
+The same command ends one other park, and `implementing/late_authority.py` owns that one. `late_exempt_sha` is half
+of a bypass rather than the whole of one: it records that an ADJUDICATOR ruled the change one whole, and the size
+gate asks for the `late_override_*` group beside it before a candidate publishes without a reading. A live issue can
+carry an exemption with no such group — an older build wrote one on a `single` verdict alone — and so can any issue
+whose authorization was hand-edited or half-written. The candidate there is measured like every other one: at or
+below the ceiling it publishes on its count, and past it the issue parks `late_unauthorized_exemption` rather than
+going back to an adjudication that has already answered. The park deletes nothing, so the exemption an
+authorization would be checked against is still there, and it is answered by the same whole-comment command under
+the same trust and staleness rules — read at the size gate itself, so whichever seam took the park can end it. What
+that command earns there is the same `late_override_*` group written from the gate's own reading: the pair it froze,
+the additions it counted, the ceiling they were counted against, the digest recomputed between that pair, and the
+comment it was written in. The one candidate the park never holds is a commit the pull request already stands on,
+where the push would move nothing and only the bookkeeping behind a publication that has happened is left.
+
 Everything the command does not prove is answered on the thread and consumed — the human asked for something this
 park cannot do and is owed the sentence saying so, with the command that would have worked spelled out in it. Once,
 under a receipt scoped to the reading it answers: the sentence and the write that consumes it are two operations, so

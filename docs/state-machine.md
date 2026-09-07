@@ -102,7 +102,9 @@ worktree rebases locally; a PR-having one in `workflow:validating` / `workflow:d
 `workflow:validating`, reaching `workflow:resolving_conflict` only when the rebase actually leaves conflicted files.
 That push goes through the size gate, and where the branch was standing on the commit an authorized settlement
 accepted the refresh hands the gate the same rewrite evidence a squash does, so a replay that contributes what a human
-already ruled on carries the exemption over instead of being adjudicated again. The `question` and `discussion` labels
+already ruled on carries the exemption over instead of being adjudicated again — and the operator authorization that
+made that exemption a bypass moves with it, since the gate asks for both before a candidate publishes unmeasured.
+The `question` and `discussion` labels
 — and the parks and in-flight discussion records that outlive them — skip both paths. The failure modes, their durable
 `park_reason` tokens, and the refresh-owned retry are in
 [`state-machine/labels-and-state.md#base-refresh`](state-machine/labels-and-state.md#base-refresh).

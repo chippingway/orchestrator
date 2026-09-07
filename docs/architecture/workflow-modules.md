@@ -306,7 +306,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             on, since the object the rewrite produced is on no remote yet and a verdict rotated
                             onto it there would be stranded by a push that failed. What SPENDS a permission is
                             `record_rewrite_publication`, staged into the write that receipts the landed push: the
-                            exemption, the identity beside it, and the phase move to `published` in one statement,
+                            exemption, the identity beside it, the operator authorization that made that exemption
+                            a bypass, and the phase move to `published` in one statement,
                             since a reader is entitled to find them agreeing. Both writes live here rather than at
                             the seam that decides, so the reader is the writer's own gate -- a publication is
                             recorded only over a permission this build can read back whole and still finds
@@ -343,7 +344,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             have taken anyway. The write refuses the same terms rather than recording them and replaces
                             the whole group in one statement, so a record is never half about one candidate and half
                             about another; every other field on the pinned comment, an unknown one and a legacy
-                            exemption group included, is left verbatim by both the write and the clear
+                            exemption group included, is left verbatim by both the write and the clear. What the
+                            gate reads it FOR is the half of a bypass the exemption is not, so it moves with that
+                            exemption: `carry_publication_override` re-points the pair onto the commit a workflow
+                            rewrite produced -- the candidate and the base, and no other term, since the size, the
+                            ceiling and the comment are what a human decided and the digest already describes the
+                            rewritten pair -- while a comment with no readable authorization on it, and one about
+                            some other commit, are each left exactly as found
     collapses.py            the three terms a squash says it is about to collapse, written before the reset that
                             destroys them and deliberately outside the group a cleared generation drops: the head
                             being collapsed -- the rollback target, and the head the force-push behind it is leased
@@ -1240,7 +1247,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             disposition or at its next-tick recovery; the attribution both readings rest on,
                             which needs BOTH ends of the comparison read and parks where either is not; the
                             certified floor a clean exit is credited against, the size gate every clean
-                            committed candidate passes, the timeout and measurement parks' own recoveries, and
+                            committed candidate passes, the timeout, measurement and unauthorized-exemption
+                            parks' own recoveries -- the last routing the committed work back through the same
+                            publication seam so the gate reads the operator's command where the terms of an
+                            authorization come from -- and
                             the approved commit an interrupted publication owes, disposed against the record
                             naming it rather than against any ahead-of-base reading
       late_gate.py          the order the size gate's questions are asked in, taken over one subject so both seams
@@ -1248,9 +1258,30 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             checkout before anything is persisted or pushed, since between the caller's read and this
                             one the worktree is writable and a commit landing there is a different candidate -- the
                             three records that
-                            say a commit is already decided (the adjudication's exemption, the gate's own unspent
-                            approval, and the commit this stage already pushed), a record already answering, and
-                            the count that answers a pair nothing has yet
+                            say a commit is already decided (the adjudication's exemption asked as a PAIR with the
+                            operator authorization beside it, the gate's own unspent approval, and the commit this
+                            stage already pushed), the one commit an unauthorized exemption still publishes -- the
+                            one its pull request is already standing on, where the push moves nothing and only the
+                            bookkeeping is left -- a record already answering, and
+                            the count that answers a pair nothing has yet. Also where the park an adjudicated
+                            candidate with no human behind it takes is ANSWERED, once the candidate is proved and
+                            before anything is decided about it: the command that ends it is read at this seam
+                            rather than at one stage's own recovery, since the park is taken wherever a candidate is
+                            published from
+      late_authority.py     whether an adjudicated commit has a human behind it, which is the half of a bypass the
+                            exemption is not: an exemption records an agent's verdict that the change is one whole,
+                            and a guard against agents publishing past the ceiling may not be waived by one. So the
+                            two are asked together, by the same one-commit rule, and a candidate only the exemption
+                            names -- an older binary's automatic record, or one whose authorization this build
+                            cannot read whole -- goes to the ordinary cumulative reading. Also what an oversized
+                            reading of one earns: a park rather than a route back to the adjudication, since the
+                            change has been ruled already and what is missing is the person, taken without deleting,
+                            migrating, or repairing a field and announced once per pair. And the park's own answer
+                            -- a trusted whole-comment `/orchestrator authorize-oversized <commit>` naming the
+                            parked candidate, recorded from the gate's own reading (the pair it froze, the count it
+                            took, the ceiling it was counted against, the digest recomputed between that pair, and
+                            the comment it was written in) in the write that takes the park off and consumes the
+                            reply
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names
@@ -1546,7 +1577,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             waits to see back, which is that head with a provably clean tree around it
       late_verdict.py       what a measured candidate earns -- the push and the head an approval on the published
                             side is pinned to, which outlives the generation that froze it for as long as the push
-                            is still owed, the `workflow:decomposing` hold and the
+                            is still owed, the `workflow:decomposing` hold that an oversized candidate an exemption
+                            already names hands over to `late_authority`'s park instead, since a change already
+                            ruled one change is missing a human rather than a verdict, and the
                             notice it owes the thread on the side of publication the record was entered on, the
                             approval a publication naming another commit supersedes, the same debt recorded for a
                             candidate that skipped the reading -- an exemption's, a supersession the switch let

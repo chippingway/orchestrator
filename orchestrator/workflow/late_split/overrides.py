@@ -76,7 +76,7 @@ what a candidate publishes under is decided where publications are.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 from orchestrator.git.measurement.models import FINGERPRINT_FORMAT
@@ -310,6 +310,40 @@ def _unusable_terms(publication: LateOversizedPublication) -> str:
             f"({type(publication.comment_id).__name__})"
         )
     return ""
+
+
+def carry_publication_override(
+    state: PinnedState, from_sha: str, to_sha: str, base_sha: str,
+) -> None:
+    """Move an authorization onto the commit a rewrite replaced its own with.
+
+    Written wherever the exemption beside it moves, and never on its own,
+    because the two are one claim in two halves: the exemption says which
+    commit may publish without a reading, and this says whose gesture licensed
+    it. Left behind, the rewritten commit would carry a verdict with no
+    authorization standing for it, and the gate would stop a publication an
+    operator has already decided.
+
+    What moves is the pair the digest was taken between and nothing else. The
+    additions, the ceiling they were counted against, and the comment the
+    authorization was made in are what a human decided rather than facts about
+    an object, and they are the same decision over either commit. The digest
+    moves unchanged for the same reason: the permit that licenses a rewrite is
+    granted only over contributions that fingerprint alike, so the digest
+    already describes the rewritten pair.
+
+    Silent where there is nothing to move -- a comment carrying no
+    authorization this build can read whole, and one whose authorization is
+    about some other commit. Neither is a record this write may repair or
+    redirect: an authorization is bound to the candidate a human read, and one
+    pointed at a commit nobody granted it for is the shape it may never take.
+    """
+    override = read_publication_override(state)
+    if override is None or override.publication.candidate_sha != from_sha:
+        return
+    record_publication_override(state, replace(
+        override.publication, candidate_sha=to_sha, base_sha=base_sha,
+    ))
 
 
 def clear_publication_override(state: PinnedState) -> None:

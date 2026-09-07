@@ -57,6 +57,7 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.stages.implementing import (
+    late_authority as _late_authority,
     late_evidence as _late_evidence,
     late_gate as _late_gate,
     late_parks as _late_parks,
@@ -339,18 +340,73 @@ def _try_recover_late_measurement_park(
 def _recovers_a_late_park(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
 ) -> bool:
-    """Both parks the size gate takes, answered before anything is spawned.
+    """Every park the size gate takes, answered before anything is spawned.
 
-    Neither is a park a human can talk their way out of, which is what puts
-    them together and what puts them here. One is owed another READING and the
-    other another LOOK at the checkout, and on both the work in question is
-    committed already -- so what they must never reach is the spawn below,
-    which would buy a second developer run for an implementation the first one
-    finished.
+    None of them is a park a human can talk their way out of, which is what
+    puts them together and what puts them here. One is owed another READING,
+    one another LOOK at the checkout, and one a DECISION nothing but a named
+    command can be, and on all three the work in question is committed
+    already -- so what they must never reach is the spawn below, which would
+    buy a second developer run for an implementation the first one finished.
     """
     if _try_recover_late_measurement_park(gh, spec, issue, state):
         return True
+    if _try_recover_unauthorized_exemption_park(gh, spec, issue, state):
+        return True
     return _try_recover_moved_candidate_park(gh, spec, issue, state)
+
+
+def _try_recover_unauthorized_exemption_park(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
+) -> bool:
+    """Republish an adjudicated candidate an operator has now authorized.
+
+    The way out of the park the size gate takes when a commit is exempt on a
+    record no human stands behind. What it was missing was a person rather
+    than a reading, so what settles it is the command they wrote -- and the
+    work is committed already, so this must never reach the spawn below.
+
+    The command is recognized here and acted on inside the gate, which is
+    where the terms of an authorization come from: the pair that was counted,
+    the count, and the ceiling it was counted against are the very record that
+    park persisted, and only the owner holding it can write an authorization a
+    later reader could hold to a decision. So this owes the routing and
+    nothing else -- the committed work goes back through the same publication
+    seam it came out of, and the gate's own answer decides what happens.
+
+    Every other reply is left alone. A comment carrying words is guidance,
+    which resumes the developer against it, and one naming another commit is
+    not an authorization for the candidate this issue is holding.
+
+    The park flags are deliberately NOT cleared here. The write that records
+    the authorization is the write that takes them off, so a tick that could
+    not fingerprint the pair leaves the issue exactly as parked as it found
+    it, rather than durably unparking an issue nothing published.
+    """
+    if not _late_authority._answers_the_authorization_park(gh, issue, state):
+        return False
+    wt = _worktree_paths._worktree_path(spec, issue.number)
+    if not wt.exists():
+        _late_evidence._holds_missing_candidate(gh, spec, issue, state, wt)
+        gh.write_pinned_state(issue, state)
+        return True
+    _, _, _, dev_sid = _session_read._read_dev_session(state)
+    agent_result = AgentResult(
+        session_id=dev_sid,
+        last_message=(
+            "(orchestrator recovery: publishing the candidate an operator "
+            "authorized)"
+        ),
+        exit_code=0,
+        timed_out=False,
+        stdout="",
+        stderr="",
+    )
+    _publish_committed_work(
+        gh, spec, issue, state, _models._RecoveredWork(agent_result, wt),
+    )
+    gh.write_pinned_state(issue, state)
+    return True
 
 
 def _try_recover_moved_candidate_park(

@@ -32,6 +32,7 @@ from orchestrator.workflow.late_split import (
 )
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from orchestrator.workflow.stages.implementing import (
+    late_authority as _authority,
     late_parks as _parks,
     late_records as _records,
 )
@@ -69,7 +70,19 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
 
     Strictly past the ceiling, which is the record's own comparison: a
     candidate exactly at the configured value publishes, so the trigger cannot
-    move by one line when the threshold is retuned.
+    move by one line when the threshold is retuned. That boundary is the same
+    one for every candidate here, an adjudicated one included -- a commit an
+    exemption names and no authorization stands behind is measured like any
+    other, and one that comes back at or below the ceiling publishes on the
+    count exactly as it always did.
+
+    An oversized one is held either way, and only WHERE differs. A candidate
+    nothing has ruled on goes to the adjudication. One an exemption already
+    names has been ruled on -- what it is missing is the human, not the
+    verdict -- so sending it back would pay for a second adjudicator over an
+    answered question and risk a `split` cutting children out of work
+    somebody decided ships whole. It parks for the authorization instead,
+    which `late_authority` owns.
 
     A count in hand is what a measurement park was waiting for, so this is
     where one is retired -- here and at the unmeasured verdict beside it, and
@@ -89,9 +102,11 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     """
     _parks._retire_spent_park(gate.state)
     settled = _parks._measured(generation)
-    if settled.is_oversized:
-        return _routed(gate, settled)
-    return _accepted(gate, settled)
+    if not settled.is_oversized:
+        return _accepted(gate, settled)
+    if _authority._unauthorized_exemption(gate.state, settled.candidate_sha):
+        return _authority._parked_for_authorization(gate, settled)
+    return _routed(gate, settled)
 
 
 def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:

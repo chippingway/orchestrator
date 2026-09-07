@@ -26,6 +26,7 @@ from tests.workflow.fixtures import (
     MEASURED_BASE_SHA,
     MEASURED_CANDIDATE_SHA,
     _agent,
+    _legacy_exemption,
     _PatchedWorkflowMixin,
 )
 
@@ -76,6 +77,10 @@ EMIT_EVENT = "emit_event"
 AWAITING_HUMAN = "awaiting_human"
 PARK_REASON = "park_reason"
 PARK_MEASUREMENT_FAILED = "late_measurement_failed"
+# The park an adjudicated candidate is held on while nothing says a human
+# authorized publishing it: its own reason because what ends it is a named
+# command rather than another reading or another look at the checkout.
+PARK_UNAUTHORIZED_EXEMPTION = "late_unauthorized_exemption"
 LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 
 EVENT_LATE_MEASUREMENT = "late_measurement"
@@ -99,6 +104,15 @@ KEY_LINEAGE_DEPTH = "late_lineage_depth"
 KEY_SCOPE = "late_scope"
 KEY_EXEMPT_SHA = "late_exempt_sha"
 KEY_RETIRED_CYCLE = "late_retired_cycle_id"
+
+# The terms an operator authorized one oversized publication on, which is the
+# half of a bypass the exemption above is not.
+KEY_OVERRIDE_CANDIDATE_SHA = "late_override_candidate_sha"
+KEY_OVERRIDE_BASE_SHA = "late_override_base_sha"
+KEY_OVERRIDE_FINGERPRINT = "late_override_fingerprint"
+KEY_OVERRIDE_ADDITIONS = "late_override_additions"
+KEY_OVERRIDE_THRESHOLD = "late_override_threshold"
+KEY_OVERRIDE_COMMENT_ID = "late_override_comment_id"
 
 PHASE_MEASURING = "measuring"
 
@@ -356,3 +370,50 @@ class _ParkedRetryCase(_GateCase):
             **recorded,
         })
         self._reply(reply)
+
+
+class _LegacyExemptionCase(_GateCase):
+    """A candidate exempt on a record no operator authorization stands behind.
+
+    The shape an older binary left on a live issue: a `single` verdict wrote
+    the exemption by itself, before a human's own decision was required at
+    publication. Every case here starts from that comment and differs only in
+    what the reading of the candidate then says.
+    """
+
+    def _seed_legacy(self, **extra) -> None:
+        """The pinned comment that exemption leaves, and nothing beside it."""
+        self._seed(**{**_legacy_exemption(), **extra})
+
+    def _park_awaiting_authorization(self, reply: str = "", **recorded) -> None:
+        """Seed the park an oversized one takes, and any reply to it.
+
+        The generation carries the reading the park was taken on, because that
+        is what an authorization is written from: the pair, the count, and the
+        ceiling it was counted against are the terms a human is deciding over.
+        """
+        self._seed(**{
+            AWAITING_HUMAN: True,
+            PARK_REASON: PARK_UNAUTHORIZED_EXEMPTION,
+            LAST_ACTION_COMMENT_ID: PRIOR_ACTION_COMMENT_ID,
+            "dev_agent": "codex",
+            "dev_session_id": DEV_SESSION,
+            **_legacy_exemption(),
+            **recorded_generation(additions=OVERSIZED_ADDITIONS),
+            **recorded,
+        })
+        if reply:
+            self._reply(reply)
+
+    def _assert_waiting_for_authorization(self) -> None:
+        """Parked on the one refusal only a named command answers."""
+        pinned = self._pinned()
+        self.assertTrue(pinned[AWAITING_HUMAN])
+        self.assertEqual(pinned[PARK_REASON], PARK_UNAUTHORIZED_EXEMPTION)
+        self.assertEqual(self.github.label_history, [])
+
+    def _assert_kept_the_record(self) -> None:
+        """Nothing the compatibility read was deleted on the way past."""
+        pinned = self._pinned()
+        self.assertEqual(pinned[KEY_EXEMPT_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertNotIn(KEY_OVERRIDE_CANDIDATE_SHA, pinned)

@@ -586,7 +586,7 @@ The keys that matter for the state machine fall into a few groups:
   worded by the size gate behind it, which says its own piece on every reading it cannot take, is held for a human
   rather than re-entered. The late
   size gate re-sets its own reasons for the same kind of reason: `late_measurement_failed`,
-  `late_candidate_moved`, `late_evidence_missing`, `late_plan_pr_hold_failed`,
+  `late_candidate_moved`, `late_unauthorized_exemption`, `late_evidence_missing`, `late_plan_pr_hold_failed`,
   `late_generation_incomplete`, `late_worktree_missing`, `late_worktree_mutated`, `late_adjudicator_timeout`,
   `late_manifest_invalid`, `late_result_unrecordable`, `late_owner_unreadable`, `late_pr_unreconciled`,
   `late_snapshot_failed`, `late_children_failed`, `late_supersession_failed`, `late_content_drift`,
@@ -632,7 +632,29 @@ The keys that matter for the state machine fall into a few groups:
   That record is what makes
   the answer possible at all — the generation is retired ahead of the effects it licenses, so once the approval lands
   nothing else on the issue still names the commit — and the read is silent, so an operator who leaves the checkout
-  where it is is not told the same thing once a tick. `late_evidence_missing` is the adjudication's counterpart, taken
+  where it is is not told the same thing once a tick. `late_unauthorized_exemption` is the third taken outside the
+  adjudication, and it reaches the same states for the same reason: it is the size gate's own answer to a candidate
+  `late_exempt_sha` names with no operator authorization standing behind it (see [Accepted
+  candidate](#the-late-run)), which is the shape an older binary wrote before a human's own decision was required at
+  publication and the shape a damaged `late_override_*` group leaves on any comment. The exemption buys nothing
+  there, so the candidate is measured like any other; a reading at or below the ceiling publishes it and an
+  oversized one takes this park. It is a hold rather than a route back to `workflow:decomposing`, and deliberately:
+  the change has already been ruled one change, so re-adjudicating it would pay for a second agent over an answered
+  question and risk a `split` cutting children out of work somebody decided ships whole — what is missing is the
+  human, not the verdict. Nothing is deleted, migrated, or repaired to take it: the exemption, its identity, the
+  approval that names the commit a push is owed for, and every other field are left exactly as found, since the
+  record is what an authorization would be checked against. What answers it is a trusted whole-comment
+  `/orchestrator authorize-oversized <commit>` naming the parked candidate, read at the gate itself rather than at
+  one stage's recovery so that whichever seam took the park can end it. What that command earns is the
+  `late_override_*` group written from the gate's OWN reading — the pair it froze, the additions it counted, and the
+  ceiling they were counted against — beside the digest recomputed between that pair and the comment the
+  authorization was written in, in the same write as the park coming down and the reply being consumed. A reading
+  this host cannot fingerprint leaves the park and the command exactly where they are, which costs a poll rather
+  than a decision. Guidance outranks the command in the same batch, and a command naming another commit authorizes
+  nothing: both leave the ordinary resume to feed what a human wrote to the developer. One candidate is never held
+  by any of it — a commit the pull request this call froze is ALREADY standing on, where the push would move nothing
+  and what is left is the bookkeeping behind a publication that has happened. `late_evidence_missing` is the
+  adjudication's counterpart, taken
   under `workflow:decomposing` before the hold or any spawn: the checkout is there and one of the two recorded
   commits is not, so the agent would be shown a `git diff <base>...<candidate>` that cannot resolve and its verdict
   would be an answer about nothing. It asks for the worktree at the recorded commit, never another run.
@@ -1543,7 +1565,24 @@ rather than preserving.
 - **Accepted candidate.** `late_exempt_sha` is the one commit an authorized settlement let past the size gate — an
   adjudicator's own `single` writes nothing here, since what a verdict earns is the
   [`late_single_decision` park](#the-late-run) a human's decision to publish the candidate unsplit is owed on, and
-  the settlement is what an operator's `/orchestrator authorize-oversized <commit>` on that park licenses. It is
+  the settlement is what an operator's `/orchestrator authorize-oversized <commit>` on that park licenses.
+
+  It is half of a bypass and never the whole of one. What it records is that an adjudication ruled the change one
+  coherent whole, which is an AGENT's answer, and a guard against agents putting unreviewed bulk on a pull request
+  may not be waived by an agent saying it should be. The other half is the `late_override_*` group below, which
+  records the human who read the change and agreed. The gate asks for both, by the same one-commit rule, and a
+  candidate only this field names goes to the ordinary cumulative reading: at or below the ceiling it publishes
+  exactly as any small candidate does, and past it the issue parks `late_unauthorized_exemption` for the
+  authorization. That is what an older binary's automatic exemption gets — a live issue can carry one, since a
+  `single` verdict used to record this field by itself — and what a hand-edited or half-written authorization costs,
+  which are one answer on purpose: a bypass nobody can show the terms of is worth what a bypass nobody granted is
+  worth. The same rule reaches the publication debt beside it, since the settlement writes the exemption and
+  `late_approved_sha` in one breath; a gate-owned approval, which is every one for a candidate the reading found at
+  or below the ceiling, is untouched by it. Nothing about the compatibility deletes, migrates, or repairs a record,
+  and nothing about it touches work that is over: it is asked at publication rather than as a pass over comments
+  nobody is publishing from, and a merged or closed issue is finalized before any handler reaches the gate.
+
+  It is
   the whole of what that settlement is worth durably: the gate measures whatever a stage is about to publish, so a
   candidate handed back with its generation cleared and nothing else would be measured past the ceiling again and
   adjudicated again. It names exactly the commit that was measured, which is also the whole invalidation rule —
@@ -1752,6 +1791,22 @@ rather than preserving.
   whole group in one statement so a record is never half about one candidate and half about the one before it. It
   touches the fields this owner names and no others, so an unknown field and an exemption group an older binary
   wrote are preserved verbatim by both the write and the clear.
+
+  The gate reads it beside `late_exempt_sha`, and that pairing is what makes the exemption a bypass at all: the
+  exemption says which change was ruled one whole and this says who agreed to publish it past the ceiling, so a
+  commit only one of them names is measured. It therefore MOVES with the exemption. `record_rewrite_publication`
+  carries it onto the pair a workflow rewrite produced in the same statement that rotates the exemption and the
+  identity — the candidate and the base, and nothing else, since the additions, the ceiling and the comment are what
+  a human decided rather than facts about an object, and the digest already describes the rewritten pair (a transfer
+  is granted only over contributions that fingerprint alike). A comment carrying no readable authorization has none
+  to carry, which is the legacy record's answer and the right one, and one about some other commit is left where it
+  stands rather than redirected.
+
+  It is also what the `late_unauthorized_exemption` park is waiting for, and the group a trusted whole-comment
+  `/orchestrator authorize-oversized <commit>` on that park writes. Those terms come from the size gate's OWN
+  reading rather than from anything already on the comment — the pair it froze, the additions it counted, the
+  ceiling they were counted against, the digest recomputed between that pair, and the comment id — because an
+  operator authorizes a change of *this* size against *that* ceiling and only the owner that counted can say either.
 
   The record is durable evidence and nothing more: what a candidate publishes under is decided by the gate and by
   `late_exempt_sha` beside this group, and what recording an authorization buys is that a human's gesture survives a
