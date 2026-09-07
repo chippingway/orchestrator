@@ -25,6 +25,7 @@ from __future__ import annotations
 import unittest
 from functools import partial
 
+from orchestrator.workflow.late_split import overrides as _overrides
 from orchestrator.workflow.stages.implementing import (
     late_authority as _late_authority,
     late_debt as _late_debt,
@@ -227,6 +228,46 @@ class SwitchedOffDebtTest(unittest.TestCase, _SizeGateFixtureMixin):
         pushed = mocks[PUSH_BRANCH].call_args
         self.assertEqual(pushed.kwargs[REVISION], MEASURED_CANDIDATE_SHA)
         self.assertEqual(pushed.kwargs[LEASE], PR_HEAD_SHA)
+
+    def test_an_authorized_debt_still_says_so(self) -> None:
+        # The switch decides the MEASUREMENT, not what a debt rests on. An
+        # authorized exemption is answered before the switch is asked at all,
+        # so this road leaves an operator's debt like any other -- and
+        # recorded as ordinary unmeasured debt it would be spent by the tick
+        # after the crash without anybody being asked.
+        scenario = self._seed_fix_round(**_authorized_exemption())
+
+        with patch.object(config, support.DECOMPOSE, False):
+            self._crashes(scenario, settling=False)
+
+        self.assertEqual(
+            self._pinned(scenario)[KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.AUTHORIZATION),
+        )
+
+    def test_a_damaged_one_is_measured_on_restart(self) -> None:
+        # The whole of what that basis buys, end to end: the crash leaves the
+        # debt, the authorization is damaged behind it, and the tick that
+        # comes back with the gate switched on measures the candidate instead
+        # of spending a bypass nothing can show the terms of.
+        scenario = self._seed_fix_round(**_authorized_exemption())
+        with patch.object(config, support.DECOMPOSE, False):
+            self._crashes(scenario, settling=False)
+        self._damage_the_authorization(scenario)
+
+        with patch.object(config, support.MAX_ADDED_LINES, support.CEILING):
+            mocks = self._run_fix_round(
+                scenario, added_lines=support.PAST_THE_CEILING,
+            )
+
+        mocks[support.COUNT_ADDED_LINES].assert_called_once()
+        self._assert_unpushed(mocks)
+
+    def _damage_the_authorization(self, scenario) -> None:
+        """What a hand edit between the crash and the retry leaves behind."""
+        state = scenario.github.read_pinned_state(scenario.issue)
+        state.set(_overrides.LATE_OVERRIDE_FINGERPRINT, None)
+        scenario.github.write_pinned_state(scenario.issue, state)
 
     _crashes = UnmeasuredDebtTest._crashes
 

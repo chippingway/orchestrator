@@ -87,9 +87,11 @@ class LateApprovalBasis(StrEnum):
     third road approved anything.
 
     `READING` is this gate's own count coming back at or below the ceiling.
-    `UNMEASURED` is a publication that skipped the count on a record the gate
-    recognized -- an exemption an operator authorized, a rewrite permit, a
-    switched-off candidate, a receipt already on the remote.
+    `UNMEASURED` is a publication that skipped the count on a record this
+    workflow made for itself and can re-derive: a rewrite permit, a
+    switched-off candidate, a receipt already on the remote. Each of those
+    answers for its own bypass on the next tick, so nothing about the debt
+    they leave has to be revalidated before it is spent.
 
     The other two are the ones an operator's authorization stands behind, and
     they are apart from `READING` for exactly that reason: an approval is

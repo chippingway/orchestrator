@@ -2025,6 +2025,10 @@ publication context at all.
   recorded against is the one the push is pinned to, which is the entry's where there is one and the CALLER's where
   the switch kept the candidate out of the gate: nothing froze a publication there, but the push still moves one, so
   the window is the same and `DECOMPOSE=off` decides the measurement rather than the account of what a push put where.
+  What the debt RESTS on travels the same road and for the same reason. An authorized exemption is answered before
+  the switch is asked at all, so the switched-off publication can be an operator's just as the entry's can — and the
+  basis comes off the verdict that admitted the candidate on both, since only that answer can say and a second proof
+  is a second chance to fail.
 - **Strictly past it** → nothing is pushed. The pull request stays on the head it was standing on, the measurement and
   the entry are made durable, a notice naming the pull request and that head goes on the issue, and the label moves to
   `workflow:decomposing` — from whichever of `workflow:validating` / `in_review` / `workflow:fixing` /

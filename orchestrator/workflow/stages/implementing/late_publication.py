@@ -214,7 +214,7 @@ def _unentered(
     revision = verdict.candidate_sha or _checkout_head(gate)
     if not verdict.held:
         _verdict_owner._owed_by_an_unmeasured_push(
-            gate, revision, entered.head,
+            gate, revision, entered.head, verdict.basis,
         )
     return _PublishedCandidate(
         held=verdict.held,
