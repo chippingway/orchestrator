@@ -87,7 +87,6 @@ per-file-ignores =
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/commands.py:WPS202
-    orchestrator/git/publication/probes.py:WPS202
     orchestrator/git/ref_transport.py:WPS202
     orchestrator/git/verification/probes.py:WPS202
     orchestrator/git/worktrees/attribution.py:WPS202

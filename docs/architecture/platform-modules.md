@@ -321,16 +321,14 @@ orchestrator/
                         and the pre-squash head pinned beside them -- the rollback target, the head the entry takes
                         its lease from, and the commit the gate is told this rewrite collapsed, none of which a
                         reading taken past the reset could recover
-      probes.py         the subject vocabulary and predicates, the two branch-geometry reads, and the
-                        first-commit and recent-base subject reads. One is the divergence reading -- the fetched ref
-                        resolved
-                        ONCE and HEAD counted against that immutable commit, since the counts are a claim about the
-                        tip and a ref something moves between two readings would leave a branch proved against one
-                        head and its push pinned to another.
-                        A reading that did not happen says so (`readable`) rather than answering `(0, 0)`, which is
-                        what an in-sync branch answers and what every caller acting on it would rebase, spawn over,
-                        and force-push on. The other is the FORK POINT one revision left the base at, which is the
-                        commit a three-dot contribution resolves to and therefore the base a fingerprint is taken
+      probes.py         the two branch-geometry reads, and nothing about what a commit SAYS -- `titles` beside it owns
+                        that. One is the divergence reading -- the fetched ref resolved ONCE and HEAD counted against
+                        that immutable commit, since the counts are a claim about the tip and a ref something moves
+                        between two readings would leave a branch proved against one head and its push pinned to
+                        another. A reading that did not happen says so (`readable`) rather than answering `(0, 0)`,
+                        which is what an in-sync branch answers and what every caller acting on it would rebase, spawn
+                        over, and force-push on. The other is the FORK POINT one revision left the base at, which is
+                        the commit a three-dot contribution resolves to and therefore the base a fingerprint is taken
                         over: a rebase reads it at both ends, since the pre-replay one is off the branch the moment
                         the replay lands. An unfetched base, a revision this host does not hold, and two histories
                         with no ancestor between them each answer "" -- evidence the caller cannot produce, never a
@@ -439,7 +437,13 @@ orchestrator/
                         collapse is CLAIMED at all -- the reading the stamp is gated on, and the one an install
                         with the switch off decides its entry from. Nothing here resets, writes, or pushes, so
                         the classification costs a publication that succeeded nothing
-      titles.py         subject-prefix inference and PR-title selection
+      titles.py         everything a published subject line turns on: the Conventional type list and the
+                        compiled prefix patterns, the two predicates read against them, the first-commit and
+                        recent-base subject reads those predicates are applied to, and the prefix inference and
+                        PR-title selection above them -- one owner, so a type added to the list cannot drift from
+                        the regex that recognizes it or from the title a caller picks with it. The subject reads
+                        honor the spec's own remote and base branch, so a deployment with mixed default branches
+                        samples the right history
     measurement/        how large a committed candidate is, which contribution it is, and why either is
                         sometimes unknown
       models.py         the two typed failure vocabularies -- one per reading, spelled apart so a park reason
@@ -677,10 +681,11 @@ orchestrator/
 The six subpackages bind their collaborators directly, so the dependency direction reads off the owner rather than
 off a facade:
 
-- `publication/` — `probes` calls `commands`; `titles` calls `probes`; `planning` calls `commands`, both siblings,
-  and the verification probes; `rewrite` calls `commands`, `branch_transport`, and those probes; `resume` calls
-  `rewrite` and reaches the gate through the one hop that owner spells; `standing` calls `resume` for the ancestry
-  read and reaches the gate through that same hop; `squash` calls `planning`, `resume`, `rewrite`, and `standing`.
+- `publication/` — `probes` and `titles` each call `commands` and neither calls the other; `planning` calls
+  `commands`, `titles`, and the verification probes; `rewrite` calls `commands`, `branch_transport`, and those same
+  verification probes; `resume` calls `rewrite` and reaches the gate through the one hop that owner spells;
+  `standing` calls `resume` for the ancestry read and reaches the gate through that same hop; `squash` calls
+  `planning`, `resume`, `rewrite`, and `standing`.
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
 - `measurement/` — `models` carries only data. `commits` calls `commands`, `branch_transport`, and the verification
   probes for the two object reads, and `commands` once more for the one line it keeps off a fetch that brought

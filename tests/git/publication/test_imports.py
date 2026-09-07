@@ -47,19 +47,9 @@ _DEFINED = MappingProxyType({
     ),
     "models": ("_SquashOutcome",),
     "probes": (
-        "_CONVENTIONAL_RE",
-        "_CONVENTIONAL_TYPES",
-        "_CONVENTIONAL_TYPES_ALT",
-        "_PREFIXED_RE",
-        "_PREFIX_TOKEN_RE",
         "_BranchDivergence",
         _DIVERGENCE,
-        "_first_commit_subject",
         "_fork_point",
-        "_is_conventional_subject",
-        "_is_prefixed_subject",
-        "_recent_base_subjects",
-        "_subject_prefix",
     ),
     "rewrite": (
         "_UNCONFIRMED_PUBLICATION",
@@ -113,8 +103,18 @@ _DEFINED = MappingProxyType({
         "_where_the_branch_stands",
     ),
     "titles": (
+        "_CONVENTIONAL_RE",
+        "_CONVENTIONAL_TYPES",
+        "_CONVENTIONAL_TYPES_ALT",
+        "_PREFIXED_RE",
+        "_PREFIX_TOKEN_RE",
+        "_first_commit_subject",
         "_infer_subject_prefix",
+        "_is_conventional_subject",
+        "_is_prefixed_subject",
         "_pr_title_from_commit_or_issue",
+        "_recent_base_subjects",
+        "_subject_prefix",
     ),
 })
 
@@ -175,8 +175,8 @@ def _defined_here(owner: str) -> tuple:
 class CleanProcessImportTest(unittest.TestCase):
     """Each owner imports standalone in a fresh interpreter.
 
-    `probes` depends only on the config and git command owners, `titles` only
-    on `probes`, `planning` on both of them plus the verification probes, and
+    `probes` and `titles` each depend only on the config and git command
+    owners, `planning` on `titles` plus the verification probes, and
     `rewrite` / `resume` / `standing` / `squash` layer on top, so importing any
     one of them first must not need a name a half-run module has not defined
     yet. A subprocess per module gives each a clean `sys.modules` no other test
