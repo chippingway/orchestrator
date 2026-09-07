@@ -1238,7 +1238,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        *and* the `late_override_*` terms an operator authorized that publication on, which an adjudicator's own
        `single` never writes -- that parks for the decision), the one the
        gate approved and has still to push (`late_approved_sha`), and the one this stage already pushed
-       (`implementing_published_sha`). The first is asked as a PAIR because the exemption is an agent's answer and
+       (`implementing_published_sha`, which answers alone only for a commit this gate measured on the way out --
+       beside an exemption nothing authorizes it answers for nothing, since the note is never cleared and no
+       publication is frozen on this side to check it against, so a pull request that has moved off the commit or
+       been deleted under it would have unmeasured bulk republished unleased).
+       The first is asked as a PAIR because the exemption is an agent's answer and
        half a bypass: a commit only it names -- an older binary's automatic exemption, or one whose authorization
        this build cannot read whole -- is measured like any other candidate, and the approval beside it defers on
        the same reading where its own `late_approved_basis` says an authorized settlement granted it rather than a
@@ -2012,7 +2016,11 @@ publication context at all.
   that terminal to drain. Asked at three depths, and the last is the one that decides: the guard at the door reads the
   issue OBJECT, which is the snapshot the tick opened with; the process-wide close latch is asked again as each of
   the two roads commits to its push; and it is asked once more inside `late_push._publishes`, immediately before the
-  branch update itself. Everything between those points is time another worker's poll can find the issue closed in
+  branch update itself. Only the door guard hands the tick back. The two behind it STOP it, because what they read is
+the PROCESS rather than the object: the issue this tick is holding still says open, so the terminal ahead of the
+handler would find nothing to finalize and the handler behind it would spawn an agent on an issue somebody closed.
+What advances the issue there is the cleanup pass every latched close is owed, which is what settles the latch.
+Everything between those points is time another worker's poll can find the issue closed in
   — on the frozen-pair road that is the whole gated reading — and only the innermost one is still true when the
   effect happens, since the call after it IS the update. A close there holds: nothing pushed, nothing relabelled,
   nothing announced, and the record left exactly as it stands for the cleanup a latched close is owed. That last

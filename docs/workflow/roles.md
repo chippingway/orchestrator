@@ -458,7 +458,9 @@ in that window brings back here with its generation already retired: re-deciding
 question against a base that has moved since, and route work a human may already have adjudicated back into
 adjudication. `implementing_published_sha` is that same window one step further on and the one that matters most,
 because the effects are already out: past the push a pull request carries the work and only the relabel is owed, so a
-reading that came back oversized there would hold nothing back and route a *published* branch to adjudication. And
+reading that came back oversized there would hold nothing back and route a *published* branch to adjudication. It
+answers alone only for a commit the gate measured on the way out; beside an exemption nothing authorizes it answers
+for nothing, since the note is never cleared and nothing on this side froze a publication to check it against. And
 `DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
 recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing
 about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the

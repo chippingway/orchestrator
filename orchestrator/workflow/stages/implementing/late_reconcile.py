@@ -164,9 +164,14 @@ def _reconciles_published_work(
     pull request on an issue somebody closed. A tick that died between the
     retirement and the push leaves exactly the debt this road pays, and a
     close landing in that window would be answered one push too late.
-    Handing it back instead costs nothing: the handler's own terminal is the
-    next thing that runs, and it flips the issue to `rejected` with the
-    record, the branch and the debt left exactly as they are for it to drain.
+    Handing it back instead costs nothing HERE: the object says closed, so the
+    handler's own terminal is the next thing that runs, and it flips the issue
+    to `rejected` with the record, the branch and the debt left exactly as
+    they are for it to drain.
+
+    That is the one place handing back is safe, and it is why the barrier
+    asked deeper in -- against the process-wide latch, where the object may
+    still read open -- stops the tick instead.
     """
     if issue_is_closed(issue):
         log.info(
@@ -255,7 +260,11 @@ def _settles_the_frozen_pair(
     reads the issue OBJECT, which is the snapshot the tick opened with, while
     everything between it and here -- the stage check, the checkout probe, and
     the whole gated reading behind this call -- is time a poll on another
-    worker can find the issue closed in.
+    worker can find the issue closed in. It STOPS the tick rather than handing
+    it back, because only the process knows: the object this tick holds still
+    reads open, so the terminal behind the handler would find nothing to
+    finalize and the handler would spawn an agent on an issue somebody closed.
+    The cleanup pass every latched close is owed is what advances it instead.
 
     What the hold owed is read BEFORE the call, because the retirement an
     allowed candidate earns drops the record those fields were written beside
@@ -275,11 +284,11 @@ def _settles_the_frozen_pair(
     if gate.close_was_observed:
         log.info(
             "issue=#%d was observed closed while its frozen pair was being "
-            "settled; leaving the reading and the push to nothing rather "
-            "than putting work on an issue nobody wants",
+            "settled; stopping the tick rather than putting work on an issue "
+            "nobody wants",
             gate.issue.number,
         )
-        return False
+        return True
     owed = _records._Spends(fields=_late_state.read_late_spends(gate.state))
     published = _push._publishes(
         gate,

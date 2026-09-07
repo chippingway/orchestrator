@@ -49,6 +49,7 @@ ISSUE = fixing.ISSUE
 PR_NUMBER = fixing.PR_NUMBER
 PR_HEAD_SHA = fixing.PR_HEAD_SHA
 PUSH_BRANCH = fixing.PUSH_BRANCH
+RUN_AGENT = fixing.RUN_AGENT
 REVIEW_ROUND = fixing.REVIEW_ROUND
 PENDING_FIX_AT = fixing.PENDING_FIX_AT
 VALIDATING = fixing.VALIDATING
@@ -453,10 +454,29 @@ class ClosedMidFlightTest(ObservedCloseCase, _ReconciliationCase):
             )
 
         mocks[PUSH_BRANCH].assert_not_called()
+        mocks[RUN_AGENT].assert_not_called()
         self.assertEqual(
             self._pinned(scenario)[support.KEY_APPROVED_SHA],
             MEASURED_CANDIDATE_SHA,
         )
+
+    def test_a_close_stops_the_tick_it_landed_in(self) -> None:
+        # Refusing the push is half of what the latch owes. The other half is
+        # STOPPING: the reconciliation runs ahead of the stage handler, so a
+        # refusal handed back as "nothing to do here" leaves the tick going.
+        # The terminal in front of the handler reads the issue OBJECT this
+        # tick opened with, which still says open, so it finds nothing to
+        # finalize and the handler behind it spawns an agent on an issue
+        # somebody closed. What advances the issue instead is the cleanup pass
+        # every latched close is owed, which is what settles the latch.
+        scenario = self._crashed_before_the_settlement()
+
+        with self._racing(_late_debt, "_unpayable_debt"):
+            dispatched = self._route(
+                scenario.github, scenario.github.get_issue(ISSUE),
+            )[0]
+
+        dispatched.assert_not_called()
 
     def test_a_close_mid_reading_publishes_nothing(self) -> None:
         # The frozen-pair road, whose window is wider still: the reading
@@ -471,6 +491,7 @@ class ClosedMidFlightTest(ObservedCloseCase, _ReconciliationCase):
 
         mocks[support.COUNT_ADDED_LINES].assert_not_called()
         mocks[PUSH_BRANCH].assert_not_called()
+        mocks[RUN_AGENT].assert_not_called()
 
     def test_a_close_at_the_push_seam_holds(self) -> None:
         # The last window of all, and the narrowest one the code can observe:

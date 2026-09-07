@@ -467,9 +467,17 @@ def _already_decided(gate: _records._Gate, candidate_sha: str) -> str:
     # through work the pull request no longer has. Where nothing was frozen
     # the receipt answers alone -- that is the initial publication, whose
     # window is between the push that opened a pull request and the relabel
-    # that never landed.
+    # that never landed -- and it answers alone only for a commit this gate
+    # measured on the way out. For one an exemption names and nothing
+    # authorizes there is no frozen head to check it against and the note is
+    # never cleared, so a remote that has moved off the commit would have it
+    # republished unmeasured and unleased.
     frozen = gate.entry.published_sha if gate.entry else ""
-    return _PUBLISHED if not frozen or frozen == candidate_sha else ""
+    vouched = (
+        _authority._receipt_answers_alone(gate, candidate_sha)
+        and (not frozen or frozen == candidate_sha)
+    )
+    return _PUBLISHED if vouched else ""
 
 
 def _needs_no_measuring(

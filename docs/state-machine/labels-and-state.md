@@ -2067,7 +2067,14 @@ rather than preserving.
   what tells a candidate a later tick still owes a push from one it has already made. On that side it is read
   together with the head the gate froze, because it is a local note about a remote fact: a receipt naming a commit
   the pull request has since moved off is a record of a publication that is over, and the candidate goes back through
-  the ordinary reading rather than being waved past as already published. For the same reason it is not evidence that
+  the ordinary reading rather than being waved past as already published. Where no publication was frozen -- the
+  implementing side, whose window is between the push that opened a pull request and the relabel that never landed --
+  there is no head to read it against, and the note answers alone only for a commit this gate MEASURED on the way
+  out. For one `late_exempt_sha` names and no `late_override_*` terms authorize it answers for nothing: the note is
+  never cleared, so a remote that has since moved off that commit -- or a pull request deleted from under it -- would
+  have unmeasured bulk republished with no frozen head to lease the push against. That candidate takes the ordinary
+  cumulative reading and parks `late_unauthorized_exemption` where it comes back oversized. For the same reason it is
+  not evidence that
   a pull request found somewhere OTHER than where a caller entered it got there by this issue's own push: it is never
   cleared, so a branch a revert or a rewrite rewound onto a commit published rounds ago would be measured and
   force-pushed over. Only the three readings a live window drops — the candidate a caller names, `late_approved_sha`,

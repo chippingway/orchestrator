@@ -209,6 +209,37 @@ def _already_on_its_pull_request(
     return _ON_ITS_PULL_REQUEST
 
 
+def _receipt_answers_alone(gate: _records._Gate, candidate_sha: str) -> bool:
+    """Whether a local receipt may vouch for this commit with nothing beside it.
+
+    The receipt says which commit this stage last PUSHED, and on the initial
+    publication it answers on its own: the window it covers is between the
+    push that opened a pull request and the relabel that never landed, and no
+    publication was frozen there to check it against. That is right for a
+    commit this workflow measured on the way out.
+
+    It is not right for one an exemption names and nothing authorizes. The
+    receipt is a local note and it is never cleared, so a branch pushed rounds
+    ago carries one still -- and where the remote has since moved off that
+    commit, answering on the note alone republishes an oversized change nobody
+    measured, with no frozen head to lease the push against. There is nothing
+    here to prove the pull request still carries it: proving that is what a
+    frozen entry IS, and this road has none.
+
+    So the receipt is refused and the candidate goes to the ordinary
+    cumulative reading, which parks an oversized one for the authorization it
+    is missing. What that costs is the relabel finishing a poll later, once a
+    human has answered -- and the commit stays exactly where it is meanwhile.
+
+    A call that DID freeze a publication is a different question and answers
+    True here: the head it froze is checked against the commit by the reader
+    behind this, which is the proof this road cannot produce.
+    """
+    if gate.entry is not None:
+        return True
+    return not _unauthorized_exemption(gate, candidate_sha)
+
+
 def _unauthorized_debt(gate: _records._Gate, candidate_sha: str) -> bool:
     """Whether the push this commit is owed rests on an unauthorized exemption.
 
