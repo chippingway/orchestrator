@@ -11,6 +11,7 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     keys as _late_keys,
+    overrides as _overrides,
     rewrites as _rewrites,
     state as _late_state,
 )
@@ -43,6 +44,13 @@ _HALF_A_DIGEST = DIGEST_LENGTH // 2
 # The head the pull request stood on before the force-push, which for a squash
 # is the accepted commit itself.
 LEASE_SHA = CANDIDATE_SHA
+
+# The terms an operator authorized the accepted commit's publication on, and
+# the comment they wrote them in: the half of a bypass the exemption is not,
+# and the half a settled transfer has to carry over with it.
+AUTHORIZED_ADDITIONS = 9123
+AUTHORIZED_THRESHOLD = 4000
+AUTHORIZING_COMMENT_ID = 5150
 
 _KIND = _rewrites.LATE_REWRITE_KIND
 _PHASE = _rewrites.LATE_REWRITE_PHASE
@@ -132,15 +140,32 @@ def granted_rewrite(**overrides) -> _rewrites.LateRewrite:
     })
 
 
-def authorized_state() -> PinnedState:
+def authorized_state(*, operator: bool = False) -> PinnedState:
     """One granted permission's whole record, as the write leaves it.
 
     The exemption is still the commit a human ruled on, because a grant moves
     nothing: what it records is what a later write may move, and until that
     write lands the accepted end is what binds the record to the exemption.
+
+    `operator` adds the terms an operator authorized that commit's publication
+    on, which is the half of a bypass the exemption is not. Off by default,
+    because a comment carrying none is the legacy shape a settled transfer
+    has to leave alone.
     """
     state = PinnedState(data={})
     _exemption.record_exemption(state, CANDIDATE_SHA)
+    if operator:
+        _overrides.record_publication_override(
+            state,
+            _overrides.LateOversizedPublication(
+                candidate_sha=CANDIDATE_SHA,
+                base_sha=BASE_SHA,
+                fingerprint=CONTRIBUTION_DIGEST,
+                additions=AUTHORIZED_ADDITIONS,
+                threshold=AUTHORIZED_THRESHOLD,
+                comment_id=AUTHORIZING_COMMENT_ID,
+            ),
+        )
     _rewrites.record_rewrite_authorization(
         state, granted_rewrite(), CONTRIBUTION_DIGEST,
     )
@@ -266,6 +291,31 @@ class SpentAuthorizationTest(unittest.TestCase):
             authorization.phase, _rewrites.LateRewritePhase.PUBLISHED,
         )
         self.assertEqual(authorization.rewrite, granted_rewrite())
+
+    def test_it_carries_the_authorization_over(self) -> None:
+        # The exemption is half a bypass: a commit it names and no operator
+        # authorization stands behind is one the gate measures. So the
+        # authorization moves with it, onto the pair the rewrite produced --
+        # left on the accepted commit it would hold a rewrite for a decision
+        # that has already been made.
+        state = authorized_state(operator=True)
+
+        _rewrites.record_rewrite_publication(state)
+
+        self.assertTrue(_overrides.is_authorized(state, REWRITTEN_SHA))
+        carried = _overrides.read_publication_override(state).publication
+        self.assertEqual(carried.base_sha, MERGE_BASE_SHA)
+        self.assertEqual(carried.comment_id, AUTHORIZING_COMMENT_ID)
+
+    def test_a_legacy_exemption_gains_none(self) -> None:
+        # The compatibility answer, and the right one: a comment carrying no
+        # authorization has none to carry, so the rewritten commit is measured
+        # exactly as the accepted one would have been.
+        state = authorized_state()
+
+        _rewrites.record_rewrite_publication(state)
+
+        self.assertIsNone(_overrides.read_publication_override(state))
 
     def test_a_spent_permission_is_not_outstanding(self) -> None:
         state = authorized_state()

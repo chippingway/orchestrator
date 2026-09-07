@@ -20,6 +20,7 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit
+from orchestrator.workflow.stages.implementing import late_parks as _parks
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_VALIDATING,
@@ -32,6 +33,8 @@ from tests.workflow.fixtures import (
 from tests.workflow.stages.implementing import late_gate_test_support as support
 
 _OTHER_SHA = "d" * SHA_LENGTH
+_KEY_APPROVED_SHA = "late_approved_sha"
+_KEY_APPROVED_BASIS = "late_approved_basis"
 _DECOMPOSING = (support.GATE_ISSUE_NUMBER, LABEL_DECOMPOSING)
 _STAGE_IMPLEMENTING = "implementing"
 _DECOMPOSE = "DECOMPOSE"
@@ -374,6 +377,48 @@ class LateGateSwitchTest(support._GateCase, unittest.TestCase):
         self._assert_measured(mocks)
         self._assert_held(mocks)
         self.assertIn(_DECOMPOSING, self.github.label_history)
+
+    def test_the_debt_it_mints_says_what_it_rests_on(self) -> None:
+        # The switch is the one road that proves no candidate at all, so the
+        # commit the debt names comes off the CHECKOUT rather than off a gate
+        # verdict -- and the publication mints the approval itself. Read where
+        # a crash leaves one standing: the push failed, so nothing spent it,
+        # and the tick that comes back to it would otherwise have to guess
+        # whether a human's gesture stands behind a debt it spends without
+        # asking anybody.
+        with patch.object(config, _DECOMPOSE, False):
+            self._run_gate(push_branch=False)
+
+        pinned = self._pinned()
+        self.assertEqual(pinned[_KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertEqual(
+            pinned[_KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.UNMEASURED),
+        )
+
+    def test_a_restart_publishes_it_without_measuring(self) -> None:
+        # And what the record buys, end to end. A fresh process reads the
+        # comment that crash left -- the park answered, the switch since
+        # turned back on, a count seeded well past the ceiling -- and finds
+        # one commit named as owed a push. Read as work nobody has ruled on
+        # instead, the branch the first tick was publishing would be routed
+        # to adjudication.
+        with patch.object(config, _DECOMPOSE, False):
+            self._run_gate(push_branch=False)
+        self._seed(**{
+            key: written for key, written in self._pinned().items()
+            if key not in (support.AWAITING_HUMAN, support.PARK_REASON)
+        })
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_no_agent(mocks)
+        self._assert_unmeasured(mocks)
+        self._assert_published(mocks)
+        self.assertNotIn(_DECOMPOSING, self.github.label_history)
+        pinned = self._pinned()
+        self.assertIsNone(pinned[_KEY_APPROVED_SHA])
+        self.assertIsNone(pinned[_KEY_APPROVED_BASIS])
 
 
 if __name__ == "__main__":

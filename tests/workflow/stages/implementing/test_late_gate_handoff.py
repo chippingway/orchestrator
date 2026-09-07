@@ -19,6 +19,9 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit, MeasurementFailure
+from orchestrator.workflow.stages.implementing import (
+    late_parks as _parks,
+)
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_VALIDATING,
@@ -31,6 +34,7 @@ from tests.workflow.stages.implementing import late_gate_test_support as support
 _DECOMPOSING = (support.GATE_ISSUE_NUMBER, LABEL_DECOMPOSING)
 _CANDIDATE_MOVED = "late_candidate_moved"
 _KEY_APPROVED_SHA = "late_approved_sha"
+_KEY_APPROVED_BASIS = "late_approved_basis"
 _MOVED_SHA = "e" * SHA_LENGTH
 # The session a resume continues, seeded so a resumed run is the pinned one
 # rather than a fresh spawn.
@@ -101,6 +105,20 @@ class UnpublishedCommitTest(support._GateCase, unittest.TestCase):
             recorded.pinned[_KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA,
         )
         self.assertNotIn(support.KEY_CANDIDATE_SHA, recorded.pinned)
+
+    def test_it_says_the_reading_is_behind_it(self) -> None:
+        # The count came back at or below the ceiling, so nobody's permission
+        # was involved -- which is what makes the tick after a crash spending
+        # this approval a repeat of a decision rather than a bypass of one.
+        recorded = support._RecordAtHandoff(self.github, support.FIND_OPEN_PR)
+
+        with recorded.held():
+            self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        self.assertEqual(
+            recorded.pinned[_KEY_APPROVED_BASIS],
+            str(_parks.LateApprovalBasis.READING),
+        )
 
     def test_the_publication_spends_it(self) -> None:
         self._run_gate(added_lines=support.SMALL_ADDITIONS)

@@ -595,7 +595,10 @@ class RecoveredTransferTest(_RecoveryCase, unittest.TestCase):
         # back through a measurement, which is the re-decision the bypass
         # exists to prevent.
         _support.spent(self.state)
-        _parks._approve(self.state, STRANGER_SHA, LEASED_SHA)
+        _parks._approve(
+            self.state, STRANGER_SHA, LEASED_SHA,
+            _parks.LateApprovalBasis.READING,
+        )
 
         self.assertFalse(_transfer._licensed_by_a_permit(self.state))
         self.assertTrue(

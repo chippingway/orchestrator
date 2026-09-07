@@ -115,6 +115,24 @@ class PinnedState:
         target_name = "state_data" if attribute_name == "data" else attribute_name
         object.__setattr__(self, target_name, attribute_value)
 
+    def carries(self, key: str) -> bool:
+        """Whether this comment has the field at all, whatever it holds.
+
+        Presence rather than value, and the two are different questions. A
+        reader deciding what a field MEANS reads it fail-closed, so a value
+        nothing can act on comes back as an absence -- which is right there
+        and wrong for a reader asking whether the record CLAIMS something. An
+        issue that never wrote a field and one whose field a hand edit
+        truncated are the same absence to the first reader and opposite
+        answers to the second.
+
+        The payload is JSON, so a field can be present and `null`: an older
+        binary writing a value this one reads as nothing, or a hand edit.
+        Asked as a value that would read as absent, which is why the key is
+        what this looks for.
+        """
+        return key in self.state_data
+
     def get(self, key: str, default: Any = None) -> Any:
         """Return a workflow-state field or its default."""
         return self.state_data.get(key, default)
