@@ -26,6 +26,7 @@ _ENGINE_OWNERS = (
     "drift",
     "guards",
     "messages",
+    "parallel",
     "pickup",
     "prompts",
     "retry_budget",

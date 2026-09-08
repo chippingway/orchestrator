@@ -295,9 +295,10 @@ than one repo's thread.
 
 One repo's pass is owned by `workflow/engine/tick.py` — the base refresh, the community-contribution PR sweep
 (`workflow/engine/community.py`), the skill-catalog emission, and then either the scheduler handoff or the in-tick
-sequential / bounded-parallel loop, in that order. The refresh runs first because every step after it reads what that
-fetch left behind, and the sweep and the catalog emission both precede the scheduler / in-tick split so each fires
-exactly once per tick on either path.
+execution, in that order. That last step is the sequential loop on `tick.py` itself at `parallel_limit=1`, and the
+bounded thread pool on `workflow/engine/parallel.py` beside it at any higher limit. The refresh runs first because
+every step after it reads what that fetch left behind, and the sweep and the catalog emission both precede the
+scheduler / in-tick split so each fires exactly once per tick on either path.
 The dispatch behind that split folds every family-aware issue (`workflow:decomposing` / `workflow:blocked` /
 `workflow:umbrella` / unlabeled — the labels that write cross-issue parent ↔ child state) into ONE bucket submit per
 repo that drains sequentially on a single worker, so a stale child cannot starve the parent umbrella issue, and

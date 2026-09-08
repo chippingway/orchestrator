@@ -57,9 +57,12 @@ def tick(
 ) -> None:
     """Drive a single polling tick for one repo.
 
-    The pass order, the scheduler / in-tick split, and the per-issue isolation
-    are `workflow/engine/tick.py`; a test that has to intercept any of them
-    patches that owner.
+    The pass order, the scheduler / in-tick split, and the sequential width
+    behind it -- per-issue isolation included -- are
+    `workflow/engine/tick.py`; the bounded pool the other width runs on, and
+    the isolation inside that one, are `workflow/engine/parallel.py` beside
+    it. A test that has to intercept any of them patches the owner it is
+    defined on.
     """
     from orchestrator.workflow.engine import tick as _engine_tick
 
