@@ -249,7 +249,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             share, and the two entry-time finalizers
     tick.py                 one repo's polling pass and the order it drives: the base refresh, the
                             community-contribution sweep above, the skill-catalog emission, and the scheduler
-                            handoff or in-tick execution behind them
+                            handoff or in-tick execution behind them -- with the sequential mode of that execution
+                            here, since streaming the enumeration rather than materializing it is what keeps a
+                            partial one from losing what it already yielded
+    parallel.py             the other in-tick mode: the bounded pool a `parallel_limit` above 1 runs the pass
+                            across, the submission plan the executor is sized from -- which is why this half
+                            materializes the enumeration the sequential one streams -- the family bucket folded
+                            into exactly ONE task so it costs one worker slot however many family-aware issues
+                            are pending, and the completion drain that reports each failure as it lands. Reached
+                            only from the tick above, and every collaborator under it is named on the owner that
+                            defines it
     usage.py                the tracked agent run: the request model, the launch fingerprint taken off it and the
                             stage / role identity a charge is recorded under,
                             the required budget every caller names the issue and its pinned state through, the circuit

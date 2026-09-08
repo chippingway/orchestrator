@@ -8,14 +8,22 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from orchestrator.skills import catalog
-from orchestrator.workflow.engine import community, dispatch, tick
+from orchestrator.workflow.engine import community, dispatch, parallel, tick
 from tests.support.fakes import FakeGitHubClient
+from tests.workflow.engine import tick_parallel_test_support as support
 from tests.workflow.git_owners import seam_patch
 from tests.workflow.repo_values import _TEST_SPEC
 
 _EXPECTED_PASSES = ("refresh", "sweep", "catalog", "dispatch")
 
 _REFRESH_BASE = "_refresh_base_and_worktrees"
+
+# The two in-tick widths and the owner each one has to reach, read as
+# (`parallel_limit`, the sequential loop ran, the bounded pool ran).
+_IN_TICK_ROUTES = (
+    (1, True, False),
+    (2, False, True),
+)
 
 
 class _PassRecorder:
@@ -70,6 +78,33 @@ class TickPassOrderTest(unittest.TestCase):
         ):
             tick.tick(FakeGitHubClient(), _TEST_SPEC, scheduler=scheduler)
         return recorder.calls
+
+
+class TickInTickRouteTest(unittest.TestCase):
+    """Each in-tick width is driven by the owner that defines it.
+
+    The two modes are separate owners rather than one loop at two widths, so
+    the tick names each of them: a route resolved anywhere but on the owner
+    would leave the real pass running under a mock aimed at it.
+    """
+
+    def test_each_limit_reaches_only_its_own_owner(self) -> None:
+        for limit, sequential, bounded in _IN_TICK_ROUTES:
+            with self.subTest(parallel_limit=limit):
+                self.assertEqual(
+                    self._routes_driven_by(limit), (sequential, bounded),
+                )
+
+    def _routes_driven_by(self, limit: int) -> tuple[bool, bool]:
+        sequential = MagicMock()
+        bounded = MagicMock()
+        with (
+            seam_patch(_REFRESH_BASE),
+            patch.object(tick, "_run_sequential_tick", sequential),
+            patch.object(parallel, "_run_parallel_tick", bounded),
+        ):
+            tick.tick(FakeGitHubClient(), support._spec(parallel_limit=limit))
+        return sequential.called, bounded.called
 
 
 class TickInvokesSweepTest(unittest.TestCase):
