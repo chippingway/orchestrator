@@ -1,6 +1,21 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Pull-request lookup, labeling, status helpers, and merge-side mutations."""
+"""Pull-request lookup, labeling, status helpers, and merge-side mutations.
+
+One owner for the whole pull-request surface: branch and base lookup,
+creation, comments, labeling, retrieval, the SHA-pinned merge, and the
+head-branch delete that merge earns. They are reached as one link in a single
+chain rather than as a module a caller imports -- the pinned-state mixin under
+this one, the check surface over it, the composed client over that -- so what
+a split here would produce is not two owners but two links for one subject.
+
+That is the invariant behind this module's exact-path entry in `.flake8`.
+Lifting the merge-side mutations into a mixin of their own would leave the
+check surface, which is reached THROUGH this one, inheriting half the pull
+request while the client composes the other half beside it, and a reader
+asking which of the two owns "the pull request" would have no answer. The
+method count is held where the subject is instead.
+"""
 from __future__ import annotations
 
 import logging
