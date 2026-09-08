@@ -51,24 +51,11 @@ from typing import TYPE_CHECKING
 from orchestrator.observability.analytics.query.cost_models import (
     ReviewRoundBucketRow,
 )
-from orchestrator.observability.dashboard.charts.cost_horizontal import (
-    DEFAULT_CHART_HEIGHT,
-)
-from orchestrator.observability.dashboard.charts.cost_layout import (
-    CostBarTrace,
-    HorizontalCostLayout,
-    apply_horizontal_cost_layout,
-    cost_bar_trace,
-)
-from orchestrator.observability.dashboard.charts.cost_stage import (
-    CACHE_LIGHTEN,
-    lighten_hex,
-)
-from orchestrator.observability.dashboard.charts.primitives import (
-    empty_figure,
-    horizontal_legend,
-    reverse_lists,
-    two_line_y_ticks,
+from orchestrator.observability.dashboard.charts import (
+    cost_horizontal as _cost_horizontal,
+    cost_layout as _cost_layout,
+    cost_stage as _cost_stage,
+    primitives as _primitives,
 )
 from orchestrator.observability.dashboard.palette import AGENT_ROLE_COLORS
 
@@ -128,7 +115,7 @@ def reviewer_cost_total(row: ReviewRoundBucketRow) -> float:
 
 def reverse_review_cost_bars(bars: ReviewCostBars) -> ReviewCostBars:
     """Flip the split so its initial pass is drawn at the top."""
-    reversed_values = reverse_lists(
+    reversed_values = _primitives.reverse_lists(
         bars.labels,
         bars.subs,
         bars.developer_no_cache,
@@ -182,14 +169,14 @@ def review_cost_bars(
 def review_cost_traces(
     bars: ReviewCostBars,
     y_ticks: Sequence[str],
-) -> tuple[CostBarTrace, ...]:
+) -> tuple[_cost_layout.CostBarTrace, ...]:
     """Describe the four series, review first so development reads above it."""
     developer_color = AGENT_ROLE_COLORS["developer"]
     reviewer_color = AGENT_ROLE_COLORS["reviewer"]
-    developer_cache_color = lighten_hex(developer_color, CACHE_LIGHTEN)
-    reviewer_cache_color = lighten_hex(reviewer_color, CACHE_LIGHTEN)
+    developer_cache_color = _cost_stage.lighten_hex(developer_color, _cost_stage.CACHE_LIGHTEN)
+    reviewer_cache_color = _cost_stage.lighten_hex(reviewer_color, _cost_stage.CACHE_LIGHTEN)
     return (
-        CostBarTrace(
+        _cost_layout.CostBarTrace(
             name="Review (no cache)",
             amounts=bars.reviewer_no_cache,
             y_ticks=y_ticks,
@@ -197,7 +184,7 @@ def review_cost_traces(
             offsetgroup="reviewer",
             hover_label="Review (no cache)",
         ),
-        CostBarTrace(
+        _cost_layout.CostBarTrace(
             name="Review (cache)",
             amounts=bars.reviewer_cache,
             y_ticks=y_ticks,
@@ -206,7 +193,7 @@ def review_cost_traces(
             totals=bars.reviewer_totals,
             hover_label="Review (cache)",
         ),
-        CostBarTrace(
+        _cost_layout.CostBarTrace(
             name="Development (no cache)",
             amounts=bars.developer_no_cache,
             y_ticks=y_ticks,
@@ -214,7 +201,7 @@ def review_cost_traces(
             offsetgroup="developer",
             hover_label="Development (no cache)",
         ),
-        CostBarTrace(
+        _cost_layout.CostBarTrace(
             name="Development (cache)",
             amounts=bars.developer_cache,
             y_ticks=y_ticks,
@@ -235,27 +222,27 @@ def cost_by_review_round(
     from plotly import graph_objects as go
 
     if not rows:
-        return empty_figure(
+        return _primitives.empty_figure(
             "No `agent_exit` rows match the current filters.",
-            height=height or DEFAULT_CHART_HEIGHT,
+            height=height or _cost_horizontal.DEFAULT_CHART_HEIGHT,
         )
     bars = review_cost_bars(rows)
     if bars is None:
-        return empty_figure(
+        return _primitives.empty_figure(
             "No development or review runs match the current filters.",
-            height=height or DEFAULT_CHART_HEIGHT,
+            height=height or _cost_horizontal.DEFAULT_CHART_HEIGHT,
         )
-    y_ticks = two_line_y_ticks(bars.labels, bars.subs)
+    y_ticks = _primitives.two_line_y_ticks(bars.labels, bars.subs)
     figure = go.Figure()
     for trace in review_cost_traces(bars, y_ticks):
-        figure.add_trace(cost_bar_trace(trace))
-    apply_horizontal_cost_layout(
+        figure.add_trace(_cost_layout.cost_bar_trace(trace))
+    _cost_layout.apply_horizontal_cost_layout(
         figure,
-        HorizontalCostLayout(
+        _cost_layout.HorizontalCostLayout(
             row_count=len(y_ticks),
             height=height,
             barmode="relative",
-            legend=horizontal_legend(traceorder="reversed"),
+            legend=_primitives.horizontal_legend(traceorder="reversed"),
             row_height=REVIEW_BAR_ROW_HEIGHT,
             extra_height=REVIEW_BAR_EXTRA_HEIGHT,
         ),

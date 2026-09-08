@@ -33,21 +33,13 @@ from pathlib import Path
 from typing import Any
 
 from orchestrator.observability.analytics import config as analytics_config
-from orchestrator.observability.analytics.sync.database import (
-    close_quietly,
-    default_connect,
-    default_json_adapter,
-    refresh_daily_rollup,
-    rollback_quietly,
+from orchestrator.observability.analytics.sync import (
+    database as _database,
+    ingest as _ingest,
+    models as _models,
+    redaction as _redaction,
+    rows as _rows,
 )
-from orchestrator.observability.analytics.sync.ingest import ingest_records
-from orchestrator.observability.analytics.sync.models import (
-    IngestContext,
-    SyncCounters,
-    SyncResult,
-)
-from orchestrator.observability.analytics.sync.redaction import redact_db_url
-from orchestrator.observability.analytics.sync.rows import build_insert_sql
 
 log = logging.getLogger("orchestrator.analytics.sync")
 
@@ -73,8 +65,8 @@ class SyncRequest:
         return cls(
             log_path=(settings.log_path if log_path is None else log_path),
             db_url=(settings.db_url if db_url is None else db_url),
-            connect_fn=connect or default_connect,
-            json_adapter=json_adapter or default_json_adapter,
+            connect_fn=connect or _database.default_connect,
+            json_adapter=json_adapter or _database.default_json_adapter,
         )
 
     def ready(self) -> bool:
@@ -99,11 +91,11 @@ class SyncRun:
     """Connection lifecycle, ingest state, and reporting for one replay."""
 
     request: SyncRequest
-    counters: SyncCounters = field(default_factory=SyncCounters)
+    counters: _models.SyncCounters = field(default_factory=_models.SyncCounters)
     start: float = field(default_factory=time.monotonic)
 
     def connect(self) -> Any:
-        redacted_url = redact_db_url(self.request.db_url or "")
+        redacted_url = _redaction.redact_db_url(self.request.db_url or "")
         log.info(
             "analytics_sync: connecting to %s (source=%s)",
             redacted_url,
@@ -117,11 +109,11 @@ class SyncRun:
         )
         return conn
 
-    def ingest_context(self) -> IngestContext:
+    def ingest_context(self) -> _models.IngestContext:
         log_path = Path(self.request.log_path)
-        return IngestContext(
+        return _models.IngestContext(
             log_path=log_path,
-            insert_sql=build_insert_sql(),
+            insert_sql=_rows.build_insert_sql(),
             source_path=str(log_path),
             json_adapter=self.request.json_adapter,
             counters=self.counters,
@@ -139,9 +131,9 @@ class SyncRun:
             time.monotonic() - self.start,
         )
         conn.commit()
-        refresh_daily_rollup(conn)
+        _database.refresh_daily_rollup(conn)
 
-    def finalize(self) -> SyncResult:
+    def finalize(self) -> _models.SyncResult:
         duration_s = round(time.monotonic() - self.start, 3)
         log.info(
             "analytics_sync: completed in %.3fs (inserted=%d duplicate=%d malformed=%d total_lines=%d source=%s)",
@@ -152,7 +144,7 @@ class SyncRun:
             self.counters.total_lines,
             self.request.log_path,
         )
-        return SyncResult(
+        return _models.SyncResult(
             inserted=self.counters.inserted,
             skipped_duplicate=self.counters.skipped_duplicate,
             skipped_malformed=self.counters.skipped_malformed,
@@ -161,19 +153,19 @@ class SyncRun:
             duration_s=duration_s,
         )
 
-    def execute(self) -> SyncResult:
+    def execute(self) -> _models.SyncResult:
         conn = self.connect()
         try:
             self._ingest_and_commit(conn)
         except Exception:
-            rollback_quietly(conn, "analytics_sync: rollback failed")
+            _database.rollback_quietly(conn, "analytics_sync: rollback failed")
             raise
         finally:
-            close_quietly(conn)
+            _database.close_quietly(conn)
         return self.finalize()
 
     def _ingest_and_commit(self, conn: Any) -> None:
-        ingest_records(conn, self.ingest_context())
+        _ingest.ingest_records(conn, self.ingest_context())
         self.commit(conn)
 
 
@@ -183,7 +175,7 @@ def sync_jsonl_to_postgres(
     db_url: str | None = None,
     connect: Callable[[str], Any] | None = None,
     json_adapter: Callable[[Any], Any] | None = None,
-) -> SyncResult:
+) -> _models.SyncResult:
     """Replay the configured analytics JSONL records into Postgres."""
     request = SyncRequest.resolve(
         log_path,
@@ -192,5 +184,5 @@ def sync_jsonl_to_postgres(
         json_adapter,
     )
     if not request.ready():
-        return SyncResult()
+        return _models.SyncResult()
     return SyncRun(request).execute()
