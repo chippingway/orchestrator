@@ -573,7 +573,12 @@ The keys that matter for the state machine fall into a few groups:
 - **HITL park.** `awaiting_human`, `last_action_comment_id`, `park_reason`. `_park_awaiting_human` (on the same
   `workflow/engine/guards.py` owner as the two run refusals) sets
   `awaiting_human=True` and clears `park_reason` to `None`; a handler that needs the reason to survive into the next
-  tick explicitly re-sets it after the park call. `last_action_comment_id` doubles as the record that a mention was
+  tick explicitly re-sets it after the park call. `last_action_comment_id` is stamped at the id of the notice that
+  call POSTED, not at whatever the thread ends on once it has: the two differ only when a human replies between the
+  post and the write, and on a park whose whole point is waiting for a reply, reading the tip there is the answer
+  being thrown away by the question. A post whose id nothing could read falls back to the tip, which is the lesser
+  of the two failures left — a watermark that never moved leaves the park's own notice to be read back as somebody's
+  fresh guidance on every tick after. That field doubles as the record that a mention was
   posted: a transient park that later self-recovers reads it back to decide whether it owes the thread a follow-up
   (see [`delivery-stages.md`](delivery-stages.md), **Recovery follow-up**). Park reasons that route via
   `_park_auto_rebase_failure` (`auto_base_rebase_failed` / `auto_base_rebase_dirty` /
@@ -884,6 +889,15 @@ The keys that matter for the state machine fall into a few groups:
   reading and is this mode's own choice: the sentence is said again, costing one repeated comment rather than risking
   a park that stands unexplained for as long as the read keeps failing. What that buys is the property every late park
   hangs on — the notice reaches the thread before anything on that thread is read as an answer to it.
+- **Unattributed park sentence.** `late_held_authorization_receipt` is the receipt the
+  `late_unauthorized_exemption` park stamps on a sentence it has not recorded posting — its own notice and the
+  refusal a wrong command earns alike — written *before* that sentence goes out and dropped by the write past the
+  post. Sibling to `late_park_notice` above, and a narrower question than it asks: not whether a sentence was ever
+  recorded as owed, but which side of the post the tick recording one died on. Present, something may still be owed
+  and the THREAD is asked which; absent, the write past the post ran and nothing is. It may never be read as proof
+  that a comment is *ours* — the string is public and deterministic from an issue and a commit, and the login beside
+  it may be the operator's own — so only `orchestrator_comment_ids` attributes a comment. Full contract with the
+  park it belongs to, above.
 - **In-review watermarks.** `pr_last_comment_id` (issue thread + PR conversation, shared IssueComment id space),
   `pr_last_review_comment_id` (inline PR review comments), `pr_last_review_summary_id` (PR review summary bodies). Only
   non-empty `CHANGES_REQUESTED` or `COMMENTED` review IDs ever advance the summary watermark; `APPROVED`, `DISMISSED`,
