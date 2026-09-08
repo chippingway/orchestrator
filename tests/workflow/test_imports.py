@@ -32,6 +32,7 @@ _ENGINE_OWNERS = (
     "run_budget",
     "run_circuit",
     "run_grant",
+    "run_grant_request",
     "run_ledger",
     "run_limit",
     "terminals",

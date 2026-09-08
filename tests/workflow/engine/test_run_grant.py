@@ -1,12 +1,14 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The one command that buys an issue past its spent agent-run ledger.
+"""What one add-agent-runs request moves, and what it leaves exactly alone.
 
-What is pinned here is everything that command has to be before it moves a
-number: a line of its own, a trusted author's, and an exact whole count inside
-the bound. Everything else leaves the ledger where it found it -- the
-allowance and the runs spent against it both -- and says so once, or says
-nothing at all where saying something would be answering an outsider.
+The grammar a line has to satisfy before it is a request at all is pinned
+beside its own owner (`test_run_grant_request`); what is pinned here is what
+happens to an issue once one arrives. A request buys runs only while this park
+stands and only on a trusted author's word. Everything else leaves the ledger
+where it found it -- the allowance and the runs spent against it both -- and
+says so once, or says nothing at all where saying something would be answering
+an outsider.
 
 A grant is pinned as an absolute ceiling rather than an increment, because
 that is what makes it safe to hand out before the write that records it: read
@@ -21,6 +23,7 @@ from orchestrator import config
 from orchestrator.workflow.engine import (
     run_budget as _run_budget,
     run_grant as _run_grant,
+    run_grant_request as _run_grant_request,
 )
 from tests.workflow.engine import (
     run_budget_test_support as budget,
@@ -28,21 +31,7 @@ from tests.workflow.engine import (
     run_limit_test_support as support,
 )
 
-_ADDED = 3
-
-_GRANTED_ALLOWANCE = support.ALLOWANCE + _ADDED
-
-_VALID = f"/orchestrator add-agent-runs {_ADDED}"
-
 _ALLOWLIST = "ALLOWED_ISSUE_AUTHORS"
-
-_FIRST_ASK = support.WATERMARK + 1
-
-_SECOND_ASK = support.WATERMARK + 2
-
-# Comfortably past `sys.int_info.default_max_str_digits`, the length at which
-# the interpreter refuses to build an integer out of a decimal string.
-_OVERLONG_DIGITS = 5000
 
 # What somebody writes while the tick is answering the command above it. Not a
 # command itself: what it stands for is any word a stage below is still owed.
@@ -51,94 +40,10 @@ _RACING_WORDS = "hold off on this until Friday please"
 # What the read that builds a budget record answers with when it cannot.
 _LABEL_FAILURE = "label read refused"
 
-# A count is the whole of what this command says, so everything that is not
-# one whole number inside the bound reads the same way: nothing bought.
-_UNBUYABLE = (
-    "",
-    "0",
-    "000",
-    "-3",
-    "+3",
-    "3.5",
-    "three",
-    "0x3",
-    "\N{ARABIC-INDIC DIGIT THREE}",
-    str(_run_grant.MAX_RUNS_PER_COMMAND + 1),
-    # A count no bound could hold, and one `int()` refuses to convert at all
-    # past the interpreter's own limit -- so it has to be turned away before
-    # it is converted rather than raised over.
-    "9" * _OVERLONG_DIGITS,
-)
 
-# Text that mentions the command without asking for anything: a line has to be
-# the command and nothing else, which is what keeps the receipts below -- both
-# of which spell it -- from being read back as fresh requests.
-_NOT_A_REQUEST = (
-    f"do we just run `{_VALID}` here?",
-    "/orchestrator add-agent-runs3",
-    "/orchestrator continue",
-    "/orchestrator add-review-rounds 3",
-    # Both receipts this owner writes. The thread they land on is the one the
-    # next tick reads for a request, and a deployment that trusts every author
-    # trusts the orchestrator's own account too.
-    _run_grant._GRANT_NOTICE.format(
-        added=_ADDED,
-        allowance=_GRANTED_ALLOWANCE,
-        used=support.ALLOWANCE,
-        marker=_run_grant._GRANTED_MARKER.format(
-            issue=support.ISSUE_NUMBER, comment=_FIRST_ASK,
-        ),
-    ),
-    _run_grant._REFUSAL_NOTICE.format(
-        mentions=config.HITL_MENTIONS,
-        maximum=_run_grant.MAX_RUNS_PER_COMMAND,
-        marker=_run_grant._REFUSED_MARKER.format(
-            issue=support.ISSUE_NUMBER, comment=_FIRST_ASK,
-        ),
-    ),
-)
-
-
-def _asking(body: str = _VALID):
+def _asking(body: str = grant.VALID):
     """One comment carrying a request, buyable unless the caller says else."""
     return grant.command(body)
-
-
-class CommandGrammarTest(unittest.TestCase):
-    """What a comment has to say before anything reads it as a request."""
-
-    def test_only_an_exact_bounded_count_buys_runs(self) -> None:
-        for asked in _UNBUYABLE:
-            with self.subTest(asked=asked):
-                self.assertIsNone(_run_grant._added_runs(asked))
-        for asked in ("1", "007", str(_run_grant.MAX_RUNS_PER_COMMAND)):
-            with self.subTest(asked=asked):
-                self.assertEqual(_run_grant._added_runs(asked), int(asked))
-
-    def test_a_request_is_a_line_and_nothing_else(self) -> None:
-        for body in _NOT_A_REQUEST:
-            with self.subTest(body=body):
-                self.assertIsNone(
-                    _run_grant._requested([grant.command(body)]),
-                )
-
-    def test_the_last_command_is_the_request(self) -> None:
-        # A batch is read in thread order, so a human who wrote the command
-        # twice meant the second one -- and a count corrected below a typo is
-        # the request rather than the line it corrects.
-        request = _run_grant._requested([
-            grant.command(
-                "/orchestrator add-agent-runs 9", comment_id=_FIRST_ASK,
-            ),
-            grant.command(
-                f"scratch that\n{_VALID}\n/orchestrator add-agent-runs 7",
-                comment_id=_SECOND_ASK,
-            ),
-        ])
-
-        self.assertEqual(request.asked, "7")
-        self.assertEqual(request.added, 7)
-        self.assertEqual(request.comment_id, _SECOND_ASK)
 
 
 class _RacingPost:
@@ -242,12 +147,12 @@ class GrantTest(_ParkCase):
     """What a valid command buys, and what it leaves alone."""
 
     def test_a_valid_command_buys_exactly_used_plus_n(self) -> None:
-        lifted = self._lift(grant.command(_VALID))
+        lifted = self._lift(grant.command(grant.VALID))
 
         self.assertTrue(lifted)
         recorded = self._recorded()
         self.assertEqual(
-            recorded[support.ALLOWANCE_FIELD], _GRANTED_ALLOWANCE,
+            recorded[support.ALLOWANCE_FIELD], grant.GRANTED_ALLOWANCE,
         )
         # Nothing here returns a run: what widens is the ceiling.
         self.assertEqual(recorded[support.USED_FIELD], support.ALLOWANCE)
@@ -256,11 +161,11 @@ class GrantTest(_ParkCase):
         self.assertEqual(support.phases(self.gh), [support.GRANTED])
 
     def test_the_command_is_said_and_consumed_once(self) -> None:
-        self._lift(grant.command(_VALID))
+        self._lift(grant.command(grant.VALID))
 
         said = self.gh.posted_comments
         self.assertEqual(len(said), 1)
-        self.assertIn(str(_GRANTED_ALLOWANCE), said[0][1])
+        self.assertIn(str(grant.GRANTED_ALLOWANCE), said[0][1])
         # The receipt is consumed with the command, so the road the grant
         # opens does not read the orchestrator answering itself as guidance.
         self.assertEqual(
@@ -274,14 +179,14 @@ class GrantTest(_ParkCase):
         # allowance written as `used + N` says the same thing then -- an
         # increment would not -- and the receipt already on the thread is what
         # keeps the same sentence from being said a second time.
-        self._lost_the_write(grant.command(_VALID))
+        self._lost_the_write(grant.command(grant.VALID))
 
         lifted = self._replayed()
 
         self.assertTrue(lifted)
         self.assertEqual(len(self.gh.posted_comments), 1)
         self.assertEqual(
-            self._recorded()[support.ALLOWANCE_FIELD], _GRANTED_ALLOWANCE,
+            self._recorded()[support.ALLOWANCE_FIELD], grant.GRANTED_ALLOWANCE,
         )
 
     def test_an_owed_sentence_reads_no_command(self) -> None:
@@ -289,7 +194,7 @@ class GrantTest(_ParkCase):
         # past everything under the old one, so a command read here would be
         # bought and then consumed by the notice explaining the park.
         lifted = self._lift(
-            grant.command(_VALID), state=grant.spent_state(owing=True),
+            grant.command(grant.VALID), state=grant.spent_state(owing=True),
         )
 
         self.assertFalse(lifted)
@@ -310,10 +215,10 @@ class GrantRecordTest(_ParkCase):
 
         recorded = budget.audited(self.gh)[0]
         self.assertEqual(recorded[budget.PHASE], budget.EXTENDED)
-        self.assertEqual(recorded[budget.ALLOWANCE], _GRANTED_ALLOWANCE)
+        self.assertEqual(recorded[budget.ALLOWANCE], grant.GRANTED_ALLOWANCE)
         # Nothing gives a run back, so what the grant bought is what is left.
         self.assertEqual(recorded[budget.USED], support.ALLOWANCE)
-        self.assertEqual(recorded[budget.REMAINING], _ADDED)
+        self.assertEqual(recorded[budget.REMAINING], grant.ADDED)
         self.assertNotIn(budget.AGENT_ROLE, recorded)
         self.assertNotIn(budget.RESERVATION_ID, recorded)
 
@@ -347,7 +252,7 @@ class GrantRecordTest(_ParkCase):
 
         self.assertTrue(lifted)
         self.assertEqual(
-            self._recorded()[support.ALLOWANCE_FIELD], _GRANTED_ALLOWANCE,
+            self._recorded()[support.ALLOWANCE_FIELD], grant.GRANTED_ALLOWANCE,
         )
         recorded = budget.audited(self.gh)[0]
         self.assertEqual(recorded[budget.PHASE], budget.EXTENDED)
@@ -365,7 +270,7 @@ class RefusalTest(_ParkCase):
     """What every other request earns, and how often it earns it."""
 
     def test_an_unbuyable_request_changes_nothing(self) -> None:
-        for asked in _UNBUYABLE:
+        for asked in grant.UNBUYABLE:
             with self.subTest(asked=asked):
                 lifted = self._lift(
                     grant.command(f"/orchestrator add-agent-runs {asked}"),
@@ -381,7 +286,7 @@ class RefusalTest(_ParkCase):
         self._lift(grant.command("/orchestrator add-agent-runs 999"))
 
         said = self.gh.posted_comments[0][1]
-        self.assertIn(str(_run_grant.MAX_RUNS_PER_COMMAND), said)
+        self.assertIn(str(_run_grant_request.MAX_RUNS_PER_COMMAND), said)
         self.assertIn(config.HITL_MENTIONS, said)
         self.assertEqual(
             self._recorded()[support.LAST_ACTION_COMMENT_ID],
@@ -412,14 +317,14 @@ class RefusalTest(_ParkCase):
         # A marker is plain text on a public thread. Read from anybody, one
         # pasted below the request would suppress the answer a human is owed.
         marker = _run_grant._REFUSED_MARKER.format(
-            issue=support.ISSUE_NUMBER, comment=_FIRST_ASK,
+            issue=support.ISSUE_NUMBER, comment=grant.FIRST_ASK,
         )
         self._lift(
             grant.command(
-                "/orchestrator add-agent-runs x", comment_id=_FIRST_ASK,
+                "/orchestrator add-agent-runs x", comment_id=grant.FIRST_ASK,
             ),
             grant.command(
-                marker, comment_id=_SECOND_ASK, author=support.OUTSIDER,
+                marker, comment_id=grant.SECOND_ASK, author=support.OUTSIDER,
             ),
         )
 
@@ -435,7 +340,7 @@ class UnansweredRequestTest(_ParkCase):
         # would spend the watermark a real operator is read against.
         with patch.object(config, _ALLOWLIST, (grant.OPERATOR,)):
             lifted = self._lift(
-                grant.command(_VALID, author=support.OUTSIDER),
+                grant.command(grant.VALID, author=support.OUTSIDER),
             )
 
         self.assertFalse(lifted)
@@ -454,7 +359,7 @@ class UnansweredRequestTest(_ParkCase):
                     support.PARK_REASON: reason,
                 })
 
-                lifted = self._lift(grant.command(_VALID), state=parked)
+                lifted = self._lift(grant.command(grant.VALID), state=parked)
 
                 self.assertFalse(lifted)
                 self.assertEqual(self.gh.posted_comments, [])
@@ -471,7 +376,7 @@ class UnansweredRequestTest(_ParkCase):
         # A park held one poll too long is answered by the next read, while a
         # grant handed out on a thread nobody could read buys runs no human
         # asked for.
-        self._thread(grant.command(_VALID))
+        self._thread(grant.command(grant.VALID))
         self.state = grant.spent_state()
 
         with patch.object(
@@ -495,7 +400,7 @@ class ConcurrentCommentTest(_ParkCase):
         # a comment nobody here has seen as answered -- and a comment under
         # the mark is not delayed, it is lost: every stage below decides what
         # is unread by exactly that number.
-        for asked in (_VALID, "/orchestrator add-agent-runs 0"):
+        for asked in (grant.VALID, "/orchestrator add-agent-runs 0"):
             with self.subTest(asked=asked):
                 self._lift_racing(grant.command(asked))
 
@@ -514,12 +419,12 @@ class ConcurrentCommentTest(_ParkCase):
     def test_the_answer_still_lands(self) -> None:
         # The boundary is the only thing the race moves: the command is still
         # answered, and answered once.
-        lifted = self._lift_racing(grant.command(_VALID))
+        lifted = self._lift_racing(grant.command(grant.VALID))
 
         self.assertTrue(lifted)
         self.assertEqual(len(self.gh.posted_comments), 1)
         self.assertEqual(
-            self._recorded()[support.ALLOWANCE_FIELD], _GRANTED_ALLOWANCE,
+            self._recorded()[support.ALLOWANCE_FIELD], grant.GRANTED_ALLOWANCE,
         )
 
 

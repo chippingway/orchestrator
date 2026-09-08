@@ -20,7 +20,7 @@ import unittest
 from unittest.mock import patch
 
 from orchestrator import config
-from orchestrator.workflow.engine import run_grant as _run_grant, run_ledger as _run_ledger
+from orchestrator.workflow.engine import run_grant_request as _run_grant_request, run_ledger as _run_ledger
 from tests.support.fakes import FakeGitHubClient
 from tests.workflow.engine import lifetime_journeys as journeys, lifetime_test_support as support
 from tests.workflow.fixtures import LABEL_VALIDATING, _PatchedWorkflowMixin
@@ -127,7 +127,7 @@ class LifetimeJourneyTest(unittest.TestCase, _PatchedWorkflowMixin):
         # stays exactly where the ceiling left it.
         journey = journeys.ROTATED_SESSIONS
         walked = self._walked(journey)
-        past_the_bound = _run_grant.MAX_RUNS_PER_COMMAND + 1
+        past_the_bound = _run_grant_request.MAX_RUNS_PER_COMMAND + 1
         support.said(
             walked.issue, f"/orchestrator add-agent-runs {past_the_bound}",
         )

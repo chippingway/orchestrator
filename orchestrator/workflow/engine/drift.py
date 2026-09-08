@@ -42,7 +42,7 @@ from orchestrator.workflow.engine import (
     comments as _comments,
     messages as _messages,
     prompts as _prompts,
-    run_grant as _run_grant,
+    run_grant_request as _run_grant_request,
 )
 from orchestrator.workflow.state import WorkflowLabel
 
@@ -88,7 +88,7 @@ def _is_operator_control(issue_comment: IssueComment) -> bool:
     guidance: it moves the hash, and the drift road that opens is how those
     words reach the agent that has to act on them.
     """
-    if _run_grant._is_bare_command(issue_comment):
+    if _run_grant_request._is_bare_command(issue_comment):
         return True
     return _messages._authorized_oversized_candidate(issue_comment) is not None
 
