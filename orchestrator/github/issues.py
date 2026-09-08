@@ -1,16 +1,19 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Issue polling and filtering, label writes, comments, and child creation.
+"""Issue-state vocabulary, label writes and history, comments, and children.
 
-The issue-state vocabulary lives here too -- the attribute PyGithub carries it
-on and the two values it takes -- because it is the GitHub wire spelling, not a
+The issue-state vocabulary lives here -- the attribute PyGithub carries it on
+and the values it takes -- because it is the GitHub wire spelling, not a
 workflow one: every reader that asks whether an issue is still open, and every
-writer that closes one, has to spell it the way the API does.
+writer that closes one, has to spell it the way the API does -- the poller and
+the two terminal owners included. The swept label sets sit beside it for the
+reason the dispatcher reads them from here as well: which closed issues are
+still owed a pass is a statement about issue state, not about how one walk
+over a repository is taken.
 """
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
@@ -26,7 +29,6 @@ from orchestrator.workflow.state import (
     coerce_workflow_label,
     guard_transition,
     label_for_name,
-    legacy_label_name,
     replaced_label_names,
     stage_name,
 )
@@ -122,40 +124,6 @@ CLEANUP_ROUTE_LABELS: tuple[WorkflowLabel, ...] = (
 )
 
 
-def _sweep_lookups(
-    sweep_labels: tuple[WorkflowLabel, ...],
-) -> tuple[tuple[str, bool], ...]:
-    """Pair every swept label spelling with whether a miss on it is expected.
-
-    The pre-namespace spelling is queried beside the namespaced one because a
-    closed issue is the one case no other pass revisits: if the bootstrap could
-    not rename the label, nothing else would ever surface that issue again.
-    Both queries feed one ``seen_numbers`` set, so an issue a repository
-    carries under both spellings is still yielded once.
-
-    A miss on a legacy name is the expected answer on a migrated repository,
-    so it is throttled rather than re-asked every sweep -- throttled, not
-    remembered, because the label can still come back by hand.
-    """
-    lookups: list[tuple[str, bool]] = []
-    for sweep_label in sweep_labels:
-        lookups.append((str(sweep_label), False))
-        legacy_name = legacy_label_name(sweep_label)
-        if legacy_name is not None:
-            lookups.append((legacy_name, True))
-    return tuple(lookups)
-
-
-CLOSED_SWEEP_LOOKUPS = _sweep_lookups(CLOSED_SWEEP_LABELS)
-
-CLEANUP_SWEEP_LOOKUPS = _sweep_lookups(CLEANUP_ROUTE_LABELS)
-
-# One walk over both, because both are the same request against the same
-# cadence and the same label cache, and the dispatcher tells the two apart by
-# what it finds on the issue rather than by which query produced it.
-SWEEP_LOOKUPS = CLOSED_SWEEP_LOOKUPS + CLEANUP_SWEEP_LOOKUPS
-
-
 def issue_is_closed(issue: Any) -> bool:
     """Whether GitHub reports this issue as closed.
 
@@ -177,17 +145,6 @@ def issue_is_closed(issue: Any) -> bool:
         return True
     state = getattr(issue, _STATE_ATTR, _ISSUE_STATE_OPEN)
     return state == _ISSUE_STATE_CLOSED
-
-
-def iter_new_non_pr_issues(
-    issues: Iterable[Issue],
-    seen_numbers: set[int],
-) -> Iterable[Issue]:
-    """Yield unseen non-PR issues while updating the shared number set."""
-    for issue in issues:
-        if issue.pull_request is None and issue.number not in seen_numbers:
-            seen_numbers.add(issue.number)
-            yield issue
 
 
 def issue_query_options(
@@ -343,35 +300,6 @@ class GitHubIssueMixin:
             )
             return None
 
-    def list_pollable_issues(
-        self,
-        since: datetime | None = None,
-    ) -> Iterable[Issue]:
-        """Yield open issues, plus the closed ones a sweep still owes a pass.
-
-        Two kinds of closed issue, on one cadence: the recoverable ones whose
-        terminal arc has not drained, and the cleanup owners whose ledger may
-        still hold the remote to a branch or a snapshot ref.
-        """
-        seen_numbers: set[int] = set()
-        self._pollable_calls += 1
-        yield from iter_new_non_pr_issues(
-            self.repo.get_issues(
-                **issue_query_options(
-                    issue_state=_ISSUE_STATE_OPEN,
-                    since=since,
-                ),
-            ),
-            seen_numbers,
-        )
-        sweep_cadence = config.CLOSED_ISSUE_SWEEP_EVERY_N_TICKS
-        if (
-            sweep_cadence > 1
-            and (self._pollable_calls - 1) % sweep_cadence != 0
-        ):
-            return
-        yield from self._iter_closed_sweep_issues(since, seen_numbers)
-
     def emit_event(
         self,
         event: str,
@@ -458,46 +386,3 @@ class GitHubIssueMixin:
             ):
                 return candidate
         return None
-
-    def _iter_closed_sweep_issues(
-        self,
-        since: datetime | None,
-        seen_numbers: set[int],
-    ) -> Iterable[Issue]:
-        """Yield the closed issues still carrying a swept workflow label.
-
-        Reached only past the cadence gate, so the sweep count it keeps -- and
-        the absent-label window denominated in it -- advances once per sweep
-        rather than once per poll.
-
-        The two cleanup states ride the same walk, the same cadence, and the
-        same label cache: an extra pass over them would double the fixed cost
-        the cadence exists to amortize while asking the identical question one
-        tick apart.
-        """
-        self._closed_sweeps += 1
-        # Scoped to this pass: the spellings it confirms absent are summarized
-        # at the end of it, and a sweep that raises before then takes them with
-        # it rather than leaving them for the next one to restate.
-        absent_legacy_names: list[str] = []
-        for label_name, absence_is_expected in SWEEP_LOOKUPS:
-            label_object = self._cached_label(
-                label_name,
-                throttle_absent=absence_is_expected,
-                absent_names=absent_legacy_names,
-            )
-            if label_object is None:
-                continue
-            yield from iter_new_non_pr_issues(
-                self.repo.get_issues(
-                    **issue_query_options(
-                        issue_state=_ISSUE_STATE_CLOSED,
-                        since=since,
-                        label=label_object,
-                    ),
-                ),
-                seen_numbers,
-            )
-        # After the loop, so every legacy spelling this sweep confirmed absent
-        # lands in one repository-qualified line instead of one line each.
-        self._report_absent_legacy_labels(absent_legacy_names)

@@ -94,7 +94,6 @@ per-file-ignores =
     orchestrator/git/worktrees/maintenance.py:WPS202
     orchestrator/git/worktrees/models.py:WPS202
     orchestrator/git/worktrees/paths.py:WPS202
-    orchestrator/github/issues.py:WPS202,WPS214
     orchestrator/github/pull_requests.py:WPS214
     tests/git/test_ref_transport.py:WPS202
     tests/git/publication/squash_recovery_support.py:WPS202

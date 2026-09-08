@@ -12,7 +12,7 @@ from typing import Any
 from github.Issue import Issue
 from github.IssueComment import IssueComment
 
-from orchestrator.github.issues import GitHubIssueMixin
+from orchestrator.github.issue_polling import GitHubIssuePollingMixin
 
 log = logging.getLogger("orchestrator.github")
 
@@ -256,7 +256,7 @@ def _state_payload(payload: str, issue_number: int) -> dict | None:
     return None
 
 
-class GitHubStateMixin(GitHubIssueMixin):
+class GitHubStateMixin(GitHubIssuePollingMixin):
     """Durable pinned-state reads/writes and issue comment scans."""
 
     def read_pinned_state(self, issue: Issue) -> PinnedState:

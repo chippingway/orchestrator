@@ -169,17 +169,26 @@ orchestrator/
                         every receipt this orchestrator hides shares, so content somebody else wrote can be refused
                         before it is embedded; the low-level comment and review readers stay raw
     events.py           audit event record construction and the optional JSONL sink
-    issues.py           issue polling and writes, the query options, the wire issue-state vocabulary,
-                        the closed predicate every reader of it asks through, the every-state, no-label walk
-                        that finds the one issue carrying a marker -- the reading a receipt lookup needs and the
-                        only one that sees an issue a human has since closed or relabelled -- and the labels whose
-                        CLOSED issues a sweep still owes a pass: the recovery set whose terminal arc has not
-                        drained, and the cleanup set, which is where a late adjudication runs plus where an
-                        interrupted cancellation can be left; plus the one question about an issue's PAST
-                        this client answers -- which workflow label THIS orchestrator applied to it LAST --
-                        which is what a removed label leaves no other trace of, and what tells one attempt
-                        at a state from an earlier one, since every state this workflow moves an issue to
-                        is itself an application; the actor is filtered on the same account the pinned
+    issue_polling.py    the one walk over a repository's issues a tick is served from: the open poll, the
+                        cadenced closed sweep beside it, and the shared number set both filter through so an
+                        issue two queries return is dispatched once -- plus the pairing of every swept label with
+                        its pre-namespace spelling and with whether a miss on that spelling is the expected
+                        answer, since a closed issue is the one case no other pass revisits and a repository the
+                        rename did not reach has nothing else left to find it by. Sits directly above `issues`
+                        in the client's mixin chain, which is the owner it reads its label sets and its
+                        issue-state spellings from
+    issues.py           issue writes, the query options, the wire issue-state vocabulary, the closed predicate
+                        every reader of it asks through, the every-state, no-label walk that finds the one
+                        issue carrying a marker -- the reading a receipt lookup needs and the only one that
+                        sees an issue a human has since closed or relabelled -- and the labels whose CLOSED
+                        issues a sweep still owes a pass: the recovery set whose terminal arc has not drained,
+                        and the cleanup set, which is where a late adjudication runs plus where an interrupted
+                        cancellation can be left -- read from here by the poller that queries them and by the
+                        dispatcher that routes a closed issue on them alike; plus the one question about an
+                        issue's PAST this client answers -- which workflow label THIS orchestrator applied to
+                        it LAST -- which is what a removed label leaves no other trace of, and what tells one
+                        attempt at a state from an earlier one, since every state this workflow moves an issue
+                        to is itself an application; the actor is filtered on the same account the pinned
                         comment is authenticated under, so a name a collaborator applied by hand is not a
                         write of this orchestrator's; control labels are excluded, and no account, no
                         evidence, and an unreadable walk all answer alike
