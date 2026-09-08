@@ -206,7 +206,7 @@ Project-local JSONL sink for raw metric records, separate from `EVENT_LOG_PATH`.
 the Postgres target all live under `orchestrator/observability/analytics/`. Every knob named on this page —
 `ANALYTICS_LOG_PATH`, `ANALYTICS_RETENTION_DAYS`, `ANALYTICS_DB_URL`, the sibling trajectory pair
 `TRAJECTORY_LOG_PATH` / `TRAJECTORY_RETENTION_DAYS`, and `TRACK_SKILL_TRIGGERS` — is parsed by
-`analytics/config.py` rather than by `orchestrator/config/`, which keeps only the audit log's own
+`analytics/environment.py` rather than by `orchestrator/config/`, which keeps only the audit log's own
 `EVENT_LOG_PATH` because `GitHubClient.emit_event` is a general-purpose audit surface. What each package along that
 write path is responsible for is in
 [`architecture/observability-modules.md`](../architecture/observability-modules.md).

@@ -13,12 +13,14 @@ runs, and ``query`` holds the connection half: what a read dials with, the
 socket a thread reuses, and the single SELECT run over it. Beside them sit the
 owners neither sink may answer separately: ``sink``, the record envelope, the
 JSONL line, both files' locks, and the log channel a refused write is reported
-on; ``config``, the parse of the six environment knobs, over ``settings``,
-where those parsed values are bound and where a caller patches one; and
-``retention`` over ``retention_scan`` / ``retention_rewrite``, the by-age
-prune that bounds both JSONL files -- each on its own path, retention knob,
-and lock, but through one scan and one rewrite, so the two cannot disagree
-about what an expired or malformed record costs.
+on; ``environment``, the parse of the six knobs and the spellings that turn
+one off, under ``settings``, where those parsed values are bound and where a
+caller patches one, with ``config`` over the pair as the view an adapter reads
+a knob back through; and ``retention`` over ``retention_scan`` /
+``retention_rewrite``, the by-age prune that bounds both JSONL files -- each
+on its own path, retention knob, and lock, but through one scan and one
+rewrite, so the two cannot disagree about what an expired or malformed record
+costs.
 
 ``sink`` and ``settings`` are what keep the two write packages acyclic:
 ``recording`` composes the trajectory write, so the trajectory owners reach

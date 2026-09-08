@@ -58,8 +58,8 @@ def db_unconfigured_message() -> str | None:
     """Refuse a read when no analytics database is configured, else `None`.
 
     What counts as unconfigured -- an unset knob, an empty value, or a disable
-    sentinel -- is the analytics configuration owner's decision, so this reads
-    back the URL that owner resolved rather than the environment behind it.
+    sentinel -- is settled by the analytics environment owner's parse, so this
+    reads back the URL that parse resolved rather than the variable behind it.
     """
     if analytics_config.live_settings().db_url:
         return None

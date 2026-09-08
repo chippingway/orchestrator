@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Analytics sink and database configuration tests."""
+"""Tests for what each analytics knob parses to out of the environment."""
 from __future__ import annotations
 
 import os
@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from orchestrator import config as orchestrator_config
-from orchestrator.observability.analytics import config as analytics_config
+from orchestrator.observability.analytics import environment as analytics_environment
 
 # The spellings that turn a knob off, in the casings and padding an operator
 # writes them with. Shared by the three knobs that carry the vocabulary; an
@@ -61,25 +61,25 @@ class AnalyticsSinkKnobTest(unittest.TestCase):
     def test_default_path_under_log_dir(self) -> None:
         with _environment():
             self.assertEqual(
-                analytics_config.parse_log_path(),
+                analytics_environment.parse_log_path(),
                 orchestrator_config.LOG_DIR / "analytics.jsonl",
             )
 
     def test_explicit_path_overrides_default(self) -> None:
         with _environment(ANALYTICS_LOG_PATH=_EXPLICIT_LOG_PATH):
             self.assertEqual(
-                analytics_config.parse_log_path(), Path(_EXPLICIT_LOG_PATH),
+                analytics_environment.parse_log_path(), Path(_EXPLICIT_LOG_PATH),
             )
 
     def test_disabling_values_turn_the_sink_off(self) -> None:
         for spelling in _DISABLING:
             with self.subTest(spelling=spelling), _environment(ANALYTICS_LOG_PATH=spelling):
-                self.assertIsNone(analytics_config.parse_log_path())
+                self.assertIsNone(analytics_environment.parse_log_path())
 
     def test_default_retention_is_ninety_days(self) -> None:
         with _environment():
             self.assertEqual(
-                analytics_config.parse_retention_days(),
+                analytics_environment.parse_retention_days(),
                 _DEFAULT_RETENTION_DAYS,
             )
 
@@ -87,7 +87,7 @@ class AnalyticsSinkKnobTest(unittest.TestCase):
         for raw, expected in _RETENTION_CASES:
             with self.subTest(raw=raw), _environment(ANALYTICS_RETENTION_DAYS=raw):
                 self.assertEqual(
-                    analytics_config.parse_retention_days(), expected,
+                    analytics_environment.parse_retention_days(), expected,
                 )
 
 
@@ -100,26 +100,26 @@ class TrajectorySinkKnobTest(unittest.TestCase):
 
     def test_unset_disables(self) -> None:
         with _environment():
-            self.assertIsNone(analytics_config.parse_trajectory_log_path())
+            self.assertIsNone(analytics_environment.parse_trajectory_log_path())
 
     def test_disabling_values_turn_the_sink_off(self) -> None:
         for spelling in _DISABLING:
             with self.subTest(spelling=spelling), _environment(TRAJECTORY_LOG_PATH=spelling):
                 self.assertIsNone(
-                    analytics_config.parse_trajectory_log_path(),
+                    analytics_environment.parse_trajectory_log_path(),
                 )
 
     def test_explicit_path_enables(self) -> None:
         with _environment(TRAJECTORY_LOG_PATH=_EXPLICIT_TRAJECTORY_PATH):
             self.assertEqual(
-                analytics_config.parse_trajectory_log_path(),
+                analytics_environment.parse_trajectory_log_path(),
                 Path(_EXPLICIT_TRAJECTORY_PATH),
             )
 
     def test_retention_matches_the_analytics_default(self) -> None:
         with _environment():
             self.assertEqual(
-                analytics_config.parse_trajectory_retention_days(),
+                analytics_environment.parse_trajectory_retention_days(),
                 _DEFAULT_RETENTION_DAYS,
             )
 
@@ -127,7 +127,7 @@ class TrajectorySinkKnobTest(unittest.TestCase):
         for raw, expected in _RETENTION_CASES:
             with self.subTest(raw=raw), _environment(TRAJECTORY_RETENTION_DAYS=raw):
                 self.assertEqual(
-                    analytics_config.parse_trajectory_retention_days(),
+                    analytics_environment.parse_trajectory_retention_days(),
                     expected,
                 )
 
@@ -140,20 +140,20 @@ class DatabaseUrlKnobTest(unittest.TestCase):
 
     def test_default_is_disabled(self) -> None:
         with _environment():
-            self.assertIsNone(analytics_config.parse_db_url())
+            self.assertIsNone(analytics_environment.parse_db_url())
 
     def test_disabling_values_turn_the_surfaces_off(self) -> None:
         for spelling in _DISABLING:
             with self.subTest(spelling=spelling), _environment(ANALYTICS_DB_URL=spelling):
-                self.assertIsNone(analytics_config.parse_db_url())
+                self.assertIsNone(analytics_environment.parse_db_url())
 
     def test_real_url_passes_through(self) -> None:
         with _environment(ANALYTICS_DB_URL=_DB_URL):
-            self.assertEqual(analytics_config.parse_db_url(), _DB_URL)
+            self.assertEqual(analytics_environment.parse_db_url(), _DB_URL)
 
     def test_whitespace_is_stripped(self) -> None:
         with _environment(ANALYTICS_DB_URL=f"  {_DB_URL}  "):
-            self.assertEqual(analytics_config.parse_db_url(), _DB_URL)
+            self.assertEqual(analytics_environment.parse_db_url(), _DB_URL)
 
 
 class SkillTriggerKnobTest(unittest.TestCase):
@@ -167,20 +167,20 @@ class SkillTriggerKnobTest(unittest.TestCase):
         # production noise stays unmeasured, so the default holds off until it
         # proves low-noise live. Flipping this assertion is the flip.
         with _environment():
-            self.assertFalse(analytics_config.parse_track_skill_triggers())
+            self.assertFalse(analytics_environment.parse_track_skill_triggers())
 
     def test_truthy_spellings_enable(self) -> None:
         for spelling in ("1", "true", "on", "yes", "On", " YES "):
             with self.subTest(spelling=spelling), _environment(TRACK_SKILL_TRIGGERS=spelling):
                 self.assertTrue(
-                    analytics_config.parse_track_skill_triggers(),
+                    analytics_environment.parse_track_skill_triggers(),
                 )
 
     def test_falsey_and_unknown_values_stay_off(self) -> None:
         for spelling in ("0", "false", "off", "no", "", "maybe"):
             with self.subTest(spelling=spelling), _environment(TRACK_SKILL_TRIGGERS=spelling):
                 self.assertFalse(
-                    analytics_config.parse_track_skill_triggers(),
+                    analytics_environment.parse_track_skill_triggers(),
                 )
 
 

@@ -169,8 +169,9 @@ class DbUnconfiguredMessageTest(unittest.TestCase):
 
     The knob's own vocabulary -- an unset variable, an empty value, and the
     `off` / `disabled` / `none` sentinels that collapse to no URL -- belongs to
-    the analytics configuration owner, so what is read here is the answer that
-    owner already gave, off whichever settings holder the name resolves to.
+    the analytics environment owner's parse, so what is read here is the answer
+    that parse already gave, off whichever settings holder the name resolves
+    to.
     """
 
     def test_no_configured_url_is_refused(self) -> None:

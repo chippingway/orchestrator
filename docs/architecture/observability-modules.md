@@ -38,16 +38,17 @@ guard for the first, and the owner's own tests for each channel of the second, s
   module has to import cleanly with the two blocked outright *and* with no attempt on either recorded — a
   module-scope import that swallows its own `ImportError` is still a load in the install that has the package.
   Pandas joins them one level up: no launch path under `apps/` may cost one of the three at import.
-- **One knob binder, and one lazy reach past it.** The analytics configuration owner parses the six sink and
-  database knobs and `analytics/settings.py` is the sole module that binds them, so a knob answers the same way
-  wherever it is read. Every adapter resolves one off that holder inside the call rather than at import, which is
-  what lets a caller settle *which* holder answers: the trajectory app hands its page one explicitly, while the
-  analytics page resolves the live one through the configuration owner as it reads. That holder is also the only
-  place a knob is read out of `orchestrator.config`, for the `LOG_DIR` the default sink lives under, and it defers
-  that import to a call so nothing on the append path pays for it until a record is written. The one other reach
-  into the configuration layer is not a knob at all: the trajectory writer imports the secret redactor inside the
-  write that uses it, so a producer on the recording path pays for the credential owner only when the opt-in sink is
-  actually on.
+- **One knob binder, and one lazy reach past it.** `analytics/environment.py` parses the six sink and database
+  knobs — the disable vocabulary with them, so what "off" spells is settled once — and `analytics/settings.py` is
+  the sole module that calls those parses and the sole module that binds them, so a knob answers the same way
+  wherever it is read. Reading one back is the configuration owner beside them: every adapter resolves a knob off a
+  holder inside the call rather than at import, which is what lets a caller settle *which* holder answers — the
+  trajectory app hands its page one explicitly, while the analytics page resolves the live one through the
+  configuration owner as it reads. That holder is also the only place a knob is read out of `orchestrator.config`,
+  for the `LOG_DIR` the default sink lives under, and the parse defers that import to a call so nothing on the
+  append path pays for it until a record is written. The one other reach into the configuration layer is not a knob
+  at all: the trajectory writer imports the secret redactor inside the write that uses it, so a producer on the
+  recording path pays for the credential owner only when the opt-in sink is actually on.
 - **Operator log channels are spelled literally** rather than derived from `__name__`, because an operator's level
   and handler selection is keyed on them: `orchestrator.analytics` for a refused sink write,
   `orchestrator.analytics.sync` for a replay, `orchestrator.analytics.connection` for a read-path driver failure,
@@ -66,8 +67,9 @@ orchestrator/
   observability/        the four surfaces that watch a run without steering it, one package each; nothing sits flat
                         beside them
     analytics/          the JSONL sink and everything downstream of it: the parse of the six sink and database
-                        knobs with the process-wide holder bound over it, the record envelope and locked line both
-                        sinks reach disk through, and the by-age prune that bounds each of them
+                        knobs, the process-wide holder bound over it and the view an adapter reads one back
+                        through, the record envelope and locked line both sinks reach disk through, and the by-age
+                        prune that bounds each of them
       recording/        the append side, publishing the six recorders a producer appends through (`__all__`): the
                         envelope and the append beneath them, and the token, cost, skill, and catalog steps a
                         finished agent run is summarized by before one of them writes
@@ -101,12 +103,13 @@ orchestrator/
 
 ## How these packages depend on each other
 
-- Inside `analytics/`, the configuration owner is the bottom and the shared sink sits above both write packages: it
-  imports neither `recording/` nor `trajectories/`, so an `agent_exit` composing a trajectory write reaches the
-  envelope and the line above both rather than back through the recorders that called it, and the direction runs one
-  way — recording names the trajectory writers, never the reverse. Each sink's lock is minted on that shared owner
-  once per process, which is what makes an append and the prune that rewrites the file under it serialize against
-  each other without either sink blocking on the other's file.
+- Inside `analytics/`, the environment parse and the configuration view over the holder it fills are the bottom, and
+  the shared sink sits above both write packages: it imports neither `recording/` nor `trajectories/`, so an
+  `agent_exit` composing a trajectory write reaches the envelope and the line above both rather than back through the
+  recorders that called it, and the direction runs one way — recording names the trajectory writers, never the
+  reverse. Each sink's lock is minted on that shared owner once per process, which is what makes an append and the
+  prune that rewrites the file under it serialize against each other without either sink blocking on the other's
+  file.
 - `query/` and `sync/` both keep psycopg behind a call — the read path defers the driver import to its connect
   factory, the replay keeps it inside the two adapters a caller may replace — so the result models, the row layout,
   and the content hash a replay deduplicates on are all usable on a machine with no driver installed.

@@ -488,16 +488,17 @@ _PAGE_CHROME_CHAIN = (
 )
 
 # The chains an owner here may reach for, declared per owner. `log_paths` names
-# the analytics configuration owner, which is where the knob naming the file
-# this page reads is parsed, so the viewer answers with the sink's own setting
-# rather than a second parse of the same variable -- and what it names is the
-# settings *view*, not the `settings` holder the parsed values are bound on,
-# which is the distinction the check below turns on: the holder is handed in by
-# the caller, so naming it here would decide for one. Three rendering owners
-# name the theme both Streamlit pages are drawn in: the geometry owner for the
-# font stacks a stylesheet cannot read out of a CSS variable, and the
-# formatting owner for the thousands separators a count is rendered with. Both
-# are plain data, so neither costs the optional dashboard dependency group.
+# the analytics configuration owner, which is how the knob naming the file this
+# page reads is read back off the holder the analytics parse bound it on, so
+# the viewer answers with the sink's own setting rather than a second parse of
+# the same variable -- and what it names is the settings *view*, not the
+# `settings` holder those values are bound on, which is the distinction the
+# check below turns on: the holder is handed in by the caller, so naming it
+# here would decide for one. Three rendering owners name the theme both
+# Streamlit pages are drawn in: the geometry owner for the font stacks a
+# stylesheet cannot read out of a CSS variable, and the formatting owner for
+# the thousands separators a count is rendered with. Both are plain data, so
+# neither costs the optional dashboard dependency group.
 # `controls` names that theme's filter-state owner for one thing: the parse
 # that reads `#123` and `123` as the same issue, so both pages accept the
 # spelling an operator types. That owner is typed by the window it also holds,
