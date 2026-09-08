@@ -207,9 +207,25 @@ class _WorkflowStateService:
         ]
         issue.labels.append(FakeLabel(resolved_label))
 
-    def seed_state(self, issue_number: int, **state_data: Any) -> None:
-        self._pinned[issue_number] = PinnedState(
-            comment_id=next(self._comment_id),
+    def seed_state(
+        self, issue: FakeIssue | int, **state_data: Any,
+    ) -> None:
+        """Put a pinned record on this issue, numbered above its own thread.
+
+        The thread is named rather than only its number, because the record's
+        id has to clear whatever that thread already carries. A case may
+        hand-number comments on an issue it never registered here, and a
+        record sharing an id with one of them is a comment `comments_after`
+        hides as the pinned record -- so the reply a case seeded is a reply no
+        reading ever returns.
+
+        A number still works and resolves through the register, which is what
+        every issue this client was given is in.
+        """
+        thread = issue if isinstance(issue, FakeIssue) else self._issues.get(issue)
+        number = issue.number if isinstance(issue, FakeIssue) else issue
+        self._pinned[number] = PinnedState(
+            comment_id=self._next_comment_id(thread),
             data=dict(state_data),
         )
 
@@ -247,7 +263,7 @@ class _WorkflowStateService:
     ) -> PinnedState:
         self._issue_history._write_state_calls += 1
         if state.comment_id is None:
-            state.comment_id = next(self._comment_id)
+            state.comment_id = self._next_comment_id(issue)
             issue.comments.append(FakeComment(
                 id=state.comment_id,
                 body=f"{PINNED_STATE_MARKER} ... -->",
@@ -271,13 +287,33 @@ class _IssueCommentService:
         # orchestrator reads back off a thread is recognized by its author as
         # well as by its marker.
         new_comment = FakeComment(
-            id=next(self._comment_id),
+            id=self._next_comment_id(issue),
             body=body,
             user=FakeUser(self._bot_login),
         )
         issue.comments.append(new_comment)
         self.posted_comments.append((issue.number, body))
         return new_comment
+
+    def next_reply_id(self, issue: FakeIssue) -> int:
+        """Mint the id a comment appended to this thread now would carry.
+
+        For a case that seeds a human reply AFTER a tick has already posted
+        something. Ids ascend across the thread, so a hand-picked one can
+        collide with a comment the orchestrator has since written -- and a
+        reply sharing an id with the watermark is one no reader ever sees.
+
+        Through the one allocator every comment on this client comes out of,
+        because a seeded reply is a comment on a shared ascending id space
+        like any other. Numbered off its own thread instead it repeats an id
+        another thread was already given, and leaves the client's counter
+        behind it -- so the next id MINTED anywhere, a pinned record's
+        included, is handed out below a reply that is already on a thread.
+
+        The thread is handed over because a case may seed a reply onto an
+        issue this client was never given.
+        """
+        return self._next_comment_id(issue)
 
     def comments_after(
         self,

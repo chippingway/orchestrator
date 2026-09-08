@@ -130,6 +130,7 @@ from orchestrator.workflow.late_split import (
 )
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
+    late_consent as _consent,
     late_freeze as _freeze,
     late_parks as _parks,
     late_reading as _reading,
@@ -262,6 +263,21 @@ def _decided(
     a permit that refused rotates nothing however readable the permission
     beside it still is.
     """
+    if _consent._awaits_an_operator(gate, candidate_sha):
+        # An issue already behind the authorization park, over an exemption
+        # naming this very commit, is the one place a record saying "decided"
+        # may not be believed: what that park doubts is the exemption itself,
+        # an adjudicator's ruling with no operator behind it, so reading it
+        # here would publish the bypass the park exists to withhold. It is
+        # asked ahead of every other question for that reason, and it is the
+        # only entry into the policy -- nothing in this build takes the park,
+        # so the answer is False on every ordinary tick and every candidate
+        # takes the road below, the one a park over a commit nothing exempts
+        # takes too.
+        return _held_or_published(
+            candidate_sha,
+            _consent._holds_until_authorized(gate, recorded, candidate_sha),
+        )
     decided = _needs_no_measuring(gate, recorded, candidate_sha)
     permitted = decided or _transfer._carried_over(gate, candidate_sha)
     if permitted:
@@ -281,6 +297,18 @@ def _decided(
         _reading._reconciled_measurement(gate, recorded) if answered
         else _reading._freshly_measured(gate, recorded, candidate_sha)
     )
+    return _held_or_published(candidate_sha, held)
+
+
+def _held_or_published(
+    candidate_sha: str, held: bool,
+) -> _records._GateVerdict:
+    """One reading's answer as the verdict its caller publishes or holds by.
+
+    The SHA travels with the go-ahead because the caller's next step is a
+    push, and a push that named nothing would publish whatever the checkout
+    points at when it runs.
+    """
     if held:
         return _records._HELD
     return _records._GateVerdict(held=False, candidate_sha=candidate_sha)

@@ -75,6 +75,28 @@ _AWAITING_HUMAN = "awaiting_human"
 
 _LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 
+# The receipt this stage stamped on a sentence it has not recorded posting,
+# written before that sentence goes out and dropped by the write that would
+# have recorded it. Every road on the authorization park posts before anything
+# persists the id of what it posted, so a process dying in between leaves a
+# sentence of ours on the thread that no later reader can attribute -- and one
+# standing over the command this park waits on is read as somebody's fresh
+# guidance and resumed a developer against.
+#
+# Recorded FIRST is what makes it mean anything: present, a tick died between
+# recording the sentence and recording having said it, so something may still
+# be owed; absent, the write past the post ran and nothing is. Which side of
+# the post that tick died on is then asked of the THREAD, which is the only
+# place that knows.
+#
+# What this field may never be built into is a claim that some comment is
+# ours. The receipt is public text, deterministic from an issue and a commit,
+# and the login it would be paired with may be the operator's own -- so a
+# retraction written under a quoted receipt would be taken for one of ours and
+# deleted from the reading, publishing the authorization beneath it on consent
+# withdrawn. Only `orchestrator_comment_ids` says a comment is ours.
+_HELD_RECEIPT = "late_held_authorization_receipt"
+
 _AGENT_TIMEOUT = "agent_timeout"
 
 # The park a handoff refuses on: the checkout is not the commit the size

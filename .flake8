@@ -69,6 +69,9 @@ per-file-ignores =
     orchestrator/workflow/stages/discussion/run.py:WPS202
     orchestrator/workflow/stages/discussion/terminal.py:WPS202
     orchestrator/workflow/stages/implementing/disposition.py:WPS202
+    orchestrator/workflow/stages/implementing/late_command.py:WPS202
+    orchestrator/workflow/stages/implementing/late_consent.py:WPS202
+    orchestrator/workflow/stages/implementing/late_gate.py:WPS202
     orchestrator/workflow/stages/implementing/late_freeze.py:WPS202
     orchestrator/workflow/stages/implementing/late_parks.py:WPS202
     orchestrator/workflow/stages/implementing/late_records.py:WPS202
@@ -120,6 +123,7 @@ per-file-ignores =
     tests/workflow/patch_models.py:WPS202
     tests/workflow/stages/implementing/test_late_transfer.py:WPS202
     tests/workflow/stages/implementing/late_transfer_test_support.py:WPS202
+    tests/workflow/stages/implementing/late_consent_test_support.py:WPS201,WPS202,WPS214
     tests/workflow/stages/conflicts/test_replay_real_git.py:WPS201
     tests/workflow/stages/conflicts/test_settled_round.py:WPS202
     tests/workflow/stages/decomposition/test_late_cleanup_publication.py:WPS201

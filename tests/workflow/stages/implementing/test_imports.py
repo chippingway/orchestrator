@@ -34,6 +34,8 @@ _OWNERS = (
     _HANDLER_OWNER,
     "late_accepted",
     "late_claims",
+    "late_command",
+    "late_consent",
     "late_debt",
     "late_evidence",
     "late_freeze",
