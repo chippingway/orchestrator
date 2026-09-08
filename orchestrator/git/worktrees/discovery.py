@@ -48,7 +48,7 @@ import logging
 from collections.abc import Sequence
 
 from orchestrator import config
-from orchestrator.git import ref_transport
+from orchestrator.git import ref_discovery
 from orchestrator.git.worktrees import attribution, inventory, paths
 from orchestrator.git.worktrees.models import (
     CandidateLayout,
@@ -97,8 +97,8 @@ def _remote_orchestrator_branches(
     about -- and a checkout a candidate names may already be gone.
 
     The boundary around it is total, for the reason every probe with a fixed
-    set of answers carries one: the transport answers `None` for the failures
-    it recognizes and raises for the ones underneath them -- a git that cannot
+    set of answers carries one: the listing answers `None` for the failures it
+    recognizes and raises for the ones underneath them -- a git that cannot
     be spawned, a host that will not let this process write the askpass script,
     a clone that has been removed since the configuration named it. An
     exception out of one repository's listing would end the discovery for every
@@ -106,7 +106,7 @@ def _remote_orchestrator_branches(
     cost more than the artifacts it is about.
     """
     try:
-        listed = ref_transport._remote_ref_names(
+        listed = ref_discovery._remote_ref_names(
             spec, spec.target_root, pattern=_ORCHESTRATOR_REMOTE_REFS,
         )
     except Exception:
