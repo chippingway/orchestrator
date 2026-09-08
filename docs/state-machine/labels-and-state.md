@@ -1065,9 +1065,9 @@ The keys that matter for the state machine fall into a few groups:
   that meets the same explained park says nothing and records `standing`. Both fields are additive and default safe:
   an issue recorded before them, or hand-edited into a shape neither fits, reads back as unparked and owing nothing
   rather than as a tick that raises.
-- **The one command that lifts it.** `/orchestrator add-agent-runs N`, read by
-  [`run_grant_request.py`](../../orchestrator/workflow/engine/run_grant_request.py), acted on by
-  [`run_grant.py`](../../orchestrator/workflow/engine/run_grant.py) beside it, and asked by the
+- **The one command that lifts it.** `/orchestrator add-agent-runs N`, owned by
+  [`orchestrator/workflow/engine/run_grant.py`](../../orchestrator/workflow/engine/run_grant.py) over the request
+  [`run_grant_request.py`](../../orchestrator/workflow/engine/run_grant_request.py) hands it, and asked by the
   same dispatcher hold, because the ledger is spent by every role at every stage and no one handler is where a human
   would say it. It is read only while THIS park stands on an OPEN issue (a command on any other park, or on a running
   issue, is a ceiling nobody was held to; a closed one is let past to its terminal before the read is taken), only
