@@ -1,0 +1,68 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""What one historical resume call supplied, checked before the run is built.
+
+The dev resume entry point still accepts the positional-and-keyword call its
+several callers were written against, so its arguments arrive as an
+`inspect`-bound blob rather than as named parameters. These two records are
+what turns that blob back into something typed. `_DevResumeRequest` freezes
+exactly what one call supplied and answers which stage every record the run
+emits is attributed to; `_DevResumeOptions` rejects an unknown keyword that
+named parameters would have refused on their own, so a mistyped `pause_guard=`
+raises the `TypeError` it deserves instead of being swallowed and quietly
+resuming without a live-pause guard.
+
+They validate rather than carry, which is why they live apart from the frozen
+handoff records: nothing here has to survive a boundary the spawn cannot see
+across, and both are finished before the first attempt runs.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from github.Issue import Issue
+
+from orchestrator import config
+from orchestrator.github.client import GitHubClient
+from orchestrator.workflow import state as _workflow_state
+from orchestrator.workflow.stages.implementing import state as _state
+
+
+@dataclass(frozen=True)
+class _DevResumeRequest:
+    gh: GitHubClient
+    spec: config.RepoSpec
+    issue: Issue
+    resume_args: tuple
+    option_fields: dict
+    stage: str | None
+
+    @property
+    def resolved_stage(self) -> str:
+        """Name the stage every record this run emits is attributed to.
+
+        An explicit override wins: the caller that passes one relabeled the
+        issue and then resumed on the SAME ``Issue`` object, whose cached
+        labels PyGithub does not refresh, so the label read would report the
+        stage the run just left. Otherwise the label the issue carries names
+        it -- by its bare tag, which is what the audit, analytics, and
+        trajectory records have always keyed on.
+        """
+        return (
+            self.stage
+            or _workflow_state.stage_name(self.gh.workflow_label(self.issue))
+            or _state._IMPLEMENTING_STAGE
+        )
+
+
+@dataclass(frozen=True)
+class _DevResumeOptions:
+    followup_has_tracked_repos: bool = False
+    pause_guard: bool = False
+
+    @classmethod
+    def from_fields(cls, fields: dict) -> _DevResumeOptions:
+        unknown = set(fields) - {"followup_has_tracked_repos", "pause_guard"}
+        if unknown:
+            raise TypeError(f"unexpected resume option(s): {sorted(unknown)!r}")
+        return cls(**fields)

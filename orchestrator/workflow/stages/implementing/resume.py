@@ -37,7 +37,7 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments, prompts as _prompts
 from orchestrator.workflow.stages.implementing import (
     execution as _execution,
-    models as _models,
+    resume_request as _resume_request,
     state as _state,
 )
 
@@ -121,7 +121,7 @@ def _resume_dev_with_text(
     """
     bound_fields = _DEV_RESUME_SIGNATURE.bind(*args, **kwargs)
     bound_fields.apply_defaults()
-    request = _models._DevResumeRequest(
+    request = _resume_request._DevResumeRequest(
         gh=bound_fields.arguments["gh"],
         spec=bound_fields.arguments["spec"],
         issue=bound_fields.arguments["issue"],
