@@ -75,16 +75,22 @@ _AWAITING_HUMAN = "awaiting_human"
 
 _LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 
-# The watermark an authorization park was standing at when this stage handed
-# its candidate to the publication seam, written before that call and dropped
-# by the write that puts the park back. It names a WINDOW rather than a fact
-# about the work: the seam posts its own refusal before anything persists the
-# id of it, so a process dying in between leaves a sentence of ours on the
-# thread that no later reader can attribute -- and one standing over the
-# command this park waits on is read as somebody's fresh guidance and resumed
-# a developer against. Present, it says a comment past this mark carrying our
-# marker and our login is ours; absent, nothing but the park's own scoped
-# receipt may say that of any comment.
+# The comment an authorization park was standing at when this stage posted
+# something it had not yet recorded posting -- the watermark it handed a
+# candidate to the publication seam from, or the reply it answered with a
+# refusal. Written before that post and dropped by the write that would have
+# recorded it. It names a WINDOW rather than a fact about the work: both roads
+# post before anything persists the id of what they posted, so a process dying
+# in between leaves a sentence of ours on the thread that no later reader can
+# attribute -- and one standing over the command this park waits on is read as
+# somebody's fresh guidance and resumed a developer against.
+#
+# It is the ONLY thing that licenses claiming a comment as ours, and no marker
+# is. Present, the earliest comment past this mark carrying our marker and our
+# login is the sentence this tick owes the record; absent, nothing on the
+# thread may be claimed at all -- a reviewer quoting either marker back from
+# the token we share matches both halves exactly, and claiming their reply
+# would delete what they said.
 _HELD_PUBLICATION = "late_held_authorization_publication"
 
 _AGENT_TIMEOUT = "agent_timeout"

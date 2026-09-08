@@ -82,16 +82,17 @@ log = logging.getLogger("orchestrator.workflow")
 # reads the same reply again on the next poll -- and the receipt already on the
 # thread is what keeps that second reading from saying the same thing twice. An
 # HTML comment, so it is invisible in the rendered thread.
-# Everything one of these receipts shares, whatever reply it answers. The
-# recovery beside this reads the thread for it: a receipt on the thread with
-# no watermark behind it is a tick that said its sentence and lost the write
-# that recorded saying it, and what that tick still owes is the watermark
-# rather than another sentence.
-_REFUSED_MARKER_PREFIX = (
-    "<!--orchestrator-unauthorized-exemption-refused:issue={issue}:"
+#
+# It proves nothing about who WROTE a comment, and nothing here asks it to. A
+# reviewer answering the refusal quotes the receipt back, and under a token
+# shared with a human that reply arrives carrying our marker and our login
+# both; read as ours it would be dropped from the thread and the
+# authorization beneath it would publish on consent already withdrawn. What
+# says a sentence of ours is stranded is the recorded window below.
+_REFUSED_MARKER = (
+    "<!--orchestrator-unauthorized-exemption-refused:"
+    "issue={issue}:read={read}-->"
 )
-
-_REFUSED_MARKER = f"{_REFUSED_MARKER_PREFIX}read={{read}}-->"
 
 # What every notice here ends on, worded on the side of publication the park
 # was taken on. Before there is a pull request the ordinary resume is still in
@@ -354,6 +355,13 @@ def _refused(
     sentence carries a receipt scoped to the reply it answers and the thread
     is asked for that receipt before it is written a second time -- the same
     at-most-once discipline every other answer in this repository has.
+
+    The window between those two operations is RECORDED before the sentence
+    goes out, naming the reply it answers. That is what lets the poll after a
+    crash tell a sentence of ours from a reply somebody wrote: the receipt
+    itself cannot, being text anybody may quote from an account that may be
+    the one we post under. Dropped by the write that consumes, so a window
+    stands open for exactly as long as this tick owes the record something.
     """
     log.info(
         "issue=#%d was told to authorize %s and is holding %s; answering the "
@@ -365,6 +373,8 @@ def _refused(
     )
     said = 0
     if not _command._already_answered(gate, marker):
+        gate.state.set(_state._HELD_PUBLICATION, answer.comment_id)
+        gate.gh.write_pinned_state(gate.issue, gate.state)
         sentence = _WRONG_CANDIDATE.format(
             mentions=config.HITL_MENTIONS,
             candidate=generation.candidate_sha,
@@ -380,6 +390,7 @@ def _refused(
         # there was in the reading that found it.
         said = _payloads.as_identity(getattr(posted, "id", 0)) or 0
     _consumed(gate, answer, said)
+    gate.state.set(_state._HELD_PUBLICATION, None)
     gate.gh.write_pinned_state(gate.issue, gate.state)
     return True
 

@@ -54,7 +54,6 @@ from orchestrator.workflow.stages.implementing import (
     checkout_recovery as _checkout_recovery,
     disposition as _disposition,
     late_command as _late_command,
-    late_consent as _late_consent,
     late_evidence as _late_evidence,
     late_parks as _late_parks,
     models as _models,
@@ -239,7 +238,7 @@ def _try_recover_unauthorized_exemption_park(
 def _attributes_our_own(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> bool:
-    """Record the comments of ours this issue lost the receipt for.
+    """Record the one comment of ours this issue lost the receipt for.
 
     Two writes in this stage post before they persist the id that says the
     post was ours, and a process dying between them leaves a sentence on the
@@ -257,72 +256,90 @@ def _attributes_our_own(
     that one comment is ours -- so the next reading drops it and finds
     whatever human wrote last, corrected command included.
 
-    Two things license it, and neither is the bare orchestrator marker, which
-    is text anybody may paste. The first is this park's own REFUSAL receipt,
-    scoped to the issue it answers. The second is a publication attempt this
-    stage recorded before it made one: inside that window we know we posted,
-    so a comment carrying our marker and our login is ours -- and forged, it
-    costs its own author the reply they wrote under it and leaves the park
-    standing, which is the safe direction for a question only a human can
-    answer.
+    A recorded WINDOW is the whole of what licenses it, and no marker is. Both
+    roads write one before they post, naming the comment they were standing
+    at, and drop it in the write that would have recorded the post -- so an
+    open window is a tick that owes the record a sentence, and there is no
+    other state in which anything here claims a comment. Neither marker may
+    stand in for that: the bare one is text anybody may paste, the scoped
+    receipt is text a reviewer quotes back off the refusal it is stamped on,
+    and the login under either may be the shared token this orchestrator posts
+    from.
+
+    Inside that window exactly ONE comment is claimed, and it is the EARLIEST
+    that could be ours. A quote can only follow the comment it quotes, so a
+    reply answering our stranded sentence is always the later of the two --
+    and claiming it would be deleting what its author said, which on a park
+    read by its last fresh reply publishes the authorization underneath on
+    consent that has been withdrawn. Claiming too few costs a resume against
+    our own words; claiming one too many costs a decision. Only the first is
+    survivable, so this fails in that direction.
 
     Owning the tick is the point of returning True: the reading behind it has
     already been taken against the record this repaired, so what it owes is
     the next poll rather than a second answer on this one.
     """
     attempted = _payloads.as_identity(state.get(_state._HELD_PUBLICATION))
-    parked = (
-        state.get(_state._PARK_REASON) == _AUTHORIZATION_PARK
-        and state.get(_state._AWAITING_HUMAN)
-    )
-    if attempted is None and not parked:
+    if attempted is None:
         return False
-    recorded = _comments._orchestrator_ids(state)
-    ours = [
-        identified
-        for seen in gh.comments_after(
-            issue,
-            state.get(_state._LAST_ACTION_COMMENT_ID),
-            state_comment_id=state.comment_id,
-        )
-        if _vouched(seen, gh, issue, attempted)
-        for identified in (int(getattr(seen, _COMMENT_ID, 0) or 0),)
-        if identified and identified not in recorded
-    ]
-    if not ours and attempted is None:
-        return False
-    for identified in ours:
-        _comments._track_orchestrator_comment(state, identified)
-    if ours:
+    stranded = _stranded_sentence(gh, issue, state, attempted)
+    if stranded is not None:
+        _comments._track_orchestrator_comment(state, stranded)
         log.info(
-            "issue=#%d carries %d comment(s) of this stage's own that no "
-            "write recorded; attributing them rather than handing our words "
-            "to a developer", issue.number, len(ours),
+            "issue=#%d carries comment %d of this stage's own that no write "
+            "recorded; attributing it rather than handing our words to a "
+            "developer", issue.number, stranded,
         )
     state.set(_state._HELD_PUBLICATION, None)
     gh.write_pinned_state(issue, state)
     return True
 
 
-def _vouched(seen, gh: GitHubClient, issue: Issue, attempted: int | None) -> bool:
-    """Whether this comment is one this stage posted and never recorded.
+def _stranded_sentence(
+    gh: GitHubClient, issue: Issue, state: PinnedState, attempted: int,
+) -> int | None:
+    """The one comment an open window may claim, or None where it may claim none.
 
-    The refusal receipt vouches for itself wherever it is, since only this
-    park writes one and it names the issue it answers. Everything else has to
-    fall inside a publication attempt this stage recorded before it made one
-    -- there we know a notice of ours may be sitting unattributed on top, so
-    our marker beside our own login is evidence rather than a body anybody
-    could have written.
+    Read from the comment the window names rather than from the watermark,
+    because that is where a sentence this stage owes the record can be: both
+    roads record where they were standing, and both post above it.
+
+    The EARLIEST candidate and no other. More than one says at least one was
+    written by somebody else -- our marker beside our login is what a quoted
+    comment from a shared token looks like -- and ours is the earlier, since
+    nothing can quote a sentence before it exists. A window that turns out to
+    hold none of ours claims none, which leaves the park standing.
+    """
+    recorded = _comments._orchestrator_ids(state)
+    candidates = [
+        identified
+        for seen in gh.comments_after(
+            issue, attempted, state_comment_id=state.comment_id,
+        )
+        if _vouched(seen, gh)
+        for identified in (
+            _payloads.as_identity(getattr(seen, _COMMENT_ID, 0)),
+        )
+        if identified is not None and identified not in recorded
+    ]
+    return min(candidates, default=None)
+
+
+def _vouched(seen, gh: GitHubClient) -> bool:
+    """Whether this comment could be the sentence an open window is missing.
+
+    Could be, and no more: inside a window we know a notice of ours may be
+    sitting unattributed, so our marker beside our own login narrows the
+    thread to the comments one of them might be. It does not identify one --
+    a reviewer quoting either marker back from the token we share matches
+    both halves exactly -- which is why the caller takes the earliest and
+    stops.
     """
     body = getattr(seen, "body", "") or ""
-    if not authored_by_us(seen, bot_login=getattr(gh, "_bot_login", None)):
-        return False
-    if _late_consent._REFUSED_MARKER_PREFIX.format(issue=issue.number) in body:
-        return True
-    if attempted is None:
-        return False
-    identified = int(getattr(seen, _COMMENT_ID, 0) or 0)
-    return _comments._ORCH_COMMENT_MARKER in body and identified > attempted
+    return (
+        _comments._ORCH_COMMENT_MARKER in body
+        and authored_by_us(seen, bot_login=getattr(gh, "_bot_login", None))
+    )
 
 
 def _publishes_under_the_park(

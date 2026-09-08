@@ -61,6 +61,12 @@ _SMALL_ADDITIONS = 12
 # tick that died before recording it left it on the thread.
 _REFUSAL = "that names another commit\n\n{marker}"
 
+# A human taking their authorization back, under a marker of ours they quoted
+# off the comment they are answering. Both markers are plain text in a public
+# thread, and the token this orchestrator posts under belongs to a person, so
+# a reviewer's retraction arrives carrying our marker AND our login.
+_RETRACTION = "actually, hold off -- re: {quoted}"
+
 _ORCHESTRATOR_IDS = "orchestrator_comment_ids"
 _WRITE_PINNED_STATE = "write_pinned_state"
 
@@ -413,10 +419,15 @@ class LostWriteAttributionTest(support._ParkedCase, unittest.TestCase):
     def _strand_a_refusal(self, answered: int) -> int:
         """Post the refusal a lost write never recorded, and say which it is.
 
-        Through the owner that posts every one of them, so the comment is
-        exactly what the tick that died would have left -- and then the state
-        is thrown away rather than written, which is the write that was lost.
+        In the two steps the road itself makes them: the window naming the
+        reply this sentence answers is recorded durably first, and then the
+        sentence goes out through the owner that posts every one of them and
+        the state carrying its id is thrown away, which is the write that was
+        lost.
         """
+        marked = self._state()
+        marked.set(_state._HELD_PUBLICATION, answered)
+        self.github.write_pinned_state(self.issue, marked)
         posted = _comments._post_issue_comment(
             self.github, self.issue, self._state(),
             _REFUSAL.format(marker=_consent._REFUSED_MARKER.format(
@@ -424,6 +435,81 @@ class LostWriteAttributionTest(support._ParkedCase, unittest.TestCase):
             )),
         )
         return posted.id
+
+    _assert_still_parked = SeamHeldParkTest._assert_still_parked
+
+
+class QuotedMarkerAttributionTest(support._ParkedCase, unittest.TestCase):
+    """What an open window may never claim, and what closes it to a reply.
+
+    Both of our markers are plain text in a public thread, and the token this
+    orchestrator posts under belongs to a person -- so a reviewer's retraction
+    arrives carrying our marker AND our login. Claimed as ours it is dropped
+    from the reading, and on a park read by its last fresh reply that leaves
+    the authorization underneath it the last word.
+    """
+
+    def test_a_quoted_receipt_attributes_nothing(self) -> None:
+        # A receipt is plain text in a public thread, and the reviewer
+        # answering the refusal it is stamped on quotes it back from the very
+        # token this orchestrator posts under. Vouched for by that marker
+        # alone their retraction is attributed here, dropped by the next
+        # tick's reading, and the authorization beneath it becomes the last
+        # word and publishes on consent that had been withdrawn.
+        self._seed(**support.measured_pair())
+        authorized = self._reply(support.AUTHORIZE)
+        retracted = self._retracts(_consent._REFUSED_MARKER.format(
+            issue=support.ISSUE_NUMBER, read=authorized,
+        ))
+
+        first, second = self._run_tick(), self._run_tick()
+
+        self.assertNotIn(retracted, self._attributed())
+        self._assert_published_nothing(first, second)
+
+    def test_a_retraction_past_our_own_survives(self) -> None:
+        # The same reply inside the one window an attribution is entitled to,
+        # where a sentence of ours really is stranded. Ours is the earlier of
+        # the two -- a quote can only follow what it quotes -- and it is the
+        # whole of what the window may claim. Taking the retraction as well
+        # would leave the authorization under it the last word again.
+        self._seed(**support.measured_pair())
+        self._reply(support.AUTHORIZE)
+        self._crash_past_the_seam()
+        retracted = self._retracts(_comments._ORCH_COMMENT_MARKER)
+
+        mocks = self._run_tick()
+
+        self._assert_still_parked(mocks)
+        self.assertNotIn(retracted, self._attributed())
+        self.assertIsNone(
+            _command._read_the_park(self.github, self.issue, self._state()),
+        )
+
+    def _assert_published_nothing(self, *ticks) -> None:
+        """No push and no handoff, whatever else these ticks decided.
+
+        The whole of what a retraction has to buy. A reply that is not the
+        command is guidance and the developer IS resumed against it -- that
+        is what the notice on this side of publication offers -- so what
+        distinguishes consent withdrawn from consent acted on is the branch
+        this issue does not have.
+        """
+        for mocks in ticks:
+            mocks[support.PUSH_BRANCH].assert_not_called()
+        self.assertEqual(self.github.label_history, [])
+
+    def _retracts(self, quoted: str) -> int:
+        """Take the authorization back, quoting one of our markers back at us."""
+        return self._reply(
+            _RETRACTION.format(quoted=quoted), author=self.github._bot_login,
+        )
+
+    def _attributed(self) -> list:
+        """Every comment id this issue's record claims the orchestrator wrote."""
+        return self._pinned().get(_ORCHESTRATOR_IDS) or []
+
+    _crash_past_the_seam = LostWriteAttributionTest._crash_past_the_seam
 
     _assert_still_parked = SeamHeldParkTest._assert_still_parked
 

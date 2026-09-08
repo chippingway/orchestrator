@@ -746,14 +746,25 @@ The keys that matter for the state machine fall into a few groups:
   nothing: it says only that one comment is ours, so the next reading drops it and finds whatever a human wrote
   last, corrected command included.
 
-  Two things license the repair, and neither is the bare orchestrator marker, which is text anybody may paste. The
-  first is this park's own **refusal receipt**, scoped to the issue it answers. The second is
-  `late_held_authorization_publication` — the watermark this stage records *before* it hands a candidate to the
-  seam and drops in the write that puts the park back, so the window it names is exactly the one in which a comment
-  of ours may reach the thread without its id reaching the record. Inside that window our marker beside our own
-  login is evidence; outside it, nothing but the scoped receipt is. Forged either way, it costs its author the
-  reply they wrote under it and leaves the park standing, which is the safe direction for a question only a human
-  can answer.
+  A recorded **window** is the whole of what licenses the repair, and it is `late_held_authorization_publication`.
+  Both roads write it before they post — the watermark a candidate was handed to the seam from, or the reply a
+  refusal answers — and both drop it in the write that would have recorded the post, so an open one names exactly
+  the interval in which a comment of ours may have reached the thread without its id reaching the record. Outside
+  one, nothing on the thread may be claimed at all.
+
+  Neither marker may stand in for that window, and the **refusal receipt** least of all, its whole job being to say
+  which reply an answer is for rather than who wrote one. Both are plain text in a public thread: the bare
+  `<!--orchestrator-comment-->` is pasted or quoted off any notice of ours, and the scoped receipt is quoted back by
+  the reviewer answering the very refusal it is stamped on. Under a token shared with a human — the hazard this
+  repository names where the id ledger is defined — that reply carries our marker *and* our login, so a rule reading
+  either as authorship would drop a retraction from the thread and let the authorization beneath it publish on
+  consent already withdrawn.
+
+  So inside an open window exactly **one** comment is claimed: the earliest that could be ours. A quote can only
+  follow the comment it quotes, so a reply answering our stranded sentence is always the later of the two. The two
+  ways to be wrong are not symmetric — claiming one too few costs a resume against our own words, and claiming one
+  too many costs a decision a human made — so this fails toward claiming too few, and a window holding none of ours
+  claims none and leaves the park standing.
 
   The park, its command, and the routing that answers it are in place; the size gate does not yet route a candidate
   into it, since the publication policy that makes an exemption half a bypass is a separate change.

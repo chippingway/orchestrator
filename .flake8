@@ -125,6 +125,7 @@ per-file-ignores =
     tests/workflow/stages/conflicts/test_settled_round.py:WPS202
     tests/workflow/stages/decomposition/test_late_cleanup_publication.py:WPS201
     tests/workflow/stages/implementing/test_late_gate_retry.py:WPS202
+    tests/workflow/stages/implementing/test_late_recovery.py:WPS202
     tests/workflow/stages/decomposition/test_late_unsplit_notice.py:WPS202,WPS204
     tests/workflow/stages/decomposition/late_content_support.py:WPS202
     tests/workflow/stages/decomposition/late_test_support.py:WPS202

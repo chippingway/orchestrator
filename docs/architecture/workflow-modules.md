@@ -1302,8 +1302,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             landed since the fetch -- a retraction of the very command being acted on included --
                             unread and unanswered, and one jumped straight to the answer's own id would swallow
                             the corrected command an operator posted between the reading and that answer. A
-                            command it may not act on is answered under a scoped
-                            receipt and consumed on the same terms. The notices are worded on the side of
+                            command it may not act on is answered under a scoped receipt and consumed on the
+                            same terms, with the window between that sentence and the write consuming it
+                            RECORDED first -- the receipt says which reply an answer is for, never who wrote
+                            one, since a reviewer quotes it back from the token this orchestrator shares. The
+                            notices are worded on the side of
                             publication the park was taken on, since guidance reaches a developer only where the
                             ordinary resume is still in front of the issue. No road at the gate enters this park
                             yet
@@ -1348,14 +1351,21 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             tree is read again INSIDE the seam, so the park, its reason and its watermark are
                             held across that call and put back wherever it left somebody waiting under another
                             reason -- and the attempt is RECORDED before that call, since the seam posts its
-                            own refusal before anything persists the id of it. Also where every comment of ours
-                            this issue lost the receipt for is attributed: a sentence posted by a tick that died
-                            before recording it is one no reader can attribute, so the resume would spawn a
+                            own refusal before anything persists the id of it. Also where the ONE comment of
+                            ours this issue lost the receipt for is attributed: a sentence posted by a tick that
+                            died before recording it is one no reader can attribute, so the resume would spawn a
                             developer against it. What is repaired is the LEDGER rather than the watermark,
                             which crosses everything under it -- a corrected command written below our sentence
-                            would be consumed unread -- and what licenses the repair is the park's own scoped
-                            receipt, or the recorded window in which we know we posted, never the bare marker
-                            anybody may paste
+                            would be consumed unread. A recorded WINDOW is the whole of what licenses the
+                            repair: both roads write one before they post and drop it in the write that would
+                            have recorded the post, and outside one nothing on the thread may be claimed at all.
+                            Neither marker may stand in for that -- the bare one is text anybody may paste, the
+                            scoped receipt is text a reviewer quotes back off the refusal it is stamped on, and
+                            the login under either may be the token this orchestrator shares with a human. So
+                            inside a window exactly one comment is claimed, the EARLIEST that could be ours,
+                            since a quote can only follow the comment it quotes: claiming one too few costs a
+                            resume against our own words, and claiming one too many deletes what its author
+                            said and publishes the authorization beneath it on consent withdrawn
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names
