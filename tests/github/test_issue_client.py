@@ -1,6 +1,6 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Real-client issue polling and child creation on the `issues` owner mixin."""
+"""Real-client sweep polling and child creation over the composed client."""
 from __future__ import annotations
 
 import unittest
@@ -12,7 +12,7 @@ from github import GithubException
 from orchestrator import config
 from orchestrator.github import client as _client
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.issues import SWEEP_LOOKUPS
+from orchestrator.github.issue_polling import SWEEP_LOOKUPS
 from orchestrator.workflow.state import WorkflowLabel
 
 _STATE_OPEN = "open"

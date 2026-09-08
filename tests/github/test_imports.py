@@ -9,7 +9,12 @@ import sys
 import unittest
 
 from orchestrator import github as _github
-from orchestrator.github import client as _github_client, comments as _comments, pinned_state as _pinned_state
+from orchestrator.github import (
+    client as _github_client,
+    comments as _comments,
+    issue_polling as _issue_polling,
+    pinned_state as _pinned_state,
+)
 
 # The package and every owner module. The initializer imports the `client`
 # owner, which pulls the whole mixin chain, and chain leaves import the package
@@ -22,6 +27,7 @@ _MODULES = (
     "orchestrator.github.client",
     "orchestrator.github.comments",
     "orchestrator.github.events",
+    "orchestrator.github.issue_polling",
     "orchestrator.github.issues",
     "orchestrator.github.labels",
     "orchestrator.github.pinned_state",
@@ -153,6 +159,15 @@ class PublicSurfaceTest(unittest.TestCase):
         # client through the owner's mixin, so the owner class stays in the MRO.
         self.assertIn(
             _pinned_state.GitHubStateMixin,
+            _github.GitHubClient.__mro__,
+        )
+
+    def test_client_inherits_the_polling_mixin_owner(self) -> None:
+        # The repository-wide issue walk is what every tick is served from, and
+        # it reaches the client by composition rather than through the issue
+        # chain, so the owner class has to be named among the bases itself.
+        self.assertIn(
+            _issue_polling.GitHubIssuePollingMixin,
             _github.GitHubClient.__mro__,
         )
 

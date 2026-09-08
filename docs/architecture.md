@@ -91,9 +91,10 @@ orchestrator/
                         credential resolution and secret redaction, and the
                         repository-config types
   github/               the composed `GitHubClient` and the pinned durable-
-                        state model over one owner per GitHub surface: issues,
-                        labels, comments, pull requests, reviews, checks, and
-                        audit events
+                        state model over one owner per GitHub surface: issue
+                        operations and the one walk over them a tick is served
+                        from, labels, comments, pull requests, reviews,
+                        checks, and audit events
   agents/               the agent-CLI subprocess layer: shared dispatch and its
                         result models, credential filtering, session parsing,
                         the process registry, and one module per backend

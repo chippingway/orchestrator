@@ -11,7 +11,7 @@ from github import GithubException
 
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
-from orchestrator.github.issues import SWEEP_LOOKUPS
+from orchestrator.github.issue_polling import SWEEP_LOOKUPS
 
 _LOG_CHANNEL = "orchestrator.github"
 _REPO_SLUG = "owner/repo"
