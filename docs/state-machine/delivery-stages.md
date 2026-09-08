@@ -507,11 +507,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   post or an unreadable thread left owed would otherwise stay owed for good), logs the hold once a tick, records a
   `standing` phase on the `agent_run_limit` event stream, and returns before the label's handler is reached. A park
   already explained says nothing more, however many ticks meet it.
-- **The one thing that lifts it** is a trusted `/orchestrator add-agent-runs N` (`workflow/engine/run_grant.py`,
-  over the request `workflow/engine/run_grant_request.py` reads out of the thread for it),
-  read off the unread thread of an OPEN issue once the park's own sentence has been said, and nowhere else — the
-  closed-issue exemption below is asked first, since what a close reaches is a terminal rather than a road that
-  spends anything. A thread this tick could not read is a park held one more poll: silence buys nothing.
+- **The one thing that lifts it** is a trusted `/orchestrator add-agent-runs N` (`workflow/engine/run_grant.py`, over
+  the request `workflow/engine/run_grant_request.py` reads out of the thread for it), read off the unread thread of an
+  OPEN issue once the park's own sentence has been said, and nowhere else — the closed-issue exemption below is asked
+  first, since what a close reaches is a terminal rather than a road that spends anything. A thread this tick could not
+  read is a park held one more poll: silence buys nothing.
   Valid — an exact positive whole number no larger than `MAX_RUNS_PER_COMMAND` — it persists an allowance of exactly
   `used + N`, clears this park alone, consumes the batch it read plus the acknowledgement it posts (and nothing that
   arrived in between — the boundary is derived from ids this tick observed, never re-read off the thread), records
