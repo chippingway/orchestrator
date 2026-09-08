@@ -79,9 +79,6 @@ per-file-ignores =
     orchestrator/workflow/stages/implementing/models.py:WPS202
     orchestrator/workflow/stages/implementing/parks.py:WPS202
     orchestrator/observability/analytics/config.py:WPS202
-    orchestrator/observability/analytics/query/rollup_reads.py:WPS201
-    orchestrator/observability/analytics/sync/run.py:WPS201
-    orchestrator/observability/dashboard/charts/cost_review.py:WPS201
     orchestrator/observability/usage/trajectory_codex_items.py:WPS202
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
