@@ -30,11 +30,11 @@ def _park_discussion(
     stage-specific one and persists the completed state mutation -- the single
     durable write every route in this stage reaches the issue through.
 
-    It also stamps `last_action_comment_id` at the newest comment on the
-    thread, which this funnel restores for the same kind of reason. That stamp
+    It also stamps `last_action_comment_id` at the id of the notice it just
+    posted, which this funnel restores for the same kind of reason. That stamp
     is right for a stage whose park ENDS the exchange, but a discussion's park
     is an invitation to answer it, and minutes of agent run separate the thread
-    the round read from the thread as it stands now. Anything posted in that
+    the round read from the thread the notice lands on top of. Anything posted in that
     window -- a human's second thought, an outsider's comment the allowlist may
     later admit -- would be recorded as read by a round that never saw it, and
     nothing here reads a comment twice. What the round did read it has already

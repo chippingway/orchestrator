@@ -432,9 +432,9 @@ the per-issue checkout only has to survive a tick when an unsafe park keeps it f
 - **Output**: the agent's response quoted in an issue comment pinging `HITL_MENTIONS`, or the matching park comment;
   `awaiting_human=True` with the durable `park_reason` re-set after `_park_awaiting_human` clears it. Or, on the
   terminal arcs above, the usage receipt plus the flip to `done` / `rejected` — and on the holds, nothing at all. That
-  helper also stamps `last_action_comment_id` at the newest comment on the thread, and this stage's park funnel puts
-  back the value it was entered with: the ceiling this round's prompt was BUILT from, not the thread as it stands
-  minutes of agent run later. A comment posted in that window — a human's second thought, or an outsider's the
+  helper also stamps `last_action_comment_id` at the id of the notice it just posted, and this stage's park funnel
+  puts back the value it was entered with: the ceiling this round's prompt was BUILT from, not the thread as it
+  stands minutes of agent run later. A comment posted in that window — a human's second thought, or an outsider's the
   allowlist may later admit — is never in front of the prompt, and this stage reads no comment twice, so recording it
   as consumed would mean it is answered never. Leaving the mark below the stage's own posted analysis is safe because
   `_new_trusted_replies` drops the orchestrator's own comments by recorded id and by the `_ORCH_COMMENT_MARKER` in

@@ -1223,8 +1223,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        `processes.terminate_process_group` (SIGKILLs surviving descendants after the leader exits) so a build grandchild
        cannot keep committing into the worktree after the timeout is recorded.
      - new commits + clean tree → the **late size gate** first (`implementing/late_gate.py` and the
-       `late_records` / `late_freeze` / `late_evidence` / `late_verdict` / `late_parks` owners under it), the one
-       seam
+       `late_records` / `late_freeze` / `late_evidence` / `late_verdict` / `late_parks` owners under it, plus
+       `late_consent` / `late_command` for the `late_unauthorized_exemption` park no road in this build takes), the
+       one seam
        all three committed dispositions publish through — a run that finished, a timeout that had committed, and a
        branch a crash stranded. With `DECOMPOSE=on` the candidate is proved to be a commit this host holds, the base
        is frozen from what the *remote* says the branch is at, and both are persisted with `late_phase=measuring`

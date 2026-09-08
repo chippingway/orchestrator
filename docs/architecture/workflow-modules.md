@@ -152,14 +152,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             and freshly-read pause refusals, and the awaiting-human park. The first is asked ahead
                             of the second wherever a stage reads the worktree before it asks whether the run
                             happened -- what a killed run left there is the operator's to see, and what a launch
-                            that never started left is nothing
+                            that never started left is nothing. The park marks the thread read to the id of the
+                            notice it POSTED rather than to whatever the thread ends on afterwards: the two differ
+                            only for a human replying between the post and that write, and on a park waiting for a
+                            reply, reading the tip there consumes the answer with the question. A post whose id
+                            nothing could read falls back to the tip, since a watermark that never moved leaves the
+                            park's own notice to be read back as somebody's guidance on every later tick
     messages.py             the markers read out of an agent's last message, the redact-before-truncate stderr
                             diagnostics a park carries when there was none, and the two commands a HUMAN writes:
                             `/orchestrator continue` with the refusal a park needing real guidance owes it, and the
                             SYNTAX alone of `/orchestrator authorize-oversized <commit>` -- read from the whole
                             comment and nowhere else, with the argument captured as written, since a malformed one
                             is a command the workflow owes an answer to. What that second command MEANS is the
-                            late-split stage owner's, which is the only place the pair it names exists
+                            late-split stage owners', which is where the pair it names exists -- one per park it can
+                            end, the adjudication's and the size gate's, each proving it against its own record
     pickup.py               an unlabeled issue's first tick: the author allowlist, the `DECOMPOSE` route, and the
                             greeting / hash / label / state order a start publishes in
     prompts.py              the prompt builders the stages share, the header, notes, and placeholders they are
