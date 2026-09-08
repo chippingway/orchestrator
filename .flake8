@@ -72,6 +72,7 @@ per-file-ignores =
     orchestrator/workflow/stages/implementing/late_freeze.py:WPS202
     orchestrator/workflow/stages/implementing/late_parks.py:WPS202
     orchestrator/workflow/stages/implementing/late_records.py:WPS202
+    orchestrator/workflow/stages/implementing/late_recovery.py:WPS201,WPS202
     orchestrator/workflow/stages/implementing/late_rewrite.py:WPS202
     orchestrator/workflow/stages/implementing/late_rotation.py:WPS202
     orchestrator/workflow/stages/implementing/late_transfer.py:WPS202

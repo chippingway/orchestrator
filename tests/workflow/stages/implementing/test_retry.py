@@ -579,9 +579,15 @@ class RetryCapGrantedAttemptTest(unittest.TestCase, _RetryCapContinueMixin):
         self._assert_reply_regrounds(github, funded)
 
     def _assert_reply_regrounds(self, github, parked) -> None:
-        """The reply after the granted run starts a session of its own."""
+        """The reply after the granted run starts a session of its own.
+
+        Numbered off the thread rather than off the seed, because the tick
+        before this one posted its own sentence there: ids ascend across a
+        thread, so a hand-picked id would land on top of that sentence and be
+        a reply no reader ever reaches.
+        """
         parked.comments.append(FakeComment(
-            id=FIRST_REPLY_ID + 1,
+            id=github.next_reply_id(parked),
             body=GUIDANCE_REPLY,
             user=FakeUser(TRUSTED_AUTHOR),
         ))

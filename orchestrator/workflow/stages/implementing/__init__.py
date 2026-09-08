@@ -15,11 +15,15 @@ retired and gates a fresh spawn against the per-issue daily cap, `resume` keeps
 the call shape every other stage wrote against, and `execution` runs one attempt
 plus the single poisoned-session retry behind it, in `worktree`'s checkout.
 
-What a finished run leaves behind is four more: `disposition` compares HEAD
+What a finished run leaves behind is five more: `disposition` compares HEAD
 against the pre-agent SHA to tell this run's commit from carried-over work,
 `late_gate` measures whatever it is about to publish and holds a candidate
 past the size ceiling unpublished under `workflow:decomposing`, `publication`
-turns a clean tree into a pushed branch, a PR, and the validating handoff, and
+turns a clean tree into a pushed branch, a PR, and the validating handoff,
+`late_recovery` answers the three parks that gate takes -- one owed another
+reading, one another look at the checkout, and one a decision only an operator
+can make -- routing each back through the disposition's own publication seam
+ahead of any spawn, since on all three the work is committed already, and
 `parks` owns the five ways a commit-less or unpublishable run stops. The gate
 sits inside the disposition rather than beside it because being the ONE seam
 all three committed outcomes publish through -- a finished run, a timeout that
@@ -40,14 +44,19 @@ reads the attribution back off one somebody else opened; and
 `handoff` owns the last write and the relabel it goes out ahead of.
 
 `late_gate` is the order its own questions are asked in and nothing else, so
-five owners sit under it: what one gate call is ABOUT and the identity every
+seven owners sit under it: what one gate call is ABOUT and the identity every
 refusal is reported under is `late_records`, the pair a count is taken over is
 `late_freeze`, what a recovery proves before it acts on a recorded commit is
 `late_evidence`, what a measured candidate earns -- the push, the
 `workflow:decomposing` hold, and the retirement each is durable behind -- is
 `late_verdict`, and the one park shape every unreadable reading takes, with
 the typed failure both sinks carry and the approval group whose basis says
-which owner granted a publication debt, is `late_parks`.
+which owner granted a publication debt, is `late_parks`. The last two are the
+park an adjudicated candidate with no operator authorization behind it waits
+on: `late_consent` takes it, records what an operator's command authorizes
+from the gate's own reading, and answers a command it may not act on, while
+`late_command` beside it decides which reply on a standing park a tick should
+act on at all -- the last fresh trusted reply, and how far reading it got.
 
 A candidate the remote already carries is the same gate one seam further on,
 and ten more owners divide it the way the seam itself divides: what a call

@@ -75,6 +75,18 @@ _AWAITING_HUMAN = "awaiting_human"
 
 _LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 
+# The watermark an authorization park was standing at when this stage handed
+# its candidate to the publication seam, written before that call and dropped
+# by the write that puts the park back. It names a WINDOW rather than a fact
+# about the work: the seam posts its own refusal before anything persists the
+# id of it, so a process dying in between leaves a sentence of ours on the
+# thread that no later reader can attribute -- and one standing over the
+# command this park waits on is read as somebody's fresh guidance and resumed
+# a developer against. Present, it says a comment past this mark carrying our
+# marker and our login is ours; absent, nothing but the park's own scoped
+# receipt may say that of any comment.
+_HELD_PUBLICATION = "late_held_authorization_publication"
+
 _AGENT_TIMEOUT = "agent_timeout"
 
 # The park a handoff refuses on: the checkout is not the commit the size

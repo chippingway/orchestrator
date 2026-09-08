@@ -105,11 +105,7 @@ class LateApprovalBasis(StrEnum):
     candidate past the ceiling earns when an operator authorizes it at the
     gate itself -- the count behind it was this gate's own, so recording it as
     a reading would be true and useless: what let it through was the human,
-    and a record damaged before the push would have it publish unmeasured. No
-    owner grants that last one, since no road at the gate collects an
-    operator's authorization; it is spelled here so the readers deciding what
-    an approval rests on are written against the whole vocabulary rather than
-    against the members that happen to have a writer.
+    and a record damaged before the push would have it publish unmeasured.
 
     A value from anywhere else, and an approval an older binary wrote with no
     basis at all, read back as no basis -- and what a reader does with that is
@@ -123,11 +119,9 @@ class LateApprovalBasis(StrEnum):
 
 
 # The two an operator's gesture is behind, which may be spent only while that
-# gesture can still be read. Named as a group because that is the question a
-# reader has of the basis -- whether a debt has to be revalidated, rather than
-# which owner granted it -- so the membership is stated once here instead of
-# being re-derived by each of them. Nothing reads it while the gate has no road
-# collecting an authorization, and it is the whole of what the two share.
+# gesture can still be read. Spelled as a group because the readers ask about
+# the group rather than about either member: what they are deciding is whether
+# a debt has to be revalidated, not which owner granted it.
 AUTHORIZED_BASES = frozenset((
     LateApprovalBasis.ADJUDICATION,
     LateApprovalBasis.AUTHORIZATION,

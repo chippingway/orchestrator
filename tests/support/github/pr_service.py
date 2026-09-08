@@ -51,7 +51,7 @@ class _PullCreationService:
 
     def pr_comment(self, pr_number: int, body: str) -> FakeComment:
         new_comment = FakeComment(
-            id=next(self._comment_id),
+            id=self._next_comment_id(),
             body=body,
             user=FakeUser("orchestrator"),
         )

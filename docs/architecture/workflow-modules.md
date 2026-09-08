@@ -1270,11 +1270,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             disposition or at its next-tick recovery; the attribution both readings rest on,
                             which needs BOTH ends of the comparison read and parks where either is not; the
                             certified floor a clean exit is credited against, the size gate every clean
-                            committed candidate passes, the timeout and measurement parks' own recoveries --
-                            the moved-checkout one asking `checkout_recovery` below whether the worktree has
-                            come back, since that park is settled by the checkout rather than by a reply --
-                            and the approved commit an interrupted publication owes, disposed against the
-                            record naming it rather than against any ahead-of-base reading
+                            committed candidate passes, the timeout park's own recovery, and
+                            the approved commit an interrupted publication owes, disposed against the record
+                            naming it rather than against any ahead-of-base reading. The three parks the size
+                            gate itself takes are answered by `late_recovery` beside it, which routes each back
+                            through this owner's publication seam
       late_gate.py          the order the size gate's questions are asked in, taken over one subject so both seams
                             ask them the same way: the switch, the commit the caller named -- proved against the
                             checkout before anything is persisted or pushed, since between the caller's read and this
@@ -1283,6 +1283,79 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             say a commit is already decided (the adjudication's exemption, the gate's own unspent
                             approval, and the commit this stage already pushed), a record already answering, and
                             the count that answers a pair nothing has yet
+      late_consent.py       the park an adjudicated candidate with no operator authorization behind it waits on,
+                            and everything a reply to it is worth: a hold rather than a route back to the
+                            adjudication, since the change has been ruled one change already and what is missing
+                            is the person, taken without deleting, migrating, or repairing a field, announced
+                            once per pair, and taken without making the COUNT durable -- a generation answering
+                            "oversized" is what the dispatcher restores `workflow:decomposing` over, so a park
+                            carrying one would be relabelled out from under itself on the next poll and nothing
+                            could ever answer it. The command earns the `late_override_*` group written from the
+                            gate's OWN reading -- the pair it froze, the count it took, the ceiling it was
+                            counted against, the digest recomputed between that pair, and the comment it was
+                            written in -- in the one write that takes the park off and consumes the reply, while
+                            a reading this host cannot take records nothing and leaves both where they stand.
+                            What that write consumes is what the READING got to, then the unbroken run of OUR
+                            OWN comments above it, and no further: ids ascend, so an answer of ours lands above
+                            the reply it answers and must be consumed or the next poll reads our own words as a
+                            human's, while a watermark taken from the thread's tip NOW would swallow whatever
+                            landed since the fetch -- a retraction of the very command being acted on included --
+                            unread and unanswered, and one jumped straight to the answer's own id would swallow
+                            the corrected command an operator posted between the reading and that answer. A
+                            command it may not act on is answered under a scoped
+                            receipt and consumed on the same terms. The notices are worded on the side of
+                            publication the park was taken on, since guidance reaches a developer only where the
+                            ordinary resume is still in front of the issue. No road at the gate enters this park
+                            yet
+      late_command.py       which reply on a standing park a tick should act on, and nothing else: no record is
+                            written and nothing is decided. The LAST fresh trusted reply, because reading the
+                            batch as a set is what poisons a park -- a reply matching nothing is never consumed
+                            on the seams that publish onto an open pull request, so it would stand in every
+                            later batch and refuse the correct command behind it. It hands back how far that
+                            reading got as well as which reply to act on, since what an answer may consume is
+                            what was looked at and no more. A reply that IS the command is carried whatever it
+                            goes on to say, an argument nobody could act on included, which is what earns an
+                            abbreviation the sentence saying so instead of a silent park. Three authors are
+                            never in the reading: an outsider, a comment with no id, and the orchestrator itself
+                            -- the park notice spells the command out ready to copy, so our own sentences are
+                            exactly what a reader matching on that syntax would mistake for one. The pinned
+                            record is named by its ID on both reads rather than by its marker, since that
+                            fallback hides every comment merely QUOTING one and a reply hidden from this
+                            reading is a reply whose author never spoke. Being ours is
+                            PROVED by the recorded id and by nothing else, because the last-reply rule makes
+                            dropping a comment the same act as deleting what its author said: a retraction taken
+                            for one of ours never happened, and the authorization beneath it becomes the last
+                            word and publishes on consent withdrawn. The marker is text anybody may paste, and
+                            the author login is the shared-PAT hazard named where that ledger is defined -- a
+                            reviewer posting from the token's own account matches it exactly, and they are the
+                            one whose consent this park collects. A comment the ledger cannot vouch for stays in
+                            the reading, which leaves the park standing rather than publishing
+      late_recovery.py      the three parks the size gate takes, answered ahead of every spawn because the work
+                            in question is committed already: one owed another READING, which a trusted bare
+                            `/orchestrator continue` asks for; one owed another LOOK at the checkout, which no
+                            reply can supply and which says nothing until the answer changes, asking
+                            `checkout_recovery` below whether the worktree has come back; and one owed a
+                            DECISION nothing but the named command can be. Each hands its answer to the same
+                            publication seam the committed work came out of, so a recovery reaches exactly the
+                            outcomes a fresh disposition does and decides nothing the gate would have decided. A
+                            checkout that is GONE stops all three before that seam, and what it costs differs by
+                            what the park was waiting for: a reading can be asked for again, so the measurement
+                            park lets the seam park under a reason of its own, while the seam's reason would
+                            take the authorization park's off and its notice would move the watermark past the
+                            command still standing -- so that road asks the seam's own questions first, the
+                            worktree on this host and its tree provably carrying nothing loose, and holds
+                            exactly as found wherever the answer is no. Asking first cannot close it, since the
+                            tree is read again INSIDE the seam, so the park, its reason and its watermark are
+                            held across that call and put back wherever it left somebody waiting under another
+                            reason -- and the attempt is RECORDED before that call, since the seam posts its
+                            own refusal before anything persists the id of it. Also where every comment of ours
+                            this issue lost the receipt for is attributed: a sentence posted by a tick that died
+                            before recording it is one no reader can attribute, so the resume would spawn a
+                            developer against it. What is repaired is the LEDGER rather than the watermark,
+                            which crosses everything under it -- a corrected command written below our sentence
+                            would be consumed unread -- and what licenses the repair is the park's own scoped
+                            receipt, or the recorded window in which we know we posted, never the bare marker
+                            anybody may paste
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names

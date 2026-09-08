@@ -71,7 +71,11 @@ class FakeGitHubClient(_IssueClient, _PullClient):
         self._pollable_calls = 0
         self._issues = {issue.number: issue for issue in issues}
         self._pinned = {}
-        self._comment_id = count(start=1000)
+        # The highest comment id this client has minted, on any thread. A
+        # plain counter rather than an iterator because the thread's own
+        # comments move it too: ids ascend across a whole thread on GitHub,
+        # so a seeded reply above this mark pushes the next minted id past it.
+        self._comment_id = 1000
         self._pr_id = count(start=1)
         self._next_issue_number = count(
             start=max(self._issues, default=0) + 100,
