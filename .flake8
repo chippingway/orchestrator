@@ -1,15 +1,12 @@
 [flake8]
 # WPS235's ceiling on the names one `from ... import` may carry, raised from
-# the default 8. Sorted imports -- `I001`, which the default Ruff run enables --
-# merge every statement reading from the same module into one, so a module read
-# for more names than the ceiling can no longer answer for them a chunk at a
-# time; what the count measures is what a module is read for, not how the read
-# is spelled. 30 clears the widest read in the tree, a stage's test module
-# against the support module that seeds its scenarios, with room for the next
-# name it grows.
+# the default 8. Sorted imports merge every statement reading from one module
+# into one, so the count measures what a module is read for, not how the read
+# is spelled; 30 is headroom over the widest such read.
 max-import-from-members = 30
-# Exact paths keep deliberate package APIs and cohesive domain owners exempt
-# without weakening WPS checks for neighboring or future files.
+# Exact-path waivers, one per diagnostic a deliberate package API or a cohesive
+# domain owner still reports. No globs, so neighboring and future files stay
+# held to the rule. docs/configuration/operations.md states what earns an entry.
 per-file-ignores =
     orchestrator/__init__.py:WPS412,WPS410
     orchestrator/config/__init__.py:WPS412,WPS410

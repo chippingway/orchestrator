@@ -102,10 +102,28 @@ invisible in the namespace, which holds the same submodule either way — and co
 `__all__` against the list above, so a ninth publisher is a deliberate edit here and a scope in
 [`../../.flake8`](../../.flake8) rather than a silent widening of what a package answers for.
 
-`orchestrator/github/pull_requests.py` (`WPS214`) owns the whole pull-request surface — branch/base lookup, creation,
-comments, labeling, retrieval, the SHA-pinned merge, and the head-branch delete — so its client mixin carries 8
-methods past the ceiling of 7. Splitting the merge-side mutations out would hand the composed client two mixins for
-one owner, so the method count is waived there instead.
+`orchestrator/github/pull_requests.py` (`WPS214`) is the shape the entries fronting no package take: one owner for
+one subject, carrying more of something than the rule admits because the subject does. Which subject that is, and why
+splitting it would cost more than the count does, is stated on the module itself rather than here, which is where a
+retained entry's reason belongs. What this page settles is only the kind of reason it has to be.
+
+That is the whole policy an entry has to meet: the diagnostic has to be what an architectural invariant this
+repository holds costs — one owner per subject, a package initializer publishing a deliberate API, a support module
+seeding one stage's scenarios — rather than what a module that outgrew itself costs. A module that merely got long is
+split, not waived. And a split that lands may not hand its halves an entry of their own: an exemption that moves into
+a new module is the boundary not having been found, so the original entry stays where it was, with its invariant said
+out loud on the owner that carries it, until a split arrives that needs neither.
+
+Each entry names an exact path and the exact codes that path reports, never a glob and never a code the path is
+already clean under, so a neighbouring file and a future one stay held to the rule; no WPS suppression is spelled in
+the source, so [`../../.flake8`](../../.flake8) is the one place the exempt set is read from. And the ceilings
+themselves are left where the rules ship them — the single raised setting there answers for how a sorted tree spells
+its reads rather than for any file under it — so widening a limit is never how one file is answered for.
+
+The list is audited against the diagnostics rather than carried forward. `flake8 --isolated --select=<codes>
+orchestrator tests` reports what each waived rule would say with the entries gone, and every entry has to answer one
+of those lines. An entry with no line behind it is a refactor that has already landed, and is deleted rather than left
+standing as a permission the tree no longer needs.
 
 The rule set is Ruff's own. `[tool.ruff.lint]` in [`../../pyproject.toml`](../../pyproject.toml) declares no `select`,
 so what `ruff check orchestrator tests` enforces is whatever the `ruff` resolved in [`../../uv.lock`](../../uv.lock)
@@ -190,8 +208,9 @@ Sorting is also what sets `max-import-from-members` in [`../../.flake8`](../../.
 30. `WPS235` caps the names one `from ... import` may carry, and a module read for more than the cap can answer for
 them a chunk at a time only while several statements may name it. A sorted tree has no such spelling — every statement
 reading from one module merges into one — so what the count measures is what a module is read for rather than how the
-read is spelled. 30 clears the widest read in the tree, a stage's test module against the support module that seeds
-its scenarios at 27 names, with room for the next name it grows.
+read is spelled. 30 is headroom rather than a measurement of what the tree currently reads: what moves it is a read
+this repository already means to allow no longer fitting under it, and nothing else. Which module sits closest to the
+ceiling on any given day is not what the setting answers for, and is not recorded here.
 
 The CI workflow declares `permissions: contents: read` so the run's `GITHUB_TOKEN` is read-only and cannot publish
 artifacts, push tags, or comment on PRs. The job uses no repository secrets, so PRs from forks run safely under the same
