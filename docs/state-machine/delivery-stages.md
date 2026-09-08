@@ -65,12 +65,13 @@ Non-human content is filtered eight ways:
   requirements content, so it must not shift the hash and route the nudge through drift handling instead of the stage's
   intentional session-limit retry (a comment carrying the command *alongside* genuine guidance is not bare, so it still
   shifts the hash);
-- a bare `/orchestrator add-agent-runs N` command via `run_grant._is_bare_command`, for the same reason and one of its
-  own: the dispatcher answers that command and then hands the **same tick** to the stage below, so a hash counting it
-  would meet the handler as a body edit nobody made — `validating` would resume the developer on "the human edited the
-  issue" instead of running the reviewer round the issue stopped mid-way through. Filtered in **both** hashing modes,
-  since the legacy algorithm the flag below reproduces predates the command entirely; guidance beside the command is
-  requirements here too, so it is not bare, it shifts the hash, and the drift road carries those words to the agent;
+- a bare `/orchestrator add-agent-runs N` command via `run_grant_request._is_bare_command`, for the same reason and
+  one of its own: the dispatcher answers that command and then hands the **same tick** to the stage below, so a hash
+  counting it would meet the handler as a body edit nobody made — `validating` would resume the developer on "the human
+  edited the issue" instead of running the reviewer round the issue stopped mid-way through. Filtered in **both**
+  hashing modes, since the legacy algorithm the flag below reproduces predates the command entirely; guidance beside
+  the command is requirements here too, so it is not bare, it shifts the hash, and the drift road carries those words
+  to the agent;
 - a whole-comment `/orchestrator authorize-oversized <commit>` via
   `messages._authorized_oversized_candidate`, in both modes and for the same reasons: it is an operator control, and
   the tick that reads it hands the **same issue** straight on to the stage the authorized publication continues at,
@@ -506,7 +507,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   post or an unreadable thread left owed would otherwise stay owed for good), logs the hold once a tick, records a
   `standing` phase on the `agent_run_limit` event stream, and returns before the label's handler is reached. A park
   already explained says nothing more, however many ticks meet it.
-- **The one thing that lifts it** is a trusted `/orchestrator add-agent-runs N` (`workflow/engine/run_grant.py`),
+- **The one thing that lifts it** is a trusted `/orchestrator add-agent-runs N` (`workflow/engine/run_grant.py`,
+  over the request `workflow/engine/run_grant_request.py` reads out of the thread for it),
   read off the unread thread of an OPEN issue once the park's own sentence has been said, and nowhere else — the
   closed-issue exemption below is asked first, since what a close reaches is a terminal rather than a road that
   spends anything. A thread this tick could not read is a park held one more poll: silence buys nothing.

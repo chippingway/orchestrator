@@ -205,21 +205,27 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             unless the charge landed. Each of the three durable steps is recorded to both sinks
                             through `run_budget.py` and recorded AFTER the write that takes it, so a reused charge
                             reports only the spawn it paid for and a refused write reports nothing
-    run_grant.py            the one command that answers the spent-ledger park below: a trusted
-                            `/orchestrator add-agent-runs N`, read only while that park stands and only as an exact
-                            positive count no larger than `MAX_RUNS_PER_COMMAND`. It persists an allowance of
-                            exactly `used + N` -- absolute rather than additive, so the same command read twice
-                            buys the same ceiling -- clears that park alone, consumes the batch it read and the
-                            answer it wrote under it (never a comment that arrived between the two: the boundary is
-                            built from ids this tick observed rather than re-read off the thread), and lets the tick
-                            reach the stage its label names. Every other request leaves both
-                            counts where they were and earns one receipt; an untrusted one earns nothing at all.
-                            Both answers are marked with the comment that asked, so a post whose write never landed
-                            is recognized rather than said twice, and the bare-command reading the drift hash filters
-                            on lives here too -- the tick that answers the command is the tick the stage below runs
-                            on, so a hash counting it would call a body nobody edited changed requirements. Only
-                            the ending that moves the ceiling reaches the shared budget stream, and only once the
-                            write that moves it has landed
+    run_grant.py            the one command that answers the spent-ledger park below: a trusted `/orchestrator
+                            add-agent-runs N`, read only while that park stands and only as the request the parser
+                            beside it hands over. It persists an allowance of exactly `used + N` -- absolute rather
+                            than additive, so the same command read twice buys the same ceiling -- clears that park
+                            alone, consumes the batch it read and the answer it wrote under it (never a comment that
+                            arrived between the two: the boundary is built from ids this tick observed rather than
+                            re-read off the thread), and lets the tick reach the stage its label names. Every other
+                            request leaves both counts where they were and earns one receipt; an untrusted one earns
+                            nothing at all. Both answers are marked with the comment that asked, so a post whose write
+                            never landed is recognized rather than said twice. Only the ending that moves the ceiling
+                            reaches the shared budget stream, and only once the write that moves it has landed
+    run_grant_request.py    what a `/orchestrator add-agent-runs N` comment has to say before the owner above acts on
+                            it: the command as a whole line of its own, the exact positive count no larger than
+                            `MAX_RUNS_PER_COMMAND` its argument has to be -- leading zeros dropped before the length
+                            is measured, so `007` is seven and a digit string too long to be inside the bound is
+                            turned away before `int()` can raise on it -- the last such line in a batch as the
+                            request, and the record carrying it, the comment that asked, and the batch a tick may
+                            claim to have read. It reads words and decides what they buy; no ledger, park, or thread
+                            is touched here. The bare-command reading the drift hash filters on lives beside them,
+                            since the tick that answers the command is the tick the stage below runs on and a hash
+                            counting it would call a body nobody edited changed requirements
     run_ledger.py           the lifetime agent-run ledger one issue is read against: the allowance in force -- the
                             issue's own where it carries one, the configured ceiling everywhere else -- the
                             monotonic count of runs it has spent, seeded and floored by the legacy `issue_agent_runs`

@@ -241,6 +241,7 @@ examples.
   budget nothing here reopens on a clock: what lifts that park is one trusted
   [`/orchestrator add-agent-runs N`](../README.md#holding-and-unsticking-an-issue) on the thread, bounded per
   command by `MAX_RUNS_PER_COMMAND` (50) in
+  [`workflow/engine/run_grant_request.py`](../orchestrator/workflow/engine/run_grant_request.py) and answered by
   [`workflow/engine/run_grant.py`](../orchestrator/workflow/engine/run_grant.py), which records
   `agent_run_allowance` = `used + N` on the issue and so takes it off this setting for good. That park is handed the
   ledger reading rather than taking one, so it quotes the numbers a refusal was made on — and no stage handler turns

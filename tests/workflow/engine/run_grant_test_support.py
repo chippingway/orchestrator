@@ -4,19 +4,61 @@
 
 The park's own fixtures live beside its owner
 (`run_limit_test_support`); what is here is the half this command adds to
-them -- an issue that has actually spent what it was allowed, and the comment
-somebody wrote on its thread. Both the owner's tests and the dispatcher's read
-them, since the command is answered by the hold rather than by a stage.
+them -- an issue that has actually spent what it was allowed, the comment
+somebody wrote on its thread, and the counts that buy runs beside the ones
+that buy none. Three suites read them: the grammar that turns a line into a
+request, the owner that spends on one, and the dispatcher's, since the command
+is answered by the hold rather than by a stage.
 """
 from __future__ import annotations
 
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import run_grant_request as _run_grant_request
 from tests.support.fakes import FakeComment, FakeUser
 from tests.workflow.engine.run_limit_test_support import (
     ALLOWANCE,
     USED_FIELD,
     WATERMARK,
     parked_state,
+)
+
+# What one buyable request asks for, and the ceiling it leaves behind on an
+# issue that has already spent everything it was allowed. The number is read
+# by the grammar and by the park alike, so both are pinned to the same one.
+ADDED = 3
+
+GRANTED_ALLOWANCE = ALLOWANCE + ADDED
+
+VALID = f"/orchestrator add-agent-runs {ADDED}"
+
+# Two asks in one batch. Both sit above the watermark a park consumed, so
+# either is unread, and the receipt each earns is scoped to the one that
+# carried it -- which is what the pair are here to tell apart.
+FIRST_ASK = WATERMARK + 1
+
+SECOND_ASK = WATERMARK + 2
+
+# Comfortably past `sys.int_info.default_max_str_digits`, the length at which
+# the interpreter refuses to build an integer out of a decimal string.
+_OVERLONG_DIGITS = 5000
+
+# A count is the whole of what this command says, so everything that is not
+# one whole number inside the bound reads the same way: nothing bought.
+UNBUYABLE = (
+    "",
+    "0",
+    "000",
+    "-3",
+    "+3",
+    "3.5",
+    "three",
+    "0x3",
+    "\N{ARABIC-INDIC DIGIT THREE}",
+    str(_run_grant_request.MAX_RUNS_PER_COMMAND + 1),
+    # A count no bound could hold, and one `int()` refuses to convert at all
+    # past the interpreter's own limit -- so it has to be turned away before
+    # it is converted rather than raised over.
+    "9" * _OVERLONG_DIGITS,
 )
 
 # The default id a command comment carries: above the watermark a park
