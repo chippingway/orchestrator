@@ -60,6 +60,7 @@ _OWNERS = (
     "relabel_hazard",
     "relabel_refusal",
     "resume",
+    "resume_request",
     "retry_cap",
     "session",
     "session_read",

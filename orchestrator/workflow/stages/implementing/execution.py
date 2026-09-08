@@ -39,6 +39,7 @@ from orchestrator.workflow.engine import (
 )
 from orchestrator.workflow.stages.implementing import (
     models as _models,
+    resume_request as _resume_request,
     session as _session,
     state as _state,
     worktree as _worktree,
@@ -54,19 +55,19 @@ class _DevResumeContext:
     issue: Issue
     state: PinnedState
     followup_text: str
-    options: _models._DevResumeOptions
+    options: _resume_request._DevResumeOptions
     worktree: Path
     plan: _models._DevResumePlan
     stage: str
 
     @classmethod
     def build(
-        cls, request: _models._DevResumeRequest,
+        cls, request: _resume_request._DevResumeRequest,
     ) -> _DevResumeContext:
         if len(request.resume_args) != 2:
             raise TypeError("expected state and followup_text")
         state, followup_text = request.resume_args
-        options = _models._DevResumeOptions.from_fields(request.option_fields)
+        options = _resume_request._DevResumeOptions.from_fields(request.option_fields)
         worktree = _worktree._ensure_resume_worktree(request.spec, request.issue, state)
         plan = _session._resolve_dev_session_for_resume(request.issue, state)
         return cls(

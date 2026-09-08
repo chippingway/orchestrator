@@ -1282,6 +1282,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       session_read.py       the locked session read plus the stale / overflow / quota classifiers and the blockquote
                             they quote with
       resume.py             the two resume entry points and the historical call shape they keep
+      resume_request.py     what one such call supplied, frozen and checked before a run is built: the stage
+                            its records are attributed to, and the unknown option a named parameter would
+                            have refused on its own
       execution.py          one resume, its poisoned-session retry -- withheld on an issue a poll observed closed,
                             since that retry is a SECOND agent -- and what each attempt is allowed to persist
       worktree.py           the checkout a resume runs in, restored when reaped
