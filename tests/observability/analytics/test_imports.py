@@ -18,6 +18,8 @@ _PACKAGE = "orchestrator.observability.analytics"
 
 _CONFIG_OWNER = "config"
 
+_ENVIRONMENT_OWNER = "environment"
+
 _RETENTION_OWNER = "retention"
 
 _RETENTION_REWRITE_OWNER = "retention_rewrite"
@@ -33,6 +35,7 @@ _SINK_OWNER = "sink"
 # directory against.
 _OWNERS = (
     _CONFIG_OWNER,
+    _ENVIRONMENT_OWNER,
     _RETENTION_OWNER,
     _RETENTION_REWRITE_OWNER,
     _RETENTION_SCAN_OWNER,
@@ -55,25 +58,28 @@ _KNOBS = (
 # What each owner answers for, declared rather than discovered so a new public
 # name is a deliberate edit: these are what a caller reaches for a setting or a
 # prune, and an accidental export is a second answer to the same question.
-# Configuration is the parse of the six knobs, the view every adapter reads
-# one back through and the two ways it is entered, and the read-path URL
-# fallback; `settings` beside it binds nothing but the parsed values. Retention
-# is the three entry points one caller each reaches -- the per-tick wrapper and
-# the two sinks' by-age prunes -- over a scan that decides what is expired and
-# a rewrite that swaps the file out from under it. The `sink` owner is what
-# both write packages share: the record envelope and the JSONL line under it.
+# Configuration is the view every adapter reads a knob back through, the two
+# ways it is entered, and the read-path URL fallback; `environment` under it is
+# the parse of the six knobs and nothing else, and `settings` beside them binds
+# nothing but what that parse returned. Retention is the three entry points one
+# caller each reaches -- the per-tick wrapper and the two sinks' by-age prunes
+# -- over a scan that decides what is expired and a rewrite that swaps the file
+# out from under it. The `sink` owner is what both write packages share: the
+# record envelope and the JSONL line under it.
 _SURFACES = MappingProxyType({
     _CONFIG_OWNER: (
         "Settings",
         "live_settings",
+        "resolve_db_url",
+        "settings_on",
+    ),
+    _ENVIRONMENT_OWNER: (
         "parse_db_url",
         "parse_log_path",
         "parse_retention_days",
         "parse_track_skill_triggers",
         "parse_trajectory_log_path",
         "parse_trajectory_retention_days",
-        "resolve_db_url",
-        "settings_on",
     ),
     _RETENTION_OWNER: (
         "prune_old_records",
@@ -106,13 +112,13 @@ _SURFACES = MappingProxyType({
 # pruned by, a read issued through, or a replay started from.
 _VACATED_TREE = "orchestrator/analytics"
 
-# Every adapter that has to obtain configuration from the owner: the holder
-# that binds the parsed knobs, the append paths of both sinks and the prune
-# both are bounded by, the two skill readers, the gate the opt-in trajectory
-# write runs behind, the two read-path owners that resolve a query's URL, and
-# the sync request that falls back to both sink knobs.
+# Every adapter that has to read a knob back through the owner: the append
+# paths of both sinks and the prune both are bounded by, the two skill readers,
+# the gate the opt-in trajectory write runs behind, the two read-path owners
+# that resolve a query's URL, and the sync request that falls back to both sink
+# knobs. The holder they read off is not among them -- it obtains the values by
+# parsing rather than by reading one back, so it names the `environment` owner.
 _CONFIG_ADAPTERS = (
-    "orchestrator.observability.analytics.settings",
     "orchestrator.observability.analytics.recording.events",
     "orchestrator.observability.analytics.recording.catalog",
     "orchestrator.observability.analytics.recording.skills",
@@ -124,10 +130,16 @@ _CONFIG_ADAPTERS = (
     "orchestrator.observability.analytics.sync.run",
 )
 
+# The one adapter of the parse, which is what makes a knob's spelling answer
+# the same way for every reader downstream of the holder.
+_ENVIRONMENT_ADAPTERS = ("orchestrator.observability.analytics.settings",)
+
 # The one owner allowed outside the observability tree, and what it reaches:
 # the default analytics sink lives under `config.LOG_DIR`, so the module that
-# binds the knobs is where that dependency is paid. `live_settings` names it
-# inside the call, so no producer pays for it at import.
+# binds the knobs is where that dependency is paid -- the parse defers the
+# import to the call, so it is planted by this holder's import and by no
+# other. `live_settings` names the holder inside the call in turn, so no
+# producer pays for it at import.
 _OUTSIDE_REACH = MappingProxyType({_SETTINGS_OWNER: ("orchestrator.config",)})
 
 
@@ -212,6 +224,16 @@ class LayeringTest(unittest.TestCase):
             with self.subTest(adapter=adapter):
                 self.assertIn(
                     _qualified(_CONFIG_OWNER),
+                    _imported_orchestrator_modules(adapter),
+                )
+
+    def test_the_holder_names_the_environment_owner(self) -> None:
+        # The parse is reached only to bind the knobs: a reader that wants a
+        # value asks the holder for it rather than parsing a second time.
+        for adapter in _ENVIRONMENT_ADAPTERS:
+            with self.subTest(adapter=adapter):
+                self.assertIn(
+                    _qualified(_ENVIRONMENT_OWNER),
                     _imported_orchestrator_modules(adapter),
                 )
 

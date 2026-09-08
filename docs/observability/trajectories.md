@@ -18,9 +18,9 @@ knobs are in [`configuration/observability.md`](../configuration/observability.m
 A sibling, opt-in JSONL sink for agent *reasoning trajectories* — the ordered timeline of tool calls / results
 interleaved with the assistant / user text turns, plus the final output a run produced — written by
 `orchestrator/observability/analytics/trajectories/`, its two knobs (`TRAJECTORY_LOG_PATH` /
-`TRAJECTORY_RETENTION_DAYS`) parsed alongside the analytics ones by `observability/analytics/config.py`. It is kept
-deliberately **separate** from the analytics sink so the large free-text trajectory bodies never enter the numeric
-usage rollup, its Postgres aggregation, or the dashboard.
+`TRAJECTORY_RETENTION_DAYS`) parsed alongside the analytics ones by `observability/analytics/environment.py`. It is
+kept deliberately **separate** from the analytics sink so the large free-text trajectory bodies never enter the
+numeric usage rollup, its Postgres aggregation, or the dashboard.
 
 **Producer: `record_agent_exit`.** After the baseline `agent_exit` analytics record (and the opt-in skill parse) are
 produced, `record_agent_exit` calls `trajectories.persistence.maybe_record_trajectory`, which — only when
