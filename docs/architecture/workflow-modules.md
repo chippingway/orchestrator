@@ -1282,7 +1282,99 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             three records that
                             say a commit is already decided (the adjudication's exemption, the gate's own unspent
                             approval, and the commit this stage already pushed), a record already answering, and
-                            the count that answers a pair nothing has yet
+                            the count that answers a pair nothing has yet. An issue ALREADY standing on the
+                            authorization park, over an exemption naming this very commit, is asked ahead of every
+                            one of them and answered by `late_consent` instead: what that park doubts is the
+                            exemption itself, so reading it here as "already decided" would publish the bypass the
+                            park was taken to withhold. Nothing in this build takes that park, so the question is
+                            False on every ordinary tick
+      late_consent.py       the park an adjudicated candidate with no operator authorization behind it waits on,
+                            the one door into it -- an issue standing on it over an exemption naming the commit in
+                            hand, which is the whole of what keeps the policy off every other issue. All three are
+                            asked because the park collects HALF of a two-part bypass: opened on the park fields
+                            alone, a command would earn the override group and publish a candidate no adjudicator
+                            ruled on, so a missing exemption, one naming another commit, and one in a shape the
+                            domain's reader refuses each leave the tick to the ordinary road, where an oversized
+                            candidate is routed to the adjudication it is owed. Behind that door: the pair
+                            frozen and COUNTED afresh on the tick that acts, since the terms an authorization is
+                            recorded on are that pair, those additions and that ceiling, and a candidate the fresh
+                            count puts at or below the ceiling needs nobody's permission and goes to the ordinary
+                            settlement -- with the park taken off IN that settlement's own write, since the
+                            retirement beside it drops only a park a fresh reading answers, and a commit published
+                            over a record still saying a human holds the issue is one the source stage's parked
+                            road stops on every poll after. Two things are read ahead of the freeze because the
+                            freeze is a write: the sentence this owner may have said and lost the receipt for, and
+                            the commit the standing park is OVER -- read after, the pair just persisted answers,
+                            every park compares equal to the candidate being asked about, and the human waiting on
+                            one commit is never told about the one a resumed developer has since committed. Then
+                            everything a reply to it is worth: a hold rather than a route back to
+                            the adjudication, since the change has been ruled one change already and what is
+                            missing is the person, taken without deleting, migrating, or repairing a field,
+                            announced once per pair, and taken without making the COUNT durable -- a generation
+                            answering "oversized" is what the dispatcher restores `workflow:decomposing` over, so a
+                            park carrying one would be relabelled out from under itself on the next poll and
+                            nothing could ever answer it. The command earns the `late_override_*` group written
+                            from the gate's OWN reading -- the pair it froze, the count it took, the ceiling it was
+                            counted against, the digest recomputed between that pair, and the comment it was
+                            written in -- in the one write that takes the park off, consumes the reply and drops
+                            any sentence the park still owed the thread, while a reading this host cannot take
+                            records nothing and leaves both where they stand. What that write consumes is what the
+                            READING got to, then the unbroken run of OUR OWN comments above it, and no further: ids
+                            ascend, so an answer of ours lands above the reply it answers and must be consumed or
+                            the next poll reads our own words as a human's, while a watermark taken from the
+                            thread's tip NOW would swallow whatever landed since the fetch -- a retraction of the
+                            very command being acted on included -- unread and unanswered, and one jumped straight
+                            to the answer's own id would swallow the corrected command an operator posted between
+                            the reading and that answer. A command it may not act on is answered under a scoped
+                            receipt and consumed on the same terms. Both sentences this owner words -- the park's
+                            notice and that refusal -- carry a receipt scoped to what they answer, RECORDED before
+                            the sentence carrying it goes out and dropped by the write past the post. So the record
+                            says whether a tick died mid-sentence and the THREAD says which side of the post it
+                            died on: a receipt some comment of ours carries is a sentence that was said, one no
+                            comment carries is a sentence still owed, and a park that reaches the quiet road with a
+                            receipt outstanding drops it rather than re-reading the thread on every later poll. The
+                            park itself goes down ahead of its notice too, so a restarted tick finds somebody
+                            already waiting rather than announcing a second time over a watermark that would move
+                            past the command written in between. Both halves of the thread's answer are asked --
+                            the receipt and the author -- which is the safe direction for SILENCING a sentence and
+                            the wrong one for claiming a comment: these strings are public text, deterministic from
+                            an issue and a commit, and the login may be the operator's own, so read as proof of
+                            authorship a retraction written under a quoted receipt would be taken for one of ours,
+                            deleted from the reading, and the authorization beneath it would publish on consent
+                            withdrawn. Nothing here writes the id ledger, which is the only thing that says a
+                            comment is ours; what an unclaimed sentence of ours costs is standing in the reading as
+                            somebody's word, which is no command, so the park holds. The notices are worded on
+                            the side of publication the park was taken on, since guidance reaches a developer only
+                            where the ordinary resume is still in front of the issue. No road at the gate enters
+                            this park yet
+      late_command.py       which reply on a standing park a tick should act on, and nothing else: no record is
+                            written and nothing is decided. The LAST fresh trusted reply, because reading the
+                            batch as a set is what poisons a park -- a reply matching nothing is never consumed
+                            on the seams that publish onto an open pull request, so it would stand in every
+                            later batch and refuse the correct command behind it. It hands back how far that
+                            reading got as well as which reply to act on, since what an answer may consume is
+                            what was looked at and no more. A reply that IS the command is carried whatever it
+                            goes on to say, an argument nobody could act on included, which is what earns an
+                            abbreviation the sentence saying so instead of a silent park. Three authors are
+                            never in the reading: an outsider, a comment with no id, and the orchestrator itself
+                            -- the park notice spells the command out ready to copy, so our own sentences are
+                            exactly what a reader matching on that syntax would mistake for one. The pinned
+                            record is named by its ID on all three reads rather than by its marker, since that
+                            fallback hides every comment merely QUOTING one and a reply hidden from this
+                            reading is a reply whose author never spoke -- and the record is DROPPED from the
+                            third, the read asking whether a sentence of ours already landed: a receipt is a field
+                            on that record before it is a sentence on a thread, and a record whose escaped
+                            rendering would not fit is written as its own payload, so on those issues the receipt
+                            asked about sits verbatim in the pinned comment under our own login and every sentence
+                            recorded and not yet said reads as one already said. Being ours is
+                            PROVED by the recorded id and by nothing else, because the last-reply rule makes
+                            dropping a comment the same act as deleting what its author said: a retraction taken
+                            for one of ours never happened, and the authorization beneath it becomes the last
+                            word and publishes on consent withdrawn. The marker is text anybody may paste, and
+                            the author login is the shared-PAT hazard named where that ledger is defined -- a
+                            reviewer posting from the token's own account matches it exactly, and they are the
+                            one whose consent this park collects. A comment the ledger cannot vouch for stays in
+                            the reading, which leaves the park standing rather than publishing
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names

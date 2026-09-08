@@ -166,11 +166,25 @@ def _park_awaiting_human(
     event; the durable `park_reason` field in pinned state is still cleared
     here (callers that need a transient reason re-set it themselves -- see
     above), so passing a reason does not change observable behavior.
+
+    The watermark is the id of the notice this call POSTED, not the id the
+    thread happens to end on afterwards. The two differ in exactly one case
+    and it is the one that matters: a human replying between the post and this
+    write. Read off the thread, their reply becomes the watermark and is
+    skipped for good -- on a park whose whole point is waiting for a reply,
+    that is the answer being thrown away by the question. Read off the comment
+    we wrote, their reply is still there for the next poll.
+
+    A post whose id nothing could read falls back to the thread's tip, which
+    is the lesser of the two failures left: a watermark that never moved
+    leaves the park's own notice to be read back as somebody's fresh guidance
+    on every tick after this one.
     """
-    _comments._post_issue_comment(gh, issue, state, message)
+    posted = _comments._post_issue_comment(gh, issue, state, message)
     state.set("awaiting_human", True)
     state.set("park_reason", None)
-    latest = gh.latest_comment_id(issue)
+    said = getattr(posted, "id", None)
+    latest = gh.latest_comment_id(issue) if said is None else said
     if latest is not None:
         state.set("last_action_comment_id", latest)
     # Read the label AFTER the comment post and state writes so the

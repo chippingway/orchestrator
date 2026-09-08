@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from itertools import count
 
 from tests.support.github import issues as issue_service, pr_service as pull_service, pr_views as pull_views
+from tests.support.github.comment_ids import _FIRST_COMMENT_ID, _CommentIdAllocator
 from tests.support.github.models import FakeIssue
 from tests.support.github.state import (
     _FakeEventHistory,
@@ -54,7 +55,7 @@ class _PullClient(_PullViews, _PullServices):
     """Compose the complete pull-request-side fake surface."""
 
 
-class FakeGitHubClient(_IssueClient, _PullClient):
+class FakeGitHubClient(_IssueClient, _PullClient, _CommentIdAllocator):
     """In-memory stand-in for orchestrator.github.GitHubClient."""
 
     def __init__(
@@ -71,7 +72,11 @@ class FakeGitHubClient(_IssueClient, _PullClient):
         self._pollable_calls = 0
         self._issues = {issue.number: issue for issue in issues}
         self._pinned = {}
-        self._comment_id = count(start=1000)
+        # The highest comment id this client has minted, on any thread. A
+        # plain counter rather than an iterator because the thread's own
+        # comments move it too: ids ascend across a whole thread on GitHub,
+        # so a seeded reply above this mark pushes the next minted id past it.
+        self._comment_id = _FIRST_COMMENT_ID
         self._pr_id = count(start=1)
         self._next_issue_number = count(
             start=max(self._issues, default=0) + 100,
