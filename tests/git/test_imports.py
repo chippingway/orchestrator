@@ -16,6 +16,7 @@ from orchestrator.git import (
     commands,
     credentials,
     locks,
+    ref_discovery,
     ref_transport,
 )
 from tests.git.inventory_test_support import inventory_modules
@@ -41,6 +42,7 @@ _MODULES = (
     "orchestrator.git.commands",
     "orchestrator.git.credentials",
     "orchestrator.git.locks",
+    "orchestrator.git.ref_discovery",
     "orchestrator.git.ref_transport",
 )
 
@@ -67,6 +69,10 @@ _AUTH_SESSION = "_git_auth_session"
 # it recurs in the owner surface and in the binding assertion below.
 _REF_READ = "_remote_ref_read"
 
+# The two names the namespace listing is spelled as: the entry point every
+# caller of it takes, and the session-bound read under that entry point.
+_REF_LISTING_NAMES = ("_remote_ref_listing", "_remote_ref_names")
+
 # The initializer binds nothing, so each name answers on the owner that defines
 # it, never on the package itself.
 _OWNER_ONLY_NAMES = (
@@ -80,6 +86,7 @@ _OWNER_ONLY_NAMES = (
     "_git_hardened_bytes",
     "_push_branch",
     "_push_ref",
+    "_remote_ref_names",
     _REF_READ,
     "_remote_ref_sha",
     _ROOT_LOCK,
@@ -97,9 +104,9 @@ _OWNER_DEFINED = (
     (_ROOT_LOCK, locks),
 )
 
-# What the credential owner defines and the transport only spends: the record
-# a token-bearing call is built from, the session that yields one, and the
-# per-repository lookup behind it.
+# What the credential owner defines and every token-bearing caller only
+# spends: the record such a call is built from, the session that yields one,
+# and the per-repository lookup behind it.
 _CREDENTIAL_NAMES = ("_GitAuthSession", _AUTH_SESSION, "_resolved_git_token")
 
 
@@ -148,12 +155,13 @@ class OwnerImportSiteTest(unittest.TestCase):
     """No surface over these owners sits beside them."""
 
     def test_credential_names_have_one_binding(self) -> None:
-        # Each transport reaches these through the module rather than
-        # importing them by name. A second binding on either would be a patch
-        # target that reads as the right one and intercepts nothing, since the
-        # session a call actually opens would still be the owner's.
+        # Every module that spends a session reaches these through the owner
+        # rather than importing them by name. A second binding on any of them
+        # would be a patch target that reads as the right one and intercepts
+        # nothing, since the session a call actually opens would still be the
+        # owner's.
         for credential_name in _CREDENTIAL_NAMES:
-            for spender in (branch_transport, ref_transport):
+            for spender in (branch_transport, ref_discovery, ref_transport):
                 with self.subTest(name=credential_name, owner=spender):
                     self.assertIn(credential_name, credentials.__dict__)
                     self.assertNotIn(credential_name, spender.__dict__)
@@ -165,6 +173,17 @@ class OwnerImportSiteTest(unittest.TestCase):
         # aims at while the read a push actually takes stayed the owner's.
         self.assertIn(_REF_READ, ref_transport.__dict__)
         self.assertNotIn(_REF_READ, branch_transport.__dict__)
+
+    def test_the_namespace_listing_has_one_binding(self) -> None:
+        # Nothing is pinned to what a pattern listing says, so it answers on an
+        # owner of its own rather than beside the reads a write is leased to.
+        # Neither name is re-exported back onto the transport: a copy there
+        # would be the patch target a discovery test aims at while the listing
+        # a maintenance pass actually takes stayed the owner's.
+        for listing_name in _REF_LISTING_NAMES:
+            with self.subTest(name=listing_name):
+                self.assertIn(listing_name, ref_discovery.__dict__)
+                self.assertNotIn(listing_name, ref_transport.__dict__)
 
     def test_no_flat_module_exists(self) -> None:
         # Anything importable at these paths would be a second identity for the

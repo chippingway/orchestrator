@@ -46,12 +46,13 @@ last is held by the loader itself rather than by a check.
   above them — `tests/git/publication/test_imports.py` carries that last one. `git/measurement/` and `git/snapshots/`
   replaced nothing and hold the surface assertion anyway, and the same list carries `git/authentication.py`, the
   module the two transports were split out of, so no facade settles back at that spelling. The rule also holds one
-  name at a time where a second binding would be invisible: each transport reaches the token lookup, the askpass
-  session, and the session record through `credentials`, and the branch transport reaches the `ls-remote` read a lease
-  is taken from through `ref_transport`, rather than importing any of the four by name. `tests/git/test_imports.py`
-  asserts each is bound on the owner that defines it and nowhere in the module that spends it — a copy beside the
-  caller would read as the patch target a test aims at while the session or the read a call actually takes stayed the
-  owner's.
+  name at a time where a second binding would be invisible: each transport and the namespace listing reach the token
+  lookup, the askpass session, and the session record through `credentials`; the branch transport reaches the
+  `ls-remote` read a lease is taken from through `ref_transport`; and the artifact discovery reaches the pattern
+  listing nothing is leased to through `ref_discovery`, rather than importing any of them by name.
+  `tests/git/test_imports.py` asserts each is bound on the owner that defines it and nowhere in the module that
+  spends it — a copy beside the caller would read as the patch target a test aims at while the session, the read,
+  or the listing a call actually takes stayed the owner's.
 - **One road to a process.** The `agents/` chain is reached at one point from above and one per hop below it: only
   `workflow/engine/usage.py` calls `run_agent`, and the initializer republishing it as the package API is the one
   other module that names it at all; only `runner.py` names `codex.run_codex` / `claude.run_claude`; and only the two
@@ -62,8 +63,9 @@ last is held by the loader itself rather than by a check.
   `_run_agent_tracked`'s own body with the circuit asked on a line above it.
 - **Operator log channels.** Four names are spelled literally rather than derived from `__name__`, because an
   operator's level and handler selection is keyed on them: `orchestrator.git_plumbing` (`git/branch_transport.py`,
-  `git/credentials.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three `git/measurement/` owners
-  that log, which all report on the same token, `ls-remote`, fetch, push, and diff plumbing),
+  `git/credentials.py`, `git/ref_discovery.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three
+  `git/measurement/` owners that log, which all report on the same token, `ls-remote`, fetch, push, and diff
+  plumbing),
   `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the thirteen
   `git/worktrees/` owners that log, plus `runtime/artifacts.py` and `runtime/artifact_records.py` above them — when a
   maintenance pass ran, why it did not, and the record one candidate's answer could not be written as are facts about
@@ -72,7 +74,8 @@ last is held by the loader itself rather than by a check.
   `orchestrator.branch_publication` (`git/publication/rewrite.py`). A
   module moved between packages does not take its channel with it, and each of the four names is asserted where
   its owner is tested —
-  `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, and `tests/git/test_ref_transport.py`,
+  `tests/git/test_branch_transport.py`, `tests/git/test_credentials.py`, `tests/git/test_ref_discovery.py`,
+  and `tests/git/test_ref_transport.py`,
   `tests/git/base_sync/test_state.py`, `tests/git/worktrees/test_imports.py`,
   `tests/runtime/test_artifacts.py`, `tests/runtime/test_artifact_records.py`, and
   `tests/git/publication/test_imports.py`.
@@ -256,14 +259,20 @@ orchestrator/
     credentials.py      the per-repo token lookup, the owner-only askpass script that outlives no operation, the
                         session record a token-bearing call is spawned from -- the detached environment, the URL
                         naming only the `x-access-token` username, and the token itself -- and the redaction every
-                        transport puts that token's own output through before logging or handing it back
+                        token-bearing caller puts that token's own output through before logging or handing it
+                        back
     locks.py            the per-target-root re-entrant lock registry and its accessor
-    ref_transport.py    the two remote reads -- one refname, with the scrubbed line saying why nothing was
-                        established, and every refname under one pattern, which is the only way a branch this
-                        host holds no copy of is found -- and the lease-pinned write and delete an immutable ref
-                        namespace is owned through, the delete spent as well on a terminal issue's branch once
-                        the artifact pass has proved the commit it stands on; the single-ref read the branch
-                        transport spends for its own lease too
+    ref_discovery.py    the one remote question that starts from no name at all: every refname a remote
+                        carries under one pattern, which is the only way a branch this host holds no copy of is
+                        found. Its own owner because nothing is leased to what it says -- the empty tuple is a
+                        remote holding nothing under the namespace and `None` is a remote nobody could ask, and
+                        a caller that collapsed the two would read a repository it could not reach as one with
+                        no artifacts left
+    ref_transport.py    the remote read of one refname -- with the scrubbed line saying why nothing was
+                        established -- and the lease-pinned write and delete an immutable ref namespace is owned
+                        through, the delete spent as well on a terminal issue's branch once the artifact pass
+                        has proved the commit it stands on; the single-ref read the branch transport spends for
+                        its own lease too
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
                         in -- including the label scope on the two freezes no write ever ends -- and the
@@ -726,7 +735,7 @@ off a facade:
   `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
   disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
   The pass over them is where that stops, and only its own step owner writes: `discovery` calls `inventory`,
-  `attribution`, and `paths`, plus `ref_transport` for the namespace listing no local read can answer; `reclaim`
+  `attribution`, and `paths`, plus `ref_discovery` for the namespace listing no local read can answer; `reclaim`
   calls `commands`, `locks`, and `ref_transport` for the leased delete; `maintenance` calls `eligibility`,
   `evidence`, and `reclaim`, takes both the active/claimed answer and the may-I-go-on answer from guards its caller
   injects rather than reaching up for either, and names nothing in the workflow layer. The caller that injects them

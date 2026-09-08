@@ -82,7 +82,6 @@ per-file-ignores =
     orchestrator/agents/sessions.py:WPS202
     orchestrator/agents/processes.py:WPS202
     orchestrator/git/commands.py:WPS202
-    orchestrator/git/ref_transport.py:WPS202
     orchestrator/git/verification/probes.py:WPS202
     orchestrator/git/worktrees/attribution.py:WPS202
     orchestrator/git/worktrees/claims.py:WPS202
@@ -95,7 +94,6 @@ per-file-ignores =
     orchestrator/git/worktrees/models.py:WPS202
     orchestrator/git/worktrees/paths.py:WPS202
     orchestrator/github/pull_requests.py:WPS214
-    tests/git/test_ref_transport.py:WPS202
     tests/git/publication/squash_recovery_support.py:WPS202
     tests/git/worktrees/artifact_test_support.py:WPS214
     tests/git/worktrees/candidate_host_test_support.py:WPS202,WPS214

@@ -6,27 +6,34 @@ Plain and hardened `git` invocation together with the local
 transport-config probe live in ``commands``; the per-repository token and
 the askpass session built from it live in ``credentials``; the
 authenticated fetches and the lease-pinned branch push that spend one of
-those sessions live in ``branch_transport``; the remote reads and the
-lease-pinned writes named by a whole refname live in ``ref_transport``;
-the process-local per-target-root lock registry lives in ``locks``. Every
-git-execution name is defined on one of these owners, and callers import
-the owner they need directly, so this initializer binds nothing and an
-import pulls in only what the chosen owner itself needs --
-``branch_transport`` builds on ``ref_transport`` for the one remote read a
-branch shares with a refname, both build on ``commands``, ``credentials``,
-and ``locks``, ``credentials`` on ``commands``, while ``commands`` and
-``locks`` depend on nothing else in the package.
+those sessions live in ``branch_transport``; the exact-ref read and the
+lease-pinned writes it leases, each named by a whole refname, live in
+``ref_transport``; the listing of every refname a remote carries under a
+pattern lives in ``ref_discovery``, apart from the transport because
+nothing is pinned to what it says; the process-local per-target-root lock
+registry lives in ``locks``. Every git-execution name is defined on one of
+these owners, and callers import the owner they need directly, so this
+initializer binds nothing and an import pulls in only what the chosen
+owner itself needs -- ``branch_transport`` builds on ``ref_transport`` for
+the one remote read a branch shares with a refname, those two build on
+``commands``, ``credentials``, and ``locks``, ``ref_discovery`` on the
+first two of those alone since it takes no lock, ``credentials`` on
+``commands``, while ``commands`` and ``locks`` depend on nothing else in
+the package.
 
 No facade of this domain's own sits beside the package, and nothing above it
 republishes these names either, so each answers on the owner that defines it
 and a test intercepting one targets that owner -- which is what every caller
 in the tree names: the ``git/worktrees/``, ``git/publication/``, and
 ``git/base_sync/`` owners; the conflicts, documenting, implementing, and
-validating stages for the fetches and the push; ``git/snapshots/`` alone for
-the ref reads and writes; and the conflicts, documenting, and fixing stages
-for the two runners. The two transports are the only callers ``credentials``
-has and each names that owner rather than importing a session helper of its
-own, so a test intercepting the session targets the module that defines it.
-All three name their logger ``orchestrator.git_plumbing`` rather than after
-this package, because that is the name operator log filters select on.
+validating stages for the fetches and the push; ``git/snapshots/`` for the
+leased ref read and writes, with ``git/worktrees/`` naming the same delete
+once a teardown has proved what it stands on and the pattern listing on the
+namespace it discovers those branches in; and the conflicts, documenting,
+and fixing stages for the two runners. The two transports and the discovery
+listing are the only callers ``credentials`` has and each names that owner
+rather than importing a session helper of its own, so a test intercepting
+the session targets the module that defines it. All four name their logger
+``orchestrator.git_plumbing`` rather than after this package, because that
+is the name operator log filters select on.
 """

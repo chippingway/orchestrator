@@ -9,7 +9,7 @@ prints it lives. A caller resolves a token here and opens a session around it,
 and what it gets back is the shape a token-bearing call is spawned from -- a
 URL naming the `x-access-token` username and nothing else, an environment
 where the token sits as `$GIT_TOKEN` for the askpass script to print, and the
-token itself, which the transport reads back to redact its own stderr. Nothing
+token itself, which the caller reads back to redact its own stderr. Nothing
 here puts it in an argv, and that is the guarantee: `/proc/<pid>/cmdline` is
 world-readable and the environment of another user's process is not.
 
@@ -22,9 +22,10 @@ Resolution is per repository rather than per process: a deployment serving
 several slugs keeps one token file each, and a call authenticates with the one
 belonging to the repo it names.
 
-The two transports -- `branch_transport` and `ref_transport` -- are the only
-callers, and each imports this module directly. Nothing republishes these
-names, so a test intercepting the session targets the owner that defines it.
+Three callers and no others: the two transports -- `branch_transport` and
+`ref_transport` -- and the namespace listing in `ref_discovery`, each importing
+this module directly. Nothing republishes these names, so a test intercepting
+the session targets the owner that defines it.
 """
 from __future__ import annotations
 
@@ -47,8 +48,8 @@ log = logging.getLogger("orchestrator.git_plumbing")
 
 _ASKPASS_MODE = 0o700
 
-# What a token is replaced by wherever a transport reports a call's own output.
-# Spelled once here rather than at each transport because the guarantee is one
+# What a token is replaced by wherever a caller reports a call's own output.
+# Spelled once here rather than at each of them because the guarantee is one
 # and belongs to the owner of the secret: nothing this package logs or hands
 # back carries the credential it authenticated with.
 _REDACTED = "***"
@@ -66,8 +67,8 @@ class _GitAuthSession:
 def _scrubbed(reported: str, token: str) -> str:
     """The output of a token-bearing call with the token taken out of it.
 
-    Every transport spends this on the same two things: the stderr it logs a
-    refusal with, and the stderr it hands a caller to report somewhere else.
+    Spent on the stderr every token-bearing caller logs a refusal with, and
+    once more on the stderr a ref read hands back for somebody else to report.
     Neither is a place a credential may reach, and a call is not required to
     have leaked one for the scrub to be worth taking -- the URL git is handed
     names only the `x-access-token` username, so a token in that output is a

@@ -344,7 +344,7 @@ class UnreachableRemoteTest(_DiscoveryTestCase):
 
         with (
             patch.object(
-                discovery.ref_transport,
+                discovery.ref_discovery,
                 "_remote_ref_names",
                 side_effect=OSError("git could not be spawned"),
             ),
