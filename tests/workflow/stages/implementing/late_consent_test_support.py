@@ -138,6 +138,47 @@ def measured_pair(**overrides) -> dict:
     return recorded.data
 
 
+class CrashedTick(RuntimeError):
+    """The process dying between two writes one road makes."""
+
+
+class DiesPastTheFirstWrite:
+    """A client that makes its first durable write and then dies.
+
+    For a road whose first write is not the one at risk: the sentence has been
+    said AND recorded by then, and what the crash costs is whatever the write
+    after that carried.
+    """
+
+    def __init__(self, github) -> None:
+        self._wrapped = github.write_pinned_state
+        self._writes = 0
+
+    def __call__(self, *called, **options):
+        self._writes += 1
+        if self._writes > 1:
+            raise CrashedTick
+        return self._wrapped(*called, **options)
+
+
+class DiesPastTheNotice:
+    """A client whose write dies the moment a sentence is on the thread.
+
+    The window itself rather than a count of writes, so a case reproduces it
+    whichever order the road makes its two operations in: what it kills is
+    always the write that would have recorded the sentence just posted.
+    """
+
+    def __init__(self, github) -> None:
+        self._github = github
+        self._wrapped = github.write_pinned_state
+
+    def __call__(self, *called, **options):
+        if self._github.posted_comments:
+            raise CrashedTick
+        return self._wrapped(*called, **options)
+
+
 class _ParkedCase(_PatchedWorkflowMixin):
     """An issue holding one adjudicated candidate nobody has authorized."""
 

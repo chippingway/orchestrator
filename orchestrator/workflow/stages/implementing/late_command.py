@@ -316,12 +316,16 @@ def _names(reply) -> str:
     return _payloads.as_hex(written, _formats.COMMIT_LENGTHS) or ""
 
 
-def _already_answered(gate: _records._Gate, marker: str) -> bool:
-    """Whether this thread already carries OUR answer to this reading.
+def _already_said(gate: _records._Gate, marker: str) -> bool:
+    """Whether this thread already carries OUR sentence under this receipt.
 
     Both halves of the receipt are asked -- the scoped marker and the author
     -- since an HTML comment is plain text anybody may paste, and read from
     anybody it would silence a sentence a human is owed.
+
+    Which is the direction to fail in for THIS question and the wrong one for
+    attribution, so the two are deliberately not the same read. Silencing a
+    sentence costs a poll; claiming a comment costs whatever its author said.
     """
     return carries_own_marker(
         gate.issue.get_comments(),

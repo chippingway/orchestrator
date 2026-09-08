@@ -20,7 +20,7 @@ from orchestrator.git.measurement.models import (
     ContributionFingerprint,
     FingerprintFailure,
 )
-from orchestrator.workflow.engine import comments as _comments
+from orchestrator.workflow.engine import comments as _comments, guards as _guards
 from orchestrator.workflow.stages.implementing import (
     late_command as _command,
     late_consent as _consent,
@@ -34,6 +34,8 @@ from tests.workflow.stages.implementing import (
 )
 
 _FINGERPRINT_CONTRIBUTION = "_fingerprint_contribution"
+_PARK_AWAITING_HUMAN = "_park_awaiting_human"
+_WRITE_PINNED_STATE = "write_pinned_state"
 _POST_ISSUE_COMMENT = "_post_issue_comment"
 _ORCH_MARKER = _comments._ORCH_COMMENT_MARKER
 
@@ -48,6 +50,10 @@ _UNREADABLE = ContributionFingerprint(failure=FingerprintFailure.CONTENT_ABSENT)
 
 # The sentence only the side of publication with a resume behind it may offer.
 _RESUMED_AGAINST_IT = "the developer is resumed against it"
+
+
+class _Silence(RuntimeError):
+    """The process dying before its notice ever reaches the thread."""
 
 
 class _ConsentCase(support._ParkedCase):
@@ -148,6 +154,74 @@ class AuthorizationParkTest(_ConsentCase, unittest.TestCase):
         self.assertEqual(pinned[support.KEY_EXEMPT_SHA], MEASURED_CANDIDATE_SHA)
         self.assertNotIn(support.KEY_OVERRIDE_CANDIDATE_SHA, pinned)
         self.assertIsNone(pinned.get("late_additions"))
+
+
+class RestartedParkTest(_ConsentCase, unittest.TestCase):
+    """A park whose notice went out and whose write never landed.
+
+    The two are separate operations and always will be. What the order buys is
+    which way the damage falls: the park goes down FIRST, so the poll after a
+    crash finds somebody already waiting behind this candidate rather than an
+    unparked issue to announce all over again -- over a watermark that would
+    move past whatever the human wrote in between.
+    """
+
+    def test_a_restart_says_nothing_twice(self) -> None:
+        # The whole sequence: the notice lands, the write recording it does
+        # not, and the operator answers before anything runs again. Read back
+        # as unparked, the restarted tick mentions the same people a second
+        # time and watermarks past the command -- so the decision they already
+        # made is one nothing can ever read.
+        self._seed(parked=False)
+        self._crashes_past_the_notice()
+        commanded = self._reply(support.AUTHORIZE)
+
+        self.assertTrue(self._authorizes())
+
+        self.assertEqual(len(self.github.posted_comments), 1)
+        self.assertEqual(
+            self._pinned()[support.KEY_OVERRIDE_COMMENT_ID], commanded,
+        )
+
+    def test_the_park_outlives_the_lost_write(self) -> None:
+        # What makes the restart quiet, asserted where it is written rather
+        # than only through what it prevents.
+        self._seed(parked=False)
+
+        self._crashes_past_the_notice()
+
+        pinned = self._pinned()
+        self.assertTrue(pinned[_state._AWAITING_HUMAN])
+        self.assertEqual(
+            pinned[_state._PARK_REASON], _command.PARK_UNAUTHORIZED_EXEMPTION,
+        )
+
+    def test_a_notice_that_never_landed_is_still_owed(self) -> None:
+        # The other way round, and why the receipt rides the park rather than
+        # the park alone answering "already said": a tick that died BEFORE its
+        # notice leaves somebody waiting behind a question nobody asked, and a
+        # park read as announced because it is standing would never ask it.
+        self._seed(parked=False)
+        with (
+            patch.object(_guards, _PARK_AWAITING_HUMAN, side_effect=_Silence),
+            self.assertRaises(_Silence),
+        ):
+            self._authorizes()
+
+        self._authorizes()
+
+        self.assertEqual(len(self.github.posted_comments), 1)
+
+    def _crashes_past_the_notice(self) -> None:
+        """Take the park, say it, and lose the write that recorded saying it."""
+        with (
+            patch.object(
+                self.github, _WRITE_PINNED_STATE,
+                side_effect=support.DiesPastTheNotice(self.github),
+            ),
+            self.assertRaises(support.CrashedTick),
+        ):
+            self._authorizes()
 
 
 class AuthorizedCandidateTest(_ConsentCase, unittest.TestCase):

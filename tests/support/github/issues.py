@@ -280,17 +280,21 @@ class _IssueCommentService:
         return new_comment
 
     def next_reply_id(self, issue: FakeIssue) -> int:
-        """The id a comment appended to this thread now would carry.
+        """Mint the id a comment appended to this thread now would carry.
 
         For a case that seeds a human reply AFTER a tick has already posted
         something. Ids ascend across the thread, so a hand-picked one can
         collide with a comment the orchestrator has since written -- and a
         reply sharing an id with the watermark is one no reader ever sees.
+
+        Through the one allocator every comment on this client comes out of,
+        because a seeded reply is a comment on a shared ascending id space
+        like any other. Numbered off its own thread instead it repeats an id
+        another thread was already given, and leaves the client's counter
+        behind it -- so the next id MINTED anywhere, a pinned record's
+        included, is handed out below a reply that is already on a thread.
         """
-        return max(
-            (posted.id for posted in issue.comments),
-            default=self._comment_id,
-        ) + 1
+        return self._minted_comment_id(issue)
 
     def comments_after(
         self,

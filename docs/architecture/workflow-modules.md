@@ -1303,10 +1303,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             unread and unanswered, and one jumped straight to the answer's own id would swallow
                             the corrected command an operator posted between the reading and that answer. A
                             command it may not act on is answered under a scoped receipt and consumed on the
-                            same terms, with the window between that sentence and the write consuming it
-                            RECORDED first -- the receipt says which reply an answer is for, never who wrote
-                            one, since a reviewer quotes it back from the token this orchestrator shares. The
-                            notices are worded on the side of
+                            same terms. Both sentences this owner words -- the park's notice and that refusal --
+                            carry a receipt scoped to what they answer, and each is RECORDED before the sentence
+                            carrying it goes out: minted here and reaching the thread no other way, it is the
+                            one thing that can say a sentence of ours landed, which no body and no author login
+                            can, a reviewer quoting the comment they are answering reproducing both from the
+                            token this orchestrator shares. The park itself goes down ahead of its notice too,
+                            so a restarted tick finds somebody already waiting rather than announcing a second
+                            time over a watermark that would move past the command written in between -- and a
+                            receipt the thread does not carry is a notice still owed, which is what the next
+                            poll says it out of. The notices are worded on the side of
                             publication the park was taken on, since guidance reaches a developer only where the
                             ordinary resume is still in front of the issue. No road at the gate enters this park
                             yet
@@ -1351,20 +1357,24 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             tree is read again INSIDE the seam, so the park, its reason and its watermark are
                             held across that call and put back wherever it left somebody waiting under another
                             reason -- and the attempt is RECORDED before that call, since the seam posts its
-                            own refusal before anything persists the id of it. Also where the ONE comment of
-                            ours this issue lost the receipt for is attributed: a sentence posted by a tick that
-                            died before recording it is one no reader can attribute, so the resume would spawn a
-                            developer against it. What is repaired is the LEDGER rather than the watermark,
-                            which crosses everything under it -- a corrected command written below our sentence
-                            would be consumed unread. A recorded WINDOW is the whole of what licenses the
-                            repair: both roads write one before they post and drop it in the write that would
-                            have recorded the post, and outside one nothing on the thread may be claimed at all.
-                            Neither marker may stand in for that -- the bare one is text anybody may paste, the
-                            scoped receipt is text a reviewer quotes back off the refusal it is stamped on, and
-                            the login under either may be the token this orchestrator shares with a human. So
-                            inside a window exactly one comment is claimed, the EARLIEST that could be ours,
-                            since a quote can only follow the comment it quotes: claiming one too few costs a
-                            resume against our own words, and claiming one too many deletes what its author
+                            own refusal before anything persists the id of it. Since that notice is the one
+                            sentence on this park nobody here worded, it carries no receipt and no reading of a
+                            thread could pick it out, so the seam is handed a client that persists the id of
+                            each comment the moment the post RETURNS, over the park as this road is holding it:
+                            a crash past that point comes back to the park intact and the notice attributed, one
+                            before it to a thread nothing of ours ever reached. Also where the ONE sentence this
+                            stage did word and lost the receipt for is attributed, since otherwise the resume
+                            spawns a developer against our own prose. What is repaired is the LEDGER rather than
+                            the watermark, which crosses everything under it -- a corrected command written
+                            below our sentence would be consumed unread. The recorded RECEIPT is the whole of
+                            what identifies the comment, and nothing weaker may stand in: the bare marker is
+                            text anybody may paste, the login may be the token this orchestrator shares with a
+                            human, and a reviewer answering our sentence quotes back both. What separates their
+                            reply from ours is order rather than body -- a quote can only follow the comment it
+                            quotes -- so the EARLIEST carrier of the recorded receipt is claimed and no other,
+                            and a receipt the thread carries nowhere is a sentence that never landed, claimed
+                            never and left standing as the notice it says is still owed. Claiming one too few
+                            costs a resume against our own words; claiming one too many deletes what its author
                             said and publishes the authorization beneath it on consent withdrawn
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded

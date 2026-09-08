@@ -78,6 +78,10 @@ _PARK_FIELDS = (
     _state._LAST_ACTION_COMMENT_ID,
 )
 
+# How a comment's body is read, for the one question asked of one: whether it
+# carries the receipt a road recorded before posting the sentence under it.
+_BODY = "body"
+
 _AUTHORIZED_RECOVERY = (
     "(orchestrator recovery: publishing the candidate an operator authorized)"
 )
@@ -238,108 +242,144 @@ def _try_recover_unauthorized_exemption_park(
 def _attributes_our_own(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> bool:
-    """Record the one comment of ours this issue lost the receipt for.
+    """Record the one sentence of ours this issue lost the receipt for.
 
-    Two writes in this stage post before they persist the id that says the
-    post was ours, and a process dying between them leaves a sentence on the
+    Every road on this park posts before it persists the id saying the post
+    was ours, and a process dying between the two leaves a sentence on the
     thread that no later reader can attribute. Every one of them treats what
     it cannot attribute as somebody's word -- rightly, since attributing on a
     body anybody can paste is how a retraction gets deleted -- so the reading
     finds a last word that is not the command, hands the tick back, and the
     ordinary resume spawns a developer against the orchestrator's own prose.
 
-    What is repaired is the LEDGER rather than the watermark, and that is the
-    whole of why this is safe. A watermark moved to our sentence crosses
-    everything under it: an operator who read the refusal and posted the
-    corrected command before this tick ran would have that command consumed
-    unread and never acted on. The ledger entry moves nothing -- it says only
-    that one comment is ours -- so the next reading drops it and finds
-    whatever human wrote last, corrected command included.
+    What is repaired is the LEDGER rather than the watermark, and that is half
+    of why this is safe. A watermark moved to our sentence crosses everything
+    under it: an operator who read the refusal and posted the corrected
+    command before this tick ran would have that command consumed unread and
+    never acted on. The ledger entry moves nothing -- it says only that one
+    comment is ours -- so the next reading drops it and finds whatever human
+    wrote last, corrected command included.
 
-    A recorded WINDOW is the whole of what licenses it, and no marker is. Both
-    roads write one before they post, naming the comment they were standing
-    at, and drop it in the write that would have recorded the post -- so an
-    open window is a tick that owes the record a sentence, and there is no
-    other state in which anything here claims a comment. Neither marker may
-    stand in for that: the bare one is text anybody may paste, the scoped
-    receipt is text a reviewer quotes back off the refusal it is stamped on,
-    and the login under either may be the shared token this orchestrator posts
-    from.
+    The other half is the RECEIPT, which is the whole of what identifies the
+    comment. Each road mints one, records it, and only then posts the sentence
+    carrying it, so a comment bearing that receipt exists for one reason: we
+    posted one. Nothing weaker will do. The bare marker is text anybody may
+    paste; the author login is the token this repository says outright may be
+    shared with the human whose consent this park collects; and the two
+    together are no better, since a reviewer quoting the comment they are
+    answering reproduces both exactly. A window recorded without a receipt is
+    no better either -- a tick that died BEFORE its post leaves one standing
+    over a thread nothing of ours ever reached, and the next reply to arrive
+    would be claimed.
 
-    Inside that window exactly ONE comment is claimed, and it is the EARLIEST
-    that could be ours. A quote can only follow the comment it quotes, so a
-    reply answering our stranded sentence is always the later of the two --
-    and claiming it would be deleting what its author said, which on a park
-    read by its last fresh reply publishes the authorization underneath on
-    consent that has been withdrawn. Claiming too few costs a resume against
-    our own words; claiming one too many costs a decision. Only the first is
-    survivable, so this fails in that direction.
+    So the EARLIEST comment carrying the recorded receipt is claimed, and only
+    that one. A quote can only follow the comment it quotes, so where the
+    receipt is on the thread twice ours is the first of them; where it is not
+    on the thread at all, the sentence never landed and nothing is claimed.
+    Claiming too few costs a resume against our own words; claiming one too
+    many deletes what its author said and publishes the authorization beneath
+    it on consent withdrawn. Only the first is survivable.
 
     Owning the tick is the point of returning True: the reading behind it has
     already been taken against the record this repaired, so what it owes is
     the next poll rather than a second answer on this one.
+
+    A receipt nothing on the thread carries is left exactly where it is, and
+    the tick is handed on. That receipt is the only record that a sentence is
+    owed at all: the tick that recorded it died before saying it, so what the
+    issue needs is the road that owes it, which is downstream of here.
     """
-    attempted = _payloads.as_identity(state.get(_state._HELD_PUBLICATION))
-    if attempted is None:
+    receipt = state.get(_state._HELD_RECEIPT)
+    if not isinstance(receipt, str) or not receipt:
         return False
-    stranded = _stranded_sentence(gh, issue, state, attempted)
-    if stranded is not None:
-        _comments._track_orchestrator_comment(state, stranded)
-        log.info(
-            "issue=#%d carries comment %d of this stage's own that no write "
-            "recorded; attributing it rather than handing our words to a "
-            "developer", issue.number, stranded,
-        )
-    state.set(_state._HELD_PUBLICATION, None)
+    stranded = _stranded_sentence(gh, issue, state, receipt)
+    if stranded is None:
+        return False
+    _comments._track_orchestrator_comment(state, stranded)
+    log.info(
+        "issue=#%d carries comment %d of this stage's own that no write "
+        "recorded; attributing it rather than handing our words to a "
+        "developer", issue.number, stranded,
+    )
+    state.set(_state._HELD_RECEIPT, None)
     gh.write_pinned_state(issue, state)
     return True
 
 
 def _stranded_sentence(
-    gh: GitHubClient, issue: Issue, state: PinnedState, attempted: int,
+    gh: GitHubClient, issue: Issue, state: PinnedState, receipt: str,
 ) -> int | None:
-    """The one comment an open window may claim, or None where it may claim none.
+    """The one comment this receipt may claim, or None where it may claim none.
 
-    Read from the comment the window names rather than from the watermark,
-    because that is where a sentence this stage owes the record can be: both
-    roads record where they were standing, and both post above it.
+    The whole thread is read rather than the part past a watermark, because a
+    receipt is evidence wherever it is and the sentence carrying it may sit
+    either side of one -- and reading less would leave it to be claimed by
+    some later window it does not belong to.
 
-    The EARLIEST candidate and no other. More than one says at least one was
-    written by somebody else -- our marker beside our login is what a quoted
-    comment from a shared token looks like -- and ours is the earlier, since
-    nothing can quote a sentence before it exists. A window that turns out to
-    hold none of ours claims none, which leaves the park standing.
+    The EARLIEST carrier and no other. A second says somebody quoted the
+    first, which is what a reviewer answering our sentence from the token we
+    share does, and theirs is necessarily the later. None at all says the
+    sentence never reached the thread.
     """
     recorded = _comments._orchestrator_ids(state)
-    candidates = [
+    carrying = [
         identified
-        for seen in gh.comments_after(
-            issue, attempted, state_comment_id=state.comment_id,
-        )
-        if _vouched(seen, gh)
+        for seen in issue.get_comments()
+        if receipt in (getattr(seen, _BODY, "") or "")
+        and authored_by_us(seen, bot_login=getattr(gh, "_bot_login", None))
         for identified in (
             _payloads.as_identity(getattr(seen, _COMMENT_ID, 0)),
         )
         if identified is not None and identified not in recorded
     ]
-    return min(candidates, default=None)
+    return min(carrying, default=None)
 
 
-def _vouched(seen, gh: GitHubClient) -> bool:
-    """Whether this comment could be the sentence an open window is missing.
+class _RecordsWhatItPosts:
+    """A client that makes the id of each comment durable as it lands.
 
-    Could be, and no more: inside a window we know a notice of ours may be
-    sitting unattributed, so our marker beside our own login narrows the
-    thread to the comments one of them might be. It does not identify one --
-    a reviewer quoting either marker back from the token we share matches
-    both halves exactly -- which is why the caller takes the earliest and
-    stops.
+    The seam below is the one road here that posts a sentence this stage did
+    not write, so there is no receipt to stamp on it and nothing a later
+    reading of the thread could ever identify it by. What is left is to record
+    it at the only moment the fact is known for certain -- when the post
+    returns, in the process that made it.
+
+    What goes down is the park as this road is HOLDING it plus the new id,
+    which is the write past the seam's own payload: a crash after this point
+    comes back to the park intact and the sentence attributed, and one before
+    it comes back to a thread nothing of ours ever reached. The seam's own
+    flags are deliberately not in it -- they are what the caller is about to
+    put back, and a crash must not leave them standing instead.
+
+    Everything else is the client underneath, untouched.
     """
-    body = getattr(seen, "body", "") or ""
-    return (
-        _comments._ORCH_COMMENT_MARKER in body
-        and authored_by_us(seen, bot_login=getattr(gh, "_bot_login", None))
-    )
+
+    def __init__(self, gh: GitHubClient, state: PinnedState) -> None:
+        self._gh = gh
+        self._state = state
+        self._holding = dict(state.data)
+        self._posted: list[int] = []
+
+    def __getattr__(self, named: str):
+        return getattr(self._gh, named)
+
+    def comment(self, issue: Issue, body: str):
+        """Post one comment and record having posted it, in that order."""
+        posted = self._gh.comment(issue, body)
+        identified = _payloads.as_identity(getattr(posted, _COMMENT_ID, 0))
+        if identified is not None:
+            self._posted.append(identified)
+            self._gh.write_pinned_state(issue, self._receipted())
+        return posted
+
+    def _receipted(self) -> PinnedState:
+        """The held park with every id this seam has posted so far beside it."""
+        held = PinnedState(
+            comment_id=self._state.comment_id, data=dict(self._holding),
+        )
+        for identified in self._posted:
+            _comments._track_orchestrator_comment(held, identified)
+        return held
 
 
 def _publishes_under_the_park(
@@ -375,18 +415,14 @@ def _publishes_under_the_park(
     operator what to fix.
     """
     held = {key: state.get(key) for key in _PARK_FIELDS}
-    # Written BEFORE the call, because the seam posts its own refusal before
-    # anything persists the id of it: a process dying in between comes back to
-    # a notice of ours the thread cannot attribute, standing over the command
-    # this park is waiting on. The record of the attempt is what lets the poll
-    # after that crash tell our sentence from somebody's reply.
-    state.set(
-        _state._HELD_PUBLICATION,
-        state.get(_state._LAST_ACTION_COMMENT_ID),
-    )
-    gh.write_pinned_state(issue, state)
+    # Handed a client that records each comment AS it lands, because the seam
+    # writes its own refusal before anything persists the id of it and the
+    # sentence is not one this stage worded: there is no receipt to stamp on
+    # it, so a crash in that window would leave a notice of ours the thread
+    # cannot attribute, standing over the command this park is waiting on.
+    recording = _RecordsWhatItPosts(gh, state)
     _disposition._publish_committed_work(
-        gh, spec, issue, state, _models._RecoveredWork(
+        recording, spec, issue, state, _models._RecoveredWork(
             AgentResult(
                 session_id=_session_read._read_dev_session(state)[-1],
                 last_message=_AUTHORIZED_RECOVERY,
@@ -407,7 +443,6 @@ def _publishes_under_the_park(
             issue.number, reason or "no reason at all",
         )
         state.data.update(held)
-    state.set(_state._HELD_PUBLICATION, None)
     gh.write_pinned_state(issue, state)
 
 

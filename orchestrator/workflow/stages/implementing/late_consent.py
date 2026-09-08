@@ -55,6 +55,7 @@ somebody writing into a thread nothing reads.
 from __future__ import annotations
 
 import logging
+from types import MappingProxyType
 
 from orchestrator import config
 from orchestrator.git.measurement import fingerprint as _fingerprint
@@ -76,23 +77,37 @@ from orchestrator.workflow.stages.implementing import (
 
 log = logging.getLogger("orchestrator.workflow")
 
-# Stamped on the answer one refused command earns, and scoped to the reply it
-# was written for. The sentence and the write that consumes that reply cannot
-# be made one operation, so a tick that says it and then fails to record it
-# reads the same reply again on the next poll -- and the receipt already on the
-# thread is what keeps that second reading from saying the same thing twice. An
-# HTML comment, so it is invisible in the rendered thread.
+# The receipt each sentence this owner writes is stamped with, scoped to the
+# one thing it is the answer to: the candidate a park was taken over, and the
+# reply a refusal was written for. HTML comments, so both are invisible in the
+# rendered thread.
 #
-# It proves nothing about who WROTE a comment, and nothing here asks it to. A
-# reviewer answering the refusal quotes the receipt back, and under a token
-# shared with a human that reply arrives carrying our marker and our login
-# both; read as ours it would be dropped from the thread and the
-# authorization beneath it would publish on consent already withdrawn. What
-# says a sentence of ours is stranded is the recorded window below.
-_REFUSED_MARKER = (
-    "<!--orchestrator-unauthorized-exemption-refused:"
-    "issue={issue}:read={read}-->"
-)
+# Each is the ONLY thing that can say its sentence was said, because neither
+# the sentence nor its consequence can be made one operation with the write
+# that records it. Asked of the thread, the receipt keeps a second poll from
+# saying the same thing to the same people twice; asked by the recovery beside
+# this owner, it identifies the one comment a lost write left stranded.
+#
+# Which is why they are recorded BEFORE the sentence carrying them goes out. A
+# receipt on the thread is a sentence that landed, so a receipt the thread does
+# not carry is one that did not -- and that is a question no reading of a body
+# or an author could answer, both being things a reviewer sharing this token
+# reproduces exactly by quoting the comment they are replying to.
+_RECEIPTS = MappingProxyType({
+    "parked": (
+        "<!--orchestrator-unauthorized-exemption-parked:"
+        "issue={issue}:candidate={scope}-->"
+    ),
+    "refused": (
+        "<!--orchestrator-unauthorized-exemption-refused:"
+        "issue={issue}:read={scope}-->"
+    ),
+})
+
+
+def _receipt(gate: _records._Gate, said: str, scope) -> str:
+    """The receipt one sentence of ours is stamped with, scoped to its subject."""
+    return _RECEIPTS[said].format(issue=gate.issue.number, scope=scope)
 
 # What every notice here ends on, worded on the side of publication the park
 # was taken on. Before there is a pull request the ordinary resume is still in
@@ -187,9 +202,21 @@ def _parked_for_authorization(
     Said ONCE per pair. The seams that publish onto a pull request the remote
     already carries re-enter this gate on every poll behind the park, so
     repeating the notice would mention the same people once a poll about a
-    decision they have already been asked for. A record already parked for
-    this over this candidate is held quietly instead, and that quiet road
-    writes nothing at all.
+    decision they have already been asked for -- and worse than that, over a
+    watermark that has moved past the command one of them wrote in between,
+    which throws the decision away.
+
+    Which is why the park goes DOWN before the sentence goes out, carrying the
+    receipt that sentence is about to be stamped with. Past that write the
+    park alone answers "already said", and the receipt beside it is what says
+    otherwise: it is dropped by the write past the post, so a park still
+    carrying one is a tick that died in between. Whether the sentence reached
+    the thread is then a question about the thread, which the recovery beside
+    this owner asks and answers by dropping the receipt or leaving it.
+
+    The order bounds the damage either way round. A notice said and never
+    recorded is suppressed by the park that went down first; a park recorded
+    and never announced still carries its receipt, so it is announced.
 
     Nothing is deleted. The exemption, the identity beside it, the approval
     that names the commit a push is owed for, and every other field stay
@@ -197,7 +224,8 @@ def _parked_for_authorization(
     checked against, and a park that repaired the pinned comment on the way
     would destroy the evidence it exists to ask about.
     """
-    if _stands_over(gate, generation):
+    receipt = _receipt(gate, "parked", generation.candidate_sha)
+    if _stands_over(gate, generation) and not _owes_the_notice(gate, receipt):
         return True
     log.warning(
         "issue=#%d exempts candidate %s on a record no operator "
@@ -206,6 +234,7 @@ def _parked_for_authorization(
         gate.issue.number, generation.candidate_sha,
         generation.additions, generation.threshold,
     )
+    _held(gate, receipt)
     _guards._park_awaiting_human(
         gate.gh, gate.issue, gate.state,
         _PARK_NOTICE.format(
@@ -213,12 +242,46 @@ def _parked_for_authorization(
             additions=generation.additions,
             threshold=generation.threshold,
             candidate=generation.candidate_sha,
-        ) + _decided_by(gate, generation.candidate_sha),
+        ) + _decided_by(gate, generation.candidate_sha) + f"\n\n{receipt}",
         reason=_command.PARK_UNAUTHORIZED_EXEMPTION,
     )
     gate.state.set(_state._PARK_REASON, _command.PARK_UNAUTHORIZED_EXEMPTION)
+    gate.state.set(_state._HELD_RECEIPT, None)
     gate.gh.write_pinned_state(gate.issue, gate.state)
     return True
+
+
+def _owes_the_notice(gate: _records._Gate, receipt: str) -> bool:
+    """Whether a sentence this park recorded is still owed to the thread.
+
+    Answered off the record rather than off the thread, because by the time
+    anything here runs the recovery beside this owner has already asked the
+    thread: it drops this receipt where the sentence carrying it landed and
+    leaves it where none did. So a park with no receipt on it has been
+    announced, and one still carrying its own is one whose notice a dying tick
+    never got out.
+    """
+    return gate.state.get(_state._HELD_RECEIPT) == receipt
+
+
+def _held(gate: _records._Gate, receipt: str) -> None:
+    """Make this park, and the receipt it is about to say, durable first.
+
+    Both halves go down in one write and both are the same precaution. The
+    park is what a restarted tick reads to know somebody is already waiting
+    behind this candidate; the receipt is what tells the recovery beside this
+    owner which comment on the thread a lost write left stranded, and it can
+    only do that if it was written down before the comment carrying it
+    existed.
+
+    The park's flags are set here rather than left to the guard below, because
+    the guard sets them AFTER it posts -- which is the window this write
+    exists to close.
+    """
+    gate.state.set(_state._AWAITING_HUMAN, True)
+    gate.state.set(_state._PARK_REASON, _command.PARK_UNAUTHORIZED_EXEMPTION)
+    gate.state.set(_state._HELD_RECEIPT, receipt)
+    gate.gh.write_pinned_state(gate.issue, gate.state)
 
 
 def _decided_by(gate: _records._Gate, candidate_sha: str) -> str:
@@ -356,24 +419,25 @@ def _refused(
     is asked for that receipt before it is written a second time -- the same
     at-most-once discipline every other answer in this repository has.
 
-    The window between those two operations is RECORDED before the sentence
-    goes out, naming the reply it answers. That is what lets the poll after a
-    crash tell a sentence of ours from a reply somebody wrote: the receipt
-    itself cannot, being text anybody may quote from an account that may be
-    the one we post under. Dropped by the write that consumes, so a window
-    stands open for exactly as long as this tick owes the record something.
+    The receipt is RECORDED before the sentence carrying it goes out, which is
+    what lets the poll after a crash find the one comment a lost write left
+    stranded. Read off a body or an author that poll could not: a reviewer
+    answering the refusal quotes the receipt back, and under a token shared
+    with a human their reply carries our marker and our login both. Recorded
+    first, the receipt says something neither can -- a comment carrying it
+    exists only because we posted one. It is dropped by the write that
+    consumes, so it stands for exactly as long as this tick owes the record a
+    sentence.
     """
     log.info(
         "issue=#%d was told to authorize %s and is holding %s; answering the "
         "command and leaving the park where it stands",
         gate.issue.number, answer.named, generation.candidate_sha,
     )
-    marker = _REFUSED_MARKER.format(
-        issue=gate.issue.number, read=answer.comment_id,
-    )
+    marker = _receipt(gate, "refused", answer.comment_id)
     said = 0
-    if not _command._already_answered(gate, marker):
-        gate.state.set(_state._HELD_PUBLICATION, answer.comment_id)
+    if not _command._already_said(gate, marker):
+        gate.state.set(_state._HELD_RECEIPT, marker)
         gate.gh.write_pinned_state(gate.issue, gate.state)
         sentence = _WRONG_CANDIDATE.format(
             mentions=config.HITL_MENTIONS,
@@ -390,7 +454,7 @@ def _refused(
         # there was in the reading that found it.
         said = _payloads.as_identity(getattr(posted, "id", 0)) or 0
     _consumed(gate, answer, said)
-    gate.state.set(_state._HELD_PUBLICATION, None)
+    gate.state.set(_state._HELD_RECEIPT, None)
     gate.gh.write_pinned_state(gate.issue, gate.state)
     return True
 

@@ -71,29 +71,6 @@ _ORCHESTRATOR_IDS = "orchestrator_comment_ids"
 _WRITE_PINNED_STATE = "write_pinned_state"
 
 
-class _CrashedTick(RuntimeError):
-    """The process dying between two writes one road makes."""
-
-
-class _DiesPastTheHeldRecord:
-    """A client that records the attempt and then dies before the restore.
-
-    The first write is the one that says a publication is in flight under this
-    park; the second is the one that puts the park back and records what the
-    seam posted. Killing the second is the window a crash leaves.
-    """
-
-    def __init__(self, github) -> None:
-        self._wrapped = github.write_pinned_state
-        self._writes = 0
-
-    def __call__(self, *called, **options):
-        self._writes += 1
-        if self._writes > 1:
-            raise _CrashedTick
-        return self._wrapped(*called, **options)
-
-
 @dataclass
 class _Routed:
     """Where one parked tick's committed work went, and whether it went.
@@ -384,18 +361,23 @@ class LostWriteAttributionTest(support._ParkedCase, unittest.TestCase):
         )
 
     def test_a_crashed_seam_notice_resumes_nobody(self) -> None:
-        # The seam posts its own refusal before anything persists the id of
-        # it, so a process dying in between leaves a notice of ours standing
-        # over the command this park waits on. Unattributed, the reading finds
-        # a last word that is not the command, hands the tick back, and the
-        # resume spawns a developer over work that is already committed.
+        # The seam's notice is the one sentence on this park nothing here
+        # worded, so there is no receipt to stamp on it and no reading of the
+        # thread could ever pick it out. It is recorded as it LANDS instead,
+        # by the process that posted it -- so a tick dying past that point
+        # comes back to the park intact and the notice attributed, rather than
+        # to prose of ours standing over the command and a resume against it.
         self._seed(**support.measured_pair())
         self._reply(support.AUTHORIZE)
         self._crash_past_the_seam()
 
         mocks = self._run_tick()
 
-        self._assert_still_parked(mocks)
+        mocks[support.RUN_AGENT].assert_not_called()
+        self.assertIn(
+            self.github.latest_comment_id(self.issue),
+            self._pinned()[_ORCHESTRATOR_IDS],
+        )
         self.assertIsNotNone(
             _command._read_the_park(self.github, self.issue, self._state()),
         )
@@ -410,57 +392,78 @@ class LostWriteAttributionTest(support._ParkedCase, unittest.TestCase):
         with (
             patch.object(
                 self.github, _WRITE_PINNED_STATE,
-                side_effect=_DiesPastTheHeldRecord(self.github),
+                side_effect=support.DiesPastTheFirstWrite(self.github),
             ),
-            self.assertRaises(_CrashedTick),
+            self.assertRaises(support.CrashedTick),
         ):
             self._run_tick(tree_states=(_CLEAN_TREE, _DIRTY_TREE))
 
     def _strand_a_refusal(self, answered: int) -> int:
         """Post the refusal a lost write never recorded, and say which it is.
 
-        In the two steps the road itself makes them: the window naming the
-        reply this sentence answers is recorded durably first, and then the
+        In the two steps the road itself makes them: the receipt this sentence
+        is about to be stamped with is recorded durably first, and then the
         sentence goes out through the owner that posts every one of them and
         the state carrying its id is thrown away, which is the write that was
         lost.
         """
         marked = self._state()
-        marked.set(_state._HELD_PUBLICATION, answered)
+        marked.set(_state._HELD_RECEIPT, self._refusal_receipt(answered))
         self.github.write_pinned_state(self.issue, marked)
         posted = _comments._post_issue_comment(
             self.github, self.issue, self._state(),
-            _REFUSAL.format(marker=_consent._REFUSED_MARKER.format(
-                issue=support.ISSUE_NUMBER, read=answered,
-            )),
+            _REFUSAL.format(marker=self._refusal_receipt(answered)),
         )
         return posted.id
+
+    def _refusal_receipt(self, answered) -> str:
+        """The receipt a refusal answering this reply is stamped with."""
+        return _consent._RECEIPTS["refused"].format(
+            issue=support.ISSUE_NUMBER, scope=answered,
+        )
 
     _assert_still_parked = SeamHeldParkTest._assert_still_parked
 
 
 class QuotedMarkerAttributionTest(support._ParkedCase, unittest.TestCase):
-    """What an open window may never claim, and what closes it to a reply.
+    """What a receipt may never claim, and what it takes to claim anything.
 
-    Both of our markers are plain text in a public thread, and the token this
-    orchestrator posts under belongs to a person -- so a reviewer's retraction
+    Both of this stage's markers are plain text in a public thread, and the
+    token it posts under belongs to a person -- so a reviewer's retraction
     arrives carrying our marker AND our login. Claimed as ours it is dropped
     from the reading, and on a park read by its last fresh reply that leaves
     the authorization underneath it the last word.
     """
 
-    def test_a_quoted_receipt_attributes_nothing(self) -> None:
-        # A receipt is plain text in a public thread, and the reviewer
-        # answering the refusal it is stamped on quotes it back from the very
-        # token this orchestrator posts under. Vouched for by that marker
-        # alone their retraction is attributed here, dropped by the next
-        # tick's reading, and the authorization beneath it becomes the last
-        # word and publishes on consent that had been withdrawn.
+    def test_a_quoted_receipt_owed_none_claims_none(self) -> None:
+        # The reviewer answering a refusal quotes the receipt it is stamped
+        # with, from the very token this orchestrator posts under. With no
+        # sentence outstanding there is nothing to attribute at all, so a rule
+        # reading that receipt wherever it stands would claim their retraction,
+        # drop it on the next tick's reading, and publish on the authorization
+        # beneath it.
         self._seed(**support.measured_pair())
         authorized = self._reply(support.AUTHORIZE)
-        retracted = self._retracts(_consent._REFUSED_MARKER.format(
-            issue=support.ISSUE_NUMBER, read=authorized,
-        ))
+        retracted = self._retracts(self._refusal_receipt(authorized))
+
+        first, second = self._run_tick(), self._run_tick()
+
+        self.assertNotIn(retracted, self._attributed())
+        self._assert_published_nothing(first, second)
+
+    def test_a_receipt_over_no_sentence_claims_none(self) -> None:
+        # The window a tick that died BEFORE its post leaves: a receipt is
+        # recorded and nothing of ours ever reached the thread. Anything that
+        # licensed a claim on the window alone would take the next reply to
+        # arrive -- and under a shared token that reply carries our marker and
+        # our login, so it would be claimed, dropped, and the older
+        # authorization would publish on consent already withdrawn.
+        self._seed(**{
+            _state._HELD_RECEIPT: self._refusal_receipt(support.STRANGER_SHA),
+            **support.measured_pair(),
+        })
+        self._reply(support.AUTHORIZE)
+        retracted = self._retracts(_comments._ORCH_COMMENT_MARKER)
 
         first, second = self._run_tick(), self._run_tick()
 
@@ -468,23 +471,20 @@ class QuotedMarkerAttributionTest(support._ParkedCase, unittest.TestCase):
         self._assert_published_nothing(first, second)
 
     def test_a_retraction_past_our_own_survives(self) -> None:
-        # The same reply inside the one window an attribution is entitled to,
-        # where a sentence of ours really is stranded. Ours is the earlier of
-        # the two -- a quote can only follow what it quotes -- and it is the
-        # whole of what the window may claim. Taking the retraction as well
-        # would leave the authorization under it the last word again.
+        # The same reply where a sentence of ours really is stranded. Ours is
+        # the earlier carrier of that receipt -- a quote can only follow what
+        # it quotes -- and it is the whole of what may be claimed. Taking
+        # theirs as well would leave the authorization under it the last word.
         self._seed(**support.measured_pair())
-        self._reply(support.AUTHORIZE)
-        self._crash_past_the_seam()
-        retracted = self._retracts(_comments._ORCH_COMMENT_MARKER)
+        answered = self._reply(support.AUTHORIZE_ANOTHER)
+        said = self._strand_a_refusal(answered)
+        retracted = self._retracts(self._refusal_receipt(answered))
 
-        mocks = self._run_tick()
+        first, second = self._run_tick(), self._run_tick()
 
-        self._assert_still_parked(mocks)
+        self.assertIn(said, self._attributed())
         self.assertNotIn(retracted, self._attributed())
-        self.assertIsNone(
-            _command._read_the_park(self.github, self.issue, self._state()),
-        )
+        self._assert_published_nothing(first, second)
 
     def _assert_published_nothing(self, *ticks) -> None:
         """No push and no handoff, whatever else these ticks decided.
@@ -509,9 +509,9 @@ class QuotedMarkerAttributionTest(support._ParkedCase, unittest.TestCase):
         """Every comment id this issue's record claims the orchestrator wrote."""
         return self._pinned().get(_ORCHESTRATOR_IDS) or []
 
-    _crash_past_the_seam = LostWriteAttributionTest._crash_past_the_seam
+    _refusal_receipt = LostWriteAttributionTest._refusal_receipt
 
-    _assert_still_parked = SeamHeldParkTest._assert_still_parked
+    _strand_a_refusal = LostWriteAttributionTest._strand_a_refusal
 
 
 if __name__ == "__main__":

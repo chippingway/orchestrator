@@ -733,38 +733,47 @@ The keys that matter for the state machine fall into a few groups:
   took the park off outright, has ended this park deliberately and its record stands. The notice the seam posted
   stays on the thread either way, which is what tells the operator what to fix.
 
-  Two windows are this stage's own, and both leave a sentence of ours on the thread that no later reader can
-  attribute: the refusal a wrong command earns is posted before the write that records posting it, and the seam's
-  replacement notice is posted before the write that puts the park back. In each the `orchestrator_comment_ids`
-  entry went down in the very write that was lost. Every reader past it treats what it cannot attribute as
-  somebody's word, so the reading finds a last word that is not the command, hands the tick back, and the ordinary
-  resume spawns a developer against the orchestrator's own prose.
+  Every sentence this park writes goes out before the write that records having written it, and a process dying
+  between the two leaves it on the thread with nothing saying it is ours. Every reader past that treats what it
+  cannot attribute as somebody's word, so the reading finds a last word that is not the command, hands the tick
+  back, and the ordinary resume spawns a developer against the orchestrator's own prose. The park's own notice and
+  the refusal a wrong command earns are the two this owner words; the publication seam's replacement notice is a
+  third it does not.
 
-  What the recovery repairs is that LEDGER, not the watermark, and the difference is the whole of why it is safe. A
+  The two it words each carry a **receipt** — `<!--orchestrator-unauthorized-exemption-parked:issue=…:candidate=…-->`
+  and `<!--orchestrator-unauthorized-exemption-refused:issue=…:read=…-->` — and the receipt is written to
+  `late_held_authorization_receipt` *before* the sentence carrying it goes out, then dropped by the write that would
+  have recorded the post. Recorded first is what makes it evidence rather than decoration: the string is minted here
+  and reaches the thread no other way, so a comment bearing it exists for exactly one reason. A park still carrying
+  its own receipt is a tick that died in that window; one carrying none has been announced.
+
+  Nothing weaker may stand in, and the receipt read *as a marker* least of all. The bare `<!--orchestrator-comment-->`
+  is text anybody may paste, the author login is the shared-token hazard this repository names where the id ledger is
+  defined, and a reviewer answering our sentence quotes the whole comment back — marker, receipt and all — from that
+  very account. What separates their reply from ours is not the body but the **order**: a quote can only follow the
+  comment it quotes. So the earliest carrier of the recorded receipt is claimed and no other, and where the thread
+  carries none the sentence never landed and nothing is claimed at all.
+
+  What the repair writes is that LEDGER, not the watermark, and the difference is the rest of why it is safe. A
   watermark moved to our sentence crosses everything under it — an operator who read the refusal and posted the
   corrected command before that tick ran would have it consumed unread and never acted on. A ledger entry moves
   nothing: it says only that one comment is ours, so the next reading drops it and finds whatever a human wrote
-  last, corrected command included.
+  last, corrected command included. The two ways to be wrong are not symmetric — claiming one too few costs a
+  resume against our own words, claiming one too many deletes what its author said — so this fails toward claiming
+  too few.
 
-  A recorded **window** is the whole of what licenses the repair, and it is `late_held_authorization_publication`.
-  Both roads write it before they post — the watermark a candidate was handed to the seam from, or the reply a
-  refusal answers — and both drop it in the write that would have recorded the post, so an open one names exactly
-  the interval in which a comment of ours may have reached the thread without its id reaching the record. Outside
-  one, nothing on the thread may be claimed at all.
+  A receipt the thread does not carry is left standing rather than dropped, because it is the only record that a
+  sentence is owed at all: the tick that wrote it down died before saying it, and the road that owes it says it on
+  the next poll. That is also what answers "already said" for the park's own notice. The park goes down *before* the
+  notice, so a restarted tick finds somebody already waiting behind this candidate rather than an unparked issue to
+  announce all over again — over a watermark that would move past whatever the operator wrote in between, taking
+  their decision with it.
 
-  Neither marker may stand in for that window, and the **refusal receipt** least of all, its whole job being to say
-  which reply an answer is for rather than who wrote one. Both are plain text in a public thread: the bare
-  `<!--orchestrator-comment-->` is pasted or quoted off any notice of ours, and the scoped receipt is quoted back by
-  the reviewer answering the very refusal it is stamped on. Under a token shared with a human — the hazard this
-  repository names where the id ledger is defined — that reply carries our marker *and* our login, so a rule reading
-  either as authorship would drop a retraction from the thread and let the authorization beneath it publish on
-  consent already withdrawn.
-
-  So inside an open window exactly **one** comment is claimed: the earliest that could be ours. A quote can only
-  follow the comment it quotes, so a reply answering our stranded sentence is always the later of the two. The two
-  ways to be wrong are not symmetric — claiming one too few costs a resume against our own words, and claiming one
-  too many costs a decision a human made — so this fails toward claiming too few, and a window holding none of ours
-  claims none and leaves the park standing.
+  The seam's notice is the one sentence here nobody worded, so it carries no receipt and no reading of a thread
+  could pick it out. It is recorded as it **lands** instead: the recovery hands the seam a client that persists the
+  id of each comment the moment the post returns, on top of the park as this road is holding it. A crash past that
+  point comes back to the park intact and the notice attributed; one before it comes back to a thread nothing of
+  ours ever reached.
 
   The park, its command, and the routing that answers it are in place; the size gate does not yet route a candidate
   into it, since the publication policy that makes an exemption half a bypass is a separate change.
