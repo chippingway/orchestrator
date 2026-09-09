@@ -1,17 +1,15 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""What the orchestrator reads out of an agent's last message, and the one
-form it quotes that message back in.
+"""What an agent's last message says apart from the marker that ends its
+stage, and the one form the orchestrator quotes that message back in.
 
-The read side is the marker vocabulary the stage prompts promise and the stage
-handlers act on: a review verdict, a documentation no-change verdict, a drift
-acknowledgement, and the two commands an operator writes. Each marker takes
-the LAST match, so one quoted from a template earlier in a long message loses
-to the concluding line, and prose that merely sounds like an outcome ("no
-changes needed") stays `_VERDICT_UNKNOWN` -- the caller parks a human in rather
-than guessing. `/orchestrator continue` is the first of the two a human writes,
-so it also owns the refusal posted when that command arrives without the
-guidance the park is actually waiting on.
+The read side is a drift acknowledgement and the two commands an operator
+writes. The acknowledgement takes the LAST `ACK:` match, the convention the
+`completion_verdicts` owner reads its own markers under, so one quoted from a
+template earlier in a long message loses to the concluding line.
+`/orchestrator continue` is the first of the two a human writes, so it also
+owns the refusal posted when that command arrives without the guidance the
+park is actually waiting on.
 
 `/orchestrator authorize-oversized <commit>` is the second, and only its
 SYNTAX is here. What it means -- which candidate it may publish, what has to be
@@ -40,18 +38,6 @@ from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
-
-_VERDICT_UNKNOWN = "unknown"
-
-_VERDICT_RE = re.compile(
-    r"VERDICT:\s*(APPROVED|CHANGES_REQUESTED)\b",
-    re.IGNORECASE,
-)
-
-_DOC_VERDICT_RE = re.compile(
-    r"(?:^|\n)[ \t]*DOCS:[ \t]*NO_CHANGE[ \t]*\r?\n?\s*\Z",
-    re.IGNORECASE,
-)
 
 _DRIFT_ACK_RE = re.compile(r"^\s*ACK:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
 
@@ -86,66 +72,13 @@ def _as_blockquote(text: str) -> str:
     return f"> {prefixed}"
 
 
-def _parse_review_verdict(last_message: str) -> tuple[str, str]:
-    """Find the last 'VERDICT: APPROVED|CHANGES_REQUESTED' marker.
-
-    Returns (verdict, body_above_marker). verdict is one of "approved",
-    "changes_requested", or "unknown" (no marker found). body_above_marker is
-    the slice of last_message before the marker, used as PR-comment text for
-    the changes-requested case.
-    """
-    if not last_message:
-        return _VERDICT_UNKNOWN, ""
-    matches = list(_VERDICT_RE.finditer(last_message))
-    if not matches:
-        return _VERDICT_UNKNOWN, last_message
-    last = matches[-1]
-    word = last.group(1).upper()
-    verdict = "approved" if word == "APPROVED" else "changes_requested"
-    body = last_message[: last.start()].rstrip()
-    return verdict, body
-
-
-def _parse_documentation_verdict(last_message: str) -> tuple[str, str]:
-    """Find a final 'DOCS: NO_CHANGE' marker in a documentation-stage message.
-
-    Returns (verdict, body_above_marker):
-      * `("no_change", body)` -- the agent emitted the explicit marker
-        AS THE FINAL LINE (alone on its line, with only optional
-        whitespace through end of string), confirming the branch diff
-        requires no documentation update. `body` is the slice above
-        the marker, suitable for surfacing the agent's one-line
-        justification on the issue.
-      * `("unknown", last_message)` -- no valid final marker present.
-        The caller MUST park rather than treat this as success;
-        deliberately rejected variants include:
-          - ambiguous prose like "no changes needed";
-          - inline references such as
-              "I cannot conclude DOCS: NO_CHANGE because ...";
-          - non-final markers followed by further content, e.g.
-              "DOCS: NO_CHANGE\nBut I have a question.";
-          - markers with trailing punctuation like "DOCS: NO_CHANGE.".
-
-    The `"updated"` outcome (docs were modified) is signalled by a fresh
-    commit on the branch (any subject; the prompt no longer mandates a
-    `docs:` prefix) and is detected at the stage handler level rather than
-    here -- this parser only resolves the no-commit branch.
-    """
-    if not last_message:
-        return _VERDICT_UNKNOWN, ""
-    match = _DOC_VERDICT_RE.search(last_message)
-    if match is None:
-        return _VERDICT_UNKNOWN, last_message
-    body = last_message[: match.start()].rstrip()
-    return "no_change", body
-
-
 def _drift_ack_reason(last_message: str) -> str | None:
     """Return the dev's ACK justification if `last_message` carries the
     explicit `ACK: ...` marker, or None when no marker is present.
 
-    Takes the LAST match (matches `_parse_review_verdict`'s convention) so
-    a stray reference earlier in the message loses to the concluding line.
+    Takes the LAST match (the convention `completion_verdicts` reads its
+    markers under) so a stray reference earlier in the message loses to the
+    concluding line.
     """
     if not last_message:
         return None

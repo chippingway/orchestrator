@@ -28,7 +28,6 @@ per-file-ignores =
     orchestrator/workflow/engine/observations.py:WPS202
     orchestrator/workflow/engine/dispatch.py:WPS201,WPS202
     orchestrator/workflow/engine/drift.py:WPS202
-    orchestrator/workflow/engine/messages.py:WPS202
     orchestrator/workflow/engine/prompts.py:WPS202
     orchestrator/workflow/engine/retry_budget.py:WPS202
     orchestrator/workflow/engine/run_budget.py:WPS202

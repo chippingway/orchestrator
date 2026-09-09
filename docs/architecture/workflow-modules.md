@@ -87,6 +87,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             structural rather than a contribution. The enumeration and each per-PR step are
                             caught separately, so one PR's failure costs that PR's ping and never the sweep or
                             the tick around it
+    completion_verdicts.py  the two markers a terminal agent closes its own stage with -- the reviewer's
+                            `VERDICT:` line and the documentation run's `DOCS: NO_CHANGE` -- read out of its last
+                            message, with the LAST match winning and anything short of the marker answered `unknown`,
+                            so the caller parks a human in rather than recording a decision nobody made. The review
+                            marker counts inline, a verdict naming its own outcome; the documentation one counts only
+                            as the FINAL line, alone and unpunctuated, because "nothing to write" is a claim the next
+                            sentence can take back. That stage's other outcome -- docs WERE updated -- is a commit on
+                            the branch and is read there instead. Each parser returns the slice above its marker, the
+                            part a human is shown
     dispatch.py             one tick's pollable issues turned into handler calls: the observation a refused
                             fan-out submit was carrying -- latched from the poll's own closed reading and dropped
                             again only where the RECORD positively says there is nothing to end, since the probe
@@ -166,8 +175,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             reply, reading the tip there consumes the answer with the question. A post whose id
                             nothing could read falls back to the tip, since a watermark that never moved leaves the
                             park's own notice to be read back as somebody's guidance on every later tick
-    messages.py             the markers read out of an agent's last message, the one blockquote form every agent
-                            output an issue carries is quoted in, and the two commands a HUMAN writes:
+    messages.py             the `ACK:` acknowledgement read out of an agent's last message, the one blockquote
+                            form every agent output an issue carries is quoted in, and the two commands a HUMAN writes:
                             `/orchestrator continue` with the refusal a park needing real guidance owes it, and the
                             SYNTAX alone of `/orchestrator authorize-oversized <commit>` -- read from the whole
                             comment and nowhere else, with the argument captured as written, since a malformed one

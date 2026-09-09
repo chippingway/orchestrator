@@ -20,7 +20,7 @@ from __future__ import annotations
 from orchestrator import config
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import paths as _worktree_paths
-from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import completion_verdicts as _completion_verdicts
 from orchestrator.workflow.stages.documenting import (
     models as _models,
     parks as _parks,
@@ -38,7 +38,7 @@ def _dispose_documenting_clean(
     asked a question. The explicit `DOCS: NO_CHANGE` marker is the only signal
     that confirms the diff was checked and nothing was needed; anything else
     parks via `_on_question`."""
-    verdict, body = _messages._parse_documentation_verdict(
+    verdict, body = _completion_verdicts._parse_documentation_verdict(
         run.agent_result.last_message or "",
     )
     if verdict == "no_change":
