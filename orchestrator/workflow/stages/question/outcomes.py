@@ -34,7 +34,7 @@ from orchestrator import config
 from orchestrator.agents import AgentResult
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.git.worktrees import creation as _worktree_creation, paths as _worktree_paths
-from orchestrator.workflow.engine import guards as _guards, messages as _messages, usage as _usage
+from orchestrator.workflow.engine import agent_diagnostics as _agent_diagnostics, guards as _guards, usage as _usage
 from orchestrator.workflow.stages.question import models as _models, run as _run, state as _state
 
 log = logging.getLogger("orchestrator.workflow")
@@ -120,7 +120,7 @@ def _park_dirty_question(
 def _park_silent_question(
     run: _models._QuestionRun, question_result: AgentResult,
 ) -> None:
-    diagnostics = _messages._format_stderr_diagnostics(
+    diagnostics = _agent_diagnostics._format_stderr_diagnostics(
         question_result, "Question agent",
     )
     _run._park_question(
@@ -136,7 +136,7 @@ def _park_silent_question(
         run.issue.number,
         question_result.exit_code,
         question_result.timed_out,
-        _messages._stderr_log_tail(question_result),
+        _agent_diagnostics._stderr_log_tail(question_result),
     )
 
 

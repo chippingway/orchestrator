@@ -1,7 +1,7 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""What the orchestrator reads out of an agent's last message, and the stderr
-diagnostics it writes back when that message is not enough.
+"""What the orchestrator reads out of an agent's last message, and the one
+form it quotes that message back in.
 
 The read side is the marker vocabulary the stage prompts promise and the stage
 handlers act on: a review verdict, a documentation no-change verdict, a drift
@@ -25,10 +25,10 @@ developer is resumed against. The argument is captured as whatever was written
 rather than as a commit, because a malformed one is a command this workflow
 owes an answer to and not a line it never saw.
 
-The write side is the stderr block a park comment and a log line carry. Both
-run the shared redactor over the raw stderr BEFORE trimming it to either
-budget, because a secret straddling the cut would otherwise survive the
-redaction pass as a partial value.
+The write side is `_as_blockquote`, the one form every agent output an issue
+carries is quoted in -- a verdict body, a park's last message, the stderr the
+`agent_diagnostics` owner beside this one renders when there was no usable
+message at all.
 """
 from __future__ import annotations
 
@@ -37,13 +37,9 @@ import re
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.agents import AgentResult
-from orchestrator.config import credentials as _credentials
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments
-
-_STDERR_TAIL_BUDGET = 1024
 
 _VERDICT_UNKNOWN = "unknown"
 
@@ -88,48 +84,6 @@ def _as_blockquote(text: str) -> str:
     """Render `text` as a Markdown blockquote (each line prefixed with `> `)."""
     prefixed = text.replace("\n", "\n> ")
     return f"> {prefixed}"
-
-
-def _format_stderr_diagnostics(
-    agent_result: AgentResult, label: str = "Agent",
-) -> str:
-    r"""Render a stderr/exit-code diagnostic block to append to a park comment.
-
-    Returns "" when the agent produced no stderr -- callers can concatenate
-    unconditionally without a trailing dead section. Otherwise returns a
-    block beginning with two newlines so it slots cleanly after an existing
-    `_Last … message:_` body.
-
-    Redaction happens on the raw stderr before any trimming: a multi-line
-    secret env value (e.g. an SSH/PEM key whose env-var value ends in `\\n`)
-    echoed at the end of stderr would otherwise have its trailing newline
-    stripped first, so `str.replace` would no longer find the env value
-    verbatim and the secret would leak.
-    """
-    tail = _credentials.redact_secrets(agent_result.stderr or "").rstrip()
-    if not tail:
-        return ""
-    if len(tail) > _STDERR_TAIL_BUDGET:
-        tail = tail[-_STDERR_TAIL_BUDGET:]
-    quoted = _as_blockquote(tail)
-    return (
-        f"\n\n_{label} stderr (last 1KB):_\n\n{quoted}\n\n"
-        f"_{label} exit code:_ {agent_result.exit_code}"
-    )
-
-
-def _stderr_log_tail(agent_result: AgentResult, max_chars: int = 400) -> str:
-    r"""Short stderr tail for log lines -- tighter than the park-comment cap
-    so a single WARNING fits on one screen.
-
-    Redact before trimming for the same reason as `_format_stderr_diagnostics`:
-    a multi-line secret value ending in `\\n` would not match `str.replace`
-    if `rstrip` ate the trailing newline first.
-    """
-    tail = _credentials.redact_secrets(agent_result.stderr or "").rstrip()
-    if len(tail) > max_chars:
-        tail = tail[-max_chars:]
-    return tail
 
 
 def _parse_review_verdict(last_message: str) -> tuple[str, str]:

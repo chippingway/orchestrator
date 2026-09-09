@@ -65,6 +65,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             record holds a kind and its stage to together -- and the `workflow:` namespace
                             boundary
   engine/                   what every stage is driven by
+    agent_diagnostics.py    what a park comment and a WARNING say about a run that left no usable message: the
+                            agent's stderr under two budgets -- 1KB for the human who came to the issue, 400
+                            characters so a log line still fits a screen -- and the exit code beside the first.
+                            The shared redactor runs over the RAW stderr before either trim, since a secret sliced
+                            by the cut survives as a fragment the redactor no longer matches, and that fragment is
+                            what leaks; the same ordering puts it ahead of the `rstrip`, so a multi-line env value
+                            ending in a newline still matches verbatim. The block is quoted through
+                            `messages.py`'s blockquote, so it reads as the last-message body it is appended under
     comments.py             the orchestrator marker, the capped id ledger both posters write, and the trusted-author
                             thread read every prompt quotes
     community.py            the open pull requests this orchestrator never opened, which is why the tick sweeps
@@ -158,8 +166,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             reply, reading the tip there consumes the answer with the question. A post whose id
                             nothing could read falls back to the tip, since a watermark that never moved leaves the
                             park's own notice to be read back as somebody's guidance on every later tick
-    messages.py             the markers read out of an agent's last message, the redact-before-truncate stderr
-                            diagnostics a park carries when there was none, and the two commands a HUMAN writes:
+    messages.py             the markers read out of an agent's last message, the one blockquote form every agent
+                            output an issue carries is quoted in, and the two commands a HUMAN writes:
                             `/orchestrator continue` with the refusal a park needing real guidance owes it, and the
                             SYNTAX alone of `/orchestrator authorize-oversized <commit>` -- read from the whole
                             comment and nowhere else, with the argument captured as written, since a malformed one

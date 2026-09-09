@@ -40,7 +40,7 @@ from orchestrator.agents import AgentResult, provider_failures as _provider_fail
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.engine import comments as _comments, messages as _messages
+from orchestrator.workflow.engine import agent_diagnostics as _agent_diagnostics, comments as _comments
 from orchestrator.workflow.stages.implementing import (
     session_read as _session_read,
     state as _state,
@@ -160,7 +160,7 @@ def _park_silent_failure(
     drop the dev session id after enough consecutive silent parks, and surface
     the situation accurately instead of impersonating a real question park.
     """
-    diag = _messages._format_stderr_diagnostics(agent_result, "Agent")
+    diag = _agent_diagnostics._format_stderr_diagnostics(agent_result, "Agent")
     _comments._post_issue_comment(
         gh, issue, state,
         f"{config.HITL_MENTIONS} agent produced no output (likely a "
@@ -170,7 +170,7 @@ def _park_silent_failure(
         "issue=#%s agent produced no output; exit_code=%d "
         "timed_out=%s stderr_tail=%r",
         issue.number, agent_result.exit_code, agent_result.timed_out,
-        _messages._stderr_log_tail(agent_result),
+        _agent_diagnostics._stderr_log_tail(agent_result),
     )
     _mark_agent_silent_park(state)
     return "agent_silent"
