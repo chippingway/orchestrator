@@ -97,6 +97,7 @@ orchestrator/
                         checks, and audit events
   agents/               the agent-CLI subprocess layer: shared dispatch and its
                         result models, credential filtering, session parsing,
+                        the transient-provider verdict read off that output,
                         the process registry, and one module per backend
   scheduler/            the `IssueScheduler` every tick shares and the typed
                         submissions it takes
