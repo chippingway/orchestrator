@@ -96,9 +96,11 @@ orchestrator/
                         from, labels, comments, pull requests, reviews,
                         checks, and audit events
   agents/               the agent-CLI subprocess layer: shared dispatch and its
-                        result models, credential filtering, session parsing,
-                        the transient-provider verdict read off that output,
-                        the process registry, and one module per backend
+                        result models, credential filtering, the
+                        backend-agnostic session-id walk and the Claude
+                        final-message parsing beside it, the transient-provider
+                        verdict read off that output, the process registry, and
+                        one module per backend
   scheduler/            the `IssueScheduler` every tick shares and the typed
                         submissions it takes
   workflow/             the state machine: the label vocabularies and the
@@ -429,8 +431,8 @@ lock, and the resume mechanic are documented in
   and `agents/provider_failures.py`'s transient-provider classifier prefers it over any text match (falling back to a
   narrow message prefix beside a non-zero exit only where no flag is present).
 - **Input**: prompt string; optional resume session id; timeout (`AGENT_TIMEOUT` / `REVIEW_TIMEOUT`).
-- **Output**: `AgentResult(...)`. `session_id` is harvested by walking the JSONL events for any UUID-shaped value at
-  `session_id` / `conversation_id` / etc. (shared between both backends).
+- **Output**: `AgentResult(...)`. `session_id` is harvested by `agents/session_ids.py` walking the JSONL events for
+  any UUID-shaped value at `session_id` / `conversation_id` / etc. (shared between both backends).
 - **Timeout cleanup** (`processes.terminate_process_group`): on timeout expiry the runner SIGTERMs the agent's whole
   process group (every spawn uses `start_new_session=True`), waits for the leader, then — mirroring the shutdown sweep
   (`terminate_all_running`) — probes the group with `killpg(_, 0)` and SIGKILLs any surviving descendant. Without the

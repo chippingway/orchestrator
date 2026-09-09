@@ -226,8 +226,10 @@ orchestrator/
   agents/               publishes the run models, `run_agent`, and `terminate_all_running`
     models.py           the agent result, run-option, and subprocess-result models
     environment.py      credential filtering and the injected git identity
-    sessions.py         session-id and Claude final-message JSONL parsing, including the terminal result event
-                        the final message is taken from, published whole for the reader of the flags beside it
+    session_ids.py      the backend-agnostic session-id walk: a UUID-shaped value at a known key, anywhere in
+                        either CLI's event tree, so a resume is issued against what the run actually reported
+    sessions.py         Claude final-message JSONL parsing, including the terminal result event the final
+                        message is taken from, published whole for the reader of the flags beside it
     provider_failures.py
                         the transient-provider verdict every stage that reads a final message as the agent's
                         own asks first: the backend's `is_error` flag where the run gave one, and the

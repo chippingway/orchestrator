@@ -22,6 +22,7 @@ _MODULES = (
     "orchestrator.agents",
     "orchestrator.agents.models",
     "orchestrator.agents.environment",
+    "orchestrator.agents.session_ids",
     "orchestrator.agents.sessions",
     "orchestrator.agents.provider_failures",
     "orchestrator.agents.processes",

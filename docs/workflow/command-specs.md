@@ -31,10 +31,10 @@ that decides when a change to one of them reaches a running issue. Which stage s
   displace them.
 - **`CODEX_BIN` / `CLAUDE_BIN` interaction** — the first token is only a backend selector. It picks the codex vs.
   stable API in `agents/`; command construction lives in `agents/backends/codex.py` and `agents/backends/claude.py`,
-  and session / final-message parsing in `agents/sessions.py`. The actual executable launched is `CODEX_BIN` when the
-  first token is `codex` and `CLAUDE_BIN` when it is `claude`. Set those to a full path when the CLI is not on
-  `$PATH`. Writing a full path as the first token of `DEV_AGENT` / `REVIEW_AGENT` / `DECOMPOSE_AGENT` is rejected (it
-  would not match `codex` / `claude`).
+  session-id parsing in `agents/session_ids.py`, and final-message parsing in `agents/sessions.py`. The actual
+  executable launched is `CODEX_BIN` when the first token is `codex` and `CLAUDE_BIN` when it is `claude`. Set those
+  to a full path when the CLI is not on `$PATH`. Writing a full path as the first token of `DEV_AGENT` /
+  `REVIEW_AGENT` / `DECOMPOSE_AGENT` is rejected (it would not match `codex` / `claude`).
 
 ## Examples
 
