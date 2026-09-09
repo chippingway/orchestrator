@@ -1377,7 +1377,7 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        refuses on either half of "not provably clean". An index entry marked `assume-unchanged` / `skip-worktree`
        comes back as a path AND withholds the reading, so it takes the dirty park and is named there.
      - no new commits → `_on_question`, which parks on whose words the last message is. A quota notice
-       (`_is_session_limit_message`) and a transient provider refusal (`agents/sessions.py`'s
+       (`_is_session_limit_message`) and a transient provider refusal (`agents/provider_failures.py`'s
        `is_transient_provider_failure` — `API Error: 529 Overloaded` and its 5xx siblings) are the CLI's rather than
        the agent's, so both park retryably as `agent_silent` with the operator told to reply `/orchestrator continue`;
        any other non-empty message is posted as a real HITL question (`park_reason=None`); an empty one is the
@@ -2486,7 +2486,7 @@ state. The PR comment that triggers a route to `workflow:fixing` is the human si
      park (`agent_silent` / `agent_timeout`) is never resumed on the bare command text. Two dev final messages are
      parked `agent_silent` by `_on_question` rather than as a real `park_reason=None` question, because neither is the
      agent's own words: a recognized Claude session/usage-limit notice (`_is_session_limit_message`), and a transient
-     provider refusal such as `API Error: 529 Overloaded` (`agents/sessions.py`'s
+     provider refusal such as `API Error: 529 Overloaded` (`agents/provider_failures.py`'s
      `is_transient_provider_failure`, which prefers the terminal result event's `is_error` flag and otherwise requires
      a non-zero exit beside the prefix, so a successful answer that merely quotes the error stays an answer). A quota
      reset and a provider that came back are therefore retried here rather than refused as needing human guidance.

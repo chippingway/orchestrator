@@ -4,10 +4,11 @@
 
 Result and option models live in the ``models`` owner, credential filtering /
 injected git identity in the ``environment`` owner, session-id / Claude
-final-message parsing in the ``sessions`` owner, the shared process registry /
-subprocess-group lifecycle in the ``processes`` owner, and shared dispatch --
-backend selection, result assembly, and spawn logging -- in the ``runner``
-owner; per-backend command construction and execution live in the
+final-message parsing in the ``sessions`` owner, the transient-provider verdict
+read off that output in the ``provider_failures`` owner, the shared process
+registry / subprocess-group lifecycle in the ``processes`` owner, and shared
+dispatch -- backend selection, result assembly, and spawn logging -- in the
+``runner`` owner; per-backend command construction and execution live in the
 ``agents.backends`` subpackage (``codex`` and ``claude``). This initializer
 re-exports the narrow public surface (``__all__``): the model types, the
 ``run_agent`` dispatch entry, and the ``terminate_all_running`` shutdown hook.

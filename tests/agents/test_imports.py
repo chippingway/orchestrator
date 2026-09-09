@@ -10,7 +10,12 @@ import typing
 import unittest
 
 from orchestrator import agents as _agents
-from orchestrator.agents import models as _agent_models, processes as _agent_processes, runner as _agent_runner
+from orchestrator.agents import (
+    models as _agent_models,
+    processes as _agent_processes,
+    provider_failures as _agent_provider_failures,
+    runner as _agent_runner,
+)
 from orchestrator.agents.backends import claude as _agent_claude, codex as _agent_codex
 
 _MODULES = (
@@ -18,6 +23,7 @@ _MODULES = (
     "orchestrator.agents.models",
     "orchestrator.agents.environment",
     "orchestrator.agents.sessions",
+    "orchestrator.agents.provider_failures",
     "orchestrator.agents.processes",
     "orchestrator.agents.runner",
     "orchestrator.agents.backends",
@@ -26,9 +32,9 @@ _MODULES = (
 )
 
 # Agent-package functions annotated against the `models` owner -- the runner
-# owner plus the Codex and Claude backends. Their hints must resolve at
-# runtime, so the owner stays importable at module scope rather than only for
-# static type checkers.
+# and provider-failure owners plus the Codex and Claude backends. Their hints
+# must resolve at runtime, so the owner stays importable at module scope rather
+# than only for static type checkers.
 _OWNER_ANNOTATED_FUNCS = (
     _agent_codex.codex_command,
     _agent_codex.run_codex,
@@ -39,6 +45,7 @@ _OWNER_ANNOTATED_FUNCS = (
     _agent_runner.run_agent,
     _agent_runner.build_agent_result,
     _agent_runner.log_agent_spawn,
+    _agent_provider_failures.is_transient_provider_failure,
 )
 
 
@@ -111,16 +118,17 @@ class PublicSurfaceTest(unittest.TestCase):
         )
 
     def test_facade_hides_owner_only_names(self) -> None:
-        # The facade's surface is `__all__` alone. Backend dispatch entries and
-        # the credential / session / backend-command helpers belong to their
-        # owner modules, so reaching one through the facade must fail loudly
-        # rather than resolve.
+        # The facade's surface is `__all__` alone. Backend dispatch entries,
+        # the credential / session / backend-command helpers, and the
+        # transient-provider verdict belong to their owner modules, so reaching
+        # one through the facade must fail loudly rather than resolve.
         for owner_only_name in (
             "_run_codex",
             "_run_claude",
             "_filter_agent_env",
             "_agent_env",
             "parse_session_id",
+            "is_transient_provider_failure",
             "_claude_last_message",
             "_claude_command",
             "_codex_command",
