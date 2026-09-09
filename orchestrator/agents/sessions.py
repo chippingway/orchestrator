@@ -1,60 +1,30 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Backend-agnostic session-id and Claude final-message JSONL parsing.
+"""Claude final-message JSONL parsing, read against that CLI's own schema.
 
-The parsers answer what the CLI said: which session a run belongs to, what its
-last message was, and which terminal event carried that message. What the text
-means for the provider behind the run is the `provider_failures` owner's
-question, and the two published Claude readers here -- the terminal result
+The parsers answer what the CLI said: what a run's last message was and which
+terminal event carried it, named block type by block type as Claude emits them.
+Which session the run belongs to is asked of every backend and asked
+structurally, so it belongs to the `session_ids` owner rather than here. What
+the text means for the provider behind the run is the `provider_failures`
+owner's question, and the two published readers here -- the terminal result
 event and the result string on one -- are what it reads the stream through, so
 the events are walked in one place whichever question is being asked.
 """
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Iterator
 from typing import Any
 
-_UUID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-    re.IGNORECASE,
-)
-_PRIORITY_KEYS = ("session_id", "conversation_id", "thread_id", "session", "id")
 
+def _iter_claude_events(jsonl_output: str) -> Iterator[dict[str, Any]]:
+    """Yield the JSON objects in Claude's mixed JSONL output.
 
-def _first_nested_uuid(payload_nodes: Iterator[Any]) -> str | None:
-    for payload_node in payload_nodes:
-        found_uuid = _walk_for_uuid(payload_node)
-        if found_uuid is not None:
-            return found_uuid
-    return None
-
-
-def _walk_mapping_for_uuid(payload_node: dict[Any, Any]) -> str | None:
-    priority_values = (
-        payload_node[key]
-        for key in _PRIORITY_KEYS
-        if key in payload_node
-    )
-    priority_match = _first_nested_uuid(priority_values)
-    if priority_match is not None:
-        return priority_match
-    return _first_nested_uuid(iter(payload_node.values()))
-
-
-def _walk_for_uuid(payload_node: Any) -> str | None:
-    if isinstance(payload_node, str):
-        return payload_node if _UUID_RE.match(payload_node) else None
-    if isinstance(payload_node, dict):
-        return _walk_mapping_for_uuid(payload_node)
-    if isinstance(payload_node, list):
-        return _first_nested_uuid(iter(payload_node))
-    return None
-
-
-def parse_session_id(jsonl_output: str) -> str | None:
-    """Return the first UUID at a known key anywhere in JSONL events."""
+    The CLI interleaves the stream with blank lines and human-readable
+    diagnostics, and nothing guarantees a decoded line is a mapping, so every
+    reader here would otherwise repeat the same three rejections.
+    """
     for raw_line in jsonl_output.splitlines():
         line = raw_line.strip()
         if not line:
@@ -63,29 +33,7 @@ def parse_session_id(jsonl_output: str) -> str | None:
             event_payload = json.loads(line)
         except json.JSONDecodeError:
             continue
-        session_id = _walk_for_uuid(event_payload)
-        if session_id:
-            return session_id
-    return None
-
-
-def _decode_claude_event(raw_line: str) -> dict[str, Any] | None:
-    """Decode one stream event, ignoring blank or diagnostic output."""
-    line = raw_line.strip()
-    if not line:
-        return None
-    try:
-        event_payload = json.loads(line)
-    except json.JSONDecodeError:
-        return None
-    return event_payload if isinstance(event_payload, dict) else None
-
-
-def _iter_claude_events(jsonl_output: str) -> Iterator[dict[str, Any]]:
-    """Yield JSON objects from Claude's mixed JSONL output."""
-    for raw_line in jsonl_output.splitlines():
-        event_payload = _decode_claude_event(raw_line)
-        if event_payload is not None:
+        if isinstance(event_payload, dict):
             yield event_payload
 
 

@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Unpack
 
-from orchestrator.agents import models as _agent_models, sessions as _agent_sessions
+from orchestrator.agents import models as _agent_models, session_ids as _agent_session_ids
 
 log = logging.getLogger("orchestrator.agents")
 
@@ -33,7 +33,7 @@ def build_agent_result(
     return _agent_models.AgentResult(
         session_id=(
             options.resume_session_id
-            or _agent_sessions.parse_session_id(process_result.stdout)
+            or _agent_session_ids.parse_session_id(process_result.stdout)
         ),
         last_message=last_message,
         exit_code=process_result.exit_code,

@@ -7,7 +7,12 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from orchestrator.agents import environment as _environment, runner as _runner, sessions as _sessions
+from orchestrator.agents import (
+    environment as _environment,
+    runner as _runner,
+    session_ids as _session_ids,
+    sessions as _sessions,
+)
 from orchestrator.agents.backends import claude as _claude, codex as _codex
 from tests.agents import agent_test_support as _support, agent_test_values as _agent_cases
 
@@ -70,21 +75,21 @@ class RunnerOwnerRoutingTest(unittest.TestCase):
 
 
 class ParserOwnerRoutingTest(unittest.TestCase):
-    """Patching the `sessions` owner intercepts both backends' parsing.
+    """Patching a parser owner intercepts the backends reading through it.
 
     Result assembly harvests the session id through
-    `sessions.parse_session_id`, and the Claude backend resolves its final
-    message through `sessions.claude_last_message` -- the direct owner module,
-    not a parser captured onto a facade alias -- so a monkeypatch on the owner
-    is observed by the runner rather than silently bypassed.
+    `session_ids.parse_session_id`, and the Claude backend resolves its final
+    message through `sessions.claude_last_message` -- each the direct owner
+    module, not a parser captured onto a facade alias -- so a monkeypatch on
+    the owner is observed by the runner rather than silently bypassed.
     """
 
-    def test_session_id_reaches_sessions_owner(self) -> None:
+    def test_session_id_reaches_session_ids_owner(self) -> None:
         for label, backend_runner in _BACKENDS:
             with (
                 self.subTest(backend=label),
                 patch.object(
-                    _sessions,
+                    _session_ids,
                     "parse_session_id",
                     return_value="owner-session-id",
                 ) as parse_owner,
