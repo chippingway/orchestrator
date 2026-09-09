@@ -25,11 +25,13 @@ a human confirms the design on writes the plan and its subject, and which round
 that is is not knowable when the prompt is built.
 
 A prompt that promises a marker -- ``VERDICT:``, ``DOCS: NO_CHANGE``, ``ACK:``,
-the fenced manifest -- spells out the exact literal ``messages.py`` and the
-manifest parser then match, and says outright that prose in its place is parked
-rather than guessed at. The child cap the decompose prompt states is read back
-off the validator that rejects past it, for the same reason: a bound the agent
-is told and a bound it is judged against must be one number.
+the fenced manifest -- spells out the exact literal its own reader then matches:
+``completion_verdicts.py`` for the two that end a stage, ``messages.py`` for the
+acknowledgement, the manifest parser for the last. Each of them says outright
+that prose in the marker's place is parked rather than guessed at. The child
+cap the decompose prompt states is read back off the validator that rejects
+past it, for the same reason: a bound the agent is told and a bound it is
+judged against must be one number.
 
 A prompt with only one caller is built where that caller lives: ``drift.py``
 composes the drift-resume prompt beside the route that sends it and borrows both

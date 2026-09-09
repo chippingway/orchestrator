@@ -23,6 +23,7 @@ _ENGINE_OWNERS = (
     "agent_diagnostics",
     "comments",
     "community",
+    "completion_verdicts",
     "dispatch",
     "drift",
     "guards",

@@ -38,8 +38,8 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
     comments as _comments,
+    completion_verdicts as _completion_verdicts,
     guards as _guards,
-    messages as _messages,
     prompts as _prompts,
     run_circuit as _run_circuit,
     usage as _usage,
@@ -153,7 +153,9 @@ def _dispatch_reviewer_result(
         gh.write_pinned_state(issue, state)
         return
 
-    verdict, body = _messages._parse_review_verdict(review.last_message)
+    verdict, body = _completion_verdicts._parse_review_verdict(
+        review.last_message,
+    )
     decision = _models._ReviewerDecision(reviewer_run, verdict, body)
     gh.emit_event(
         "review_verdict",
