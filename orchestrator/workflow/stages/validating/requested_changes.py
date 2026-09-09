@@ -35,7 +35,7 @@ import logging
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.agents import sessions as _agent_sessions
+from orchestrator.agents import provider_failures as _provider_failures
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -73,7 +73,7 @@ def _reviewer_no_verdict_park(review) -> tuple[str, str]:
     A reviewer that emitted real text and merely omitted the VERDICT line is
     the one park a human has to read, and it stays `reviewer_no_verdict`.
     """
-    if _agent_sessions.is_transient_provider_failure(review):
+    if _provider_failures.is_transient_provider_failure(review):
         outage = (
             "the model provider is temporarily unavailable and the review "
             "will be retried on a later tick."

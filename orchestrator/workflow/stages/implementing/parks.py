@@ -36,7 +36,7 @@ import logging
 from github.Issue import Issue
 
 from orchestrator import config
-from orchestrator.agents import AgentResult, sessions as _agent_sessions
+from orchestrator.agents import AgentResult, provider_failures as _provider_failures
 from orchestrator.git.verification.probes import _WorktreeStatus
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
@@ -185,7 +185,7 @@ def _on_question(
     raw = agent_result.last_message.strip()
     if raw and _session_read._is_session_limit_message(agent_result):
         park_reason = _park_session_limit(gh, issue, state, raw)
-    elif raw and _agent_sessions.is_transient_provider_failure(agent_result):
+    elif raw and _provider_failures.is_transient_provider_failure(agent_result):
         park_reason = _park_provider_unavailable(gh, issue, state, raw)
     elif raw:
         park_reason = _park_real_question(gh, issue, state, raw)
