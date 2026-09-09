@@ -40,6 +40,7 @@ from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
+    agent_diagnostics as _agent_diagnostics,
     comments as _comments,
     guards as _guards,
     messages as _messages,
@@ -101,7 +102,7 @@ def _park_reviewer_no_verdict(
     diag = (
         ""
         if (review.last_message or "").strip()
-        else _messages._format_stderr_diagnostics(review, "Reviewer")
+        else _agent_diagnostics._format_stderr_diagnostics(review, "Reviewer")
     )
     _guards._park_awaiting_human(
         gh, issue, state,
@@ -116,7 +117,7 @@ def _park_reviewer_no_verdict(
         "issue=#%s reviewer emitted no VERDICT; exit_code=%d "
         "timed_out=%s stderr_tail=%r",
         issue.number, review.exit_code, review.timed_out,
-        _messages._stderr_log_tail(review),
+        _agent_diagnostics._stderr_log_tail(review),
     )
     gh.write_pinned_state(issue, state)
 

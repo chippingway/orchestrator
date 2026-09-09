@@ -27,6 +27,7 @@ from orchestrator.agents import AgentResult
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import (
+    agent_diagnostics as _agent_diagnostics,
     comments as _comments,
     guards as _guards,
     messages as _messages,
@@ -59,7 +60,7 @@ def _park_unparsed_manifest(
         # the operator wading through subprocess noise.
         diag = (
             "" if stripped
-            else _messages._format_stderr_diagnostics(
+            else _agent_diagnostics._format_stderr_diagnostics(
                 decomposer_result, "Decomposer",
             )
         )
@@ -76,7 +77,7 @@ def _park_unparsed_manifest(
                 issue.number,
                 decomposer_result.exit_code,
                 decomposer_result.timed_out,
-                _messages._stderr_log_tail(decomposer_result),
+                _agent_diagnostics._stderr_log_tail(decomposer_result),
             )
     else:
         quoted = _messages._as_blockquote(last_msg.strip())

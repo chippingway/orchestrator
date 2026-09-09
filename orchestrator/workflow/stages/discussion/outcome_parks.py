@@ -16,7 +16,7 @@ import logging
 
 from orchestrator import config
 from orchestrator.agents import AgentResult
-from orchestrator.workflow.engine import messages as _messages
+from orchestrator.workflow.engine import agent_diagnostics as _agent_diagnostics, messages as _messages
 from orchestrator.workflow.stages.discussion import (
     models as _models,
     parks as _parks,
@@ -43,7 +43,7 @@ def _park_silent_discussion(
     # session, and the stderr tail is what tells an operator which one went
     # quiet -- so the message names neither rather than sending them looking
     # for a session that may never have been asked for.
-    diagnostics = _messages._format_stderr_diagnostics(
+    diagnostics = _agent_diagnostics._format_stderr_diagnostics(
         discussion_result, "Discussion agent",
     )
     _parks._park_discussion(
@@ -59,7 +59,7 @@ def _park_silent_discussion(
         run.issue.number,
         discussion_result.exit_code,
         discussion_result.timed_out,
-        _messages._stderr_log_tail(discussion_result),
+        _agent_diagnostics._stderr_log_tail(discussion_result),
     )
 
 
