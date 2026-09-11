@@ -12,6 +12,7 @@ from tests.support.github.models import (
     FakeComment,
     FakeLabel,
     FakePR,
+    FakePRRef,
     FakePRReview,
     FakeUser,
 )
@@ -45,6 +46,11 @@ class _PullCreationService:
             base_branch=base,
             title=title,
             body=body,
+            # GitHub always answers with the ref the pull request is open on,
+            # and readers that ask which branch a recorded number names read
+            # it here: a head left at its default says the pull request is on
+            # no branch at all, which no real one ever is.
+            head=FakePRRef(ref=branch),
         )
         self.opened_prs.append(pull_request)
         return pull_request

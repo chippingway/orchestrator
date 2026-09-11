@@ -21,6 +21,7 @@ from unittest.mock import patch
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit
 from orchestrator.workflow.stages.implementing import late_parks as _parks
+from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_VALIDATING,
@@ -30,6 +31,7 @@ from tests.workflow.fixtures import (
     _agent,
     _analytics_records,
     _authorized_exemption,
+    _issue_branch,
 )
 from tests.workflow.stages.implementing import late_gate_test_support as support
 
@@ -39,6 +41,11 @@ _KEY_APPROVED_SHA = "late_approved_sha"
 # without a reading -- and which leaves this seam's debt to the publication.
 _KEY_RECEIPT_SHA = "implementing_published_sha"
 _KEY_APPROVED_BASIS = "late_approved_basis"
+_KEY_PR_NUMBER = "pr_number"
+_KEY_BRANCH = "branch"
+# The pull request this stage's own push opened, which the receipt beside it
+# is only evidence for while the remote still agrees.
+_DELIVERED_PR_NUMBER = 812
 _DECOMPOSING = (support.GATE_ISSUE_NUMBER, LABEL_DECOMPOSING)
 _STAGE_IMPLEMENTING = "implementing"
 _DECOMPOSE = "DECOMPOSE"
@@ -275,7 +282,7 @@ class MovedCheckoutDebtTest(support._GateCase, unittest.TestCase):
         # would have recorded one is never reached. Written as the commit
         # alone, the tick that comes back to this park would have to infer
         # whose decision the push it is about to make rests on.
-        self._seed(**{_KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA})
+        self._delivered_by_this_stage()
 
         mocks = self._run_gate(
             added_lines=support.OVERSIZED_ADDITIONS,
@@ -318,7 +325,7 @@ class MovedCheckoutDebtTest(support._GateCase, unittest.TestCase):
         # And what the complete record buys: the poll after an operator puts
         # the worktree back reads one commit owed a push and the grounds it is
         # owed on, and publishes without asking the size question again.
-        self._seed(**{_KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA})
+        self._delivered_by_this_stage()
         self._run_gate(
             added_lines=support.OVERSIZED_ADDITIONS,
             candidate_commit=_MOVING_HEAD,
@@ -329,6 +336,28 @@ class MovedCheckoutDebtTest(support._GateCase, unittest.TestCase):
         self._assert_no_agent(mocks)
         self._assert_unmeasured(mocks)
         self._assert_published(mocks)
+    def _delivered_by_this_stage(self) -> None:
+        """The receipt this stage's own push left, and the publication it is.
+
+        All three, because the receipt is only evidence beside them: the note
+        naming the commit, the pull request that push opened, and the branch
+        both are about. Read on its own it says what was PUSHED and nothing
+        about where it went or whether it is still there.
+        """
+        branch = _issue_branch(support.GATE_ISSUE_NUMBER)
+        opened = FakePR(
+            number=_DELIVERED_PR_NUMBER,
+            head_branch=branch,
+            head=FakePRRef(sha=MEASURED_CANDIDATE_SHA, ref=branch),
+        )
+        self.github.add_pr(opened)
+        self.github.existing_open_pr[branch] = opened
+        self._seed(**{
+            _KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA,
+            _KEY_PR_NUMBER: _DELIVERED_PR_NUMBER,
+            _KEY_BRANCH: branch,
+        })
+
 
 class LateGateTelemetryTest(support._GateCase, unittest.TestCase):
     """One call, two streams, and a record that joins without pinned state."""

@@ -446,9 +446,7 @@ def _routed(gate: _records._Gate, generation: LateGeneration) -> bool:
 def _unmeasured_verdict(
     gate: _records._Gate,
     recorded: LateGeneration,
-    candidate_sha: str = "",
-    permitted_sha: str = "",
-    basis: str = "",
+    admitted: _records._GateVerdict = _records._HELD,
 ) -> _records._GateVerdict:
     """Publish a candidate this gate did not measure -- unless a close beat it.
 
@@ -486,13 +484,25 @@ def _unmeasured_verdict(
     publication is superseded by, has to leave the operator waiting exactly as
     it found them rather than unparking an issue nobody replied to.
 
-    `basis` is handed back the same way and for a sharper reason: it says what
-    ADMITTED the candidate, and only the answer that admitted it can say. Any
+    `admitted` is the answer its caller reached, handed in whole rather than
+    as loose terms: every field on it is something only that caller knows, and
+    what comes back is the same answer with the hold taken off. The default is
+    the empty one, which is the road that proved no commit at all.
+
+    `basis` on it says what ADMITTED the candidate, and only the answer that
+    admitted it can say. Any
     road that re-asked here would be taking the proof a SECOND time, and a
     proof that succeeded at the gate and fails a moment later -- a store that
     stopped answering in between -- would record an operator's bypass as
     ordinary unmeasured debt, which the tick after a crash spends without
     asking anyone.
+
+    `delivered_pr` is carried for the same reason and pins two things the seam
+    behind this would otherwise resolve for itself: the lease its push is held
+    to, which is that very commit, and the pull request its bookkeeping
+    belongs to. Both are what the proof that admitted the candidate was ABOUT,
+    and a seam that looked either up again could push over a tip that moved
+    since or open a second pull request where this one closed since.
 
     `permitted_sha` is handed straight back rather than derived, because only
     the caller knows which of the roads past the measurement this is. A
@@ -502,19 +512,14 @@ def _unmeasured_verdict(
     it, an approval owed a push for it, a receipt that already went out.
     """
     _parks._retire_spent_park(gate.state)
-    _supersedes_approval(gate, candidate_sha)
+    _supersedes_approval(gate, admitted.candidate_sha)
     if _superseded(gate, recorded):
         return _records._HELD
     _parks._retire_authorized_park(gate.state)
     _owed_by_an_unmeasured_push(
-        gate, candidate_sha, _frozen_lease(gate), basis,
+        gate, admitted.candidate_sha, _frozen_lease(gate), admitted.basis,
     )
-    return _records._GateVerdict(
-        held=False,
-        candidate_sha=candidate_sha,
-        permitted_sha=permitted_sha,
-        basis=basis,
-    )
+    return replace(admitted, held=False)
 
 
 def _owed_by_an_unmeasured_push(

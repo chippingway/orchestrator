@@ -177,7 +177,7 @@ def _unauthorized_exemption(
 
 
 def _already_on_its_pull_request(
-    gate: _records._Gate, candidate_sha: str,
+    gate: _records._Gate, candidate_sha: str, delivered: int,
 ) -> str:
     """Why an adjudicated commit publishes untouched, or "" where it may not.
 
@@ -200,16 +200,16 @@ def _already_on_its_pull_request(
     Two roads reach the same question, because the seams that ask it differ
     in whether a publication was frozen on the way in. A call PAST one hands
     its own frozen entry over and this reads it; the implementing seam freezes
-    none -- its push is what opens a pull request -- so the reading is taken
-    here, and only for a pull request this stage's own receipt and its own
-    branch both name. An entry too damaged to name a publication is not
-    evidence a pull request stands anywhere and answers nothing, rather than
-    falling back to a road that would ask the remote instead.
+    none -- its push is what opens a pull request -- so `delivered` is the
+    proof its caller took for itself, handed in rather than re-taken here so
+    one reading answers every road that rests on it. An entry too damaged to
+    name a publication is not evidence a pull request stands anywhere and
+    answers nothing, rather than falling back to that proof instead.
 
-    What the answer licenses is BOOKKEEPING and never a second publication.
-    The seam behind it pushes the branch it resolves from the record and
-    reuses the open pull request on that branch, so the reading is held to
-    both: same branch, same tip, and the push has nothing left to send.
+    What the answer licenses is BOOKKEEPING and never a second publication:
+    the number travels out with the verdict, and the seam behind it leases its
+    push against this very commit and hands the relabel the pull request the
+    proof was about.
     """
     if not _exemption.is_exempt(gate.state, candidate_sha):
         return ""
@@ -219,23 +219,35 @@ def _already_on_its_pull_request(
             if gate.entry.is_frozen
             and gate.entry.published_sha == candidate_sha else ""
         )
-    if not _delivered_before_the_relabel(gate, candidate_sha):
-        return ""
-    return _ON_ITS_PULL_REQUEST
+    return _ON_ITS_PULL_REQUEST if delivered else ""
 
 
 def _delivered_before_the_relabel(
     gate: _records._Gate, candidate_sha: str,
-) -> bool:
-    """Whether the implementing seam's own push is still the pull request tip.
+) -> int:
+    """The pull request already standing on this commit, or 0 where none is.
 
     The window between a push that opened a pull request and a relabel that
     never landed, read from the far end. Nothing froze a publication here, so
     every half of the proof is taken together: the RECEIPT says this stage
-    pushed the commit, which is what tells adjudicated work this issue
-    delivered from a tip somebody else moved the branch to; the REMOTE says
-    the pull request is standing on it still; and the BRANCH that pull request
-    is open on is the one the seam behind this would push.
+    pushed the commit, which is what tells work this issue delivered from a
+    tip somebody else moved the branch to; the REMOTE says the pull request is
+    standing on it still; and the BRANCH that pull request is open on is the
+    one the seam behind this would push.
+
+    Asked of every receipt this seam would answer on, measured or adjudicated
+    alike. The note says what this stage last PUSHED and nothing about where
+    it went or whether it is still there, so a candidate the gate measured on
+    the way out earns exactly the same proof: without it a stale note over a
+    pull request that is gone skips the reading, pushes, opens a second pull
+    request, and hands the issue on.
+
+    Taken ONCE per gate call and handed to each road that rests on it, rather
+    than re-asked: a second reading is a second answer, and the roads it feeds
+    have already decided to publish by the time one could disagree.
+
+    Zero for a call that froze a publication, which has its own proof and
+    spends no request on this one.
 
     That last one is what makes "the push moves nothing" true rather than
     merely likely, and it is the whole reason the carve-out is safe. The seam
@@ -257,26 +269,36 @@ def _delivered_before_the_relabel(
     branch -- each of which is a publication nothing here can show, so the
     candidate goes to the ordinary cumulative reading and an oversized one
     waits for the authorization it is missing.
+
+    The NUMBER is the answer rather than a bare yes, because the seam behind
+    it has two things to pin and nothing else can supply either: the lease,
+    which is this commit, and the pull request the bookkeeping belongs to. Fed
+    a bare permission it would resolve a branch, take the transport's own
+    reading of the remote as its lease, and reuse whatever pull request that
+    lookup found -- which is a force-push over a tip that moved since, and a
+    second pull request where this one closed since.
     """
-    if _parks._published_commit(gate.state) != candidate_sha:
-        return False
     number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
-    if not number:
-        return False
+    if gate.entry is not None or not number:
+        return 0
+    if _parks._published_commit(gate.state) != candidate_sha:
+        return 0
     reading = _overflow._PublicationReading.taken(gate.gh, number)
     if reading.refusal is not None or reading.state != _overflow._OPEN:
-        return False
-    if reading.head_branch != _worktree_paths._resolve_branch_name(
-        gate.state, gate.spec, gate.issue.number,
-    ):
-        return False
-    return _payloads.as_hex(
-        reading.head, _formats.COMMIT_LENGTHS,
-    ) == candidate_sha
+        return 0
+    delivered = (
+        reading.head_branch == _worktree_paths._resolve_branch_name(
+            gate.state, gate.spec, gate.issue.number,
+        )
+        and _payloads.as_hex(
+            reading.head, _formats.COMMIT_LENGTHS,
+        ) == candidate_sha
+    )
+    return number if delivered else 0
 
 
 def _receipt_answers_alone(
-    gate: _records._Gate, candidate_sha: str,
+    gate: _records._Gate, candidate_sha: str, delivered: int,
 ) -> bool:
     """Whether a local receipt may vouch for this commit with nothing beside it.
 
@@ -286,26 +308,29 @@ def _receipt_answers_alone(
     publication was frozen there to check it against. That is right for a
     commit this workflow measured on the way out.
 
-    It is not right for one an exemption names and nothing authorizes. The
+    It is NEVER right on its own, whatever the record beside it says. The
     receipt is a local note and it is never cleared, so a branch pushed rounds
-    ago carries one still -- and where the remote has since moved off that
-    commit, answering on the note alone republishes an oversized change nobody
-    measured, with no frozen head to lease the push against. There is nothing
-    here to prove the pull request still carries it: proving that is what a
-    frozen entry IS, and this road has none.
+    ago carries one still -- and answering on the note alone republishes,
+    unmeasured and with no frozen head to lease against, onto a pull request
+    that may have moved, merged, closed, or never have been the one this issue
+    records. An exemption nothing authorizes makes that worse rather than
+    making it so: the work is oversized too.
 
-    So the receipt is refused and the candidate goes to the ordinary
-    cumulative reading, which parks an oversized one for the authorization it
-    is missing. What that costs is the relabel finishing a poll later, once a
-    human has answered -- and the commit stays exactly where it is meanwhile.
+    So the same proof every commit already delivered is held to is asked here,
+    which is the pull request the RECORD names, open, on the branch this seam
+    would push, standing on this exact commit. What that costs is the relabel
+    finishing a poll later where the remote disagrees -- the candidate goes to
+    the ordinary cumulative reading, which parks an oversized one for the
+    authorization it is missing and publishes a small one on its own count --
+    and the commit stays exactly where it is meanwhile.
 
     A call that DID freeze a publication is a different question and answers
     True here: the head it froze is checked against the commit by the reader
-    behind this, which is the proof this road cannot produce.
+    behind this, which is the proof this road has to take for itself.
     """
     if gate.entry is not None:
         return True
-    return not _unauthorized_exemption(gate, candidate_sha)
+    return bool(delivered)
 
 
 def _unauthorized_debt(gate: _records._Gate, candidate_sha: str) -> bool:
@@ -342,8 +367,16 @@ def _unauthorized_debt(gate: _records._Gate, candidate_sha: str) -> bool:
     record damaged between the approval and the push publish an oversized
     change nothing could show the grounds for.
 
-    A record with no basis on it is an approval an older binary wrote, and
-    there the exemption is the only evidence left -- so it is read, and read
+    A record whose basis this build cannot READ is the sharpest of them, and
+    it is the one shape a single hand edit reaches: the field the fallback
+    turns on, touched, and the approval beside it reads as the gate's own. It
+    is refused outright rather than handed to the exemption, because what it
+    says is that the record claims grounds and cannot name them -- and grounds
+    nobody can show are worth what grounds nobody granted are worth.
+
+    A record with NO basis on it is the opposite record and earns the
+    compatibility: an approval an older binary wrote, where the exemption is
+    the only evidence there ever was -- so it is read, and read
     conservatively. A commit that exemption names is the adjudication's debt.
     So is a comment that CLAIMS an exemption and cannot say which commit it is
     about: a truncated or hand-edited field is not the same thing as an issue
@@ -359,6 +392,8 @@ def _unauthorized_debt(gate: _records._Gate, candidate_sha: str) -> bool:
             basis in _parks.AUTHORIZED_BASES
             and not _publishes_on_an_exemption(gate, candidate_sha)
         )
+    if _parks._unreadable_basis(gate.state):
+        return not _publishes_on_an_exemption(gate, candidate_sha)
     if _exemption.is_exempt(gate.state, candidate_sha):
         return not _publishes_on_an_exemption(gate, candidate_sha)
     # Presence and truth asked together, because the answer is the gap between

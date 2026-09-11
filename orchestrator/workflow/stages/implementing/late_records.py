@@ -285,12 +285,22 @@ class _GateVerdict:
 
     Empty for every road that decided nothing to carry, and read back as the
     ordinary unmeasured basis there.
+
+    `delivered_pr` is the fourth, and it travels for the same reason as the
+    commit: only the answer that admitted this candidate read the pull request
+    it is already standing on, and the seam behind it would otherwise resolve
+    a branch for itself and reuse whatever pull request happened to be open on
+    that. What the number buys is a push it can LEASE against the very commit
+    the reading proved, and bookkeeping bound to the pull request that proof
+    was about rather than to whatever a second lookup finds. Zero on every
+    road that proved no such publication, which is every road but one.
     """
 
     held: bool
     candidate_sha: str = ""
     permitted_sha: str = ""
     basis: str = ""
+    delivered_pr: int = 0
 
 
 # What every held answer is, since a hold names no commit: there is nothing

@@ -228,9 +228,7 @@ def _unentered(
     )
 
 
-def _publication_ended(
-    gate: _records._Gate, published: _PublishedCandidate,
-) -> bool:
+def _publication_ended(gate: _records._Gate) -> bool:
     """Whether this publication ended while the tick was working up to it.
 
     Two endings, read together because they are asked at one point for one
@@ -240,43 +238,49 @@ def _publication_ended(
     nothing relabelled, nothing announced -- and leaves the record exactly as
     it stands for the cleanup it is owed.
 
-    The CLOSE is asked of the process-wide latch rather than of the issue,
-    which is the snapshot the tick opened with and cannot say what a later
-    poll saw. It costs no request, so it goes first.
+    The PULL REQUEST is the one this issue's record names, re-read here
+    because everything that read it before is behind the whole gated
+    measurement: one somebody merged or closed in that window still has its
+    branch at the head this tick froze, so the lease SUCCEEDS and the push
+    rewrites work that is over -- a merge commit's branch force-moved back
+    onto the commits it merged. Read fail-CLOSED, the opposite of the same
+    reading taken at the reconciliation's door: there the alternative to
+    falling through is stranding an issue whose remote was briefly
+    unreachable, and here it is rewriting a branch nobody can undo.
 
-    The PULL REQUEST is the one the entry was frozen against, re-read here
-    because the freeze is behind the whole gated reading: a pull request
-    somebody merged or closed in that window still has its branch at the head
-    this tick froze, so the lease SUCCEEDS and the push rewrites work that is
-    over -- a merge commit's branch force-moved back onto the commits it
-    merged. Read fail-CLOSED, the opposite of the same reading taken at the
-    reconciliation's door: there the alternative to falling through is
-    stranding an issue whose remote was briefly unreachable, and here it is
-    rewriting a branch nobody can undo.
+    Asked of EVERY publication this owner makes onto a pull request the remote
+    already carries, whatever the switch says and whether or not an entry was
+    frozen. `DECOMPOSE=off` keeps candidates out of the MEASUREMENT, which is
+    what that switch is for; it does not say a merged pull request may be
+    force-moved, and a barrier that read the frozen entry would be off on
+    exactly the installs whose pushes nothing else re-reads. An issue whose
+    record names no pull request is the initial publication, which has none to
+    have ended.
 
-    Asked only where this tick READ a pull request, which `standing` is the
-    record of: an install with `DECOMPOSE=off` keeps candidates out of the
-    gate and out of every request it would spend, and a push that never froze
-    an entry has no publication of this owner's to have ended.
+    The CLOSE is asked LAST and of the process-wide latch rather than of the
+    issue, which is the snapshot the tick opened with and cannot say what a
+    later poll saw. Last because the reading above it is a REQUEST: a close
+    landing while that request is in flight would be answered one push too
+    late by a latch read before it, and this one costs nothing, so the cheap
+    answer is the one that gets the final word.
     """
-    if gate.close_was_observed:
+    number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
+    if number and not _overflow._PublicationReading.still_open(
+        gate.gh, number,
+    ):
         log.warning(
-            "repo=%s issue=#%d was observed closed before its branch was "
-            "pushed; refusing the push rather than putting work on an issue "
-            "nobody wants",
-            gate.spec.slug, gate.issue.number,
+            "repo=%s issue=#%d records pull request #%d, which this host "
+            "cannot read as open before the push; refusing rather than "
+            "force-moving a branch whose pull request is over",
+            gate.spec.slug, gate.issue.number, number,
         )
         return True
-    if not published.standing:
-        return False
-    number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
-    if _overflow._PublicationReading.still_open(gate.gh, number):
+    if not gate.close_was_observed:
         return False
     log.warning(
-        "repo=%s issue=#%d records pull request #%s, which this host cannot "
-        "read as open before the push; refusing rather than force-moving a "
-        "branch whose pull request is over",
-        gate.spec.slug, gate.issue.number, number,
+        "repo=%s issue=#%d was observed closed before its branch was pushed; "
+        "refusing the push rather than putting work on an issue nobody wants",
+        gate.spec.slug, gate.issue.number,
     )
     return True
 

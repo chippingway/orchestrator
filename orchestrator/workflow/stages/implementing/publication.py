@@ -73,6 +73,38 @@ _UNPROVABLE_HEAD_PARK = (
 )
 
 
+def _leased_against(
+    state: _pinned_state.PinnedState,
+    approved: _models._ApprovedWork,
+    published: str,
+) -> str | None:
+    """The SHA the remote ref has to be at for this push to be allowed.
+
+    Three answers, and the one that matters is the one a bare `None` gets
+    wrong. `None` lets the transport take its OWN reading of the remote and
+    lease against whatever it finds, which is right for the ordinary initial
+    publication -- there is no pull request yet, and the lease is there only
+    so a self-restart's re-push is not refused as a non-fast-forward.
+
+    It is wrong for a publication the gate admitted BECAUSE the pull request
+    is already standing on the commit. That answer is a reading, and between
+    it and this push the branch is somebody else's to move: leased against a
+    fresh reading, a tip that moved in the window is adopted as the lease and
+    the candidate is force-pushed over it. Leased against the commit the proof
+    was about, the same push sends nothing where the branch has not moved and
+    is refused outright where it has.
+
+    The third is an approval taken on the PUBLISHED side, which a settled
+    adjudication sends back here: the reading it was measured under is only
+    worth what the head it was taken over still is, so the push is pinned to
+    that head and a pull request somebody moved during the adjudication
+    rejects it instead of being force-overwritten.
+    """
+    if approved.delivered_pr:
+        return published
+    return _late_parks._approved_lease(state) or None
+
+
 def _close_beat_the_push(spec: config.RepoSpec, issue: Issue) -> bool:
     """Whether a poll read this issue closed while the tick was working.
 
@@ -248,16 +280,7 @@ def _on_commits(
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     if not _branch_transport._push_branch(
         spec, wt, branch, revision=published,
-        # The head an approval taken on the PUBLISHED side was frozen
-        # against, where there is one. A candidate a settled adjudication
-        # sends back here was measured against a pull request the remote
-        # already carries, and the reading it was measured under is only worth
-        # what the head it was taken over still is -- so the push is pinned to
-        # that head and a pull request somebody moved during the adjudication
-        # rejects it instead of being force-overwritten. None for an initial
-        # publication, whose push reads the remote for itself as it always
-        # did: there was no pull request to freeze.
-        force_with_lease=_late_parks._approved_lease(state) or None,
+        force_with_lease=_leased_against(state, approved, published),
     ):
         # Park on awaiting_human like the timeout/question paths. Otherwise the
         # worktree's commits keep _has_new_commits() true, so every poll would
@@ -270,8 +293,11 @@ def _on_commits(
         # _handle_implementing writes pinned state after we return.
         return
     pr = _dev_pr._reuse_or_open_pr(
-        gh, spec, issue, state, _models._PRWork(agent_result, wt, branch),
+        gh, spec, issue, state,
+        _models._PRWork(agent_result, wt, branch, approved.delivered_pr),
     )
+    if pr is None:
+        return
     # The push landed, so what was an intent is now a receipt: staged here so
     # the handoff write below carries it, and so a relabel that does not land
     # leaves the next tick something to recognize an already published branch
@@ -280,10 +306,9 @@ def _on_commits(
     # says so rather than leaving whatever the last published-side push wrote,
     # which would date this receipt to an attempt it was not made under.
     _late_parks._record_publication(state, published, "")
-    if _checkout._moved_after_the_push(gh, issue, state, published, wt):
-        _owes_the_handoff(state, published)
-        return
-    if _checkout._dirtied_after_the_push(gh, issue, state, published, wt):
+    if _checkout._moved_after_the_push(
+        gh, issue, state, published, wt,
+    ) or _checkout._dirtied_after_the_push(gh, issue, state, published, wt):
         _owes_the_handoff(state, published)
         return
     _handoff._advance_to_validating(gh, issue, state, pr, branch)

@@ -32,7 +32,12 @@ from functools import partial
 from types import MappingProxyType
 from unittest.mock import patch
 
-from orchestrator.workflow.stages.implementing import late_push as _late_push
+from orchestrator.workflow.stages.implementing import (
+    late_overflow as _overflow,
+    late_publication as _publication,
+    late_push as _late_push,
+    late_records as _late_records,
+)
 from tests.support.fakes import FakeGitHubClient, FakePRRef, make_issue
 from tests.workflow.fixtures import (
     _TEST_SPEC,
@@ -41,7 +46,7 @@ from tests.workflow.fixtures import (
     _issue_branch,
     _open_pr_for,
 )
-from tests.workflow.interleaving import _RacesPastTheStep
+from tests.workflow.interleaving import _RacesPastTheStep, _RacesTheStep
 from tests.workflow.observation_support import ObservedCloseCase
 from tests.workflow.stages.fixing import (
     fixing_test_support as fixing,
@@ -103,21 +108,20 @@ _RECOVERABLE = MappingProxyType({
 })
 
 
-def _ended(github, *, merged: bool = False) -> None:
+def _ended(github, *, merged: bool = False, unreadable: bool = False) -> None:
     """End this issue's pull request, which leaves the ISSUE itself open.
 
-    A merge and a plain close are one shape with one flag between them, and
-    the flag matters: the two are different endings to a reader, and a fixture
-    spelling only one of them would leave the commoner of the two untested.
+    Three shapes with two flags between them, and both matter: a merge and a
+    plain close are different endings to a reader, and a pull request this
+    host cannot read at all is the third state a push may not land on -- the
+    one that says whether the reading behind the barrier fails open or closed.
     """
+    if unreadable:
+        github.pulls.pop(PR_NUMBER, None)
+        return
     pull_request = github.get_pr(PR_NUMBER)
     pull_request.merged = merged
     pull_request.state = _CLOSED
-
-
-def _unreadable(github) -> None:
-    """Take the pull request off this host's reading entirely."""
-    github.pulls.pop(PR_NUMBER, None)
 
 
 # The two endings a pull request has, plus the reading that cannot say which:
@@ -125,12 +129,17 @@ def _unreadable(github) -> None:
 _ENDINGS = MappingProxyType({
     "merged": partial(_ended, merged=True),
     "closed": _ended,
-    "unreadable": _unreadable,
+    "unreadable": partial(_ended, unreadable=True),
 })
 
 # The step the gated publication takes last before its barrier, which is the
 # window a pull request can end in without the gate above ever seeing it.
 _REPINNED = "_repinned"
+
+# The barrier's own terminal reading, which is a request and so a window of
+# its own: a close landing while it is in flight is one only a latch read
+# AFTER it can still answer.
+_STILL_OPEN = "still_open"
 
 
 # Each ending against both records the reconciliation goes back for: polls
@@ -336,6 +345,50 @@ class EndedBeforeThePushTest(
             ),
         ):
             return self._run_fix_round(self.scenario)
+
+
+class BarrierOrderTest(
+    ObservedCloseCase, unittest.TestCase, support._SizeGateFixtureMixin,
+):
+    """Which of the barrier's two readings gets the final word, and why.
+
+    Asked of the barrier itself rather than through a tick, because what it
+    pins is an ORDER: both readings answer the same question on a whole run,
+    so a case that only watched the push could not say which of them did.
+    """
+
+    def setUp(self) -> None:
+        self._fresh_process()
+        self.scenario = self._seed_fix_round()
+
+    def test_a_close_landing_in_the_read_is_answered(self) -> None:
+        # The terminal reading is a REQUEST, so it is a window of its own: a
+        # poll finding the issue closed while it is in flight is one a latch
+        # read BEFORE it has already answered "no" to. The reading that costs
+        # nothing is the one that gets the last word for exactly that reason.
+        with patch.object(
+            _overflow._PublicationReading,
+            _STILL_OPEN,
+            _RacesTheStep(
+                _overflow._PublicationReading.still_open,
+                lambda: self._latch_close(_REPO_SLUG, fixing.ISSUE),
+            ),
+        ):
+            self.assertTrue(_publication._publication_ended(self._gate()))
+
+    def test_a_live_publication_is_not(self) -> None:
+        # The other side, so the order above is about the window rather than
+        # about the barrier refusing everything it is asked.
+        self.assertFalse(_publication._publication_ended(self._gate()))
+
+    def _gate(self):
+        """The subject the barrier is asked about, as the push owner has it."""
+        github = self.scenario.github
+        return _late_records._gate(
+            github, _TEST_SPEC, self.scenario.issue,
+            github.read_pinned_state(self.scenario.issue),
+            fixing.TEMP_ROOT,
+        )
 
 
 if __name__ == "__main__":

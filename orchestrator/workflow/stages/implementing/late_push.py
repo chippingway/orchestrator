@@ -131,7 +131,7 @@ def _publishes(
     if published.held:
         return _PushedCandidate(held=True)
     published = _repinned(published)
-    if _publication_gate._publication_ended(gate, published):
+    if _publication_gate._publication_ended(gate):
         return _PushedCandidate(held=True)
     if not _pushed(gate, branch, published):
         return _PushedCandidate()

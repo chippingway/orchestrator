@@ -475,12 +475,18 @@ standing on, where the push would move nothing and what would be held back is th
 that has happened. Which pull request that is differs by seam. A call taken past one hands over the head it froze;
 the implementing seam freezes none — its push is what *opens* a pull request — so there the remote is read for the
 number the record names, and only for an open one standing on a commit `implementing_published_sha` says this stage
-pushed *and* open on the branch that seam would push. Every half is required: without the receipt a legacy exemption
-would publish unmeasured over any head a remote happened to agree with; without the remote reading it would publish
-on a local note the branch has since moved off; and without the branch the seam — which resolves its own branch from
-the record and reuses whatever pull request is open on it — would push somewhere nothing has published and open a
-*second* pull request over the same work. Verified equal, the push has nothing to send and the lookup finds the very
-pull request the reading proved, which is what makes this bookkeeping rather than a publication. And
+pushed *and* open on the branch that seam would push. That proof is what `implementing_published_sha` is held to on
+every road, adjudicated or measured: the note says what this stage last *pushed* and nothing about where it went or
+whether it is still there, so a stale one over a pull request that is gone would otherwise skip the reading, push,
+open a second pull request, and hand the issue on.
+
+Every half is required. Without the receipt a legacy exemption would publish unmeasured over any head a remote
+happened to agree with; without the remote reading it would publish on a local note the branch has since moved off;
+and without the branch the seam — which resolves its own branch from the record — would push somewhere nothing has
+published. And because a reading is a moment rather than a guarantee, the answer carries the *number* rather than a
+bare permission: the push that follows is leased against that exact commit, so a branch somebody moved in the window
+rejects it instead of being force-overwritten, and the bookkeeping is bound to that pull request, so one somebody
+closed in the window holds the tick instead of earning a second pull request over the same work. And
 `DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
 recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing
 about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the
@@ -978,9 +984,13 @@ recorded `late_approved_basis` rather than inferred from the records beside it. 
 and the approval in one breath, so an `adjudication` or `authorization` basis is a debt an operator's gesture is
 behind and may be spent only while that gesture can still be read; a `reading` basis is the gate's own count at or
 below the ceiling and is spent by the tick after a crash without asking anybody. An approval an older binary wrote
-carries no basis at all, and there the exemption is the only evidence left — read conservatively, so a comment that
+carries no field at all, and there the exemption is the only evidence left — read conservatively, so a comment that
 CLAIMS an exemption and cannot say which commit it is about is the adjudication's debt rather than this workflow's
-own. The rewrite TRANSFER asks the same first question before it grants a permit: moving an exemption nothing
+own. A field that is *present* and unreadable is the opposite record and earns none of that compatibility: it claims
+grounds it cannot name, which is the one shape a single hand edit reaches to make an approval look like the gate's
+own, so it is refused outright and the candidate is measured. A carry-forward puts such a value back verbatim rather
+than as an absence, since laundering it into the legacy shape would have the tick after that spend the debt without
+asking anybody. The rewrite TRANSFER asks the same first question before it grants a permit: moving an exemption nothing
 authorizes would hand the rewritten commit a permission the accepted one never had, and what follows a granted one is
 the authorization, so a squash of an authorized candidate stays authorized and a squash of a legacy one gains nothing.
 

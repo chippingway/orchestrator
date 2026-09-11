@@ -22,6 +22,7 @@ from orchestrator.git.measurement.models import FrozenCommit, MeasurementFailure
 from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
 )
+from tests.support.fakes import FakePRRef
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     LABEL_VALIDATING,
@@ -359,6 +360,12 @@ class RefusedRelabelRecoveryTest(support._GateCase, unittest.TestCase):
         ), self.assertRaises(_RelabelRefused):
             self._run_gate(added_lines=support.SMALL_ADDITIONS)
         opened = self.github.opened_prs[-1]
+        # The head GitHub answers with once a push has opened a pull request,
+        # which the double cannot derive: the poll after reads this to tell a
+        # publication that landed from a receipt naming a branch that moved.
+        opened.head = FakePRRef(
+            sha=MEASURED_CANDIDATE_SHA, ref=opened.head_branch,
+        )
         self.github.add_pr(opened)
         self.github.existing_open_pr[opened.head_branch] = opened
 

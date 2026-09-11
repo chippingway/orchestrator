@@ -283,6 +283,13 @@ def _decided(
     a permit that refused rotates nothing however readable the permission
     beside it still is.
 
+    The delivery proof is taken ONCE, at the top and for every candidate,
+    because two roads past the measurement rest on it -- a commit an exemption
+    names and a commit this stage's own receipt names -- and a second reading
+    is a second answer over a decision already made. It costs no request
+    unless the receipt names the candidate in hand, and none at all on a call
+    that froze a publication of its own.
+
     What ADMITTED the candidate travels with it, because this is the only
     place that knows and because a second answer taken later is a second
     chance to fail: proving an operator's authorization is a git reading, and
@@ -300,7 +307,8 @@ def _decided(
     cannot show rather than a second adjudication, which `late_consent` owns
     along with the command that ends it.
     """
-    decided = _needs_no_measuring(gate, recorded, candidate_sha)
+    delivered = _authority._delivered_before_the_relabel(gate, candidate_sha)
+    decided = _needs_no_measuring(gate, recorded, candidate_sha, delivered)
     permitted = decided or _transfer._carried_over(gate, candidate_sha)
     if permitted:
         log.info(
@@ -308,9 +316,13 @@ def _decided(
             gate.issue.number, candidate_sha, permitted,
         )
         return _verdict_owner._unmeasured_verdict(
-            gate, recorded, candidate_sha,
-            permitted_sha="" if decided else candidate_sha,
-            basis=_admitted_by(decided),
+            gate, recorded, _records._GateVerdict(
+                held=True,
+                candidate_sha=candidate_sha,
+                permitted_sha="" if decided else candidate_sha,
+                basis=_admitted_by(decided),
+                delivered_pr=delivered,
+            ),
         )
     answered = (
         recorded.candidate_sha == candidate_sha
@@ -477,7 +489,9 @@ def _unnameable(
     return _records._HELD
 
 
-def _already_decided(gate: _records._Gate, candidate_sha: str) -> str:
+def _already_decided(
+    gate: _records._Gate, candidate_sha: str, delivered: int,
+) -> str:
     """Why the RECORD says this commit needs no reading, or "" if it does not.
 
     Three records say a commit was already DECIDED about, and they say it the
@@ -532,9 +546,11 @@ def _already_decided(gate: _records._Gate, candidate_sha: str) -> str:
     """
     if _authority._publishes_on_an_exemption(gate, candidate_sha):
         return _ADJUDICATED
-    delivered = _authority._already_on_its_pull_request(gate, candidate_sha)
-    if delivered:
-        return delivered
+    standing = _authority._already_on_its_pull_request(
+        gate, candidate_sha, delivered,
+    )
+    if standing:
+        return standing
     if _approved_on_a_reading(gate, candidate_sha):
         return _APPROVED
     if _parks._published_commit(gate.state) != candidate_sha:
@@ -554,14 +570,17 @@ def _already_decided(gate: _records._Gate, candidate_sha: str) -> str:
     # republished unmeasured and unleased.
     frozen = gate.entry.published_sha if gate.entry else ""
     vouched = (
-        _authority._receipt_answers_alone(gate, candidate_sha)
+        _authority._receipt_answers_alone(gate, candidate_sha, delivered)
         and (not frozen or frozen == candidate_sha)
     )
     return _PUBLISHED if vouched else ""
 
 
 def _needs_no_measuring(
-    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
+    gate: _records._Gate,
+    recorded: LateGeneration,
+    candidate_sha: str,
+    delivered: int,
 ) -> str:
     """Why this commit publishes without a reading, or "" where it needs one.
 
@@ -590,7 +609,7 @@ def _needs_no_measuring(
     nothing will publish. Read as "in the gate" instead, an install with the
     switch off measures exactly the work it turned the gate off for.
     """
-    decided = _already_decided(gate, candidate_sha)
+    decided = _already_decided(gate, candidate_sha, delivered)
     if decided:
         return decided
     already_read = (

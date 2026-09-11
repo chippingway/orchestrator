@@ -28,7 +28,11 @@ from __future__ import annotations
 
 import unittest
 from types import MappingProxyType
+from unittest.mock import patch
 
+from orchestrator.workflow.stages.implementing import (
+    late_overflow as _overflow,
+)
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
     LABEL_VALIDATING,
@@ -37,6 +41,7 @@ from tests.workflow.fixtures import (
     _authorized_exemption,
     _issue_branch,
 )
+from tests.workflow.interleaving import _RacesTheStep
 from tests.workflow.stages.implementing import (
     late_authority_test_support as legacy,
     late_gate_test_support as support,
@@ -54,6 +59,15 @@ _BRANCH = _issue_branch(support.GATE_ISSUE_NUMBER)
 _MOVED_HEAD = "e" * SHA_LENGTH
 
 _VALIDATING = (support.GATE_ISSUE_NUMBER, LABEL_VALIDATING)
+
+# The two keywords a gated push names its commit and pins its ref by, and the
+# reading the bookkeeping behind the proof resolves its pull request through.
+_REVISION = "revision"
+_LEASE = "force_with_lease"
+_STILL_OPEN = "still_open"
+
+# What a pull request reads as once somebody has ended it.
+_CLOSED = "closed"
 
 # The branch a pull request nobody opened for this issue is on: the shape a
 # record whose `branch` and `pr_number` disagree leaves, and the one that
@@ -222,21 +236,115 @@ class UnauthorizedReceiptTest(_ReceiptCase, unittest.TestCase):
         self._assert_unmeasured(mocks)
         self._assert_published(mocks)
 
-class VouchedReceiptTest(_ReceiptCase, unittest.TestCase):
-    """The two receipts that still answer, and what each is evidence of."""
+class DeliveredWindowTest(_ReceiptCase, unittest.TestCase):
+    """What moves between the proof and the push, and what the proof pins.
 
-    def test_a_measured_receipt_answers_alone(self) -> None:
-        # The window this note exists for, which the refusal above may not
-        # close: nothing says this commit was ever exempt, so it went out
-        # through a reading and the only thing missing is the relabel. Read as
-        # fresh work it would be measured, and an oversized answer there routes
-        # published work into an adjudication with nothing left to hold back.
+    The reading that admits an already-delivered candidate is a request, and
+    everything after it is another: the branch is somebody else's to move and
+    the pull request somebody else's to close. So the answer carries both of
+    the things the seam behind it would otherwise resolve for itself -- the
+    lease, which is that commit, and the pull request the bookkeeping belongs
+    to -- and each is pinned to what the proof was actually about.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
+        self._receipt_for_a_legacy_exemption()
+
+    def test_the_push_is_leased_to_that_commit(self) -> None:
+        # Left to the transport's own reading, a tip somebody moved in the
+        # window is adopted AS the lease and the candidate is force-pushed
+        # over it. Pinned to the commit the proof was about, the same push
+        # sends nothing where the branch has not moved and is refused where
+        # it has.
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        pushed = mocks[support.PUSH_BRANCH].call_args
+        self.assertEqual(pushed.kwargs[_LEASE], MEASURED_CANDIDATE_SHA)
+        self.assertEqual(pushed.kwargs[_REVISION], MEASURED_CANDIDATE_SHA)
+
+    def test_a_pull_request_closing_opens_none(self) -> None:
+        # The other half of the same window. Looked up by branch a moment
+        # later, a pull request somebody closed answers None and the seam
+        # opens a SECOND one over work the first already carries. Pinned to
+        # the number the proof named, the same window holds the tick instead
+        # and leaves the record exactly as it stands.
+        with patch.object(
+            _overflow._PublicationReading,
+            _STILL_OPEN,
+            _RacesTheStep(
+                _overflow._PublicationReading.still_open, self._closes_it,
+            ),
+        ):
+            mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_unmeasured(mocks)
+        self.assertEqual(self.github.opened_prs, [])
+        self.assertNotIn(_VALIDATING, self.github.label_history)
+
+    def _closes_it(self) -> None:
+        """Close the pull request the proof named, as another poll would."""
+        self.github.get_pr(_PR_NUMBER).state = _CLOSED
+
+
+class VouchedReceiptTest(_ReceiptCase, unittest.TestCase):
+    """What a receipt is evidence of, and what it takes to be evidence at all.
+
+    The window this note exists for is real and the refusal beside it may not
+    close it: nothing says the commit was ever exempt, so it went out through
+    a reading and the only thing missing is the relabel. Read as fresh work it
+    would be measured, and an oversized answer there routes published work
+    into an adjudication with nothing left to hold back.
+
+    But the note says only what this stage last PUSHED -- never where it went
+    or whether it is still there -- so the window it covers has to be proved
+    rather than assumed, on exactly the terms the delivered exemption's is.
+    """
+
+    def test_a_measured_receipt_still_answers(self) -> None:
+        self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
         self._seed(**_PUBLISHED_BY_THIS_STAGE)
 
         mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
 
         self._assert_unmeasured(mocks)
         self.assertIn(_VALIDATING, self.github.label_history)
+        self.assertEqual(self.github.opened_prs, [])
+
+    def test_a_receipt_with_no_pr_is_measured(self) -> None:
+        # The reproduction this proof exists for: a note naming a commit and a
+        # record naming no pull request, or one this host cannot read. Trusted
+        # on its own, the candidate skips the reading, is pushed, opens a
+        # SECOND pull request, and the issue is handed on as though the work
+        # had been published all along.
+        for described, recorded in (
+            ("no pull request at all", {_KEY_PUBLISHED_SHA: MEASURED_CANDIDATE_SHA}),
+            ("one this host cannot read", dict(_PUBLISHED_BY_THIS_STAGE)),
+        ):
+            with self.subTest(record=described):
+                self.setUp()
+                self._seed(**recorded)
+
+                mocks = self._run_gate(
+                    added_lines=support.OVERSIZED_ADDITIONS,
+                )
+
+                self._assert_measured(mocks)
+                self._assert_held(mocks)
+                self.assertEqual(self.github.opened_prs, [])
+
+    def test_a_receipt_over_a_moved_branch_fails(self) -> None:
+        # And the same where the pull request is there and has moved on: the
+        # note is never cleared, so on its own it would republish work the
+        # branch no longer carries onto a head nothing leased.
+        self._stand_the_pull_request_on(_MOVED_HEAD)
+        self._seed(**_PUBLISHED_BY_THIS_STAGE)
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_measured(mocks)
+        self._assert_held(mocks)
 
 if __name__ == "__main__":
     unittest.main()

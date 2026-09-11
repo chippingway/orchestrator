@@ -216,6 +216,30 @@ class UnauthorizedDebtTest(legacy._LegacyExemptionCase, unittest.TestCase):
                 self._assert_measured(mocks)
                 self._assert_held(mocks)
 
+    def test_a_damaged_basis_bypasses_nothing(self) -> None:
+        # The sharpest shape of all, and the one a single hand edit reaches:
+        # the field the legacy fallback turns on, touched. Read as the absence
+        # an older binary left, the approval beside it would answer as the
+        # gate's own and an oversized candidate would publish with no
+        # measurement and no exemption anywhere on the record.
+        for described, written in (
+            ("a spelling from nowhere", "damaged-basis"),
+            ("a value of another type", 7),
+        ):
+            with self.subTest(basis=described):
+                self.setUp()
+                self._seed(**{
+                    _KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+                    _KEY_APPROVED_BASIS: written,
+                })
+
+                mocks = self._run_gate(
+                    added_lines=support.OVERSIZED_ADDITIONS,
+                )
+
+                self._assert_measured(mocks)
+                self._assert_held(mocks)
+
     def test_an_authorized_debt_is_revalidated(self) -> None:
         # The crash window an authorized publication opens. The gate counted
         # this candidate and a human let it past, so the approval it left

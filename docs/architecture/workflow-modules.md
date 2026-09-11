@@ -1380,17 +1380,25 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             where none was (the implementing seam, whose push is what OPENS a pull request), off
                             the remote for the number the record names, and there only for an open pull request
                             standing on a commit this stage's own receipt says it pushed AND open on the branch the
-                            seam behind the answer would push, since that seam resolves its own branch and reuses
-                            whatever pull request is on it: named differently, the answer would license a push onto
-                            a branch nothing has published and a SECOND pull request over the same work -- and work
-                            that is over, since a merged or closed issue is finalized before any handler reaches
-                            the gate. The publication DEBT such a commit
+                            seam behind the answer would push, since that seam resolves its own branch: named
+                            differently, the answer would license a push onto a branch nothing has published. That
+                            same proof is what the RECEIPT is held to on every road, adjudicated or measured, since
+                            the note says what was pushed and nothing about where it went. And because a reading is
+                            a moment, the answer carries the NUMBER rather than a bare permission: the push behind
+                            it is leased against that exact commit, so a branch moved in the window rejects it
+                            instead of being force-overwritten, and the bookkeeping is bound to that pull request,
+                            so one closed in the window holds the tick instead of earning a second one over the
+                            same work -- and work that is over, since a merged or closed issue is finalized before
+                            any handler reaches the gate. The publication DEBT such a commit
                             leaves is the same question one field over, answered off the approval's own recorded
                             basis rather than inferred: the two bases an operator's gesture is behind defer to this
                             reading, a gate-owned `reading` approval is untouched, and an approval an older binary
-                            wrote with no basis falls back to the exemption -- read conservatively, so a comment
+                            wrote with no FIELD falls back to the exemption -- read conservatively, so a comment
                             that CLAIMS one and cannot say which commit it is about is the adjudication's debt
-                            rather than this workflow's own
+                            rather than this workflow's own. A basis field that is present and unreadable earns
+                            none of that: it claims grounds it cannot name, which is the shape one hand edit
+                            reaches to make an approval look like the gate's own, so it is refused and the
+                            candidate measured
       late_consent.py       the park an oversized reading of an adjudicated candidate with no operator
                             authorization behind it earns,
                             reached from `late_verdict` down the gate's ORDINARY reading rather than a road of its
@@ -1643,25 +1651,28 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             commit the push is named against, the head it is leased against, and the head the pull
                             request stands on now, which is what says whether the push has anything left to do.
                             Whether that publication has ENDED is this owner's too, asked immediately before the
-                            push it answered for: a close a poll latched, and a pull request merged or closed in the
-                            window behind the entry freeze -- whose branch is still at the head this tick froze, so
-                            the lease SUCCEEDS and the force-push moves a merged pull request's branch back onto the
-                            commits it merged. Read fail-CLOSED, the opposite of the same reading at the
-                            reconciliation's door, since there falling through costs a poll and here a branch
-                            nothing can put back; and asked only where this tick READ a pull request, so an install
-                            with `DECOMPOSE=off` still spends no request
+                            push it answered for: a pull request merged or closed in the window behind everything
+                            that read it -- whose branch is still at the head this tick froze, so the lease SUCCEEDS
+                            and the force-push moves a merged pull request's branch back onto the commits it merged
+                            -- and then, LAST, a close a poll latched. Read fail-CLOSED, the opposite of the same
+                            reading at the reconciliation's door, since there falling through costs a poll and here
+                            a branch nothing can put back; asked of every push onto a pull request the record names,
+                            whatever the switch says, since `DECOMPOSE=off` decides what enters the MEASUREMENT and
+                            not whether a merged pull request may be force-moved; and the latch last because the
+                            reading above it is a request, so a close landing while it is in flight is one only an
+                            answer taken after it can still give
       late_push.py          the one call every gated push onto a pull request the remote already carries goes
                             through -- measure, push named against the measured candidate and leased against the
                             frozen head, spend the debt it paid, close what the route owed for it (in that same
                             write, since past it neither the approval nor the generation is left to say a round was
                             owed, while the caller still has a relabel and a write to make), record what reached the
                             remote so a tick that dies
-                            past the push neither re-reads nor re-pushes it, refuse work that ENDED -- an issue a
-                            poll saw closed, a pull request somebody merged or closed -- immediately before the push
-                            and nowhere else here, since every guard above spends a reading, a diff or a request
-                            after it and an ending landing in one of those windows would be answered one push too
-                            late (the question itself is `late_publication`'s, beside the entry it is the far end
-                            of), and prove the checkout again on the far
+                            past the push neither re-reads nor re-pushes it, refuse work that ENDED -- a pull
+                            request somebody merged or closed, and then a close a poll saw -- immediately before
+                            the push and nowhere else here, since every guard above spends a reading, a diff or a
+                            request after it and an ending landing in one of those windows would be answered one
+                            push too late (the question itself is `late_publication`'s, beside the entry it is the
+                            far end of), and prove the checkout again on the far
                             side of the effect -- AHEAD of that write, so what the proof answers rides it: a
                             checkout that moved or was dirtied holds the handoff rather than the publication, and
                             the claim it owes lands with the receipt rather than one write behind it, where a crash
@@ -2012,9 +2023,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             authorization handoff staged is spent from here too: `late_rollback` records it and
                             the write that moves the label out of this stage consumes it, and this is the one
                             owner both of those can reach
-      publication.py        the push -- named against the commit the gate decided and pinned to the head a
-                            published approval was frozen against, where there is one -- the pull request opened
-                            or reused for it, and the commit the push carried (decided once ahead of the push --
+      publication.py        the push -- named against the commit the gate decided and pinned to the head the
+                            answer that admitted it was about: a published approval's frozen head where there is
+                            one, and the CANDIDATE itself where the gate admitted it because its pull request is
+                            already standing on it, since a lease the transport reads for itself adopts whatever
+                            tip somebody moved to in the window and force-pushes over it -- the pull request
+                            opened or reused for it, which is that same pull request by NUMBER on that road and
+                            never a second one where it closed in between, and the commit the push carried
+                            (decided once ahead of the push --
                             the one that passed the gate, or the checkout's own head where the switch named none
                             -- and made durable there, with a checkout that can name none at all publishing
                             nothing), with the handoff below reached last -- held back until the checkout has
@@ -2061,7 +2077,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             promises nothing else about -- one whose body already names this session is adopted
                             as it stands, human annotations included, and one that does not (an operator's, or
                             the `discussion` stage's plan PR sitting on the very ref the dev commits went to) is
-                            re-bodied to the implementation's
+                            re-bodied to the implementation's. One road names its pull request instead and may
+                            OPEN none: a publication the gate admitted because that pull request already carries
+                            the commit is finishing bookkeeping rather than publishing, so it is resolved by
+                            number and re-read, and one closed between the gate's proof and here holds the tick
+                            rather than earning a second pull request over the same work
       handoff.py            the one write and the one relabel a finished publication is handed on by: the pull
                             request and the branch recorded together, since a state that arrived without a
                             branch would leave the next tick resolving the legacy name while the live pull

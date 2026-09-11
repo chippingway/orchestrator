@@ -2211,13 +2211,15 @@ behind it would find nothing to finalize while the handler spawned an agent. Wha
 cleanup pass every latched close is owed. The gated publication carries the same barrier of its own, immediately
 before the push and nowhere else in it: every guard above that line spends a reading, a diff or a request after it,
 so an ending landing in one of those windows would be answered one push too late. Two things can have ended there.
-A close a poll latched is one. The *pull request* is the other, and it is the one nothing above catches: the gate
-refuses to **enter** a call on one that is already over, so the only way one reaches the push is by merging or
-closing in the window behind that reading — and its branch is still at the head this tick froze, so the lease
-succeeds and the force-push moves a merged pull request's branch back onto the commits it merged. That reading is
-fail-*closed*, the opposite of the same one at the reconciliation's door, since there falling through costs a poll
-and here a branch nothing can put back; and it is asked only where this tick read a pull request at all, so
-`DECOMPOSE=off` still spends no request. So does the *initial* publication on
+The *pull request* is asked first, and it is the one nothing above catches: the gate refuses to **enter** a call on
+one that is already over, so the only way one reaches the push is by merging or closing in the window behind that
+reading — and its branch is still at the head this tick froze, so the lease succeeds and the force-push moves a
+merged pull request's branch back onto the commits it merged. That reading is fail-*closed*, the opposite of the
+same one at the reconciliation's door, since there falling through costs a poll and here a branch nothing can put
+back; and it is asked for every push onto a pull request the record names, `DECOMPOSE=off` included — that switch
+decides what enters the *measurement*, not whether a merged pull request may be force-moved. The latched close is
+asked **last**, because the reading above it is a request and a close landing while that request is in flight is one
+only an answer taken after it can still give. So does the *initial* publication on
 `workflow:implementing`, for the window the gate's own barrier cannot cover — that one ends a cycle, and the write
 that approves a candidate retires the cycle before the push, so an approval whose push failed comes back with
 nothing left to cancel and nothing between the settled reading and a pull request nobody wants.
