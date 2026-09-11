@@ -1013,10 +1013,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             an acknowledged unchanged one matches every field -- so the record is bound to its
                             answer by being dropped with it, by `late_session` where a result is discarded AND where
                             the run replacing it is recorded, which is the statement no road gets around, and by
-                            `late_revision` where a re-freeze mints a fresh generation one step earlier. The
-                            no-verdict refusal retires the park on its way out, since the issue stops next for
-                            whatever the replacement adjudication answers and a standing `awaiting_human` would
-                            silence the question it might ask
+                            `late_revision_reconciliation` where a re-freeze mints a fresh generation one step
+                            earlier. The no-verdict refusal retires the park on its way out, since the issue stops
+                            next for whatever the replacement adjudication answers and a standing `awaiting_human`
+                            would silence the question it might ask
       late_unsplit.py       the park a `single` hands the issue to a human under: the sentence naming the frozen
                             candidate, the reading that stopped it, the two replies that end it -- words that change
                             the work, and the command spelled out against this candidate -- and what the verdict
@@ -1140,13 +1140,25 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             decision to publish past the size gate rather than a reading of what the humans said
       late_revision.py      the developer run guidance buys -- the locked session resumed under `agent_role=developer`
                             and `stage=decomposing`, with a latched close asked on BOTH sides of it, since a resume
-                            is the same step a spawn is and the run takes hours -- the refusal a candidate whose
-                            split already created children
-                            earns instead, and the clean tree, re-frozen commit, and fresh measurement its result is
-                            reconciled through (which carries none of the last generation's split receipts, and
-                            none of the authorization an operator gave the answer this re-freeze retires -- an
-                            acknowledged unchanged candidate comes back matching every term of it), with
-                            the `ACK:` marker an UNCHANGED commit needs before it counts as an answer
+                            is the same step a spawn is and the run takes hours -- and the followup it is resumed
+                            with, quoting the issue as it reads NOW and asking for the `ACK:` marker an UNCHANGED
+                            commit needs before it counts as an answer. The two entry points are this owner's own --
+                            the guidance that buys a run, and the reply to a revision that stalled -- and each asks
+                            the two owners below in turn rather than re-exporting what they hold
+      late_revision_obligations.py
+                            the refusal a candidate the last adjudication already acted on earns instead of a
+                            revision, asked ahead of the notice and the spawn: children it created, which a second
+                            manifest over the top of would strand, and a recorded snapshot obligation in ANY state,
+                            since a moved `candidate_sha` leaves the reclamation comparing a ref against a commit it
+                            no longer names. The hand-back is the reconciliation owner's own park, so a refusal
+                            exits on the terms every other late park does
+      late_revision_reconciliation.py
+                            the clean tree, re-frozen commit, and fresh measurement a finished run's result is
+                            proved through (which carries none of the last generation's split receipts, and none of
+                            the authorization an operator gave the answer this re-freeze retires -- an acknowledged
+                            unchanged candidate comes back matching every term of it), the reading of the `ACK:`
+                            marker that decides whether an UNCHANGED commit is an answer at all, and the fresh owner
+                            read a landed reconciliation and a parked one alike ride out past
       late_relabel.py       the `workflow:decomposing` label a live generation pins -- one still oversized, or one
                             whose owner read is still owed: the kill-switch route it refuses, and the dispatch it
                             refuses -- with the hand relabel it repairs -- when a human has moved the label out from

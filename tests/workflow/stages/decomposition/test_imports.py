@@ -52,6 +52,8 @@ _OWNERS = (
     "late_reply",
     "late_retry_cap",
     "late_revision",
+    "late_revision_obligations",
+    "late_revision_reconciliation",
     "late_session",
     "late_settlement",
     "late_snapshot",

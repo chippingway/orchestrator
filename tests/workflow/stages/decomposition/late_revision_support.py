@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """The finished developer run the revision tests reconcile.
 
-Two modules read this one: what a resumed developer's worktree becomes, and
-what an UNCHANGED commit needs before it may become anything. They share every
-fixture -- the locked session, the measurement a re-freeze answers with, and
-the four replies a run can end on -- so the replies and the commit they leave
-behind stay one description rather than two that drift.
+One description of the run, for every test that reads what it left: what a
+resumed developer's worktree becomes, what an UNCHANGED commit needs before it
+may become anything, and what a split that already acted outside refuses it.
+They share every fixture -- the locked session, the measurement a re-freeze
+answers with, and the four replies a run can end on -- so the replies and the
+commit they leave behind stay one description rather than several that drift.
 
 The four replies are the whole point of the split. All of them can leave HEAD
 exactly where it was, and only one of them is an answer.
