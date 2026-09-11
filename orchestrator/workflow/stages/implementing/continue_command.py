@@ -57,6 +57,7 @@ from orchestrator.workflow.engine import (
 )
 from orchestrator.workflow.stages.implementing import (
     disposition as _disposition,
+    late_parks as _late_parks,
     models as _models,
     resume as _resume,
     retry_cap as _retry_cap,
@@ -181,7 +182,16 @@ def _parked_continue_decision(
     comments = filter_trusted(
         gh.comments_after(issue, state.get(_state._LAST_ACTION_COMMENT_ID))
     )
-    if not comments:
+    # Nothing to decide, and a batch that is not this road's to decide about.
+    # The measurement park's own road would re-measure on one of these, and
+    # this read comes after it handed the tick back -- so a command landing
+    # between the two is in this batch and in nobody else's. Classified here
+    # it is a continue on a park needing real guidance: refused, and consumed
+    # past the refusal, so the operator's retry is gone and the reading they
+    # asked for is one nothing will ever take.
+    if not comments or _late_parks._reserved_for_the_measurement_park(
+        comments, state,
+    ):
         return None
     action = _messages._continue_command_action(comments, park_reason)
     if action == "passthrough":

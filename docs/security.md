@@ -475,6 +475,18 @@ The security posture:
   `<!--orchestrator-recovery-followup-->` marker is read the same drop-only way, and is bounded the same way: it is
   how a self-recovered park recognizes the notice it already posted, so pasting it suppresses one "no action needed"
   follow-up and leaves the operator's original @-mention standing — noisier, never more permissive.
+
+  One road adds to that ledger without having posted, and it is bounded so the same bypass is not available there
+  either. The implementing size gate's authorization park posts before any write records the id of what it posted,
+  so a process dying in that one API call leaves a sentence of the orchestrator's own that nothing can attribute —
+  read back as a human's guidance, it would resume a developer against the orchestrator's own prose and carry the
+  watermark over whatever an operator wrote beneath it. What answers that is the **receipt**
+  (`implementing/late_authorship.py`): a `sha256` over a fresh secret AND the exact body, recorded on the pinned
+  record before the comment exists, with the secret itself carried in the comment that goes out. The repair
+  recomputes that hash over each candidate body and admits the EARLIEST comment whose own body answers it — so the
+  digest is never matched as text, which matters because the record holding it is itself a public comment: pasting
+  it back proves nothing, and a reply quoting the sentence is a different body and hashes differently. No watermark
+  moves and the entry is dropped, so what an attribution buys is one comment recognized as ours and nothing else.
 - **Filtering is fail-safe.** A comment whose author failed to load (empty login) is untrusted. On the awaiting-human
   resume paths (and the auto-rebase retry-unpark) the filter runs on the whole comment batch up front, so an untrusted
   comment there never advances the consumed-watermark nor is marked read — it is re-filtered on each later tick

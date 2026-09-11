@@ -16,10 +16,18 @@ to happen for it -- and it is asked about the same two things the refusal was
 taken on, since a proof narrower than the refusal it answers would republish
 straight back into it.
 
+The park an adjudicated candidate waits on an operator behind asks the same
+question one field over, and asks it for the same reason: what the seam past
+it would measure is whatever the checkout is standing on, so a head that has
+moved is a candidate nobody authorized, published on its own count under a
+command that named a different commit. Which commit that park is about is read
+off the record rather than off an approval, since a publication that failed
+retires the generation and leaves the terms a human agreed to behind.
+
 What the answer LICENSES is the caller's: the republication of an approved
 commit, the records it spends, and the relabel behind them all belong to the
 disposition that reads this. This owner decides only whether the checkout is
-the one that was approved.
+the one that was decided about.
 """
 from __future__ import annotations
 
@@ -32,7 +40,9 @@ from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.git.verification import probes as _verification_probes
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.late_split import (
+    exemption as _exemption,
     formats as _formats,
+    overrides as _overrides,
     payloads as _payloads,
 )
 from orchestrator.workflow.stages.implementing import state as _state
@@ -81,3 +91,52 @@ def _restored_checkout(
         issue.number, approved,
     )
     return ""
+
+
+def _off_the_parked_commit(state: PinnedState, worktree) -> str:
+    """Why this checkout is not the commit the authorization park is about, or "".
+
+    The one question the seam past that park cannot ask for it. It measures
+    what the checkout is standing on, and a head that has moved off the parked
+    commit is a fresh candidate: the exemption does not cover it, the override
+    does not name it, so the policy's door is closed and the ordinary road
+    measures it and publishes it on its own count. The push then carries a
+    commit nobody authorized, under a command that named a different one.
+
+    Which commit the park is about is read off the record rather than
+    remembered, since the tick that took the park is long gone. A recorded
+    override names it outright and is preferred for that reason -- it is the
+    terms a human agreed to, written from the reading that measured them --
+    and the exemption behind it answers a park no authorization has reached
+    yet. Both are read fail-closed, so a field a hand edit truncated names no
+    commit rather than a different one.
+
+    A record naming NO commit is held too, and that is the safe direction
+    rather than an omission: a park whose subject nothing can name is one
+    nothing here may publish under, and the ordinary road below would publish
+    whatever the checkout had become.
+    """
+    parked_over = _the_parked_candidate(state)
+    if not parked_over:
+        return "stands over a commit nothing on the record names"
+    proved = _measurement_commits._prove_candidate_commit(worktree, _HEAD)
+    if not proved.is_frozen:
+        return "has a head this host could not read"
+    if proved.sha != parked_over:
+        return f"has moved off the authorized commit {parked_over}"
+    return ""
+
+
+def _the_parked_candidate(state: PinnedState) -> str:
+    """The one commit this park's publication is about, or "" if none is.
+
+    The override first, because it is the only one of the two that says a
+    person agreed to something: it names the commit whose terms an operator
+    authorized, and it outlives the generation a failed publication retires.
+    The exemption answers the park that no authorization has reached yet,
+    which is every park before the command arrives.
+    """
+    authorized = _overrides.read_publication_override(state)
+    if authorized is not None:
+        return authorized.publication.candidate_sha
+    return _exemption.read_exemption(state) or ""

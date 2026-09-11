@@ -2,11 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """One adjudicated candidate parked for the person nobody can show.
 
-The fixture the authorization park's own contract is driven through, apart
-from any tick: what these cases are about is a thread and a pinned comment --
-which reply a reading acts on, what the record it writes says, and how far it
-consumes -- and driving that through a whole stage handler would put a
-publication seam between the case and the answer it is asserting on.
+The fixture the authorization park's own contract is driven through, at both
+altitudes it has to be asked at. Most of what the park promises is a thread
+and a pinned comment -- which reply a reading acts on, what the record it
+writes says, and how far it consumes -- and driving that through a whole stage
+handler would put a publication seam between the case and the answer it is
+asserting on. What the ROUTING promises is the opposite: that a parked tick
+reaches the gate at all, and that the park survives whatever the real seam
+does with it, neither of which a double in that seam's place can answer. So
+`_run_tick` runs the whole handler over the same seeded issue.
 
 The generation carries the PAIR and no count, which is exactly what the park
 leaves: a record answering "oversized" is what this workflow means by an
@@ -32,6 +36,7 @@ from orchestrator.git.measurement.models import (
     FingerprintFailure,
     MeasurementFailure,
 )
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.pinned_state import (
     MAX_PINNED_BODY,
     PINNED_STATE_MARKER,
@@ -56,6 +61,8 @@ from tests.workflow.fixtures import (
     MEASURED_BASE_SHA,
     MEASURED_CANDIDATE_SHA,
     SHA_LENGTH,
+    _agent,
+    _PatchedWorkflowMixin,
 )
 from tests.workflow.repo_values import CONTRIBUTION_DIGEST
 
@@ -79,6 +86,16 @@ OVERSIZED_ADDITIONS = 9123
 SMALL_ADDITIONS = 12
 PR_NUMBER = 41
 WORKTREE = Path("/tmp/orchestrator-test-late-consent")
+
+# A directory the recovery's existence probe finds, standing in for the
+# checkout the committed candidate lives in.
+TEMP_WORKTREE_ROOT = Path("/tmp")
+
+# The two seams a case asks whether a whole tick spent: a developer run, and
+# the push that would have published the candidate.
+RUN_AGENT = "run_agent"
+PUSH_BRANCH = "_push_branch"
+WORKTREE_PATH = "_worktree_path"
 
 # A commit that types as one and that no record on this issue names: the id an
 # operator copies out of a notice about work a resumed developer moved past.
@@ -105,6 +122,12 @@ AUTHORIZE_ABBREVIATED = _COMMAND.format(
     commit=MEASURED_CANDIDATE_SHA[:ABBREVIATED],
 )
 GUIDANCE = "make it smaller, please"
+
+# The one reply the measurement park is ended by: take the reading you could
+# not take again. It carries no words for a developer, which is what makes it
+# the retry rather than guidance -- and what has every road but that park's
+# own read it as a command carrying no answer.
+CONTINUE = "/orchestrator continue"
 
 # The receipt the park's own notice is stamped with, which is what a tick that
 # died before saying it leaves on the record and what the sentence itself
@@ -249,12 +272,34 @@ class CrashedTick(RuntimeError):
     """The process dying between two writes one road makes."""
 
 
-class DiesPastTheNotice:
-    """A client whose write dies the moment a sentence is on the thread.
+class DiesPastTheFirstWrite:
+    """A client that makes its first durable write and then dies.
 
-    The window itself rather than a count of writes, so a case reproduces it
-    whichever order the road makes its two operations in: what it kills is
-    always the write that would have recorded the sentence just posted.
+    For a road whose first write is not the one at risk: the sentence has been
+    said AND recorded by then, and what the crash costs is whatever the write
+    after that carried.
+    """
+
+    def __init__(self, github) -> None:
+        self._wrapped = github.write_pinned_state
+        self._writes = 0
+
+    def __call__(self, *called, **options):
+        self._writes += 1
+        if self._writes > 1:
+            raise CrashedTick
+        return self._wrapped(*called, **options)
+
+
+class DiesPastTheRelabel:
+    """A client that dies on the first write once the label has moved.
+
+    The window a successful publication opens: the handoff writes durably and
+    then hands the issue to `validating`, and everything this stage still had
+    in flight is past saving from that point on -- nothing under the new label
+    spends it and this stage never sees the issue again. What it kills is the
+    write AFTER the relabel, which is the last chance a road here would have
+    had to tidy up in memory.
     """
 
     def __init__(self, github) -> None:
@@ -262,8 +307,62 @@ class DiesPastTheNotice:
         self._wrapped = github.write_pinned_state
 
     def __call__(self, *called, **options):
-        if self._github.posted_comments:
+        if self._github.label_history:
             raise CrashedTick
+        return self._wrapped(*called, **options)
+
+
+class DiesRestoringTheHeldPark:
+    """A client that dies on the write that would put a held park back.
+
+    The window the durable rollback exists for, named by what makes it that
+    window rather than by a count of writes: a handoff has recorded what the
+    park was, the seam has written over it, and the write that would restore
+    it is the one killed. Everything the seam itself persisted lands, which is
+    the whole point -- a rollback kept in memory is gone by the next poll and
+    the record still says whatever the seam left.
+    """
+
+    def __init__(self, github) -> None:
+        self._wrapped = github.write_pinned_state
+        self._recorded = False
+
+    def __call__(self, issue, state, *called, **options):
+        held = state.get(_state._HELD_PARK)
+        if self._recorded and held is None:
+            raise CrashedTick
+        self._recorded = self._recorded or held is not None
+        return self._wrapped(issue, state, *called, **options)
+
+
+class DiesPastTheNotice:
+    """A client whose write dies once the thread carries what a case is about.
+
+    The window itself rather than a count of writes, so a case reproduces it
+    whichever order the road makes its operations in: what it kills is always
+    the write that would have recorded the sentences just posted.
+
+    `said` is how many of them have to be on the thread first, for a road that
+    says more than one thing before anything records any of it -- a pull
+    request opened, then a refusal over a checkout that moved under the push.
+
+    `spared` is how many writes past that go through anyway, for a road whose
+    own next act is a write: the client this park hands the seam records each
+    id the instant the post returns, so a case about the window PAST that one
+    has to let it land.
+    """
+
+    def __init__(self, github, said: int = 1, spared: int = 0) -> None:
+        self._github = github
+        self._said = said
+        self._spared = spared
+        self._wrapped = github.write_pinned_state
+
+    def __call__(self, *called, **options):
+        if len(self._github.posted_comments) >= self._said:
+            if not self._spared:
+                raise CrashedTick
+            self._spared -= 1
         return self._wrapped(*called, **options)
 
 
@@ -283,7 +382,7 @@ FITS = AdditionMeasurement(additions=SMALL_ADDITIONS)
 UNCOUNTABLE = AdditionMeasurement(failure=MeasurementFailure.DIFF_FAILED)
 
 
-class _ParkedCase:
+class _ParkedCase(_PatchedWorkflowMixin):
     """An issue holding one adjudicated candidate nobody has authorized."""
 
     def setUp(self) -> None:
@@ -313,9 +412,9 @@ class _ParkedCase:
     def _reply(self, body: str, author: str = TRUSTED_AUTHOR) -> int:
         """Add one comment past the consumed watermark, and say which it is."""
         identified = self.github.next_reply_id(self.issue)
-        self.issue.comments.append(
-            FakeComment(identified, body, user=FakeUser(author)),
-        )
+        self.issue.comments.append(FakeComment(
+            identified, body, user=FakeUser(author),
+        ))
         return identified
 
     def _pinned(self) -> dict:
@@ -351,6 +450,28 @@ class _ParkedCase:
         self.assertEqual(
             pinned[_state._PARK_REASON], _command.PARK_UNAUTHORIZED_EXEMPTION,
         )
+
+    def _run_tick(self, worktree: Path = TEMP_WORKTREE_ROOT, **run_options):
+        """Run one whole implementing tick over this parked issue.
+
+        The seams the recovery hands its answer to are the real ones, which is
+        the only way a case can see what the publication below does to a park
+        it was entered under.
+        """
+        run_options.setdefault("has_new_commits", True)
+        # Past the ceiling by default, because that is the reading this park
+        # exists for: a candidate the gate measures small needs nobody's
+        # authorization and publishes on its own count.
+        run_options.setdefault("added_lines", OVERSIZED_ADDITIONS)
+        run_options.setdefault(
+            "run_agent", _agent(last_message="implemented"),
+        )
+        with patch.object(
+            _worktree_paths, WORKTREE_PATH, return_value=worktree,
+        ):
+            return self._run_implementing(
+                self.github, self.issue, **run_options,
+            )
 
     def _state(self) -> PinnedState:
         return self.github.read_pinned_state(self.issue)

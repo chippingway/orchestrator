@@ -37,6 +37,8 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments, prompts as _prompts
 from orchestrator.workflow.stages.implementing import (
     execution as _execution,
+    late_command as _late_command,
+    late_parks as _late_parks,
     resume_request as _resume_request,
     state as _state,
 )
@@ -168,9 +170,63 @@ def _resume_developer_on_human_reply(
     consumed watermark. Only trusted comments are consumed, so an outsider reply
     trailing a trusted one is left unconsumed rather than persisted as the
     watermark; an all-untrusted batch is treated as "no new reply".
+
+    The orchestrator's OWN comments are dropped beside them, by the ledger of
+    ids it recorded posting. Nothing this process wrote is a human's guidance,
+    and the default empty allowlist trusts every author, so without this a
+    park notice the write recording it never reached is read back as somebody
+    asking for a change -- and the developer is resumed against the
+    orchestrator talking to itself. The ledger is the whole of the evidence
+    for the reason it is everywhere else here: the marker is a body anybody
+    may paste, and the author login may be a token shared with a reviewer
+    whose real replies this must not swallow. A sentence one of those parks said
+    and lost the id write for is put into that ledger by `late_authorship`
+    ahead of this read, so the id is the whole of what is asked here.
+
+    A batch whose LAST fresh reply is a command ending the authorization park
+    is not resumed on at all: the whole tick is deferred, unconsumed, to the
+    poll whose own road can act on it. This read comes after that road has
+    looked at the thread and handed the tick back, so a command landing
+    between the two reads is in this batch and in nobody else's -- and the
+    last-reply rule that park is read by says the command is what the human
+    decided, not the guidance under it.
+
+    Deferring rather than merely sparing the command, because a watermark is
+    one number and nothing here is the last thing to move it. Consuming the
+    guidance would resume a developer, and the park its run takes stamps the
+    thread read to the id of the notice it posts -- above the command, which
+    is then gone for good. Nothing consumed, nothing is lost: the next poll
+    reads the command as the last fresh word and publishes on it, and the
+    guidance underneath was superseded by it anyway.
+
+    Only where the command is LAST. One with guidance written over it has been
+    replaced -- the safe reading of somebody who asked to publish and then
+    asked for a change is the one that publishes nothing -- so that batch is
+    an ordinary resume and the developer answers the change.
+
+    The measurement park's own retry is deferred the same way and through the
+    same window, on ALL of the batch rather than its last reply: what ends
+    that park is a reply asking for nothing else, so a batch carrying real
+    words is guidance and feeding it to the developer is exactly what it is
+    owed. Asked of the trusted read before our own comments come out of it,
+    since that is the read the retry itself takes -- reserved off a narrower
+    batch, this tick would defer what that road then refuses.
     """
-    last_action_id = state.get(_state._LAST_ACTION_COMMENT_ID)
-    new_comments = filter_trusted(gh.comments_after(issue, last_action_id))
+    ours = _comments._orchestrator_ids(state)
+    fresh_batch = filter_trusted(gh.comments_after(
+        issue, state.get(_state._LAST_ACTION_COMMENT_ID),
+    ))
+    # Asked of the batch BEFORE our own comments come out of it, because that
+    # is the read the measurement park's own road takes: reserved off a
+    # narrower one, this tick would defer what that road then refuses, and the
+    # two would hand the same thread back and forth forever.
+    if _late_parks._reserved_for_the_measurement_park(fresh_batch, state):
+        return None
+    new_comments = [seen for seen in fresh_batch if seen.id not in ours]
+    if new_comments and _late_command._reserved_for_the_park(
+        new_comments[-1], state,
+    ):
+        return None
     if not new_comments:
         return None
     consumed_max = max(comment.id for comment in new_comments)

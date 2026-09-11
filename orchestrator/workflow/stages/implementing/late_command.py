@@ -58,6 +58,7 @@ from orchestrator.workflow.late_split import (
     payloads as _payloads,
 )
 from orchestrator.workflow.stages.implementing import (
+    late_authorship as _authorship,
     late_records as _records,
     state as _state,
 )
@@ -68,8 +69,10 @@ from orchestrator.workflow.stages.implementing import (
 # every tick until one arrives measures the same pair to the same answer.
 #
 # Spelled on this owner because this is where it is READ -- the reply reading
-# is the only thing that turns on it -- and published for the gate door that
-# asks whether one is standing before it believes its own record.
+# is the only thing that turns on it -- and published for the two seams that
+# route a parked tick back to the gate: the door that asks whether one is
+# standing before it believes its own record, and the recovery that brings a
+# standing park to that door on a tick with no run to dispose.
 PARK_UNAUTHORIZED_EXEMPTION = "late_unauthorized_exemption"
 
 # The attribute a comment's own address is read off, spelled once because
@@ -160,6 +163,33 @@ class _Answer:
         return reached
 
 
+@dataclass(frozen=True)
+class _Reading:
+    """One look at a standing park's thread, and all three answers it holds.
+
+    Spelled as one record because the three come from ONE fetch and mean
+    nothing apart from each other. `answer` is the reply to act on, `spoke`
+    says whether any fresh trusted word of somebody else's is there at all,
+    and `furthest` is how far this look got -- ours and untrusted comments
+    included, since what a watermark records is what has been LOOKED at.
+
+    `answer` and `spoke` are deliberately not one field: a None answer is two
+    different threads. Nothing new on it is a park with nothing to do but
+    stand; a last word that is guidance belongs to the ordinary resume. Read
+    from two fetches instead, a command landing between them is classified as
+    guidance and consumed by a road that cannot act on it.
+
+    `furthest` is what an answer may consume and no more. A tick that read the
+    tip of the thread and then consumed past whatever the tip has become would
+    swallow a reply posted in between -- a retraction of the very command
+    being acted on included -- unread, unanswered and gone for good.
+    """
+
+    answer: _Answer | None
+    spoke: bool
+    furthest: int
+
+
 def _read_the_park(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> _Answer | None:
@@ -201,6 +231,27 @@ def _read_the_park(
         return None
     if not state.get(_state._AWAITING_HUMAN):
         return None
+    return _reads_the_thread(gh, issue, state).answer
+
+
+def _reads_the_thread(
+    gh: GitHubClient, issue: Issue, state: PinnedState,
+) -> _Reading:
+    """Everything one look at this park's thread can say, said at once.
+
+    ONE fetch, because the two questions behind it decide opposite things and
+    a road that asked them separately would answer from two different threads.
+    Between a read finding no command and a second read finding somebody
+    spoke, the command itself can land: the tick then classifies a thread
+    whose last word IS the command as guidance, hands it to the ordinary
+    resume, and the resume consumes it past the watermark and pays for a
+    developer -- leaving the park standing over a decision nobody can read
+    again. Answered from one snapshot, every classification is one some real
+    state of the thread supports.
+
+    The door above is the caller's. This owner answers what the thread says;
+    whether anybody is waiting behind it is a fact about the record.
+    """
     examined = gh.comments_after(
         issue,
         state.get(_state._LAST_ACTION_COMMENT_ID),
@@ -209,17 +260,69 @@ def _read_the_park(
     replies = [
         reply for reply in filter_trusted(examined) if not _ours(reply, state)
     ]
+    furthest = _furthest_read(
+        examined, _payloads.as_identity(
+            state.get(_state._LAST_ACTION_COMMENT_ID),
+        ) or 0,
+    )
     if not replies:
-        return None
+        return _Reading(answer=None, spoke=False, furthest=furthest)
     last = replies[-1]
     identified = _payloads.as_identity(getattr(last, _COMMENT_ID, 0))
     if not _is_the_command(last) or identified is None:
-        return None
-    return _Answer(
-        named=_names(last),
-        comment_id=identified,
-        watermark=_furthest_read(examined, identified),
+        return _Reading(answer=None, spoke=True, furthest=furthest)
+    return _Reading(
+        answer=_Answer(
+            named=_names(last),
+            comment_id=identified,
+            watermark=max(furthest, identified),
+        ),
+        spoke=True,
+        furthest=furthest,
     )
+
+
+def _reserved_for_the_park(reply, state: PinnedState) -> bool:
+    """Whether this reply is a command only this park's own road may consume.
+
+    The generic resume reads the thread again after the road that classifies
+    this park has handed the tick back, and everything between the two reads
+    is time an operator can write in. A command landing there is in the
+    resume's batch and in nobody else's: it goes to a developer as prose and
+    the watermark moves past it, so the park goes on standing over a decision
+    nothing can ever read again -- and a second developer is paid for over an
+    implementation that is committed already.
+
+    Bounding the batch by what the classifying road READ would not close it,
+    since the same window reopens between that bound and the next poll. What
+    closes it is whose reply this is: while the park stands, the command
+    belongs to the road that acts on it, and no other road may spend it.
+    Guidance beside it is consumed and fed to the developer exactly as the
+    park's own notice promises, and comment ids ascend, so a command left
+    behind is one the next poll reads as the last fresh word.
+
+    What the caller owes it is the whole TICK rather than one reply held out
+    of a batch. A watermark is one number and the resume is not the last thing
+    to move it: the run it starts parks, and that park stamps the thread read
+    to the notice it posts, which lands above the command and takes it. So a
+    batch ending in one of these is deferred entire, unconsumed, to the poll
+    that can act on it.
+
+    Whether it is the LAST fresh reply is the caller's to ask, and it has to.
+    A command with guidance written over it has been replaced -- the safe
+    reading of somebody who asked to publish and then asked for a change is
+    the one that publishes nothing, which is this owner's own reading rule --
+    so that batch is an ordinary resume rather than a tick to defer.
+
+    Asked only while the park is standing. On any other issue the command is
+    prose like anything else, and a reply nothing may ever consume is one
+    that would sit in every later batch forever.
+    """
+    if state.get(_state._PARK_REASON) != PARK_UNAUTHORIZED_EXEMPTION:
+        return False
+    if not state.get(_state._AWAITING_HUMAN):
+        return False
+    return _is_the_command(reply)
 
 
 def _furthest_read(examined: list, at_least: int) -> int:
@@ -279,6 +382,12 @@ def _ours(reply, state: PinnedState) -> bool:
     standing as the last reply, which is not the command, so the park goes on
     standing and waits. That is the safe direction for a question only a human
     can answer, and it is the one this owner fails in.
+
+    A sentence this stage said and lost the id write for is put INTO that
+    ledger before this reading runs, by `late_authorship`, so nothing here has
+    to read a body to recognize one. That repair is the only road that adds to
+    the ledger without having posted the comment itself, and what it rests on
+    is spelled where it lives.
     """
     identified = _payloads.as_identity(getattr(reply, _COMMENT_ID, 0))
     if identified is None:
@@ -338,25 +447,9 @@ def _already_said(gate: _records._Gate, marker: str) -> bool:
     command this park may not act on is consumed with no answer at all.
     """
     return carries_own_marker(
-        _thread_beside_the_record(gate),
+        _authorship._thread_beside_the_record(
+            gate.issue, gate.state.comment_id,
+        ),
         marker,
         bot_login=getattr(gate.gh, "_bot_login", None),
     )
-
-
-def _thread_beside_the_record(gate: _records._Gate) -> list:
-    """Every comment on this issue except the pinned record itself.
-
-    By ID, as every other reading here names it: told to find the record by
-    its marker instead, this would drop each comment that merely QUOTES one --
-    a sentence of ours a human quoted our payload under included, which is the
-    one comment the caller is asking about.
-
-    A comment whose id nothing can read stays in, and so does every comment on
-    an issue with no record pinned yet. Keeping one comment too many costs a
-    sentence said twice; dropping one costs the sentence entirely.
-    """
-    return [
-        seen for seen in gate.issue.get_comments()
-        if getattr(seen, _COMMENT_ID, None) != gate.state.comment_id
-    ]

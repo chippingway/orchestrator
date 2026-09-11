@@ -50,7 +50,19 @@ class _RecoveredWork(_AgentWork):
     `DECOMPOSE` bypass would be answering a question the gate already asked.
     Everything else about it is ordinary committed work, which is why it IS
     one rather than merely resembling one.
+
+    `candidate_sha` is the commit the recovery PROVED the checkout on before
+    it built this, and it travels for the reason the approved work below
+    carries one: the gate reads the head again for itself, and the worktree is
+    writable in between. A commit landing in that window is a different
+    candidate -- measured there, pushed there, and recorded there -- while the
+    reading that licensed the recovery was about another one. Named, the gate
+    refuses it before anything is persisted or pushed. Empty where the caller
+    proved nothing, which leaves the head this gate reads as the whole of the
+    answer.
     """
+
+    candidate_sha: str = ""
 
 
 @dataclass(frozen=True)

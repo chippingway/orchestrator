@@ -1145,7 +1145,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        through the normal commit / timeout / question paths, with no "issue body changed" notice. A park needing a real
        answer (any other `park_reason`) consumes the command and posts a refusal (`_refuse_parked_continue`) once, then
        stays parked (no per-tick loop). The size gate's own `late_measurement_failed` park is answered one step
-       AHEAD of that classifier (`_try_recover_late_measurement_park`), because what failed there is a READING rather
+       AHEAD of that classifier (`implementing/late_recovery.py`'s `_try_recover_late_measurement_park`, which owns
+       every park the size gate takes), because what failed there is a READING rather
        than a session: a content-free continue re-measures the recorded pair and re-publishes through the same seam,
        and no agent is spawned — the developer that produced the commit finished long ago. A worktree that is gone
        leaves the park exactly where it is rather than measuring something else, and guidance carrying real words
@@ -1154,6 +1155,39 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        normal drift/resume path so the guidance drives the dev (`_continue_command_action` returns `passthrough`). The
        classifier + parser + refusal live in `workflow/engine/messages.py` and are shared with `_handle_fixing` and
        `_handle_documenting`; a bare continue is also dropped from `_compute_user_content_hash` (see above).
+  1. **Every park the size gate takes** (`implementing/late_recovery.py`'s `_recovers_a_late_park`, asked ahead of
+     the reconciliation below it, ahead of the continue classifier, and ahead of every spawn). Three parks come
+     through this one owner and none of them is a park a human can talk their way out of: one owed another READING,
+     which the bare continue below asks for; one owed another LOOK at the checkout, which is the handoff's own park
+     and says nothing until the worktree is back on the approved commit; and one owed a DECISION nothing but
+     `/orchestrator authorize-oversized <commit>` can be. On all three the work is committed already, which is why
+     they are answered here rather than inside the spawn: the road below would buy a second developer run for an
+     implementation the first one finished. Each hands its answer to the same committed-work seam a finished run
+     publishes through, so a recovery reaches exactly the outcomes a fresh disposition does — published, held, or
+     parked again with the reason it fails for now — and decides nothing the gate would have decided. None of them
+     CREATES a park; no road in this build takes the third one at all.
+     - The third is the one every poll reaches, because an issue behind it has committed work and no run to dispose:
+       nothing else on the tick would measure the candidate again or say a sentence the park still owes. What a poll
+       costs is what the thread says — the command is acted on, guidance falls through to the ordinary resume, and a
+       thread nobody has written on is held where it stands without a reading, a request, or a word.
+     - A checkout the seam would REFUSE stops that road before the seam and holds silently, writing nothing: the
+       seam parks under a reason of its own and its notice moves the watermark past whatever it finds, which here
+       would take this park's reason off and consume the command still standing, so the operator who fixes the
+       worktree would be asked to authorize the same commit a second time. So `late_recovery` asks the seam's own
+       questions first — the worktree on this host, its tree provably carrying nothing loose, its head the commit
+       the park is about — and the commit it proves travels ON the work handed over, so the gate holds its own head
+       read to it rather than to whatever landed in the writable window between the two readings.
+     - What the seam does anyway is held across the call on the RECORD rather than in the frame that made it
+       (`implementing/late_rollback.py`, `late_held_authorization_park` with the park's reason and watermark, and
+       `late_held_authorization_command` for how far the reading behind the command got). Both are written before
+       the call and read back after it, and the one question asked is whether the PUBLICATION happened — the write
+       that moves the label out of this stage is what spends them, so a record still carrying them is a call that
+       never reached it, and a process that died inside the seam is put back by the poll after the crash.
+     - The sentences that seam posts carry a **receipt** recorded before each goes out, so one a crash stranded on
+       the thread is attributed to this stage rather than read back as somebody's guidance and answered with a
+       developer run (`implementing/late_authorship.py`, repairing the ledger ahead of this routing and never
+       moving the watermark). Full field-by-field semantics:
+       [labels-and-state.md](labels-and-state.md#pinned-state).
   1. **A frozen candidate with no park beside it** (`_holds_unreconciled_candidate`, asked before anything
      spawns). A tick that recorded the `measuring` pair and died before counting or parking it leaves nothing on
      the issue saying the workflow is waiting. On the host that froze it the next tick simply measures again; on
@@ -1226,7 +1260,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        cannot keep committing into the worktree after the timeout is recorded.
      - new commits + clean tree → the **late size gate** first (`implementing/late_gate.py` and the
        `late_records` / `late_freeze` / `late_evidence` / `late_verdict` / `late_parks` owners under it, plus
-       `late_consent` / `late_command` for the `late_unauthorized_exemption` park no road in this build takes), the
+       `late_consent` / `late_command` for the `late_unauthorized_exemption` park no road in this build CREATES,
+       whose standing form the recovery above routes on every poll), the
        one seam
        all three committed dispositions publish through — a run that finished, a timeout that had committed, and a
        branch a crash stranded. With `DECOMPOSE=on` the candidate is proved to be a commit this host holds, the base

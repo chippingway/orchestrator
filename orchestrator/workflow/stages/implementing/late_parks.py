@@ -73,6 +73,7 @@ from orchestrator.workflow.late_split import (
     telemetry as _telemetry,
 )
 from orchestrator.workflow.stages.implementing import (
+    late_command as _command,
     late_records as _records,
     state as _state,
 )
@@ -105,11 +106,7 @@ class LateApprovalBasis(StrEnum):
     candidate past the ceiling earns when an operator authorizes it at the
     gate itself -- the count behind it was this gate's own, so recording it as
     a reading would be true and useless: what let it through was the human,
-    and a record damaged before the push would have it publish unmeasured. No
-    owner grants that last one, since no road at the gate collects an
-    operator's authorization; it is spelled here so the readers deciding what
-    an approval rests on are written against the whole vocabulary rather than
-    against the members that happen to have a writer.
+    and a record damaged before the push would have it publish unmeasured.
 
     A value from anywhere else, and an approval an older binary wrote with no
     basis at all, read back as no basis -- and what a reader does with that is
@@ -323,9 +320,28 @@ def _unmeasured(
     it is a different next move for whoever is holding the issue, and nothing
     else would ever tell them -- so it is said, and takes the announced
     member's place.
+
+    The road that spends the bounded retry says its own notice directly,
+    because it has already decided that question: it writes the member down in
+    the same write as the count that ran out, so asking the record afterwards
+    would find the step it is about to announce and read its own write as
+    somebody else's sentence.
     """
     if _repeats_a_notice(gate, generation, failure):
         return _held_quietly(gate, generation, failure, detail)
+    return _announces(gate, generation, failure, detail)
+
+
+def _announces(
+    gate: _records._Gate, generation: _late_models.LateGeneration, failure,
+    detail: str = "",
+) -> bool:
+    """Say this refusal to the thread, and park the issue under it.
+
+    The half of the notice above that is not the announce-once question, split
+    out for the one caller that has answered that question already. Nothing
+    here asks whether the sentence is owed: reached at all, it is.
+    """
     _records_the_notice(gate, generation, failure)
     unmeasured = _UNMEASURED_PARK
     if gate.entry is not None:
@@ -493,7 +509,7 @@ def _lost_reading(
         missed = _announced(missed, failure)
     _persisted(gate, missed)
     if announcing:
-        return _unmeasured(gate, missed, failure, detail)
+        return _announces(gate, missed, failure, detail)
     log.warning(
         "issue=#%d could not reach the base its committed candidate %s is "
         "measured against (%s); re-reading the same pair on the next tick "
@@ -511,22 +527,48 @@ def _stands_over(
 ) -> bool:
     """Whether a human is still waiting on a notice about THIS pair.
 
-    Two things have to be true, and each rules out a different way of
-    suppressing a mention nobody has made. The park has to be one somebody is
-    still waiting on -- the LATCH, not the reason beside it, since a resume
-    consumes the latch and leaves the reason standing, and a human who
-    answered with guidance has spent the notice they were sent rather than
-    still being owed it. And the pair has to be the one the park was taken
-    over, read off the pinned record, since a candidate the branch has moved
-    past is work that park was never about. Either way the fresh start owes
-    its own bounded retry rather than inheriting one already spent.
+    The pair has to be the one the park was taken over, read off the pinned
+    record, since a candidate the branch has moved past is work that park was
+    never about -- the fresh start owes its own bounded retry rather than
+    inheriting one already spent.
+
+    Past that the question is which park this call is standing under, and
+    there are two answers because there are two roads in. On the ordinary one
+    the park is the record's own: the LATCH says somebody is still waiting,
+    not the reason beside it, since a resume consumes the latch and leaves the
+    reason standing, and a human who answered with guidance has spent the
+    notice they were sent rather than still being owed it.
+
+    The other is a handoff made UNDER a park, and there the flags cannot
+    answer at all: the park held across the call is put back after it whatever
+    the seam refused for, so a measurement park taken in here never survives
+    the tick that took it. What does survive is the member the notice named,
+    which is written by the two roads that tell somebody and by nothing else
+    -- so under a held park that is the whole of the question, and the
+    operator waiting behind the park being restored is the human still owed
+    nothing further.
     """
+    recorded = _late_state.read_late_generation(gate.state)
+    if recorded.candidate_sha != generation.candidate_sha:
+        return False
+    if _under_a_held_park(gate.state):
+        return bool(recorded.measurement_failure)
     if not gate.state.get(_state._AWAITING_HUMAN):
         return False
-    if gate.state.get(_state._PARK_REASON) != PARK_MEASUREMENT_FAILED:
-        return False
-    recorded = _late_state.read_late_generation(gate.state)
-    return recorded.candidate_sha == generation.candidate_sha
+    return gate.state.get(_state._PARK_REASON) == PARK_MEASUREMENT_FAILED
+
+
+def _under_a_held_park(state: _pinned_state.PinnedState) -> bool:
+    """Whether this call was entered under a park that will be put back.
+
+    Written before the handoff and dropped after it, so it is on the record
+    for exactly the calls the rollback covers -- and for the poll after a
+    crash inside one, which puts the park back before any gate is entered
+    again. One road writes it, under one park: the operator authorization an
+    adjudicated candidate is waiting for.
+    """
+    held = state.get(_state._HELD_PARK)
+    return isinstance(held, dict) and bool(held.get(_state._AWAITING_HUMAN))
 
 
 def _announced(
@@ -641,10 +683,43 @@ def _retire_spent_park(state: _pinned_state.PinnedState) -> None:
     retire its record, record the commit as owed a push, and hand the tick to
     a source stage that reads `awaiting_human` and takes its parked road --
     waiting for a reply to a question this very tick answered, while the
-    approved commit sits unpushed. Only a measurement park is retired here, so
-    a question, a dirty tree, or a timeout is left exactly where it stands.
+    approved commit sits unpushed.
+
+    ONE park is retired here, and every other is left exactly where it
+    stands -- a question, a dirty tree, a timeout, and above all the park an
+    adjudicated candidate takes when nobody has authorized it. That one is
+    waiting on a PERSON rather than on a reading, so nothing a reading does
+    answers it: a road that lost the base and is counting a quiet miss would
+    unpark an issue whose operator has not replied, and the exemption nobody
+    stands behind would publish on the next poll with no authorization
+    recorded anywhere. It comes off where a publication under it actually
+    happens, and nowhere else.
     """
     if state.get(_state._PARK_REASON) == PARK_MEASUREMENT_FAILED:
+        state.set(_state._PARK_REASON, None)
+        state.set(_state._AWAITING_HUMAN, False)
+
+
+def _retire_authorized_park(state: _pinned_state.PinnedState) -> None:
+    """Drop the authorization park a publication under it is the answer to.
+
+    The park an adjudicated candidate takes when nobody has authorized it,
+    taken down by the one tick that publishes the commit an override already
+    covers. That road never reads the thread -- the record answers the park's
+    own question before the gate's door is reached -- so nothing else on it
+    would ever take the flag off, and a published commit would leave an issue
+    still saying a human is holding it, with the source stage's parked road
+    stopping on every poll after.
+
+    Retired where the publication is DECIDED rather than on the way into the
+    gate, which is the whole of what keeps it apart from the measurement park
+    beside it. What this park waits for is a person, and no reading answers a
+    person: a tick that lost the base, or one a close ends, would otherwise
+    unpark an issue whose operator has not replied, and the exemption nobody
+    stands behind would publish on the next poll under nobody's authority at
+    all.
+    """
+    if state.get(_state._PARK_REASON) == _command.PARK_UNAUTHORIZED_EXEMPTION:
         state.set(_state._PARK_REASON, None)
         state.set(_state._AWAITING_HUMAN, False)
 
@@ -895,6 +970,51 @@ def _forget_approval(state: _pinned_state.PinnedState) -> None:
     _late_state.write_late_spends(state, ())
 
 
+def _spends_a_held_reading(state: _pinned_state.PinnedState) -> None:
+    """Consume the thread to the boundary a publication handoff staged.
+
+    The other half of what an authorization handoff leaves in flight, and it
+    is spent HERE -- in the write that ends this stage's hold on the issue --
+    for the reason the park beside it is dropped here. Past that write nothing
+    under the new label spends what implementing left behind and this stage
+    never sees the issue again, so a boundary applied after the call is one a
+    crash in that window loses for good.
+
+    What it answers is a command the seam published on without ever reading
+    the thread: a candidate the ceiling now lets through settles on its own
+    count, and one an authorization already on the record covers publishes as
+    decided. Neither consumes the reply that ended the park, and a reply left
+    above the watermark is read on the next stage as somebody's fresh
+    feedback -- a developer paid to answer a command nothing there can act on,
+    over an implementation that is already published.
+
+    Never past what that reading LOOKED at, which is what the boundary
+    records: a tick consuming past whatever the tip has become since would
+    swallow a reply posted in between, a retraction of the very command being
+    published on included.
+
+    Dropped whether it was spent or not. A boundary already behind the
+    watermark is one the seam consumed for itself on the road that reads the
+    thread, and one left standing would be applied to whatever this issue
+    parks over next.
+    """
+    boundary = _payloads.as_identity(state.get(_state._HELD_COMMAND))
+    state.set(_state._HELD_COMMAND, None)
+    if boundary is None:
+        return
+    reached = _payloads.as_identity(
+        state.get(_state._LAST_ACTION_COMMENT_ID),
+    ) or 0
+    if boundary <= reached:
+        return
+    log.info(
+        "issue candidate published under an authorization the seam never "
+        "read; consuming the thread to %d so the command is not taken for "
+        "fresh feedback on the stage this issue moves to", boundary,
+    )
+    state.set(_state._LAST_ACTION_COMMENT_ID, boundary)
+
+
 def _published_commit(state: _pinned_state.PinnedState) -> str:
     """The commit this stage last pushed, or "" where none was.
 
@@ -1053,6 +1173,11 @@ def _answers_the_measurement_park(
     could not take, take again": the failure was a reading rather than a
     question, so what it earns is the same pair measured once more and no
     agent at all.
+
+    Which batch that is, the reader below decides -- so the two roads that
+    would otherwise spend one of these answer the same question off the same
+    shape of read, and a command landing between two of them is deferred to
+    the poll that can act on it rather than consumed by one that cannot.
     """
     if state.get(_state._PARK_REASON) != PARK_MEASUREMENT_FAILED:
         return []
@@ -1061,10 +1186,48 @@ def _answers_the_measurement_park(
     replies = _github_comments.filter_trusted(
         gh.comments_after(issue, state.get(_state._LAST_ACTION_COMMENT_ID)),
     )
-    if not replies or not _messages._parse_orchestrator_continue(replies):
-        return []
-    if not all(
+    return replies if _reserved_for_the_measurement_park(replies, state) else []
+
+
+def _reserved_for_the_measurement_park(replies: list, state) -> bool:
+    """Whether this batch is one only this park's own road may consume.
+
+    Every road that reads a parked thread reads it again after the road above
+    it handed the tick back, and the time in between is time an operator can
+    write in. A bare continue landing there is in a later road's batch and in
+    nobody else's, and both of the roads behind this one would SPEND it: the
+    parked-continue classifier reads a command on a park that is not a session
+    failure as one carrying no answer, refuses it, and consumes the thread
+    past its own refusal; the generic resume reads it as guidance, pays for a
+    developer to answer it, and consumes it too. Either way the operator's
+    retry is gone and the reading they asked for is one nothing will ever
+    take.
+
+    So while this park stands, a batch this road would act on belongs to it,
+    and the two behind it hand the whole TICK back rather than sparing the one
+    reply. A watermark is one number and neither of them is the last thing to
+    move it: the run a resume starts parks, and that park stamps the thread
+    read to the notice it posts, which lands above the command and takes it.
+    Deferred entire, nothing is lost -- the next poll reads the same batch and
+    re-measures the pair on it.
+
+    ALL of them, which is this park's own rule rather than the last-reply one
+    the authorization command is read by. A reading is retried by a reply that
+    asks for nothing else; a batch carrying real words is guidance, and the
+    ordinary resume feeding it to the developer is exactly what it is owed.
+
+    Asked only while the park is standing, and only of a batch read the way
+    this owner reads one. A comment of ours above the watermark is in that
+    read, so it is in this one: reserved off a narrower batch, a tick would
+    defer what the road it deferred to then refuses, and the two would hand
+    the same thread back and forth forever.
+    """
+    if state.get(_state._PARK_REASON) != PARK_MEASUREMENT_FAILED:
+        return False
+    if not state.get(_state._AWAITING_HUMAN):
+        return False
+    if not _messages._parse_orchestrator_continue(replies):
+        return False
+    return all(
         _messages._is_bare_orchestrator_continue(reply) for reply in replies
-    ):
-        return []
-    return replies
+    )

@@ -1,0 +1,356 @@
+# Copyright 2026 Geser Dugarov
+# SPDX-License-Identifier: Apache-2.0
+"""What a process that died inside the publication seam leaves on the record.
+
+The seam records an authorization, takes the park off and consumes the command
+DURABLY before this stage gets an answer back, so a rollback that lives only in
+the frame that made the call is gone with the process. What the poll after the
+crash has to find is the park, its reason and its watermark exactly as the
+crash-free run leaves them -- and nothing at all where the seam published, the
+one outcome the park is never put back from.
+
+That outcome has a window of its own, and it is why the reading behind the
+command is written down rather than applied on the way out: the handoff moves
+the label, and everything this stage still holds past that line is on an issue
+it never sees again.
+"""
+
+from __future__ import annotations
+
+import unittest
+from unittest.mock import patch
+
+from orchestrator.workflow.stages.implementing import (
+    disposition as _disposition,
+    late_command as _command,
+    late_rollback as _rollback,
+    state as _state,
+)
+from tests.workflow.fixtures import MEASURED_CANDIDATE_SHA
+from tests.workflow.stages.implementing import (
+    late_consent_test_support as support,
+)
+
+_PUBLISH_COMMITTED_WORK = "_publish_committed_work"
+
+# A watermark past the command, which is what the seam leaves behind when it
+# consumes the reply it was handed and then fails to publish.
+_CONSUMED_PAST_THE_COMMAND = 4000
+
+# A reading the ceiling lets through, which is the one road that takes this
+# park off without anybody authorizing anything.
+_UNDER_THE_CEILING = 12
+
+# What the push is named against, and the whole of what the poll after a
+# failed one has to get right.
+_REVISION = "revision"
+
+
+class _ReadsTheRecordAndDies:
+    """A publication seam that says what the record held, then dies in it.
+
+    The ordering both in-flight records rest on, asserted from inside the one
+    window it is about: what this park WAS, and the receipt its first sentence
+    goes out under, both have to be on the record by the time the seam can
+    write or say anything -- and nothing later can tell.
+    """
+
+    def __init__(self, case) -> None:
+        self._case = case
+        self.park: list = []
+        self.owed: list = []
+
+    def __call__(self, *called, **options):
+        entering = self._case._pinned()
+        self.park.append(entering.get(_state._HELD_PARK))
+        self.owed.append(entering.get(_state._HELD_PUBLICATION))
+        raise support.CrashedTick
+
+
+class SeamCrashRollbackTest(support._ParkedCase, unittest.TestCase):
+    """A process that dies between the seam's own writes and the rollback.
+
+    The seam records an authorization, takes the park off and consumes the
+    command DURABLY before this owner gets an answer back, so a rollback that
+    lives only in the frame that made it is gone with the process. What the
+    poll after the crash has to find is the park, its reason and its watermark
+    exactly as the crash-free run leaves them.
+    """
+
+    def test_both_records_go_down_before_the_seam(self) -> None:
+        # The window is closed by the ORDER. What the park WAS is on the
+        # record before the seam is entered, which is the only reason a later
+        # poll can put it back at all -- and so is the receipt its first
+        # sentence goes out under, since the seam can POST the moment it is
+        # called and one minted no earlier would leave that sentence with
+        # nothing saying it may be owed.
+        entered = self._enters_the_seam()
+
+        self.assertEqual(entered.park, [{
+            _state._AWAITING_HUMAN: True,
+            _state._PARK_REASON: _command.PARK_UNAUTHORIZED_EXEMPTION,
+            _state._LAST_ACTION_COMMENT_ID: support.PRIOR_ACTION_COMMENT_ID,
+        }])
+        self.assertEqual(len(entered.owed), 1)
+        self.assertEqual(len(entered.owed[0]), 1)
+
+    def test_a_crash_past_the_seam_puts_the_park_back(self) -> None:
+        # A push that fails after the authorization is recorded: the seam has
+        # already cleared the park and consumed the command on the record, and
+        # the write that would undo it is the one killed. The next poll is
+        # what has to repair it -- and putting the watermark back is what the
+        # repair is FOR, since the decision the operator already made has to
+        # still be the last fresh word.
+        self._crashes_past_the_seam()
+
+        self._run_tick()
+
+        pinned = self._pinned()
+        self.assertTrue(pinned[_state._AWAITING_HUMAN])
+        self.assertEqual(
+            pinned[_state._PARK_REASON],
+            _command.PARK_UNAUTHORIZED_EXEMPTION,
+        )
+        self.assertEqual(
+            pinned[_state._LAST_ACTION_COMMENT_ID],
+            support.PRIOR_ACTION_COMMENT_ID,
+        )
+        self.assertIsNone(pinned[_state._HELD_PARK])
+        self.assertIsNotNone(
+            _command._read_the_park(self.github, self.issue, self._state()),
+        )
+
+    def test_the_crash_leaves_the_seam_record(self) -> None:
+        # The premise, asserted rather than assumed: without the repair the
+        # poll after the crash finds an issue nobody is waiting on, over a
+        # watermark that has swallowed the command.
+        self._crashes_past_the_seam()
+
+        pinned = self._pinned()
+        self.assertFalse(pinned[_state._AWAITING_HUMAN])
+        self.assertGreater(
+            pinned[_state._LAST_ACTION_COMMENT_ID],
+            support.PRIOR_ACTION_COMMENT_ID,
+        )
+
+    def test_a_restore_owing_no_sentence_still_lands(self) -> None:
+        # The repair has no write of its own, so the poll that restores a park
+        # and finds no sentence to attribute has to persist it anyway. The
+        # record a crash leaves is seeded directly here, because what is under
+        # test is the poll AFTER one rather than the tick that died.
+        self._seed(parked=False, **{
+            _state._HELD_PARK: {
+                _state._AWAITING_HUMAN: True,
+                _state._PARK_REASON:
+                    _command.PARK_UNAUTHORIZED_EXEMPTION,
+                _state._LAST_ACTION_COMMENT_ID:
+                    support.PRIOR_ACTION_COMMENT_ID,
+            },
+            _state._LAST_ACTION_COMMENT_ID: _CONSUMED_PAST_THE_COMMAND,
+            **support.measured_pair(),
+        })
+
+        self._run_tick()
+
+        pinned = self._pinned()
+        self.assertTrue(pinned[_state._AWAITING_HUMAN])
+        self.assertEqual(
+            pinned[_state._LAST_ACTION_COMMENT_ID],
+            support.PRIOR_ACTION_COMMENT_ID,
+        )
+        self.assertIsNone(pinned[_state._HELD_PARK])
+
+    def _enters_the_seam(self) -> _ReadsTheRecordAndDies:
+        """Take one tick to the seam's own door, and say what it found there."""
+        self._seed(**support.measured_pair())
+        self._reply(support.AUTHORIZE)
+        entered = _ReadsTheRecordAndDies(self)
+        with (
+            patch.object(_disposition, _PUBLISH_COMMITTED_WORK, entered),
+            self.assertRaises(support.CrashedTick),
+        ):
+            self._run_tick()
+        return entered
+
+    def _crashes_past_the_seam(self) -> None:
+        """Record the authorization, fail the push, and lose the rollback."""
+        self._seed(**support.measured_pair())
+        self._reply(support.AUTHORIZE)
+        with (
+            patch.object(
+                self.github, support.WRITE_PINNED_STATE,
+                side_effect=support.DiesRestoringTheHeldPark(self.github),
+            ),
+            self.assertRaises(support.CrashedTick),
+        ):
+            self._run_tick(push_branch=False)
+
+
+class PublishedHandoffCrashTest(support._ParkedCase, unittest.TestCase):
+    """What a crash past the relabel leaves of a handoff that published.
+
+    The one outcome this park is never put back from, and the one window
+    nothing later can close: the handoff writes durably and hands the issue to
+    `validating`, and everything this stage still held past that line sits on
+    an issue it never sees again. So what has to be true of every one of these
+    is that the write BEFORE the label already settled it.
+    """
+
+    def test_a_published_handoff_is_spent_early(self) -> None:
+        # The one way the seam comes back that this park is never put back
+        # from: the branch is published and the issue is handed to
+        # `validating`. Nothing under that label spends what this stage left
+        # in flight and implementing never sees the issue again on this road,
+        # so all three fields are settled in the handoff's own durable write
+        # ahead of the relabel -- and a process dying past the relabel finds
+        # them already spent, with no park for a later re-entry to restore.
+        self._crashes_past_the_relabel()
+
+        pinned = self._pinned()
+        self.assertIsNone(pinned[_state._HELD_PARK])
+        self.assertIsNone(pinned[_state._HELD_PUBLICATION])
+        self.assertIsNone(pinned[_state._HELD_COMMAND])
+        restored = self._state()
+        self.assertFalse(
+            _rollback._restores_the_held_park(
+                self.github, self.issue, restored,
+            ),
+        )
+        self.assertFalse(restored.get(_state._AWAITING_HUMAN))
+
+    def test_a_small_candidate_spends_its_command(self) -> None:
+        # A candidate the ceiling now lets through publishes on its own count
+        # and never reads the thread, so the reply that ended the park is
+        # still above the watermark when the label moves. Spent on the way out
+        # instead of before it, this crash would strand that command on a
+        # `validating` issue -- read there as fresh feedback, and paid for
+        # with the developer run this whole road exists to avoid.
+        commanded = self._crashes_past_the_relabel(
+            added_lines=support.SMALL_ADDITIONS,
+        )
+
+        self.assertGreaterEqual(
+            self._pinned()[_state._LAST_ACTION_COMMENT_ID], commanded,
+        )
+
+    def test_a_decided_candidate_spends_its_command(self) -> None:
+        # The other road past that door. A push that failed after the
+        # authorization was recorded leaves the terms standing, so the retry
+        # recognizes the commit as decided and pushes it without a reading of
+        # its own -- and the command it publishes on is consumed by the same
+        # write that moves the label rather than by the one after it.
+        self._seed(**support.measured_pair())
+        commanded = self._reply(support.AUTHORIZE)
+        self._run_tick(push_branch=False)
+
+        self._dies_past_the_relabel()
+
+        self.assertGreaterEqual(
+            self._pinned()[_state._LAST_ACTION_COMMENT_ID], commanded,
+        )
+
+    def _crashes_past_the_relabel(self, **run_options) -> int:
+        """Publish a parked candidate, and lose every write past the relabel."""
+        self._seed(**support.measured_pair())
+        commanded = self._reply(support.AUTHORIZE)
+        self._dies_past_the_relabel(**run_options)
+        return commanded
+
+    def _dies_past_the_relabel(self, **run_options) -> None:
+        """Run one tick whose first write past the label move never lands."""
+        with (
+            patch.object(
+                self.github, support.WRITE_PINNED_STATE,
+                side_effect=support.DiesPastTheRelabel(self.github),
+            ),
+            self.assertRaises(support.CrashedTick),
+        ):
+            self._run_tick(**run_options)
+
+
+class _ClearsTheParkAndPublishesNothing:
+    """A seam that takes the park off and comes back with nothing pushed.
+
+    Several of the gate's roads to a held verdict leave the record looking
+    exactly like this -- a bounded transport miss counting a quiet retry, a
+    close that ended the cycle, a record this commit is superseded by -- so
+    the park flags cannot say whether a publication happened. Written as a
+    double because what is under test is how the rollback READS a seam that
+    came back, and no real road can be relied on to keep leaving this shape.
+    """
+
+    def __call__(self, gh, spec, issue, state, work) -> None:
+        state.set(_state._AWAITING_HUMAN, False)
+        state.set(_state._PARK_REASON, None)
+        state.set(_state._LAST_ACTION_COMMENT_ID, _CONSUMED_PAST_THE_COMMAND)
+
+
+class HeldSeamOutcomeTest(support._ParkedCase, unittest.TestCase):
+    """What a call that published nothing leaves, however it left the record.
+
+    The one fact the rollback reads is whether the write that moves the label
+    out of this stage ran, because that write is what spends everything the
+    handoff staged. Read off the park flags instead, a seam that cleared them
+    without publishing is taken for a publication: the operator's question is
+    dropped and their command consumed, and the exemption nobody stands
+    behind publishes on the next poll under nobody's authority at all.
+    """
+
+    def test_a_cleared_latch_is_not_a_publication(self) -> None:
+        self._seed(**support.measured_pair())
+        self._reply(support.AUTHORIZE)
+
+        with patch.object(
+            _disposition, _PUBLISH_COMMITTED_WORK,
+            _ClearsTheParkAndPublishesNothing(),
+        ):
+            self._run_tick()
+
+        pinned = self._pinned()
+        self.assertTrue(pinned[_state._AWAITING_HUMAN])
+        self.assertEqual(
+            pinned[_state._PARK_REASON],
+            _command.PARK_UNAUTHORIZED_EXEMPTION,
+        )
+        self.assertEqual(
+            pinned[_state._LAST_ACTION_COMMENT_ID],
+            support.PRIOR_ACTION_COMMENT_ID,
+        )
+        self.assertIsNone(pinned[_state._HELD_COMMAND])
+        self.assertIsNotNone(
+            _command._read_the_park(self.github, self.issue, self._state()),
+        )
+
+    def test_a_released_park_still_publishes(self) -> None:
+        # The road that leaves this park with nothing to trigger it, taken
+        # through the real seam and across the restart in the middle. A park
+        # still owing its notice re-enters the seam on every poll because the
+        # receipt says a sentence is outstanding. A candidate the ceiling now
+        # lets through needs nobody's authorization, so the seam takes the
+        # park off and the receipt with it -- and then the push fails, and
+        # what is put back is a park no receipt, no command and no reading
+        # brings the next poll into the seam for.
+        #
+        # What answers that poll is the APPROVAL. A commit this stage decided
+        # to push and has not pushed is a publication owed, dropped by the
+        # handoff that spends it, and it says so whatever either road left the
+        # flags saying. Read off the park alone, the decided commit sits
+        # unpublished for as long as the issue lives, with nobody asked for
+        # anything and nothing left to ask.
+        self._seed(**{
+            _state._HELD_RECEIPT: support.PARK_RECEIPT,
+            **support.measured_pair(),
+        })
+        self._run_tick(added_lines=_UNDER_THE_CEILING, push_branch=False)
+
+        mocks = self._run_tick(added_lines=_UNDER_THE_CEILING)
+
+        mocks[support.RUN_AGENT].assert_not_called()
+        self.assertEqual(
+            mocks[support.PUSH_BRANCH].call_args.kwargs[_REVISION],
+            MEASURED_CANDIDATE_SHA,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

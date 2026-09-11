@@ -47,6 +47,7 @@ from orchestrator.workflow.stages.implementing import (
     continue_command as _continue_command,
     disposition as _disposition,
     drift as _drift,
+    late_recovery as _late_recovery,
     plan_handoff as _plan_handoff,
     read_only_relabel as _read_only_relabel,
     spawn as _spawn,
@@ -246,7 +247,7 @@ def _terminal_or_relabel_holds(
         return True
     if _read_only_relabel._handle_stale_read_only_park(gh, spec, issue, state):
         return True
-    if _disposition._recovers_a_late_park(gh, spec, issue, state):
+    if _late_recovery._recovers_a_late_park(gh, spec, issue, state):
         return True
     if _disposition._holds_unreconciled_candidate(gh, spec, issue, state):
         return True

@@ -210,6 +210,27 @@ class LateGatePushTest(support._GateCase, unittest.TestCase):
         self.assertTrue(pinned[support.AWAITING_HUMAN])
         self.assertEqual(pinned[support.PARK_REASON], _CANDIDATE_MOVED)
 
+    def test_an_approved_commit_is_not_re_decided(self) -> None:
+        # The recovery proves the checkout is on the commit an approval owes a
+        # push for, and the gate reads that head again for itself with the
+        # worktree writable in between. Measured there, the replacement is
+        # approved in the original's place and pushed -- and the checkout
+        # guard below finds a head matching what the gate just decided, so
+        # nothing downstream catches it. The approval a reading or a human
+        # stood behind would be gone, for a commit neither ever saw.
+        self._seed(**{_KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA})
+
+        mocks = self._run_gate(
+            added_lines=support.SMALL_ADDITIONS,
+            candidate_commit=_MOVING_HEAD,
+        )
+
+        self._assert_held(mocks)
+        self.assertEqual(self.github.label_history, [])
+        pinned = self._pinned()
+        self.assertTrue(pinned[support.AWAITING_HUMAN])
+        self.assertEqual(pinned[_KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA)
+
     def test_a_moved_checkout_says_both_commits(self) -> None:
         self._run_gate(
             added_lines=support.SMALL_ADDITIONS,
