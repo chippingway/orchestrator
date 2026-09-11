@@ -51,7 +51,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import NamedTuple
 
-from orchestrator.git.worktrees import claims, evidence
+from orchestrator.git.worktrees import claims, commit_claims, evidence
 from orchestrator.git.worktrees.models import (
     ArtifactVerdict,
     BranchTip,
@@ -64,10 +64,10 @@ from orchestrator.git.worktrees.models import (
 from orchestrator.github.client import GitHubClient
 
 # Nothing is reported from here. Every read this composes is behind a
-# boundary in ``claims`` or ``evidence`` that already names what it could not
-# take, and a retention is returned rather than logged: what an operator is
-# shown about a candidate is the caller's to decide, once, rather than this
-# pass's to repeat every tick.
+# boundary in ``claims``, ``commit_claims``, or ``evidence`` that already names
+# what it could not take, and a retention is returned rather than logged: what
+# an operator is shown about a candidate is the caller's to decide, once,
+# rather than this pass's to repeat every tick.
 
 # What each answer about the checkout costs, as the reason it is kept for.
 # `CONFIRMED` is absent from both tables on purpose: it is the only answer
@@ -244,7 +244,7 @@ def _tip_retentions(
         return ()
     if contained is ProbeAnswer.UNREADABLE:
         return (Retention(RetentionReason.BASE_UNREADABLE, branch),)
-    return claims._commit_accounting(gh, branch, tip_sha)
+    return commit_claims._commit_accounting(gh, branch, tip_sha)
 
 
 def _branch_retentions(

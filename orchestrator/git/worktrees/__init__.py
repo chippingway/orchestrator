@@ -15,9 +15,10 @@ in ``branch_probes``, the checkout reads and the clone-identity read under them
 in ``probes``, the branch-to-repository rules in ``attribution`` and the
 checkout-to-repository ones in ``checkout_attribution``, and the answer they
 fill in ``models``. The classification that decides which of those candidates
-may be reclaimed lives in ``eligibility``, over the
-fail-closed local reads in ``evidence`` and the issue, pinned-state, and
-pull-request reads in ``claims``. The maintenance pass that spends one of those
+may be reclaimed lives in ``eligibility``, over the fail-closed local reads in
+``evidence``, the issue, pinned-state, and open-pull-request reads in
+``claims``, and the terminal pull request that accounts for one commit in
+``commit_claims``. The maintenance pass that spends one of those
 classifications lives in ``maintenance``, over the widening of that scan with
 what the remote still carries in ``discovery`` and the three commit-pinned
 teardown steps in ``reclaim``. Every worktree name is defined on one of these
@@ -29,8 +30,9 @@ republishes these names either, so each answers on the owner that defines it
 and a test intercepting one targets that owner: the stage handlers name it
 just as the ``git/base_sync/`` and ``workflow/engine/`` callers do.
 ``attribution``, ``branch_probes``, ``checkout_attribution``, ``claims``,
-``cleanup``, ``creation``, ``decomposition``, ``discovery``, ``evidence``,
-``inventory``, ``maintenance``, ``probes``, ``reclaim``, and ``terminal`` name
-their logger ``orchestrator.worktree_lifecycle`` rather than after this
-package, because that is the name operator log filters select on.
+``cleanup``, ``commit_claims``, ``creation``, ``decomposition``,
+``discovery``, ``evidence``, ``inventory``, ``maintenance``, ``probes``,
+``reclaim``, and ``terminal`` name their logger
+``orchestrator.worktree_lifecycle`` rather than after this package, because
+that is the name operator log filters select on.
 """

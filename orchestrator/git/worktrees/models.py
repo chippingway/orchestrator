@@ -14,8 +14,9 @@ belongs to in ``attribution``.
 `ProbeAnswer` and `BranchTip` are what one fail-closed read of those artifacts
 comes back with, and `RetentionReason`, `Retention`, `ProvenTip`, and
 `ArtifactVerdict` are what a classification over them concludes. The reads
-live in ``evidence``, the GitHub side of the same question in ``claims``, and
-the classifier composing the two in ``eligibility``.
+live in ``evidence``, the GitHub side of the same question in ``claims`` for
+what the issue says and in ``commit_claims`` for what a terminal pull request
+published, and the classifier composing all three in ``eligibility``.
 
 `CandidateLayout`, `MaintenanceCandidate`, and `MaintenanceScan` are what the
 widest of those readings hands back -- the local scan folded together with
