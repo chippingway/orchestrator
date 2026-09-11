@@ -77,6 +77,11 @@ _PUBLICATION_INTENT = "_publication_intent"
 # What a pull request reads as once somebody has ended it.
 _CLOSED = "closed"
 
+# A receipt outside this domain's object-id vocabulary: what a hand edit or a
+# half-written crash leaves, and what every late commit field reads back as an
+# absence rather than as the claim it is.
+_MALFORMED_RECEIPT = "not-a-sha"
+
 # What a branch this stage has pushed before carries: the note naming the
 # commit it sent, the pull request that push opened, and the branch both are
 # about. All three, because the remote reading behind them is what tells work
@@ -207,6 +212,10 @@ _UNPROVABLE = MappingProxyType({
     "one somebody ended": (
         MEASURED_CANDIDATE_SHA, _BRANCH, _PUBLISHED_BY_THIS_STAGE,
     ),
+    "a receipt nothing can read": (
+        MEASURED_CANDIDATE_SHA, _BRANCH,
+        {**_PUBLISHED_BY_THIS_STAGE, _KEY_PUBLISHED_SHA: _MALFORMED_RECEIPT},
+    ),
 })
 
 
@@ -261,6 +270,23 @@ class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
 
         self._assert_unmeasured(mocks)
         self._assert_held(mocks)
+
+    def test_a_malformed_receipt_is_kept(self) -> None:
+        # The shape the comparison below it cannot see: read fail-closed the
+        # note comes back as no receipt at all, so the candidate is measured,
+        # published, and the damaged field overwritten by the receipt that
+        # push writes -- which destroys the one record an operator could have
+        # repaired it from. It says this stage pushed and cannot say what, so
+        # nothing here can tell whether the commit in hand is that commit.
+        self._seeded("a receipt nothing can read")
+
+        mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        self._assert_unmeasured(mocks)
+        self._assert_held(mocks)
+        self.assertEqual(
+            self._pinned()[_KEY_PUBLISHED_SHA], _MALFORMED_RECEIPT,
+        )
 
     def test_a_tip_no_receipt_names_is_measured(self) -> None:
         # The other half, and it is not widened either: a head the remote

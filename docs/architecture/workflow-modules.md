@@ -1414,6 +1414,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             that FAILS is a park rather than a fall-through, and the size of the candidate is why:
                             measured and found small it would be published, which force-pushes a branch nothing
                             could confirm and opens a second pull request over work the first may already carry.
+                            A receipt this build cannot READ is the same answer one step earlier and is asked
+                            apart from the commit comparison, which cannot see it: every late commit field is read
+                            fail-closed, so a hand edit comes back as no receipt -- and published over, the push
+                            writes its own receipt across the damaged field and destroys what an operator would
+                            have repaired it from.
                             The park writes nothing else -- the receipt, the recorded number and any debt beside
                             them stand for the terminal or the retry. Two candidates are outside it and neither
                             falls through: a commit an adjudication's exemption names and one an approval owes a

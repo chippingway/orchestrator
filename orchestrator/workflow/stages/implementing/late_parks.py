@@ -1031,6 +1031,35 @@ def _published_commit(state: _pinned_state.PinnedState) -> str:
     ) or ""
 
 
+def _unreadable_receipt(state: _pinned_state.PinnedState) -> bool:
+    """Whether the record CARRIES a receipt this build cannot read.
+
+    Presence and truth asked together, because the answer is the gap between
+    them, and a reader has to act on each end of that gap differently. An issue
+    that never published carries no field at all, and there is nothing to
+    doubt. One whose field a hand edit or a half-written crash left outside
+    this domain's object-id vocabulary is the opposite record -- it CLAIMS this
+    stage put a commit on a remote and cannot say which -- and `_published_commit`
+    beside it reads both alike, as the absence a caller deciding "may this
+    commit publish" is right to see.
+
+    A caller deciding whether the record is SOUND may not read them alike. Told
+    "no receipt", it measures the candidate and publishes: the branch is
+    force-pushed, a second pull request is opened over whatever the first may
+    already carry, and the damaged field is overwritten by the receipt that
+    push writes -- which destroys the one piece of evidence an operator had.
+
+    `None` and `""` are asked beside the key because the payload is JSON and a
+    field can be present and empty: an older binary's value or a cleared one,
+    and an absence either way.
+    """
+    if not state.carries(_state._PUBLISHED_SHA):
+        return False
+    if not state.get(_state._PUBLISHED_SHA):
+        return False
+    return not _published_commit(state)
+
+
 def _published_lease(state: _pinned_state.PinnedState) -> str:
     """The head the recorded publication replaced, or "" where none is named.
 

@@ -381,8 +381,8 @@ once. The closed-issue sweep makes external manual merges and operator closes fi
 - Closed `in_review` / `workflow:fixing` / `workflow:resolving_conflict` — a human-merged PR with a `Resolves #N`
   footer auto-closes the issue before the orchestrator can flip the label.
 - Closed `workflow:implementing` / `workflow:documenting` / `workflow:validating` — the same external-merge race when
-  the human merges before reaching `in_review`. Each handler's entry-time `_finalize_if_pr_merged` flips to `done`
-  instead of stranding the issue.
+  the human merges before reaching `in_review`. Each handler's entry-time `_pr_terminal_stops_the_tick` flips to
+  `done` instead of stranding the issue, and decides the closed-without-merge ending off the same reading.
 - Closed `question` — a human closing the issue is the terminal signal
   [`_handle_question`](conversation-stages.md#_handle_question-label-question) consumes to finalize to
   `done`.
@@ -1344,7 +1344,8 @@ The keys that matter for the state machine fall into a few groups:
   (`:receipt: this issue: N agent runs · T tokens · $X.XX`, `(est.)` appended when any `estimated` contributed,
   `unknown` in place of the figure when an `unknown-price` run leaves the total incomplete). It returns nothing when
   no run was counted, so a terminal with an empty meter posts no receipt. Every terminal surface renders it before its
-  single `write_pinned_state`: the PR merged / rejected finalizers (`_finalize_if_pr_merged`,
+  single `write_pinned_state`: the PR merged / rejected finalizers (`_finalize_if_pr_merged` and the
+  `_pr_terminal_stops_the_tick` that decides both endings off one reading,
   `_drain_review_pr_terminals` — all three arcs, including the open-PR/manually-closed-issue rejection — and
   `_finalize_if_issue_closed`, all on the `workflow/engine/terminals.py` owner the stage leaves import
   directly) post it as a standalone `_post_issue_usage_verdict` comment, the `umbrella`
@@ -2427,9 +2428,12 @@ rather than preserving.
   the pull request has since moved off is a record of a publication that is over, and the candidate goes back through
   the ordinary reading rather than being waved past as already published. On the implementing seam no head was frozen
   to check it against, so the same question is put to the *remote*: the pull request the record names, open, on the
-  branch that seam would push, standing on this exact commit. Anything short of that PARKS rather than falling
-  through to the reading: measured and found small the commit would simply be published, which force-pushes a branch
-  nothing could confirm and opens a second pull request over work the first one already carries. The park writes
+  branch that seam would push, standing on this exact commit. A receipt this build cannot READ at all is asked
+  apart from that comparison and refused first, since every late commit field is read fail-closed and a hand-edited
+  one comes back as no receipt: published over, the push writes its own receipt across the damaged field. Anything
+  short of the proof PARKS rather than falling through to the reading: measured and found small the commit would
+  simply be published, which force-pushes a branch nothing could confirm and opens a second pull request over work
+  the first one already carries. The park writes
   nothing else — the receipt, the recorded number and any debt beside them stand for the terminal that drains
   finished work or for the retry behind a repair. A commit an exemption names and one an approval owes a push for
   are outside it: each is a durable decision carrying its own lease, and holding either would strand it.

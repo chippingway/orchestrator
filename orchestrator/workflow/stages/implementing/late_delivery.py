@@ -42,6 +42,13 @@ overwritten, and the relabel is handed that pull request by number, so one
 somebody closed in the window holds the tick instead of earning another one
 over work the first already carries.
 
+A receipt this build cannot READ at all is the same answer one step earlier.
+Every late commit field is read fail-closed, so a hand edit or a half-written
+crash comes back as no receipt -- right for a reader asking whether a commit
+may publish, and exactly wrong for one asking whether the record is sound. Read
+as an absence it publishes, and the push writes a receipt over the damaged
+field, destroying what an operator would have repaired it from.
+
 A proof that FAILS is a hold rather than a fall-through, and that is the whole
 of what the reading is worth. The commit under it is one this stage's own
 record says already went to a remote, so there is no reading of it that makes
@@ -83,6 +90,11 @@ log = logging.getLogger("orchestrator.workflow")
 
 # Why the publication a receipt names could not be shown, spelled as the park
 # comment reads it. Each is a different thing for an operator to reconcile.
+_UNREADABLE_RECEIPT = (
+    "the receipt itself is not a whole object id, so it cannot say which "
+    "commit this stage published"
+)
+
 _NO_PULL_REQUEST = "this issue records no pull request for it to be on"
 
 _UNREADABLE_PULL_REQUEST = (
@@ -108,9 +120,10 @@ _UNPROVABLE_RECEIPT = "the publication its own receipt names cannot be shown"
 
 
 _UNPROVABLE_RECEIPT_PARK = (
-    "{mentions} this issue's pinned comment records that `{candidate}` has "
-    "already been pushed, and this tick cannot show the publication that "
-    "receipt is about: {refusal}. That note is never cleared, so measuring "
+    "{mentions} this issue's pinned comment records that this stage has "
+    "already pushed, and this tick cannot show the publication that receipt "
+    "is about: {refusal}. The candidate in the worktree is `{candidate}`. "
+    "That note is never cleared, so measuring "
     "the commit again and publishing it would force-push a branch nothing "
     "here could confirm and open a second pull request over work the first "
     "may already carry. Nothing was pushed and nothing was discarded, and the "
@@ -174,15 +187,30 @@ def _delivered_before_the_relabel(
     spends no request on this one, and for a receipt naming some other commit
     -- neither is a question about the candidate in hand.
 
-    A REFUSAL is the answer everywhere else the proof does not hold: a pull
-    request this host could not read, one that has merged or been closed, one
+    A REFUSAL is the answer everywhere else the proof does not hold: a receipt
+    this build cannot read at all, no pull request recorded for it to be on,
+    one this host could not read, one that has merged or been closed, one
     standing on another commit, and one open on another branch. Each names
     itself, because what the caller does with one is park a human over it and
-    the four are four different things to reconcile.
+    they are different things to reconcile.
+
+    The MALFORMED receipt is asked first and apart from the comparison below
+    it, because that comparison cannot see it: every late commit field is read
+    fail-closed, so a hand edit or a half-written crash comes back as no
+    receipt at all -- right for a reader deciding whether a commit may publish,
+    and the wrong way round for this one. Read as an absence, the candidate is
+    measured and published, the branch force-pushed, a second pull request
+    opened over whatever the first may already carry, and the damaged field
+    overwritten by the receipt that push writes, which destroys the evidence an
+    operator would have repaired it from. It cannot say WHICH commit it named,
+    so nothing here can tell whether the candidate in hand is that commit --
+    which is the whole reason it refuses rather than comparing.
     """
     number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
     if gate.entry is not None:
         return _Delivered()
+    if _parks._unreadable_receipt(gate.state):
+        return _Delivered(refusal=_UNREADABLE_RECEIPT)
     if _parks._published_commit(gate.state) != candidate_sha:
         return _Delivered()
     if not number:

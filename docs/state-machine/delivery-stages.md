@@ -1054,19 +1054,21 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - **Internal flow**: a `retry_cap` park whose sentence was never said is replayed at entry, ahead of every step below
   (`_replay_owed_notice` — see [the retry budget](labels-and-state.md#the-retry-budget)); it says what the park is
   for and writes, and the tick carries on.
-  0. **External-merge / closed-PR / closed-issue short-circuit.** `_finalize_if_pr_merged` flips a merged PR to
-     `done` (`merge_method="external"`); `_finalize_if_pr_closed` flips one somebody closed *without* merging to
-     `rejected`, emitting `pr_closed_without_merge` and cleaning up the branch; `_finalize_if_issue_closed` flips a
-     closed issue to `rejected` and emits the same event + cleans up the branch only when the linked PR is also
-     closed (an open PR with a manually-closed issue is left alone for operator salvage). The middle one is the arc
+  0. **External-merge / closed-PR / closed-issue short-circuit.** `_pr_terminal_stops_the_tick` decides both
+     pull-request endings off ONE guarded reading: a merged PR flips to `done` (`merge_method="external"`), and one
+     somebody closed *without* merging flips to `rejected`, emitting `pr_closed_without_merge` and cleaning up the
+     branch. `_finalize_if_issue_closed` behind it flips a closed issue to `rejected` and emits the same event +
+     cleans up the branch only when the linked PR is also closed (an open PR with a manually-closed issue is left
+     alone for operator salvage). The closed-PR ending is the arc
      `in_review` and `fixing` have always had inline, lifted out for the stages that carry none — `implementing`,
      `validating` and `documenting`: a closed PR leaves the ISSUE open, so nothing else here sees it, and the size
      gate below would measure the committed candidate again and push it, opening a second pull request since the
-     first is gone, while the other two would spawn a reviewer or a docs agent over work a human has rejected. All
-     two PR endings come off ONE guarded reading rather than a fetch each, since two fetches are two moments and a
-     merge landing between them reads open to the first and merged to the second — which the close arc is right to
-     ignore, while the stage runs anyway. All of them defer without writing state when the PR
-     fetch fails so a transient failure cannot mis-label a merged-PR issue. Both PR terminals are reached only past
+     first is gone, while the other two would spawn a reviewer or a docs agent over work a human has rejected.
+     Both come off one fetch rather than a helper each because two fetches are two moments: a merge landing between
+     them reads open to the first and merged to the second — which a close arc is right to ignore, while the stage
+     runs anyway. `_finalize_if_pr_merged` keeps its own single-ending form for the umbrella / blocked aggregation,
+     which may not be held on a child whose remote blinked. Both defer without writing state when the PR
+     fetch fails so a transient failure cannot mis-label a merged-PR issue. The PR terminal is reached only past
      the plan question, which two records answer. A live `discussion_plan_path` says the recorded PR is the
      `discussion` stage's plan whatever its head is now — the handoff below retires that record durably before anything
      spawns, so nothing here has pushed yet and a head that moved is the humans editing the design they are agreeing to
