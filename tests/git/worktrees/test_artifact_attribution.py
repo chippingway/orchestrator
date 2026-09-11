@@ -157,35 +157,5 @@ class UnattributableBranchTest(unittest.TestCase):
         self.assertEqual(owned, {})
 
 
-class WorktreeDirectoryTest(unittest.TestCase):
-    """Which repositories the path sanitizer hands one checkout directory.
-
-    The branch rules above ask a clone; this one asks the configuration, since
-    every repository's checkouts hang off one `WORKTREES_DIR` whatever clone
-    it is on.
-    """
-
-    def test_a_shared_directory_refuses_both(self) -> None:
-        specs = tuple(_spec(slug, SHARED_CLONE) for slug in COLLIDING_SLUGS)
-
-        with self.assertLogs(LIFECYCLE_LOGGER, logging.WARNING) as logs:
-            colliding = attribution._colliding_worktree_slugs(specs)
-            refusal = logs.output[0]
-
-        self.assertEqual(colliding, tuple(sorted(COLLIDING_SLUGS)))
-        # Both claimants by name again: an operator resolving this has to know
-        # which two entries were handed the same directory.
-        for slug in COLLIDING_SLUGS:
-            with self.subTest(slug=slug):
-                self.assertIn(slug, refusal)
-
-    def test_distinct_directories_are_kept(self) -> None:
-        specs = (
-            _spec(WIDGET_SLUG, SHARED_CLONE), _spec(GADGET_SLUG, SHARED_CLONE),
-        )
-
-        self.assertEqual(attribution._colliding_worktree_slugs(specs), ())
-
-
 if __name__ == "__main__":
     unittest.main()

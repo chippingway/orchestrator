@@ -24,8 +24,8 @@ rather than two issues.
 The flat root is read once for the whole host rather than per repository,
 because it had no per-repository parent to read: what comes back is a set of
 issue numbers with nothing on them saying whose they are, and it is
-``attribution`` that settles each against the clone the directory turns out to
-be a worktree of.
+``checkout_attribution`` that settles each against the clone the directory
+turns out to be a worktree of.
 
 The scan is grouped by clone rather than run per repository because several
 ``REPOS`` entries may share one `target_root`, and a shared ref store is the
@@ -46,6 +46,7 @@ from orchestrator import config
 from orchestrator.git.worktrees import (
     attribution,
     branch_probes,
+    checkout_attribution,
     paths,
     probes,
 )
@@ -307,10 +308,10 @@ def _merged(
 def _legacy_claim(
     issue_number: int,
     clones: dict[config.RepoSpec, Path | None],
-) -> attribution.CheckoutClaim:
+) -> checkout_attribution.CheckoutClaim:
     """Which configured repository one flat checkout is a worktree of, if any."""
     worktree = paths._legacy_worktree_path(issue_number)
-    return attribution._legacy_checkout_claim(
+    return checkout_attribution._legacy_checkout_claim(
         probes._checkout_clone(worktree), clones, str(worktree),
     )
 
@@ -332,7 +333,9 @@ def _attributed_legacy(
     configured entry and the layout it settles is one nothing has written to
     for a long time: a host with no flat checkouts left pays nothing at all.
     """
-    counted = attribution._countable_legacy_checkouts(configured, flat)
+    counted = checkout_attribution._countable_legacy_checkouts(
+        configured, flat,
+    )
     if not counted:
         return LegacyCheckouts(held={}, ambiguous={})
     legacy = LegacyCheckouts(held={}, ambiguous={})
@@ -347,7 +350,7 @@ def _attributed_legacy(
 def _file_claim(
     legacy: LegacyCheckouts,
     issue_number: int,
-    claim: attribution.CheckoutClaim,
+    claim: checkout_attribution.CheckoutClaim,
 ) -> None:
     """File one flat checkout under every repository it concerns.
 
@@ -373,13 +376,13 @@ def _scanned(
 
     Two refusals are settled here, before a repository is read, because both
     are answers about the configuration rather than about a host: the entries
-    sharing a derived checkout directory, which is ``attribution``'s second
-    ambiguity rule, and the entries whose clone would not resolve. Neither is
+    sharing a derived checkout directory, which is ``checkout_attribution``'s
+    collision rule, and the entries whose clone would not resolve. Neither is
     read, and neither is reported -- but both stay in the group their clone
     holds, because a repository this scan will not answer for is still one that
     could have published what is on the clone it names.
     """
-    colliding = attribution._colliding_worktree_slugs(configured)
+    colliding = checkout_attribution._colliding_worktree_slugs(configured)
     grouped, unresolved = _specs_by_clone(configured)
     refused = frozenset(colliding) | frozenset(unresolved)
     return _merged((

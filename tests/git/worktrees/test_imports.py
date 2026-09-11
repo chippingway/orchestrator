@@ -18,6 +18,7 @@ from orchestrator.git import worktrees as _worktrees_package
 from orchestrator.git.worktrees import (
     attribution,
     branch_probes,
+    checkout_attribution,
     claims,
     cleanup,
     creation,
@@ -53,6 +54,7 @@ _MODULES = (
     "orchestrator.git.worktrees",
     "orchestrator.git.worktrees.attribution",
     "orchestrator.git.worktrees.branch_probes",
+    "orchestrator.git.worktrees.checkout_attribution",
     "orchestrator.git.worktrees.claims",
     "orchestrator.git.worktrees.cleanup",
     "orchestrator.git.worktrees.creation",
@@ -120,12 +122,14 @@ _OWNER_ONLY_NAMES = (
 # artifact scan: the two records it answers with, the branch listing and the
 # checkout reads under it, the flat pre-namespacing checkouts among them, the
 # identity read that says which clone one of those is a worktree of, the
-# attribution rules for a branch, for a checkout directory, and for a flat
-# checkout no name can settle -- the record carrying the owner it found beside
-# the claimants nobody may act for, and the reporting behind it -- the clone
-# resolution, the grouping over it and the shape that grouping takes, the one
-# filing what a repository holds apart from what it may not touch, and the
-# per-clone, per-repository, and per-issue assembly. Then the classification
+# attribution rule a branch name is put to, the two a directory is -- the
+# grouping that says which entries derive one checkout directory, the flat path
+# that is a root rather than a checkout, and the claim the clone identity
+# settles, with the record carrying the owner it found beside the claimants
+# nobody may act for and the reporting behind it -- the clone resolution, the
+# grouping over it and the shape that grouping takes, the one filing what a
+# repository holds apart from what it may not touch, and the per-clone,
+# per-repository, and per-issue assembly. Then the classification
 # over what that scan found: the three-answer probe vocabulary, the two records
 # a verdict is made of and the commit it hands over when it clears one, the
 # nine fail-closed reads -- the ignored-path one that answers for what a status
@@ -158,7 +162,7 @@ _OWNER_DEFINED = (
     ("BranchTip", models),
     ("CandidateKey", discovery),
     ("CandidateLayout", models),
-    ("CheckoutClaim", attribution),
+    ("CheckoutClaim", checkout_attribution),
     ("CloneGroups", inventory),
     ("IssueArtifacts", models),
     ("IssueBranches", attribution),
@@ -185,6 +189,7 @@ _OWNER_DEFINED = (
     ("_INDEX", evidence),
     ("_ISSUE_SEGMENT_RE", paths),
     ("_LISTED", attribution),
+    ("_LISTED", checkout_attribution),
     ("_LOCAL_BRANCH_PREFIX", branch_probes),
     ("_LOCAL_REF_PREFIX", evidence),
     ("_LOCAL_REF_PREFIX", reclaim),
@@ -251,10 +256,10 @@ _OWNER_DEFINED = (
     ("_cleanup_terminal_branch", terminal),
     ("_cleared_tips", maintenance),
     ("_clone_read", evidence),
-    ("_colliding_worktree_slugs", attribution),
+    ("_colliding_worktree_slugs", checkout_attribution),
     ("_commit_accounting", claims),
     ("_commit_count_from_stdout", recovery),
-    ("_countable_legacy_checkouts", attribution),
+    ("_countable_legacy_checkouts", checkout_attribution),
     ("_current_names", discovery),
     ("_decompose_worktree_path", decomposition),
     ("_delete_local_issue_branch", cleanup),
@@ -280,7 +285,7 @@ _OWNER_DEFINED = (
     ("_kept_subject", maintenance),
     ("_keyed_candidate", discovery),
     ("_last_touched", evidence),
-    ("_legacy_checkout_claim", attribution),
+    ("_legacy_checkout_claim", checkout_attribution),
     ("_legacy_checkout_numbers", probes),
     ("_legacy_claim", inventory),
     ("_legacy_names", discovery),
@@ -314,7 +319,7 @@ _OWNER_DEFINED = (
     ("_remove_issue_worktree", cleanup),
     ("_remove_recognized_worktree", reclaim),
     ("_repo_worktrees_root", paths),
-    ("_report_unsettled", attribution),
+    ("_report_unsettled", checkout_attribution),
     ("_resolve_branch_name", paths),
     ("_resolved_commit", creation),
     ("_resolved_root", inventory),
@@ -328,7 +333,7 @@ _OWNER_DEFINED = (
     ("_scanned", inventory),
     ("_shared_repository", evidence),
     ("_slug_digest", paths),
-    ("_slugs_by_worktrees_root", attribution),
+    ("_slugs_by_worktrees_root", checkout_attribution),
     ("_spec_inventory", inventory),
     ("_specs_by_clone", inventory),
     ("_still_there", reclaim),
@@ -349,8 +354,9 @@ _OWNER_DEFINED = (
 # The owners that report, each binding the channel an operator's level and
 # handler selection is keyed on.
 _REPORTING_OWNERS = (
-    attribution, branch_probes, claims, cleanup, creation, decomposition,
-    discovery, evidence, inventory, maintenance, probes, reclaim, terminal,
+    attribution, branch_probes, checkout_attribution, claims, cleanup,
+    creation, decomposition, discovery, evidence, inventory, maintenance,
+    probes, reclaim, terminal,
 )
 
 
