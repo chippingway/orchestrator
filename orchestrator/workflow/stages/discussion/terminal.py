@@ -3,38 +3,22 @@
 """How a discussion stops being worked, and what it holds on to until then.
 
 The published plan is what ends this conversation, and the pull request
-carrying it is the only thing that says how. So the tick opens by asking
+carrying it is the only thing that says how -- so the tick opens by asking
 GitHub about that pull request, ahead of every local reading and every path
 that could spawn: an issue whose design the humans have already taken or
 turned down must not have another round opened over the top of it, and the
-answer to "which of the two" is not on this host.
+answer to "which of the two" is not on this host. `plan_terminal` holds what
+comes back of it, the two terminal arcs and the hold an undecided or unreadable
+one takes.
 
-Three answers, and the two terminal ones share the tail every other stage's
-terminals use -- the timestamp, the label, the usage receipt before the write,
-the event, and the close -- because a discussion that finished is finished the
-same way a review that finished is. A merged plan PR is the humans agreeing to
-the design, which is `done`; one closed without merging is them declining it,
-which is `rejected`. Both name `discussion` as the stage, since that is the
-label the issue is sitting on and what an audit row has to attribute the run
-to.
-
-An OPEN one is the third answer and the reason this owner exists at all. It
-changes nothing -- no label, no write, no comment -- and, crucially, it takes
-nothing down: the worktree and the branches the plan lives on are what the pull
-request is open against, and reaping them while a human is still reading the
-plan would close their review out from under them. That holds whether or not
-the ISSUE is still open. An operator who closes the issue while its plan PR is
-up has said nothing about the plan, so the stage keeps the label it was on --
-which is what leaves the issue inside the closed-issue sweep -- and waits for
-the pull request itself to say which terminal applies. Flipping it to a
-terminal label there would end the sweep's interest in the issue on the one
-reading nobody has taken yet, and the branch would outlive every pass that
-knows to clean it up.
-
-A pull request that could not be fetched is that same hold: nothing is decided
-on a read that failed, and the tick after this one asks again. What it must
-never do is fall through, since "GitHub declined once" would otherwise open a
-round on a design that has already been agreed.
+That reading answers for a closed issue as much as an open one, which is why it
+is taken before the close is even looked at. An operator who closes the issue
+while its plan PR is up has said nothing about the plan, so the stage keeps the
+label it was on -- which is what leaves the issue inside the closed-issue sweep
+-- and waits for the pull request itself to say which terminal applies.
+Flipping it to a terminal label there would end the sweep's interest in the
+issue on the one reading nobody has taken yet, and the branch would outlive
+every pass that knows to clean it up.
 
 A closed issue with NO recorded pull request is where the marker is read, and
 it is read before anything is finalized. `discussion_publishing_sha` names a
@@ -77,21 +61,17 @@ from orchestrator.github.issues import (
     _STATE_ATTR,
 )
 from orchestrator.workflow.engine import terminals as _terminals
-from orchestrator.workflow.stages.discussion import models as _models, state as _state
+from orchestrator.workflow.stages.discussion import (
+    models as _models,
+    plan_terminal as _plan_terminal,
+    state as _state,
+)
 
 log = logging.getLogger("orchestrator.workflow")
 
-# What `pr_state` calls a plan the humans took, and one they turned down.
-# Anything else is a design still being read, which is neither.
-_MERGED_PR_STATE = "merged"
-
-_CLOSED_PR_STATE = "closed"
-
-# What it calls one still taking commits -- the state that decides nothing and
-# is therefore the one a hold is measured by.
+# What `pr_state` calls a plan still taking commits -- the state that decides
+# nothing, and therefore the one a hold is measured by.
 _OPEN_PR_STATE = "open"
-
-_MERGE_CLOSE_ERROR = "could not close after the plan PR merged"
 
 
 def _drain_discussion_terminals(run: _models._DiscussionRun) -> bool:
@@ -112,7 +92,7 @@ def _drain_discussion_terminals(run: _models._DiscussionRun) -> bool:
     finalized on that state would be ending a conversation still running.
     """
     if _state._plan_published(run.state):
-        return _drain_plan_pr(run)
+        return _plan_terminal._drain_plan_pr(run)
     if not _issue_closed(run.issue):
         return False
     return _finalize_closed_discussion(run)
@@ -123,64 +103,6 @@ def _issue_closed(issue) -> bool:
     return getattr(
         issue, _STATE_ATTR, _ISSUE_STATE_OPEN,
     ) == _ISSUE_STATE_CLOSED
-
-
-def _drain_plan_pr(run: _models._DiscussionRun) -> bool:
-    """Finalize on what the plan PR has become, or hold the tick where it is.
-
-    Always True: whatever the pull request turns out to be, the conversation
-    that produced it does not get another round. What varies is only whether
-    this tick is also the one that writes the ending.
-    """
-    plan_pr = _plan_pr(run)
-    if plan_pr is not None:
-        _finalize_by_pr_state(run, plan_pr)
-    return True
-
-
-def _plan_pr(run: _models._DiscussionRun) -> object | None:
-    """The pull request the plan was published on, or None having said why not.
-
-    None is a read that did not happen rather than a pull request that is not
-    there: the number was recorded by the publication in the same write as the
-    plan path, so the only way this fails is GitHub declining to answer. The
-    caller holds the tick on it, since every ending below the fetch is a claim
-    about a pull request nobody could look at.
-    """
-    pr_number = int(run.state.get(_state._PR_NUMBER))
-    try:
-        return run.gh.get_pr(pr_number)
-    except Exception:
-        log.exception(
-            "issue=#%s could not fetch plan PR #%d; holding the discussion "
-            "until it can be read", run.issue.number, pr_number,
-        )
-        return None
-
-
-def _finalize_by_pr_state(run: _models._DiscussionRun, plan_pr) -> None:
-    """Take the terminal arc the humans' verdict on this pull request names.
-
-    An open one names neither, and falls through changing nothing -- which is
-    what every caller here wants of it, since the design is still being read.
-    """
-    context = _terminals._ReviewTerminalContext(
-        gh=run.gh,
-        spec=run.spec,
-        issue=run.issue,
-        state=run.state,
-        pr=plan_pr,
-        stage=_state._DISCUSSION_STAGE,
-    )
-    pr_status = run.gh.pr_state(plan_pr)
-    if pr_status == _MERGED_PR_STATE:
-        _terminals._finalize_merged_pr(
-            context,
-            close_error=_MERGE_CLOSE_ERROR,
-            close_if_open_only=True,
-        )
-    elif pr_status == _CLOSED_PR_STATE:
-        _terminals._finalize_rejected_pr(context)
 
 
 def _finalize_closed_discussion(run: _models._DiscussionRun) -> bool:
@@ -223,7 +145,7 @@ def _finalize_closed_discussion(run: _models._DiscussionRun) -> bool:
         return True
     if run.gh.pr_state(plan_pr) != _OPEN_PR_STATE:
         _record_recovered_pr(run, plan_pr, branch)
-        _finalize_by_pr_state(run, plan_pr)
+        _plan_terminal._finalize_by_pr_state(run, plan_pr)
     return True
 
 
@@ -266,9 +188,9 @@ def _record_recovered_pr(
 ) -> None:
     """Name the pull request this issue is about to be finalized against.
 
-    The tail below reads the number off pinned state and resolves the branch
-    it reaps from there too, so the record the crash skipped has to be made
-    before the finalize rather than after it. It rides that finalize's own
+    The terminal tail reads the number off pinned state and resolves the
+    branch it reaps from there too, so the record the crash skipped has to be
+    made before the finalize rather than after it. It rides that finalize's own
     write, which is also what retires the marker: what it was there to say --
     somebody has to finish this -- is what this tick is doing.
 

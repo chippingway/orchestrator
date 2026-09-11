@@ -157,11 +157,11 @@ def _settle_moved_marker(
     tidying. So it is taken up only once the reset has been ruled out -- the
     branch is not back at the anchor, or the remote still carries the commit --
     and then it IS the verdict: the plan is out there, the humans turned it
-    down, and `terminal` finishes the issue `rejected` from the record this
-    writes. Refused instead, the issue parks on a stale publication forever
-    with no number, no label, no event, and no branch anything will reap, which
-    is exactly what a reviewer who amends the plan and then closes it leaves
-    behind.
+    down, and `plan_terminal` finishes the issue `rejected` from the record
+    this writes. Refused instead, the issue parks on a stale publication
+    forever with no number, no label, no event, and no branch anything will
+    reap, which is exactly what a reviewer who amends the plan and then closes
+    it leaves behind.
     """
     landed = _settled_prs._settled_plan_pr(run, artifact, in_flight)
     if landed is _pull_requests.PR_LOOKUP_UNREADABLE:

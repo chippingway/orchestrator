@@ -124,7 +124,7 @@ the per-issue checkout only has to survive a tick when an unsafe park keeps it f
   dropped the commit). A remote that could not be read, or a tip nothing could bring here, establishes nothing and
   keeps the record. Otherwise the pull request carrying the commit is asked for once more — a merge or an amended-open
   head is already settled above, so what is left to find is one the humans CLOSED, which the reset above could also
-  have explained and which this reading has now ruled out. Finding it records the number and lets `terminal` finish
+  have explained and which this reading has now ruled out. Finding it records the number and lets `plan_terminal` finish
   the issue `rejected` on the next tick; finding none writes the same `discussion_stale_publication` park, saying
   that the plan is out
   there and that dropping it means closing its pull request rather than resetting a branch here. A new round retires
@@ -285,7 +285,7 @@ the per-issue checkout only has to survive a tick when an unsafe park keeps it f
   publication it precedes. The rest go down in one further write, which also retires the marker — the park's, when the
   pull request is still open and the humans are being told where to read the plan, and a write of its own when the
   recovery adopts one they have already decided, since a "review the plan there" message would then be answering a
-  verdict with instructions (`terminal` reads those records on the next tick and finishes the issue instead).
+  verdict with instructions (`plan_terminal` reads those records on the next tick and finishes the issue instead).
   The records are `discussion_plan_path`
   and `pr_number` (the pair the
   hold at the top reads, and the pair that also tells the implementing stage its recorded PR is still a design however
@@ -399,7 +399,7 @@ the per-issue checkout only has to survive a tick when an unsafe park keeps it f
   A PR closed WITHOUT merging is the same answer to the PUSH, and for a sharper reason than the merge: pushing at one
   opens a REPLACEMENT proposing the very design a human just turned down, and the issue is then held on that
   replacement with their rejection left with nothing pointing at it. So the close is recorded like the merge, and
-  `terminal` reads that record on the next tick to finish the issue `rejected`. The reading taken where the branch has
+  `plan_terminal` reads it on the next tick to finish the issue `rejected`. The reading taken where the branch has
   MOVED off the marker's commit takes the same three answers but holds the close back, because there the caller's
   other answer is an operator's reset — the remedy the stale-publication park asks for — and answering that park can
   mean closing the stray pull request as well as resetting the branch, so a close read as a verdict on the spot would

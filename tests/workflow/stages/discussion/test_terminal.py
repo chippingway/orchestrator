@@ -21,7 +21,7 @@ import unittest
 from dataclasses import dataclass
 from unittest.mock import MagicMock
 
-from orchestrator.workflow.stages.discussion import terminal as _terminal
+from orchestrator.workflow.stages.discussion import plan_terminal as _plan_terminal
 from tests.workflow.fixtures import (
     EVENT_PR_CLOSED_WITHOUT_MERGE,
     EVENT_PR_MERGED,
@@ -283,7 +283,7 @@ class DiscussionPlanPrTerminalTest(unittest.TestCase, _DiscussionTerminalMixin):
         run = _seed_published_plan(_UNREADABLE)
         lookup = run.refuse_pr_lookups()
 
-        with self.assertLogs(_terminal.log, level=logging.ERROR):
+        with self.assertLogs(_plan_terminal.log, level=logging.ERROR):
             mocks = self._run_terminal(run)
 
         lookup.assert_called_once_with(_UNREADABLE.pr_number)
