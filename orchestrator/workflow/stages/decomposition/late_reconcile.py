@@ -80,6 +80,18 @@ _RECORDED_PR_UNREADABLE_PARK = (
     "re-running any agent."
 )
 
+_FOREIGN_REPOSITORY_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change, "
+    "but pull request #{number} -- the one it was measured against -- has its "
+    "head in `{read}` rather than in `{expected}`. A fork carries this "
+    "repository's ref names over its commits, so nothing about the branch or "
+    "the head tells that pull request from a publication this issue made: "
+    "settling against it would push this repository's branch while handing "
+    "the reviewer somebody else's change. Repair the pinned comment, then the "
+    "next tick asks again against the same frozen commit."
+)
+
+
 _FOREIGN_BRANCH_PARK = (
     "this issue's committed candidate was adjudicated as one coherent change, "
     "but pull request #{number} -- the one it was measured against -- is open "
@@ -202,12 +214,14 @@ def _reconciled_publication(context: _LateContext) -> bool:
     A head that moved is the same refusal one field over, and the owner that
     tells it apart from this settlement's own landed push is asked for it.
 
-    The BRANCH is checked beside it, because a head alone is not a publication.
-    The number and the branch are separate fields on one pinned comment and
-    this road pushes the branch it resolves for itself -- so a pull request
-    standing at the frozen head on some other ref would pass every check above
-    while the push grew a branch that pull request never carried and the
-    handoff named it as the change the candidate is in.
+    The REF is checked beside it, because a head alone is not a publication:
+    a commit is the tip of a ref in a repository. The number and the branch
+    are separate fields on one pinned comment and this road pushes the branch
+    it resolves for itself, and a fork carries this repository's ref names
+    over its commits -- so a pull request standing at the frozen head in
+    somebody else's copy, or on a ref this issue never publishes to, would
+    pass every check above while the push grew a branch that pull request
+    never carried and the handoff named it as the change the candidate is in.
 
     The number is recorded on the way out for the reason the road above
     records one: the publication asks its recorded pull request first, and the
@@ -232,7 +246,7 @@ def _reconciled_publication(context: _LateContext) -> bool:
             context,
             _SETTLED_PUBLICATION_PARK.format(number=number, state=settled),
         )
-    if not _reconciled_branch(context, reading.head_branch, number):
+    if not _reconciled_ref(context, reading, number):
         return False
     if not _late_proof._reconciled_head(context, reading.head, number):
         return False
@@ -240,21 +254,56 @@ def _reconciled_publication(context: _LateContext) -> bool:
     return True
 
 
+def _reconciled_ref(
+    context: _LateContext,
+    reading: _late_publication._PublicationReading,
+    number: int,
+) -> bool:
+    """Prove the publication is the ref this settlement will actually push.
+
+    Asked before the head, because it is what makes the head mean anything: a
+    commit is the tip of a ref in a repository, and a pull request standing at
+    the frozen SHA anywhere else is somebody else's publication that happens
+    to agree.
+
+    The REPOSITORY comes first. A fork carries this repository's ref names
+    over its commits, so one agrees on the branch and the head together while
+    naming a ref no push of this issue's has ever touched. Then the branch,
+    compared against what the SEAM resolves rather than against anything read
+    back, since the question is where the push behind this verdict will
+    actually land.
+
+    Refused rather than preferred either way -- neither field is evidence the
+    other is wrong -- and the record is left exactly as it stands for the
+    human who reconciles it.
+    """
+    if reading.head_repo != context.gh.repo_slug:
+        log.error(
+            "issue=#%d was adjudicated against PR #%d, whose head is in %r "
+            "rather than in %r; refusing to publish the accepted candidate "
+            "onto a publication this issue never made",
+            context.issue.number, number, reading.head_repo,
+            context.gh.repo_slug,
+        )
+        return _late_proof._unreconciled(
+            context,
+            _FOREIGN_REPOSITORY_PARK.format(
+                number=number,
+                read=reading.head_repo,
+                expected=context.gh.repo_slug,
+            ),
+        )
+    return _reconciled_branch(context, reading.head_branch, number)
+
+
 def _reconciled_branch(
     context: _LateContext, observed: str | None, number: int,
 ) -> bool:
     """Prove the publication is open on the branch this settlement will push.
 
-    Asked before the head, because it is what makes the head mean anything: a
-    commit is the tip of a ref, and a pull request standing at the frozen SHA
-    on some ref this issue never publishes to is somebody else's publication
-    that happens to agree.
-
     Compared against the branch the SEAM resolves rather than against anything
     read back, since the question is where the push behind this verdict will
-    actually land. Refused rather than preferred either way -- neither field is
-    evidence the other is wrong -- and the record is left exactly as it stands
-    for the human who reconciles it.
+    actually land.
     """
     branch = _worktree_paths._resolve_branch_name(
         context.state, context.spec, context.issue.number,

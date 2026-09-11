@@ -87,6 +87,20 @@ class GitHubClient(
         self._pollable_calls = 0
         self._closed_sweeps = 0
 
+    @property
+    def repo_slug(self) -> str:
+        """The repository this client reads and writes, as `owner/name`.
+
+        Published because readers that have to say whether a pull request is
+        one of THIS repository's cannot answer from the pull request alone: a
+        fork carries the same ref names over the same commits, and the only
+        thing that tells the two apart is the repository each head lives in.
+        The comparison belongs against the client that took the reading rather
+        than against a spec passed alongside it, since the client is what the
+        reading actually came from.
+        """
+        return self._repo_slug
+
     def _for_worker_thread(self) -> GitHubClient:
         """Build a fresh requester/repository pair for one worker thread."""
         return GitHubClient(

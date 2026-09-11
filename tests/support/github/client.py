@@ -85,3 +85,14 @@ class FakeGitHubClient(_IssueClient, _PullClient, _CommentIdAllocator):
         self._event_history = _FakeEventHistory()
         self._pull_history = _FakePullHistory()
         self._pull_state = _FakePullState()
+
+    @property
+    def repo_slug(self) -> str:
+        """The repository this client stands in for, as `owner/name`.
+
+        The same surface the real client publishes, and readers deciding
+        whether a pull request's head is one of THIS repository's ask it here
+        -- so a fork's pull request, which carries the same ref names over the
+        same commits, is told apart by the one fact that differs.
+        """
+        return self._repo_slug

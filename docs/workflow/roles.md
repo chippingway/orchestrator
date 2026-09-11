@@ -468,12 +468,14 @@ what this stage last **pushed** and nothing about where it went or whether it is
 cleared, so a branch published rounds ago carries one for the rest of the issue's life. So the same proof stands
 behind it on every road, and which reading takes it differs by seam. A call taken past a publication hands over the
 head it froze, and the two are compared. The implementing seam froze none — its push is what *opens* a pull request
-— so there the remote is read for the number the record names, and it answers only for an open pull request standing
-on this exact commit *and* open on the branch that seam would push. Every half is required: without the receipt, any
-head a remote happened to agree with would do; without the remote reading, a note over a pull request the branch has
-moved off would do; and without the branch — which the seam resolves from the record for itself — a `pr_number` left
-over from a cycle on another ref would license a push where nothing has published and a second pull request opened
-over the same work.
+— so there the remote is read for the number the record names, and it answers only for an open pull request whose
+head is in *this repository*, standing on this exact commit, *and* open on the branch that seam would push. Every
+half is required: without the receipt, any head a remote happened to agree with would do; without the remote reading,
+a note over a pull request the branch has moved off would do; without the repository, a fork — which carries this
+repository's ref names over its commits — would agree on everything else while naming a publication this issue never
+made; and without the branch, which the seam resolves from the record for itself, a `pr_number` left over from a
+cycle on another ref would license a push where nothing has published and a second pull request opened over the same
+work.
 
 A proof that fails **parks** rather than handing the commit back to the ordinary reading, because that reading is
 not a neutral answer: a count under the ceiling publishes, which force-pushes a branch nothing could confirm and
@@ -487,8 +489,17 @@ And because a reading is a moment rather than a guarantee, the answer carries th
 a bare permission. The push behind it is leased against that exact commit, so a branch somebody moved in the window
 rejects it instead of being force-overwritten, and the bookkeeping is bound to that pull request by number, so one
 somebody closed in the window holds the tick instead of earning a second pull request over work the first already
-carries. A call taken past a publication is held to the same branch one step earlier: the entry freeze refuses a
-pull request open anywhere but on the branch its push will name.
+carries. A call taken past a publication is held to the same repository and branch one step earlier: the entry
+freeze refuses a pull request whose head is in somebody else's copy, and one open anywhere but on the branch its
+push will name.
+
+The *ordinary* implementing publication is held to one term of this too, and needs it for the same reason. It proves
+no publication — it reuses whatever open pull request is on the branch, which is how a `discussion` plan PR on that
+ref, or this stage's own from a round that crashed before its relabel, gets carried forward — so the pull request the
+push would join is the one the record names, and it is re-read immediately before the push. One that merged, closed,
+or stopped being readable between the tick's first reading and there answers nothing to the branch lookup behind the
+push: a second pull request is opened over the work and `pr_number` overwritten with it, losing the pointer to
+whatever a human just decided.
 
 And `DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
 recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing

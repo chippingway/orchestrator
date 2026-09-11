@@ -35,7 +35,7 @@ from orchestrator.workflow.stages.implementing import (
     late_overflow as _overflow,
     publication as _publication,
 )
-from tests.support.fakes import FakePR, FakePRRef
+from tests.support.fakes import FakePR, FakePRRef, FakePRRepo
 from tests.workflow.fixtures import (
     LABEL_VALIDATING,
     MEASURED_CANDIDATE_SHA,
@@ -82,6 +82,10 @@ _CLOSED = "closed"
 # absence rather than as the claim it is.
 _MALFORMED_RECEIPT = "not-a-sha"
 
+# Somebody else's copy of this repository: where a fork's head lives, which is
+# the only fact that tells its pull request from one of this issue's own.
+_FORK_REPO = "somebody-else/orchestrator"
+
 # What a branch this stage has pushed before carries: the note naming the
 # commit it sent, the pull request that push opened, and the branch both are
 # about. All three, because the remote reading behind them is what tells work
@@ -97,7 +101,7 @@ class _ReceiptCase(support._GateCase):
     """An issue whose branch this stage has pushed before."""
 
     def _stand_the_pull_request_on(
-        self, head: str, branch: str = _BRANCH,
+        self, head: str, branch: str = _BRANCH, repo: str = "",
     ) -> None:
         """Put this issue's open pull request on `head`, or take it away.
 
@@ -105,13 +109,19 @@ class _ReceiptCase(support._GateCase):
         a record disagreeing with itself moves off the branch the seam would
         push -- the one shape that would have the answer license a push onto a
         branch nothing has published.
+
+        `repo` moves the head into somebody else's copy of this repository,
+        which is the shape that agrees on every other term: a fork carries the
+        same ref names over the same commits.
         """
         if not head:
             return
         opened = FakePR(
             number=_PR_NUMBER,
             head_branch=branch,
-            head=FakePRRef(sha=head, ref=branch),
+            head=FakePRRef(
+                sha=head, ref=branch, repo=FakePRRepo(full_name=repo),
+            ),
         )
         self.github.add_pr(opened)
         self.github.existing_open_pr[branch] = opened
@@ -119,6 +129,25 @@ class _ReceiptCase(support._GateCase):
     def _oversized(self):
         """One gate run over a candidate no count would ever let through."""
         return self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+    def _seeded(self, described: str) -> None:
+        """One record whose receipt names a publication nothing can show."""
+        standing, branch, recorded = _UNPROVABLE[described]
+        self.setUp()
+        self._stand_the_pull_request_on(standing, branch=branch)
+        if described == "one somebody ended":
+            self.github.get_pr(_PR_NUMBER).state = _CLOSED
+        self._seed(**{
+            _KEY_PUBLISHED_SHA: MEASURED_CANDIDATE_SHA, **recorded,
+        })
+
+    def _receipt_reading(self, receipt) -> None:
+        """A proved publication whose receipt field holds `receipt`."""
+        self.setUp()
+        self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
+        self._seed(**{
+            **_PUBLISHED_BY_THIS_STAGE, _KEY_PUBLISHED_SHA: receipt,
+        })
 
 
 class DeliveredReceiptTest(_ReceiptCase, unittest.TestCase):
@@ -218,6 +247,82 @@ _UNPROVABLE = MappingProxyType({
     ),
 })
 
+# What a receipt can hold once a hand edit or a half-written crash has been at
+# it, beyond the plain string that is not an object id. Every one of these is
+# FALSY, which is what makes them the set an "empty means absent" reading lets
+# straight through.
+_DAMAGED_RECEIPTS = (False, 0, [], {})
+
+
+class RecordedPullRequestRaceTest(_ReceiptCase, unittest.TestCase):
+    """The pull request an ordinary publication would REUSE, ending mid-tick.
+
+    Nothing here was proved by the gate: the record names a pull request this
+    issue arrived carrying -- the `discussion` stage's plan PR sitting on the
+    very ref the dev commits go to, or this stage's own from a round that
+    crashed before its relabel -- and the seam reuses it by looking the BRANCH
+    up. So an ending landing between the tick's first reading and the push
+    leaves that lookup answering nothing: a second pull request is opened over
+    the work and `pr_number` overwritten with it, which loses the pointer to
+    whatever a human just closed.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._stand_the_pull_request_on(_MOVED_HEAD)
+        self._seed(pr_number=_PR_NUMBER, branch=_BRANCH)
+
+    def test_an_ending_before_the_push_opens_none(self) -> None:
+        # Every state a reuse may not find, raced into the window the barrier
+        # exists for -- the unreadable one included, since this reading fails
+        # closed: what refusing costs is the poll that asks again, and what
+        # falling through costs is a branch and a pull request nobody asked
+        # for.
+        for described, ending in (
+            ("closed", self._closes_the_recorded_pr),
+            ("merged", self._merges_the_recorded_pr),
+            ("unreadable", self._loses_the_recorded_pr),
+        ):
+            with self.subTest(pull_request=described):
+                self.setUp()
+
+                mocks = self._raced(ending)
+
+                self._assert_held(mocks)
+                self.assertNotIn(_VALIDATING, self.github.label_history)
+                self.assertEqual(
+                    self._pinned()["pr_number"], _PR_NUMBER,
+                )
+
+    def test_one_still_open_publishes_as_ever(self) -> None:
+        # The other side, so the barrier is about the ending rather than about
+        # an issue that records a pull request at all: nothing raced, and the
+        # push lands onto the pull request the reuse finds.
+        mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        mocks[support.PUSH_BRANCH].assert_called_once()
+        self.assertEqual(self.github.opened_prs, [])
+
+    def _raced(self, ending):
+        """Run one tick, ending the recorded pull request past the intent."""
+        with patch.object(
+            _publication,
+            _PUBLICATION_INTENT,
+            _RacesPastTheStep(_publication._publication_intent, ending),
+        ):
+            return self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+    def _closes_the_recorded_pr(self) -> None:
+        self.github.get_pr(_PR_NUMBER).state = _CLOSED
+
+    def _merges_the_recorded_pr(self) -> None:
+        merged = self.github.get_pr(_PR_NUMBER)
+        merged.merged = True
+        merged.state = _CLOSED
+
+    def _loses_the_recorded_pr(self) -> None:
+        self.github.pulls.pop(_PR_NUMBER, None)
+
 
 class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
     """Every record the note stands beside that proves nothing at all.
@@ -271,6 +376,53 @@ class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
         self._assert_unmeasured(mocks)
         self._assert_held(mocks)
 
+
+
+
+    def test_a_fork_at_the_same_head_is_held(self) -> None:
+        # The shape every other term agrees on: a fork carries this
+        # repository's ref names over its commits, so the branch and the head
+        # both match while the pull request points at a publication this issue
+        # never made. Admitted, the seam would call the work delivered, skip
+        # the reading, and hand a reviewer somebody else's change.
+        self.setUp()
+        self._stand_the_pull_request_on(
+            MEASURED_CANDIDATE_SHA, repo=_FORK_REPO,
+        )
+        self._seed(**_PUBLISHED_BY_THIS_STAGE)
+
+        mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        self._assert_unmeasured(mocks)
+        self._assert_held(mocks)
+
+    def test_a_tip_no_receipt_names_is_measured(self) -> None:
+        # The other half, and it is not widened either: a head the remote
+        # happens to agree with says nothing about how it got there, so
+        # without the note beside it any branch somebody else pushed the
+        # commit to would wave the candidate past. Nothing here claims a
+        # publication, so nothing is held back either.
+        self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
+        self._seed(pr_number=_PR_NUMBER, branch=_BRANCH)
+
+        mocks = self._oversized()
+
+        self._assert_measured(mocks)
+        self._assert_held(mocks)
+
+
+
+class DamagedReceiptTest(_ReceiptCase, unittest.TestCase):
+    """What the receipt FIELD can hold, and which shapes claim a publication.
+
+    Read fail-closed the field comes back as an object id or as nothing,
+    which is right for a reader deciding whether a commit may publish and
+    exactly wrong for one deciding whether the record is sound. The gap
+    between "carries a value" and "carries one this build can use" is what
+    says a record CLAIMS a publication it cannot name -- and published over,
+    the push writes its own receipt across the damage.
+    """
+
     def test_a_malformed_receipt_is_kept(self) -> None:
         # The shape the comparison below it cannot see: read fail-closed the
         # note comes back as no receipt at all, so the candidate is measured,
@@ -288,30 +440,41 @@ class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
             self._pinned()[_KEY_PUBLISHED_SHA], _MALFORMED_RECEIPT,
         )
 
-    def test_a_tip_no_receipt_names_is_measured(self) -> None:
-        # The other half, and it is not widened either: a head the remote
-        # happens to agree with says nothing about how it got there, so
-        # without the note beside it any branch somebody else pushed the
-        # commit to would wave the candidate past. Nothing here claims a
-        # publication, so nothing is held back either.
-        self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
-        self._seed(pr_number=_PR_NUMBER, branch=_BRANCH)
+    def test_a_falsy_receipt_is_held_too(self) -> None:
+        # The payload is JSON, so a damaged field can hold anything -- and
+        # every one of these is falsy in Python while being exactly the damage
+        # the refusal exists to catch. Read as "empty means absent" they are
+        # the one set that walks straight past it.
+        for damaged in _DAMAGED_RECEIPTS:
+            with self.subTest(receipt=repr(damaged)):
+                self.setUp()
+                self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
+                self._seed(**{
+                    **_PUBLISHED_BY_THIS_STAGE, _KEY_PUBLISHED_SHA: damaged,
+                })
 
-        mocks = self._oversized()
+                mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
 
-        self._assert_measured(mocks)
-        self._assert_held(mocks)
+                self._assert_unmeasured(mocks)
+                self._assert_held(mocks)
+                self.assertEqual(self._pinned()[_KEY_PUBLISHED_SHA], damaged)
 
-    def _seeded(self, described: str) -> None:
-        """One record whose receipt names a publication nothing can show."""
-        standing, branch, recorded = _UNPROVABLE[described]
-        self.setUp()
-        self._stand_the_pull_request_on(standing, branch=branch)
-        if described == "one somebody ended":
-            self.github.get_pr(_PR_NUMBER).state = _CLOSED
-        self._seed(**{
-            _KEY_PUBLISHED_SHA: MEASURED_CANDIDATE_SHA, **recorded,
-        })
+    def test_a_cleared_receipt_is_not_damage(self) -> None:
+        # The other end of the same gap, so the refusal is about damage rather
+        # than about the field being empty: `null` and `""` are what a build
+        # that published nothing leaves, and they claim nothing to be held to.
+        for absent in (None, ""):
+            with self.subTest(receipt=repr(absent)):
+                self.setUp()
+                self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
+                self._seed(**{
+                    **_PUBLISHED_BY_THIS_STAGE, _KEY_PUBLISHED_SHA: absent,
+                })
+
+                mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+                self._assert_measured(mocks)
+                self._assert_published(mocks)
 
 
 if __name__ == "__main__":

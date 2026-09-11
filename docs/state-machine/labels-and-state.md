@@ -2428,9 +2428,13 @@ rather than preserving.
   the pull request has since moved off is a record of a publication that is over, and the candidate goes back through
   the ordinary reading rather than being waved past as already published. On the implementing seam no head was frozen
   to check it against, so the same question is put to the *remote*: the pull request the record names, open, on the
-  branch that seam would push, standing on this exact commit. A receipt this build cannot READ at all is asked
+  branch that seam would push, with its head in this repository, standing on this exact commit — the repository
+  because a fork carries these ref names over these commits and would otherwise agree on everything else. A receipt
+  this build cannot READ at all is asked
   apart from that comparison and refused first, since every late commit field is read fail-closed and a hand-edited
-  one comes back as no receipt: published over, the push writes its own receipt across the damaged field. Anything
+  one comes back as no receipt: published over, the push writes its own receipt across the damaged field. Only
+  `null` and `""` read as an absence there — the payload is JSON, so `false`, `0`, `[]` and `{}` are all present
+  damage that an "empty means absent" reading would wave straight through. Anything
   short of the proof PARKS rather than falling through to the reading: measured and found small the commit would
   simply be published, which force-pushes a branch nothing could confirm and opens a second pull request over work
   the first one already carries. The park writes

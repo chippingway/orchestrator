@@ -1049,13 +1049,18 @@ def _unreadable_receipt(state: _pinned_state.PinnedState) -> bool:
     already carry, and the damaged field is overwritten by the receipt that
     push writes -- which destroys the one piece of evidence an operator had.
 
-    `None` and `""` are asked beside the key because the payload is JSON and a
-    field can be present and empty: an older binary's value or a cleared one,
-    and an absence either way.
+    `None` and `""` are the only two values read as an absence, and they are
+    named rather than tested for falsehood. The payload is JSON, so a field can
+    hold anything a hand edit or a half-written crash leaves -- `false`, `0`,
+    `[]`, `{}` -- and every one of those is falsy in Python while being exactly
+    the damage this exists to catch. Written as "empty means absent" the
+    refusal is bypassed by the shapes nobody wrote on purpose, which is the one
+    set it most has to answer for.
     """
     if not state.carries(_state._PUBLISHED_SHA):
         return False
-    if not state.get(_state._PUBLISHED_SHA):
+    written = state.get(_state._PUBLISHED_SHA)
+    if written is None or written == "":
         return False
     return not _published_commit(state)
 

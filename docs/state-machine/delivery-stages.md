@@ -1067,9 +1067,10 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      Both come off one fetch rather than a helper each because two fetches are two moments: a merge landing between
      them reads open to the first and merged to the second — which a close arc is right to ignore, while the stage
      runs anyway. `_finalize_if_pr_merged` keeps its own single-ending form for the umbrella / blocked aggregation,
-     which may not be held on a child whose remote blinked. Both defer without writing state when the PR
-     fetch fails so a transient failure cannot mis-label a merged-PR issue. The PR terminal is reached only past
-     the plan question, which two records answer. A live `discussion_plan_path` says the recorded PR is the
+     which may not be held on a child whose remote blinked. A fetch that FAILS writes nothing and falls *through* —
+     the tick carries on to the stage — because nothing about a failed read says which ending, if any, it was
+     hiding, and answered as one every issue whose remote blinked would stop advancing. The PR terminal is reached
+     only past the plan question, which two records answer. A live `discussion_plan_path` says the recorded PR is the
      `discussion` stage's plan whatever its head is now — the handoff below retires that record durably before anything
      spawns, so nothing here has pushed yet and a head that moved is the humans editing the design they are agreeing to
      (a corrected plan, a base merged into the branch), not work having landed. Past the handoff `discussion_plan_sha`
@@ -2284,15 +2285,22 @@ after it is a whole tick's worth of relabels and comments, any of which can fail
 finds a live branch, a pull request already carrying the work, and a label that still says the stage never finished.
 Without the receipt the candidate is measured again against a base that has moved, and an answer past the ceiling
 would route a pull request that ALREADY has the work to the adjudication, which is the one outcome this gate exists
-to prevent. Recognized, the commit is neither re-read nor re-pushed and the tick finishes what it was in the middle
-of.
+to prevent. Recognized, the commit is not re-*measured* and the tick finishes what it was in the middle of. It is
+still pushed, and deliberately: the push is a leased **no-op** — named against that commit and pinned to it — so git
+has nothing to send and rejects outright if somebody moved the branch between the proof and here. That request is the
+only atomic evidence there is that the publication the tick proved is still the one the pull request has; skipping it
+would settle the receipt against a remote nothing re-read, and skip the two steps behind it as well.
 
 **But the receipt is a local note, and the REMOTE is what it is evidence about.** So it is only honoured while the
-publication it names is still standing: both the reading it skips and the push it skips ask that the head this tick
-froze is that same commit. A receipt naming `C` beside a pull request somebody has since moved to `F` records a
-publication that is over — read as one still standing, the tick would push nothing and hand a reviewer a head the
-pull request does not have. Refused, `C` goes back through the ordinary road, measured against the base as it is now
-and pushed leased against what was frozen.
+publication it names is still standing, and what that proof costs differs by seam. A call taken PAST a publication
+froze the head the pull request is on, and the two are compared: a receipt naming `C` beside a pull request somebody
+has since moved to `F` records a publication that is over, so `C` goes back through the ordinary road, measured
+against the base as it is now and pushed leased against what was frozen. The implementing seam froze none — its push
+is what *opens* a pull request — so there the same question goes to the **remote**, and anything short of an open
+pull request of this repository's, on the branch that seam would push, standing on this exact commit, **parks**
+rather than falling back to the reading: measured and found small the commit would simply be published, which
+force-pushes a branch nothing could confirm and opens a second pull request over work the first may already carry.
+The park leaves the receipt, the recorded number and any debt beside them exactly as they stand.
 
 **The head the pull request is standing on settles a debt no write got to.** The receipt and the approval it replaces
 are one write, and a process can die on it: the branch is on the remote and the pinned comment still says the commit

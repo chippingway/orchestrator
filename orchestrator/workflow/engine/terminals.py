@@ -11,17 +11,28 @@ posts the cumulative usage receipt, and writes pinned state once. That shared
 tail is why they sit together -- an arc added beside them inherits the order
 rather than reinventing it.
 
-Two entry points reach the arcs, and they differ only in who fetched the PR.
+Three entry points reach the arcs, and they differ only in who fetched the PR.
 `_drain_review_pr_terminals` serves the stages already holding one --
 `in_review`, `fixing`, `resolving_conflict` -- and tries all three arcs against
 the PR the caller passes; `pr=None` is a deliberate no-op so `fixing` can hand
-over its own fetch failure unchanged. `_finalize_if_pr_merged` and
-`_finalize_if_issue_closed` serve the stages that hold no PR at handler entry
--- `implementing`, `documenting`, `validating`, plus the umbrella / blocked
-child aggregation -- and each fetches its own, which is also why each owns a
-fetch-failure answer: the merged check leaves the issue alone, the closed-issue
-check defers the whole tick so a transient failure cannot label a merged-PR
-issue `rejected`. Every entry point returns True to mean "this tick is over".
+over its own fetch failure unchanged.
+
+`_pr_terminal_stops_the_tick` serves the stages that hold no PR at handler
+entry -- `implementing`, `documenting`, `validating` -- and decides BOTH
+pull-request endings off one fetch of its own. One rather than a helper each,
+because two fetches are two moments: a merge landing between them answers open
+to the first and merged to the second, which a closed-without-merge arc is
+right to ignore, and the stage behind it runs anyway over work that has landed.
+`_finalize_if_pr_merged` keeps the single-ending form for the umbrella /
+blocked child aggregation, which may not be held on a child whose remote
+blinked.
+
+A fetch that FAILS leaves both of those falling through: nothing about a failed
+read says which ending, if any, it was hiding, and answered as one every issue
+whose remote blinked would stop advancing. `_finalize_if_issue_closed` behind
+them is the one that defers the whole tick on its own failed read, so a
+transient failure cannot label a merged-PR issue `rejected`. Every entry point
+returns True to mean "this tick is over".
 
 The `discussion` stage composes the arcs itself rather than taking an entry
 point here, because its third one differs: a closed issue whose plan PR is

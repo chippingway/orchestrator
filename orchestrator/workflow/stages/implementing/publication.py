@@ -50,6 +50,7 @@ from orchestrator.workflow.engine import (
     guards as _guards,
     observations as _observations,
 )
+from orchestrator.workflow.late_split import payloads as _payloads
 from orchestrator.workflow.stages.implementing import (
     checkout_guards as _checkout,
     dev_pr as _dev_pr,
@@ -57,6 +58,7 @@ from orchestrator.workflow.stages.implementing import (
     late_overflow as _overflow,
     late_parks as _late_parks,
     models as _models,
+    state as _state,
 )
 
 log = logging.getLogger("orchestrator.workflow")
@@ -110,6 +112,7 @@ def _ended_before_the_push(
     gh: _client.GitHubClient,
     spec: config.RepoSpec,
     issue: Issue,
+    state: _pinned_state.PinnedState,
     approved: _models._ApprovedWork,
 ) -> bool:
     """Whether the work this push is about ended while the tick was working.
@@ -119,15 +122,22 @@ def _ended_before_the_push(
     run, a reading, or a proof that a poll on another worker can find the world
     changing under.
 
-    The PULL REQUEST is asked only where the gate proved one -- a publication
-    it admitted BECAUSE that pull request is already standing on the commit --
-    and there it has to be asked here rather than at the bookkeeping behind
-    the push. That proof and the push are two moments: one somebody closed in
-    between is a publication this tick may not add to, and the lease makes no
-    difference, since a branch nobody moved accepts the push whatever became
-    of the pull request over it. An ordinary initial publication has none to
-    have ended, so it spends no request. Read fail-CLOSED, like every reading
-    standing immediately before an effect nothing can undo.
+    The PULL REQUEST is the one this push would JOIN, which is whichever of two
+    the tick has: the one the gate proved, where it admitted the candidate
+    because that pull request is already standing on it, and otherwise the one
+    the record names -- the `discussion` stage's plan pull request sitting on
+    the very ref the dev commits went to, or this stage's own from a round that
+    crashed before its relabel. Both are reused rather than opened, and the
+    reuse is a lookup by BRANCH: one that ended between the tick's first
+    reading and here answers nothing to that lookup, so a second pull request
+    is opened over the work and `pr_number` is overwritten with it -- which is
+    how the pointer to what a human just closed is lost. An issue that records
+    none is the first publication, which has nothing to have ended and spends
+    no request.
+
+    Read fail-CLOSED, like every reading standing immediately before an effect
+    nothing can undo: what refusing costs is the poll that asks again, and what
+    falling through costs is a branch and a pull request nobody asked for.
 
     The CLOSE is asked last and of the process-wide latch rather than of the
     issue object, which is the snapshot the tick opened with. Last because the
@@ -135,14 +145,15 @@ def _ended_before_the_push(
     flight would be answered one push too late by a latch read before it, and
     this one costs nothing, so the cheap answer gets the final word.
     """
-    if approved.delivered_pr and not _overflow._PublicationReading.still_open(
-        gh, approved.delivered_pr,
-    ):
+    number = approved.delivered_pr or _payloads.as_identity(
+        state.get(_state._PR_NUMBER),
+    )
+    if number and not _overflow._PublicationReading.still_open(gh, number):
         log.warning(
             "repo=%s issue=#%d cannot read pull request #%d as open before "
-            "the push its own receipt is about; refusing rather than "
-            "publishing onto a publication that has ended",
-            spec.slug, issue.number, approved.delivered_pr,
+            "the push that would join it; refusing rather than publishing "
+            "onto a publication that has ended",
+            spec.slug, issue.number, number,
         )
         return True
     if not _observations.close_observed(spec.slug, issue.number):
@@ -293,12 +304,15 @@ def _on_commits(
     answers every candidate a record is still live for -- and the roads this
     seam reaches it by are exactly the ones where none is, since an approval
     whose push failed retires its generation before that push. The pull
-    request the gate PROVED is the other, on the one road that has one: the
-    proof and the push are two moments, and one somebody closed in between is
-    a publication this tick may not add to. What work nobody wants may never
-    earn is this effect, so the refusal is held: nothing pushed, no pull
-    request opened, no handoff, and the receipt and debt left exactly as they
-    stand for the cleanup or the retry they are owed.
+    request this push would JOIN is the other, whichever of the two the tick
+    has -- one the gate proved, or one the record names and the reuse below
+    would find by branch. Either ending in the window between the tick's first
+    reading and here leaves that lookup answering nothing, so a second pull
+    request is opened over the work and `pr_number` overwritten with it. What
+    work nobody wants may never earn is this effect, so the refusal is held:
+    nothing pushed, no pull request opened, no handoff, and the receipt and
+    debt left exactly as they stand for the cleanup or the retry they are
+    owed.
     """
     agent_result = approved.agent_result
     wt = _worktree_paths._worktree_path(spec, issue.number)
@@ -307,7 +321,7 @@ def _on_commits(
         return
     if _checkout._dirtied_before_the_push(
         gh, issue, state, published, wt,
-    ) or _ended_before_the_push(gh, spec, issue, approved):
+    ) or _ended_before_the_push(gh, spec, issue, state, approved):
         return
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     if not _branch_transport._push_branch(

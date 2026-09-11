@@ -71,6 +71,10 @@ PUBLISHED_BRANCH = _value_helpers._issue_branch(LATE_ISSUE_NUMBER)
 # A branch this issue never publishes to, for the case where the pinned
 # comment's own number and branch disagree.
 FOREIGN_BRANCH = f"{PUBLISHED_BRANCH}-elsewhere"
+
+# Somebody else's copy of this repository: where a fork's head lives, which is
+# the only fact that tells its pull request from one this issue published.
+FORK_REPO = "somebody-else/orchestrator"
 PLAN_PR_BODY = "the design this plan PR was opened with"
 PLAN_BRANCH = "orchestrator/plan"
 

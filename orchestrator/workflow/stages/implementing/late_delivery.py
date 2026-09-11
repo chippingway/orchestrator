@@ -20,13 +20,15 @@ a SECOND pull request is opened over the same work, and the issue is handed on
 as though the whole thing had been published all along.
 
 So the note is proof of nothing by itself, and what makes it proof is asked of
-the REMOTE: the pull request the record names, open, standing on this exact
-commit, and open on the branch the seam behind the answer would push. Every
-one of those is required and none of them is widened. Without the receipt, any
-head a remote happened to agree with would do. Without the remote reading, a
-local note over a pull request the branch has moved off would do. And without
-the branch, a record naming a pull request on some other ref would license a
-push to a branch nothing has published.
+the REMOTE: the pull request the record names, open, with its head in this
+repository, standing on this exact commit, and open on the branch the seam
+behind the answer would push. Every one of those is required and none of them
+is widened. Without the receipt, any head a remote happened to agree with would
+do. Without the remote reading, a local note over a pull request the branch has
+moved off would do. Without the repository, a fork carrying the same ref name
+over the same commit would answer for a publication this issue never made. And
+without the branch, a record naming a pull request on some other ref would
+license a push to a branch nothing has published.
 
 A call taken PAST a publication asks none of it. That seam freezes an entry of
 its own -- the pull request, the stage, and the head it is standing on, each
@@ -103,6 +105,11 @@ _UNREADABLE_PULL_REQUEST = (
 
 _SETTLED_PULL_REQUEST = (
     "pull request #{number} is {state} rather than open"
+)
+
+_FOREIGN_REPOSITORY = (
+    "pull request #{number} has its head in `{read}` rather than in "
+    "`{expected}`, so it is not a publication this issue could have made"
 )
 
 _FOREIGN_BRANCH = (
@@ -225,8 +232,16 @@ def _proved_against(
 
     Every term is compared against what the SEAM resolves rather than against
     anything the reading supplies for itself, since the question is whether its
-    push would move anything: the branch it would push is the one the record
-    names, and the commit it would send is the candidate in hand.
+    push would move anything: the repository it pushes to is this issue's own,
+    the branch it would push is the one the record names, and the commit it
+    would send is the candidate in hand.
+
+    The REPOSITORY is asked first, because it is what makes the two below
+    identify anything. A fork carries this repository's ref names over this
+    repository's commits, so a pull request from one agrees on both while
+    pointing at a branch no push of this issue's has ever touched -- and
+    admitted, the seam would call the work delivered, skip the reading, and
+    hand a reviewer somebody else's publication.
     """
     reading = _overflow._PublicationReading.taken(gate.gh, number)
     if reading.refusal is not None:
@@ -237,6 +252,29 @@ def _proved_against(
         return _Delivered(refusal=_SETTLED_PULL_REQUEST.format(
             number=number, state=reading.state,
         ))
+    if reading.head_repo != gate.gh.repo_slug:
+        return _Delivered(refusal=_FOREIGN_REPOSITORY.format(
+            number=number, read=reading.head_repo, expected=gate.gh.repo_slug,
+        ))
+    return _standing_where_the_push_lands(
+        gate, reading, number, candidate_sha,
+    )
+
+
+def _standing_where_the_push_lands(
+    gate: _records._Gate,
+    reading: _overflow._PublicationReading,
+    number: int,
+    candidate_sha: str,
+) -> _Delivered:
+    """Hold a live pull request of this repository's to the push's own terms.
+
+    The two facts the SEAM decides rather than the remote: the branch it
+    resolves from the record and pushes, and the commit it would send. Equal on
+    both, the push has nothing left to do and the lookup behind it finds this
+    very pull request; different on either, it would publish somewhere the
+    proof was never taken.
+    """
     branch = _worktree_paths._resolve_branch_name(
         gate.state, gate.spec, gate.issue.number,
     )

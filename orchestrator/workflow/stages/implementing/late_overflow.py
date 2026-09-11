@@ -27,7 +27,7 @@ was left standing on, which the next push to the branch moves. Recorded, a
 later tick can say which publication a generation was entered on; re-read, it
 would answer with whatever the issue has become.
 
-Six readings refuse rather than report, and each of them is a push this gate
+Seven readings refuse rather than report, and each of them is a push this gate
 would otherwise wave through on evidence nobody took. A tree that is not
 PROVABLY clean is one whose diff is not the diff a push would publish -- and a
 `git status` that established nothing names no paths, which is what a clean
@@ -35,8 +35,12 @@ tree names too. A pull request nothing could read, or one that is closed or
 merged, is not a publication a measurement means anything against -- and all
 three of those readings are taken inside one refusal, since a fetched pull
 request is a lazy object and the requests that fail are the attribute accesses
-behind the lookup. A pull request open on a BRANCH other than the one this
-publication will push is the record disagreeing with itself: the number and
+behind the lookup. A pull request whose head lives in another REPOSITORY is
+somebody's fork: forks carry this repository's ref names over this
+repository's commits, so every term below would agree while the branch the
+push names was never the one that pull request is about. A pull request open
+on a BRANCH other than the one this publication will push is the record
+disagreeing with itself: the number and
 the branch are two fields on one pinned comment, and an entry frozen on the
 head alone would have the settlement, the receipt and the relabel all spent
 against a publication the push never touches. A head the CALLER named that is
@@ -117,6 +121,15 @@ _CLOSED_PULL_REQUEST = "pull request #{number} is {state} rather than open"
 _DISAGREEING_BRANCH = (
     "pull request #{number} is open on `{read}` rather than on `{expected}`, "
     "which is the branch this publication would push"
+)
+
+
+# What a pull request whose head lives somewhere else is refused as. A fork
+# can carry the same ref name at the same commit, so neither of the two below
+# tells it from this repository's own publication.
+_FOREIGN_REPOSITORY = (
+    "pull request #{number} has its head in `{read}` rather than in "
+    "`{expected}`, so it is not a publication this issue could have made"
 )
 
 
@@ -237,7 +250,7 @@ def _frozen_entry(
     if not number:
         return _records._PublicationEntry(refusal=_NO_PULL_REQUEST)
     return _entered_on(
-        gate.gh, stage, number, entered, _this_issues_own(gate, entered),
+        gate, stage, number, entered, _this_issues_own(gate, entered),
     )
 
 
@@ -295,7 +308,7 @@ def _this_issues_own(
 
 
 def _entered_on(
-    gh: GitHubClient,
+    gate: _records._Gate,
     stage: WorkflowLabel,
     number: int,
     entered: _records._Entered,
@@ -328,13 +341,21 @@ def _entered_on(
     talking to raise out of a gate whose whole contract is to fail closed, and
     an exception on the road to a park is a park nobody takes.
     """
-    reading = _PublicationReading.taken(gh, number)
+    reading = _PublicationReading.taken(gate.gh, number)
     if reading.refusal:
         return reading.refusal
     if reading.state != _OPEN:
         return _records._PublicationEntry(
             refusal=_CLOSED_PULL_REQUEST.format(
                 number=number, state=reading.state,
+            ),
+        )
+    if reading.head_repo != gate.gh.repo_slug:
+        return _records._PublicationEntry(
+            refusal=_FOREIGN_REPOSITORY.format(
+                number=number,
+                read=reading.head_repo,
+                expected=gate.gh.repo_slug,
             ),
         )
     return reading.standing_head(number, stage, entered, landed)
@@ -363,6 +384,11 @@ class _PublicationReading:
     # publication: a pull request standing on the commit in hand says nothing
     # about where a push would land unless it is the branch that push names.
     head_branch: str | None = None
+    # The repository that branch lives in, which is what makes the two above
+    # identify anything at all: a fork carries the same ref names over the same
+    # commits, so a pull request from one satisfies every other term here while
+    # pointing at a branch no push of this issue's has ever touched.
+    head_repo: str | None = None
     refusal: _records._PublicationEntry | None = None
 
     def standing_head(
@@ -517,6 +543,9 @@ class _PublicationReading:
             state=gh.pr_state(pull_request),
             head=getattr(head, "sha", None),
             head_branch=getattr(head, "ref", None),
+            head_repo=getattr(
+                getattr(head, "repo", None), "full_name", None,
+            ),
         )
 
 

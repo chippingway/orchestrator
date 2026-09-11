@@ -287,9 +287,12 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                             while validating and documenting
                                             would spawn over it
      issue closed, PR also closed       ─► rejected (+ branch cleanup)
-     a PR fetch that failed             ─► nothing written: a transient
-                                            failure may not mis-label a
-                                            merged-PR issue
+     a PR fetch that failed             ─► nothing written, and the tick
+                                            carries ON to the stage: nothing
+                                            about a failed read says which
+                                            ending it was hiding, and answered
+                                            as one every issue whose remote
+                                            blinked would stop advancing
 
    in_review (orchestrator never merges; merged arc always external):
      pr merged externally               ─► done (close + cleanup)

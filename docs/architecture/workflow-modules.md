@@ -1408,7 +1408,8 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             head and is checked against that; the implementing seam froze none -- its push is what
                             OPENS a pull request -- so there the remote is read for the number the record names and
                             answers only for an open pull request standing on this exact commit AND open on the
-                            branch that seam would push, which it resolves for itself. The answer is the NUMBER
+                            branch that seam would push, which it resolves for itself, and with its head in the
+                            repository the client that took the reading is for. The answer is the NUMBER
                             rather than a permission, because a reading is a moment: it pins the lease its push is
                             held to, which is that commit, and the pull request its bookkeeping belongs to. A proof
                             that FAILS is a park rather than a fall-through, and the size of the candidate is why:
@@ -1644,9 +1645,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             is proved present here
       late_overflow.py      what a gate call taken PAST publication freezes before it may measure -- the stage it is
                             taking the issue out of, the pull request the work already has, and the head that pull
-                            request is standing on -- and the six refusals that make freezing them fail closed: a
+                            request is standing on -- and the seven refusals that make freezing them fail closed: a
                             tree that is not provably clean, a pull request nothing could read, one that is closed or
-                            merged, one open on a BRANCH other than the one this publication will push, a
+                            merged, one whose head lives in another REPOSITORY -- a fork carries this repository's
+                            ref names over its commits, so every term below agrees while the branch the push names
+                            was never what that pull request is about -- one open on a BRANCH other than the one
+                            this publication will push, a
                             caller-named head that is no whole object id or that disagrees with the head
                             this owner reads, and a head that moved off what a live record froze; asked behind the
                             switch, so an install with the gate off pays neither the read nor the park. Also what a
@@ -2070,9 +2074,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             tip somebody moved to in the window and force-pushes over it -- work that ENDED
                             refused immediately before that push and nowhere else: a close a poll observed, since
                             the gate's own barrier ends a CYCLE and the roads reaching here have none left to
-                            cancel, and the pull request the gate PROVED, since that proof and the push are two
-                            moments and a branch nobody moved accepts the push whatever became of the pull request
-                            over it -- the pull
+                            cancel, and the pull request this push would JOIN, which is the one the gate proved
+                            where there is one and otherwise the one the RECORD names -- a plan PR on the ref the
+                            dev commits went to, or this stage's own from a round that crashed -- since the reuse
+                            behind the push is a lookup by branch, and one that ended in the window answers nothing
+                            to it, so a second pull request is opened and `pr_number` overwritten with it -- the
+                            pull
                             request opened or reused for it, which is that same pull request by NUMBER on the
                             delivered road and never a second one where it closed in between, and the commit the
                             push carried (decided once ahead of the push --

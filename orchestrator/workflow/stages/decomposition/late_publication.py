@@ -11,7 +11,10 @@ of is read with them, because the number and the branch are separate fields on
 one pinned comment and a settlement pushes the branch it resolves for itself:
 proved on the SHA alone, a pull request standing at the frozen head on some
 other ref would be accepted, and the push would grow a branch that pull request
-never carried while the handoff named it. A settlement publishes onto
+never carried while the handoff named it. The REPOSITORY that ref lives in is
+read beside it and asked first, because forks carry this repository's ref names
+over its commits -- so one agrees on both of the others while naming a branch
+no push of this issue's has ever touched. A settlement publishes onto
 that pull request; a `split` closes it over a supersession and hands the work
 to
 children. Both are irreversible on the remote, and both are wrong if somebody
@@ -107,6 +110,11 @@ class _PublicationReading:
     # and a caller that fetched again for it would have a second request to
     # guard.
     head_branch: str | None = None
+    # The repository that branch lives in, which is what makes the two above
+    # identify anything at all: a fork carries this repository's ref names
+    # over its commits, so one satisfies every other term here while pointing
+    # at a branch no push of this issue's has ever touched.
+    head_repo: str | None = None
     refused: bool = False
     # Whether the caller's own receipt is already on this pull request's
     # thread. Asked inside the same guarded read as the other two, because it
@@ -240,6 +248,7 @@ def _publication_facts(
         state=gh.pr_state(pull_request),
         head=getattr(head, "sha", None),
         head_branch=getattr(head, "ref", None),
+        head_repo=getattr(getattr(head, "repo", None), "full_name", None),
         superseded=bool(receipt) and _carries_receipt(
             gh, pull_request, receipt,
         ),

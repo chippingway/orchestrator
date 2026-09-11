@@ -34,6 +34,7 @@ from tests.workflow.stages.decomposition.late_settlement_support import (
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
     FOREIGN_BRANCH,
+    FORK_REPO,
     KEYS,
     OTHER_SHA,
     PUBLISHED_BRANCH,
@@ -359,6 +360,18 @@ class PublishedVerdictRefusalTest(
         # Something pushed to it during the adjudication, so what the verdict
         # was taken over is not what the branch would come to.
         self._seed_published(head=OTHER_SHA)
+
+        outcome = self._settle()
+
+        self._assert_unpublished(outcome)
+
+    def test_a_fork_at_the_frozen_head_is_refused(self) -> None:
+        # The shape every other term agrees on: a fork carries this
+        # repository's ref names over its commits, so the branch and the
+        # frozen head both match while the pull request is one this issue
+        # never made. Accepted, the settlement would push this repository's
+        # branch and hand the reviewer somebody else's change.
+        self._seed_published(head_repo=FORK_REPO)
 
         outcome = self._settle()
 

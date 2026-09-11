@@ -62,9 +62,25 @@ DEFAULT_PR_HEAD_SHA = "deadbeef" * 5
 
 
 @dataclass
+class FakePRRepo:
+    """The repository a pull request's head branch lives in.
+
+    Empty until a client holds the pull request, which is what fills it: on
+    GitHub a same-repo branch's head repo IS the repository the pull request
+    is in, and a fixture cannot know which client it is about to be added to.
+    A case naming one is writing the shape that makes this worth reading at
+    all -- a FORK, which carries this repository's ref names over its commits,
+    so nothing about a branch or a head tells the two apart.
+    """
+
+    full_name: str = ""
+
+
+@dataclass
 class FakePRRef:
     sha: str = DEFAULT_PR_HEAD_SHA
     ref: str = ""
+    repo: FakePRRepo = field(default_factory=FakePRRepo)
 
 
 @dataclass

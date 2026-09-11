@@ -41,6 +41,10 @@ PR_NUMBER = fixing.PR_NUMBER
 # from a cycle that ran on another ref is open on, and the one shape where the
 # number and the branch on one pinned comment disagree.
 _ANOTHER_BRANCH = f"{fixing.BRANCH}-elsewhere"
+
+# Somebody else's copy of this repository: where a fork's head lives, which is
+# the only fact that tells its pull request from one of this issue's own.
+_FORK_REPO = "somebody-else/orchestrator"
 PUSH_BRANCH = fixing.PUSH_BRANCH
 SHA_BEFORE = fixing.SHA_BEFORE
 STAGE_FIXING = fixing.STAGE_FIXING
@@ -371,6 +375,23 @@ class FrozenPublicationIdentityTest(
         scenario = self._seed_fix_round()
         _published_pr(scenario).head = fixing.FakePRRef(
             sha=PR_HEAD_SHA, ref=_ANOTHER_BRANCH,
+        )
+
+        mocks = self._run_fix_round(scenario)
+
+        self._assert_refused(scenario, mocks)
+
+    def test_a_fork_at_the_same_head_refuses(self) -> None:
+        # The shape every other term agrees on. A fork carries this
+        # repository's ref names over its commits, so the branch and the head
+        # both match while the pull request is one this issue never made --
+        # and frozen on those two alone, the settlement, the receipt and the
+        # relabel would all be spent against somebody else's publication.
+        scenario = self._seed_fix_round()
+        _published_pr(scenario).head = fixing.FakePRRef(
+            sha=PR_HEAD_SHA,
+            ref=fixing.BRANCH,
+            repo=fixing.FakePRRepo(full_name=_FORK_REPO),
         )
 
         mocks = self._run_fix_round(scenario)
