@@ -233,7 +233,10 @@ where the gate proved none — a new candidate while `DECOMPOSE=off` — the che
 carries, the receipt records, and both proofs around the push compare against, so one that can name none publishes
 nothing. A dirty tree, a tree `git status` could not report on, or a no-commit reply parks; a tree that stops being
 provably clean between the measurement and the handoff refuses the publication or the handoff the same way a moved
-checkout does. A
+checkout does. Every park that gate takes is routed by one owner (`implementing/late_recovery.py`) ahead of every
+spawn and back through the same committed-work seam, because on all of them the work is committed already: the
+measurement park above, the handoff's own moved-checkout park, and a standing `late_unauthorized_exemption` — the
+park an operator's `/orchestrator authorize-oversized <commit>` ends, which no road in this build creates. A
 `timed_out` run disposes on whether the run left a commit — HEAD moved past `pre_implement_sha` AND the branch is
 ahead of `<remote>/<base>`, since a head that moved onto the base was written by nobody. The park it leaves freezes
 the branch out of the pre-tick base refresh, and the next tick's silent recovery asks that same pair, so a base a

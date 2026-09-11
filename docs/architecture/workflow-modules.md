@@ -1289,7 +1289,21 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             gate and park alike, and the spawn road calls it there
       session_read.py       the locked session read plus the stale / overflow / quota classifiers and the blockquote
                             they quote with
-      resume.py             the two resume entry points and the historical call shape they keep
+      resume.py             the two resume entry points and the historical call shape they keep, with the
+                            orchestrator's OWN comments dropped from the batch by the recorded id ledger: every
+                            park here posts before the write that records posting it, and the default empty
+                            allowlist trusts every author, so a notice whose write was lost would otherwise
+                            reach a developer as somebody asking for a change. A batch whose LAST fresh reply
+                            is the command ending a standing authorization park defers the whole tick,
+                            unconsumed, to the poll that can act on it: this read comes after that park's own
+                            owner classified the thread, so a command landing between the two would otherwise
+                            be spent -- not by this batch, which could spare it, but by the park the run it
+                            starts goes on to take, whose notice lands above the command and takes it. A batch
+                            the measurement park's own road would re-measure on defers the same way and for
+                            the same window, asked of the trusted read BEFORE our own comments come out of it
+                            since that is the read that road takes: reserved off a narrower one, this tick
+                            would defer what that road then refuses and the two would hand the thread back and
+                            forth forever
       resume_request.py     what one such call supplied, frozen and checked before a run is built: the stage
                             its records are attributed to, and the unknown option a named parameter would
                             have refused on its own
@@ -1302,16 +1316,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             disposition or at its next-tick recovery; the attribution both readings rest on,
                             which needs BOTH ends of the comparison read and parks where either is not; the
                             certified floor a clean exit is credited against, the size gate every clean
-                            committed candidate passes, the timeout and measurement parks' own recoveries --
-                            the moved-checkout one asking `checkout_recovery` below whether the worktree has
-                            come back, since that park is settled by the checkout rather than by a reply --
-                            and the approved commit an interrupted publication owes, disposed against the
-                            record naming it rather than against any ahead-of-base reading
+                            committed candidate passes, the timeout park's own recovery, and the approved
+                            commit an interrupted publication owes, disposed against the record naming it
+                            rather than against any ahead-of-base reading -- and NAMED on the work handed
+                            to the seam, like every other recovery, since the gate reads the head again and
+                            a commit landing between the two proofs would be approved in the original's
+                            place and pushed under a record naming neither. The three parks the size gate
+                            itself takes are answered by `late_recovery` beside it, which routes each back
+                            through this owner's publication seam
       late_gate.py          the order the size gate's questions are asked in, taken over one subject so both seams
                             ask them the same way: the switch, the commit the caller named -- proved against the
                             checkout before anything is persisted or pushed, since between the caller's read and this
-                            one the worktree is writable and a commit landing there is a different candidate -- the
-                            three records that
+                            one the worktree is writable and a commit landing there is a different candidate, and
+                            every RECOVERY names one too, since no developer ran and the reading that licensed it
+                            was about a commit a previous tick recorded -- the three records that
                             say a commit is already decided (the adjudication's exemption, the gate's own unspent
                             approval, and the commit this stage already pushed), a record already answering, and
                             the count that answers a pair nothing has yet. An issue ALREADY standing on the
@@ -1377,36 +1395,164 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             comment is ours; what an unclaimed sentence of ours costs is standing in the reading as
                             somebody's word, which is no command, so the park holds. The notices are worded on
                             the side of publication the park was taken on, since guidance reaches a developer only
-                            where the ordinary resume is still in front of the issue. No road at the gate enters
-                            this park yet
+                            where the ordinary resume is still in front of the issue. No road at the gate TAKES
+                            this park yet; what reaches the policy is an issue whose record already stands behind
+                            one, brought back to the gate by `late_recovery` on every poll
       late_command.py       which reply on a standing park a tick should act on, and nothing else: no record is
                             written and nothing is decided. The LAST fresh trusted reply, because reading the
                             batch as a set is what poisons a park -- a reply matching nothing is never consumed
                             on the seams that publish onto an open pull request, so it would stand in every
-                            later batch and refuse the correct command behind it. It hands back how far that
-                            reading got as well as which reply to act on, since what an answer may consume is
-                            what was looked at and no more. A reply that IS the command is carried whatever it
+                            later batch and refuse the correct command behind it. ONE fetch answers every
+                            question a poll of that park has -- which reply to act on, whether anybody spoke at
+                            all, and how far the look got -- because the first two decide opposite things and a
+                            road that asked them separately would answer from two different threads: a command
+                            landing between the two reads is classified as guidance, handed to the ordinary
+                            resume, and consumed past the watermark with an agent paid to answer it. How far
+                            the look got travels because that is what an answer may consume and no more, and
+                            because it is what a sentence posted on the strength of it is scoped by.
+                            A reply that IS the command is carried whatever it
                             goes on to say, an argument nobody could act on included, which is what earns an
                             abbreviation the sentence saying so instead of a silent park. Three authors are
                             never in the reading: an outsider, a comment with no id, and the orchestrator itself
                             -- the park notice spells the command out ready to copy, so our own sentences are
                             exactly what a reader matching on that syntax would mistake for one. The pinned
-                            record is named by its ID on all three reads rather than by its marker, since that
+                            record is named by its ID rather than by its marker, since that
                             fallback hides every comment merely QUOTING one and a reply hidden from this
-                            reading is a reply whose author never spoke -- and the record is DROPPED from the
-                            third, the read asking whether a sentence of ours already landed: a receipt is a field
+                            reading is a reply whose author never spoke -- and it is DROPPED outright from both
+                            reads that ask a THREAD about a receipt: a receipt is a field
                             on that record before it is a sentence on a thread, and a record whose escaped
                             rendering would not fit is written as its own payload, so on those issues the receipt
-                            asked about sits verbatim in the pinned comment under our own login and every sentence
-                            recorded and not yet said reads as one already said. Being ours is
+                            asked about sits verbatim in the pinned comment under our own login. Read there, a
+                            sentence recorded and not yet said reads as one already said -- and, since the record
+                            is the earliest comment on most threads, as one already ATTRIBUTED, which drops the
+                            receipt and means the notice is never posted at all. Being ours is
                             PROVED by the recorded id and by nothing else, because the last-reply rule makes
                             dropping a comment the same act as deleting what its author said: a retraction taken
                             for one of ours never happened, and the authorization beneath it becomes the last
-                            word and publishes on consent withdrawn. The marker is text anybody may paste, and
+                            word and publishes on consent withdrawn. A batch the generic resume forms whose
+                            LAST fresh reply is one of these commands, while the park is standing, defers that
+                            whole tick unconsumed -- since that read comes after the road classifying this park
+                            has handed the tick back, so a command landing between the two is in its batch and
+                            in nobody else's. Deferring rather than sparing the one reply, because a watermark
+                            is one number and the resume is not the last thing to move it: the run it starts
+                            parks, and that park stamps the thread read to the notice it posts, above the
+                            command. Only where the command is LAST, since one with guidance written over it
+                            has been replaced. The marker is text anybody may paste, and
                             the author login is the shared-PAT hazard named where that ledger is defined -- a
                             reviewer posting from the token's own account matches it exactly, and they are the
                             one whose consent this park collects. A comment the ledger cannot vouch for stays in
                             the reading, which leaves the park standing rather than publishing
+      late_recovery.py      every park the size gate takes, answered ahead of every spawn because the work
+                            in question is committed already: one owed another READING, which a trusted bare
+                            `/orchestrator continue` asks for; one owed another LOOK at the checkout, which no
+                            reply can supply and which says nothing until the answer changes, asking
+                            `checkout_recovery` below whether the worktree has come back; and one owed a
+                            DECISION nothing but the named command can be -- and every poll of that last one
+                            comes through here, since an issue behind it has committed work and no run to
+                            dispose, so nothing else would reach the gate to measure the candidate again or say
+                            a sentence the park still owes. What each poll costs is what the thread says: a
+                            command or an unsaid sentence is answered through a fresh reading, guidance is
+                            handed to the ordinary resume, and a thread nobody has written on is held where it
+                            stands without a request or a word. Each hands its answer to the same
+                            publication seam the committed work came out of, so a recovery reaches exactly the
+                            outcomes a fresh disposition does and decides nothing the gate would have decided. A
+                            checkout that is GONE stops all three before that seam, and what it costs differs by
+                            what the park was waiting for: a reading can be asked for again, so the measurement
+                            park lets the seam park under a reason of its own, while the seam's reason would
+                            take the authorization park's off and its notice would move the watermark past the
+                            command still standing -- so that road asks the seam's own questions first, the
+                            worktree on this host, its tree provably carrying nothing loose, and its head the
+                            commit the park is about, and holds exactly as found wherever the answer is no.
+                            The head is asked because a checkout that has moved is a candidate the exemption
+                            does not cover and the override does not name, measured and published on its own
+                            count under a command that named another. The commit it proves is then NAMED on
+                            the work handed over, so the gate holds its own head read to it: the worktree is
+                            writable between the two readings, and asking here alone would leave that window
+                            open. Every recovery road carries the commit it proved for that reason.
+                            Asking first cannot close the tree half, since the
+                            tree is read again INSIDE the seam, so the park, its reason and its watermark are
+                            held across that call and put back wherever it did not PUBLISH -- which is the one
+                            question asked, and it is read off the held record rather than off the park flags,
+                            since several of the seam's roads clear those without publishing anything. Held on
+                            the RECORD rather than in the frame that made them, in
+                            `late_held_authorization_park` written before the call: the seam records an
+                            authorization, clears the park and consumes the command durably before this owner
+                            gets an answer back, so a rollback living in memory dies with the process and the
+                            poll after a crash finds an issue nobody is waiting on over a watermark that has
+                            swallowed the decision. A record still carrying that field is a handoff that never
+                            RETURNED, which is why the poll finding one restores what it holds without asking
+                            what the seam meant -- there is no answer to read, only a call caught halfway, and
+                            a park put back over work the seam did publish costs a poll while one left off
+                            costs the operator's decision. The attempt is RECORDED before that call for the
+                            same reason, since the seam posts its
+                            own refusal before anything persists the id of it. What that call did not account
+                            for is then left exactly where it is: a receipt still outstanding when it returns
+                            names a sentence of ours the seam said and no id write recorded, and it is the only
+                            thing telling a later reading that comment is not somebody's guidance -- so only
+                            the promise the seam never worded a sentence for goes with the park. That notice is
+                            the one sentence
+                            on this park nobody here words, so the seam is handed `late_authorship`'s client
+                            and the park itself is held across the call by `late_rollback`.
+      late_authorship.py    which comments on that park's thread are this stage's own words, on two records. The
+                            ID is the ordinary one: the client this owner lends the seam puts what GitHub hands
+                            back into `orchestrator_comment_ids` the instant each post returns, since the seam
+                            says several things before it comes back and a sentence unattributed for the whole
+                            of that call is one every reader in between misreads. The RECEIPT covers the one API
+                            call left, and it is a digest recorded before the comment carrying it exists.
+                            What it commits to is the SENTENCE rather than the sender -- the secret AND the exact
+                            body it goes out on -- which is the whole of why claiming one is safe. A secret is
+                            unforgeable only until it is disclosed, and posting the sentence discloses it: from
+                            that moment a reply quoting our comment carries the secret too, and the login beside
+                            both is a token this repository says may be shared with the human whose consent this
+                            park collects. Ordering told the two apart only while our comment stood, and ordering
+                            does not survive that comment being DELETED -- one tidy-up on a thread where somebody
+                            has already quoted it. Bound to the body, their reply answers nothing, since a quote
+                            carries their words as well as ours; what can still answer is a verbatim copy, which
+                            carries nobody's words to lose. One receipt per COMMENT, since a digest of one body
+                            is answered by that body alone, and the first is recorded before the seam is entered
+                            at all -- the seam can post the moment it is called. What answers one is a
+                            LEDGER repair, run ahead of every routing decision this stage makes: one reading of
+                            the thread, the EARLIEST comment whose body is that sentence recorded in
+                            `orchestrator_comment_ids`, no watermark moved -- one moved to our sentence crosses
+                            everything under it, so a corrected command written below would be consumed unread.
+                            Earliest because a copy can only follow what it copies, and a reply merely quoting
+                            our sentence carries its author's words too and answers nothing, so the accidental
+                            case cannot be claimed at all. Where our own comment has been DELETED the earliest
+                            answer left is a verbatim copy and nothing on a thread tells it from ours, which
+                            takes reposting a bot notice byte for byte and removing the original -- not an
+                            accident, and available only to somebody already holding the token that authorizes
+                            publication outright. A receipt is dropped by that repair, by the write recording a
+                            posted id, or -- for a promise the seam never worded a sentence for -- by the
+                            handoff that made it, and nowhere else: one cleared while its sentence is still
+                            unledgered leaves nothing able to find that comment again
+      late_rollback.py      one handoff into that seam and what it is held across. The seam's refusals park under
+                            reasons of their own and its notices move the watermark past whatever they find --
+                            right on every other road, and here the operator's own decision thrown away. So the
+                            park, its reason and its watermark go down on the RECORD before the call and are put
+                            back after it: the seam's writes are durable before it returns, so a rollback living
+                            in the frame that made it dies with the process. A record still carrying that pair is
+                            a call that did NOT publish, since the write moving the label out of this stage is
+                            what spends it -- so both roads that read it restore whatever the record says now,
+                            the call that came back with nothing pushed and the poll that finds a tick killed
+                            halfway through one. What the seam left the park FLAGS saying decides nothing:
+                            several of the gate's roads to a held verdict clear them without publishing -- a
+                            bounded transport miss counting a quiet retry, a close that ended the cycle, a record
+                            this commit is superseded by -- and each taken for a publication drops an operator's
+                            question and consumes their command. Put back over work the seam did publish that
+                            costs a poll; left off it costs a decision, and an issue the seam relabelled never
+                            reaches this road again.
+                            How far the reading behind the command GOT goes onto the record in that same write,
+                            for the opposite outcome: the seam consumes the command itself where it records an
+                            authorization from it, and its two roads that publish without reading a thread -- a
+                            candidate the ceiling now lets through, and one an authorization already on the
+                            record covers -- would leave it standing on an issue that has moved to `validating`,
+                            read there as somebody's fresh feedback. Written down rather than applied on the way
+                            out, since the write that moves the label is the last one this stage makes on the
+                            issue, and `late_parks` spends it there. Consumed to what that reading LOOKED at and
+                            no further, and never on a call that published nothing -- the gate's own reading can
+                            have held the park over guidance written between the two readings, and that reply has
+                            to still be there for the poll that acts on it -- so every road that puts the park
+                            back drops the boundary instead
       late_reading.py       the reading itself, on the two roads into one: a fresh pair frozen before it is counted,
                             so a tick that dies over the diff comes back to the pair this one froze, and a recorded
                             one acted on only once its other fields say what the number MEANS and the base it names
@@ -1720,7 +1866,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             waiting for and a tick that only re-read the pair has not given it one, and the measured
                             one is where the step a notice named is dropped -- every failure-prone step is behind
                             that line, and the record it clears from is the one an oversized candidate is
-                            adjudicated from
+                            adjudicated from. The authorization park is retired on the unmeasured verdict alone
+                            and past every refusal on it, since that is the only road publishing a commit an
+                            override already covers: what that park waits for is a PERSON, so a close or a
+                            supersession above the line has to leave the operator waiting exactly as it found them
       late_parks.py         the approval group -- the commit a publication is owed, the head it is pinned to, and
                             the bounded basis saying which owner granted it, so a later reader tells this gate's
                             own count from a debt an operator's gesture is behind rather than inferring it from
@@ -1759,10 +1908,18 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             bare continue that re-reads rather than re-runs, the measurement park a reading that
                             SETTLED retires -- latch and all, since a reconciliation has no run behind it to clear the
                             flag, and from the verdict rather than from the gate's door, since entering the gate is
-                            not answering the question the park was taken for -- the same park retired on a record
+                            not answering the question the park was taken for -- and that park ALONE, since the
+                            authorization park beside it waits on a person and no reading answers a person: a road
+                            that lost the base and is counting a quiet retry would unpark an issue whose operator
+                            never replied, and the exemption nobody stands behind would publish on the next poll,
+                            so it has a retirement of its own that only a publication under it reaches -- the same
+                            measurement park retired on a record
                             whose split has already become children, where no reading is owed and nothing about it is
                             a human's to answer, and the commits a publication is read by: the one an approval owes a
-                            push for with the head it is pinned to, and the one this stage made
+                            push for with the head it is pinned to, and the one this stage made. The boundary an
+                            authorization handoff staged is spent from here too: `late_rollback` records it and
+                            the write that moves the label out of this stage consumes it, and this is the one
+                            owner both of those can reach
       publication.py        the push -- named against the commit the gate decided and pinned to the head a
                             published approval was frozen against, where there is one -- the pull request opened
                             or reused for it, and the commit the push carried (decided once ahead of the push --
@@ -1785,13 +1942,23 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             exactly where that publication would have recorded the debt this seam owes, so a
                             candidate a receipt or an exemption admitted would otherwise be parked as a commit
                             with no account of what its push rests on
-      checkout_recovery.py  what a handoff refused for its checkout waits to see back, and the only park in
-                            this stage settled by a worktree rather than by a reply: the commit the size gate
-                            approved under the checkout's own head, with a provably clean tree around it --
-                            both halves, since a proof narrower than the refusal it answers would republish
-                            straight into that refusal again -- read off the commit the park wrote down, on
-                            every ordinary tick rather than on a command, and silently, so an operator who
-                            leaves the checkout where it is is not told the same thing once a poll
+      checkout_recovery.py  whether the checkout is the commit that was decided about, on the two parks that
+                            turn on it. What a handoff refused for its checkout waits to see back is the only
+                            park in this stage settled by a worktree rather than by a reply: the commit the
+                            size gate approved under the checkout's own head, with a provably clean tree
+                            around it -- both halves, since a proof narrower than the refusal it answers would
+                            republish straight into that refusal again -- read off the commit the park wrote
+                            down, on every ordinary tick rather than on a command, and silently, so an
+                            operator who leaves the checkout where it is is not told the same thing once a
+                            poll. The authorization park asks the same question one field over and is told WHY
+                            rather than yes: what the seam past it measures is whatever the checkout is
+                            standing on, so a head that has moved is a candidate the exemption does not cover
+                            and the override does not name -- the policy's door closed, the ordinary road
+                            measuring it, and a commit nobody authorized pushed under a command that named a
+                            different one. Which commit that park is about is read off the record rather than
+                            off an approval, the recorded override first since it is the terms a human agreed
+                            to and it outlives the generation a failed publication retires, and a record
+                            naming no commit at all held rather than published under
       dev_pr.py             what that pull request says and whose work it says it carries: the title taken from
                             the branch's own first commit subject, falling back to a prefix inferred from recent
                             base history so it reads like the repository it lands in; the body pairing the
@@ -1807,8 +1974,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             request and the branch recorded together, since a state that arrived without a
                             branch would leave the next tick resolving the legacy name while the live pull
                             request sits on the slug-namespaced one; the plan SHA, the certified baseline, the
-                            handoff anchor, and the commit an approval said was still owed a push all spent
-                            beside them; the review round, the retry budget, the granted attempts, the
+                            handoff anchor, the pair an authorization handoff carries while it is still in
+                            flight -- which a poll finding them would read as a call into the seam that never
+                            came back, and put a spent park back over an issue bounced here later -- and the
+                            commit an approval said was still owed a push all spent
+                            beside them; the reading that handoff staged CONSUMED rather than dropped, since two
+                            of the seam's roads publish without reading the thread at all and the reply that
+                            ended the park would cross this line unread, to be taken for fresh feedback on the
+                            stage it lands in; the review round, the retry budget, the granted attempts, the
                             silent-park streak, and the timeout watermark all reset, since the issue moved
                             forward and any of them left behind would mis-fire a later hop back into
                             implementing -- and every one of those written durably AHEAD of the
@@ -1816,13 +1989,25 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             that has moved on and a relabel that fails leaves the branch recognizable
       parks.py              the session-limit, provider-unavailable, question, silent-failure, dirty-tree, and
                             unreadable-tree parks, the last two behind one seam so the caller asks whether the
-                            tree is PROVABLY clean
+                            tree is PROVABLY clean. Each records the thread read past its OWN notice and past
+                            nothing else: the run it ends took minutes nobody read the thread during, so a
+                            watermark stamped to the tip carries this stage's notice over whatever a human wrote
+                            in them -- an `/orchestrator authorize-oversized` among it -- and the only road that
+                            could act on that comment never sees it. The walk stops at the first comment the
+                            ledger does not vouch for, and gives up the tip only where no walk could work: a post
+                            whose id nothing recorded, and a thread with no watermark at all, whose spawn quoted
+                            the whole of it to the agent already
       drift.py              a body edit mid-implementation: the resume it earns -- withheld while a continuation
                             has bought an attempt, since a resume passes no gate and the attempt is owed as a fresh
                             spawn -- and the `ACK:` that answers it
       drift_preflight.py    a pre-session edit and the quiet timeout recovery
       continue_command.py   `/orchestrator continue` on a parked issue, opening with the one park below that the
-                            classifier here would refuse the right command on
+                            classifier here would refuse the right command on, and handing back outright a
+                            batch the measurement park's own road would re-measure on: this read comes after
+                            that road looked at the thread, so a command landing between the two is in this
+                            batch and in nobody else's -- and classified here it is a continue on a park
+                            needing real guidance, refused and consumed past the refusal, with the reading its
+                            author asked for one nothing will ever take
       retry_cap.py          the same standing park on this stage's road, held against the three that would read it
                             as an ordinary one -- the continue classifier, the drift check, and the resume -- so the
                             tick ends having written, spawned, and said nothing, and the pinned session, the pull

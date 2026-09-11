@@ -111,9 +111,21 @@ def _orchestrator_ids(state: PinnedState) -> set[int]:
 
 
 def _track_orchestrator_comment(state: PinnedState, comment_id: int) -> None:
+    """Record that this orchestrator posted one comment, once.
+
+    Idempotent, because the ledger is a SET of ids kept in a bounded list and
+    a second entry for one comment buys nothing while costing a slot. Callers
+    layer -- a road that posts through a wrapped client and then through
+    `_post_issue_comment` records the same id twice -- so an id already here
+    keeps the position it has: what the bound evicts is the oldest comment
+    rather than the least recently re-recorded.
+    """
     raw = state.get("orchestrator_comment_ids")
     ids = list(raw) if isinstance(raw, list) else []
-    ids.append(int(comment_id))
+    identified = int(comment_id)
+    if identified in ids:
+        return
+    ids.append(identified)
     if len(ids) > _ORCH_COMMENT_ID_CAP:
         ids = ids[-_ORCH_COMMENT_ID_CAP:]
     state.set("orchestrator_comment_ids", ids)

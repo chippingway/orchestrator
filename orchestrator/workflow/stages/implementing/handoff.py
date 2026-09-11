@@ -52,8 +52,9 @@ def _advance_to_validating(
     label is the last thing on this road that another stage reads, and past it
     the issue is no longer implementing's: nothing here runs on it again. So
     every record this line spends -- the plan SHA, the certified baseline, the
-    handoff anchor, and above all the commit an approval said was still owed a
-    push -- has to be spent before the label, or a tick that died in between
+    handoff anchor, the three an authorization handoff carries while it is
+    still in flight, and above all the commit an approval said was still owed
+    a push -- has to be spent before the label, or a tick that died in between
     strands it on an issue that has moved on. A stranded approval is the
     sharpest: nothing under `validating` spends it, implementing never sees
     the issue again, and the record goes on freezing the branch out of the
@@ -79,14 +80,7 @@ def _advance_to_validating(
     # than the guard itself -- the guard asks the PR's head, so it answers
     # right even for the tick that pushed and died before reaching this line.
     state.set(_DISCUSSION_PLAN_SHA, None)
-    # And the handoff that record was written by is spent with it. It says the
-    # relabel was accepted and nothing here has published since, which stops
-    # being true on this line: it is what freezes base sync for the branch and
-    # what has the reconcile keep re-anchoring the checkout onto the plan PR,
-    # and an issue leaving for `validating` still carrying it would take both
-    # with it.
-    state.set(_state._READ_ONLY_BASELINE_SHA, None)
-    state.set(_state._HANDOFF_ANCHOR_SHA, None)
+    _spend_records_the_label_ends(state)
     # Persist the pushed branch alongside `pr_number` so the next tick's
     # `_resolve_branch_name` can recover it directly. Without this, a state
     # that lacked `branch` going in (e.g. an awaiting-human resume that opened
@@ -99,6 +93,48 @@ def _advance_to_validating(
     _reset_implementing_counters(state)
     gh.write_pinned_state(issue, state)
     gh.set_workflow_label(issue, WorkflowLabel.VALIDATING)
+
+
+def _spend_records_the_label_ends(state: _pinned_state.PinnedState) -> None:
+    """Drop every record that stops being true the moment the label moves.
+
+    The certified baseline and the anchor beside it say the relabel INTO this
+    stage was accepted and nothing has published since, which stops being true
+    on the line that calls this: the baseline is what freezes base sync for
+    the branch, the anchor is what has the reconcile keep re-anchoring the
+    checkout onto the plan pull request, and an issue leaving for `validating`
+    still carrying them would take both with it.
+
+    The other two are what an authorization handoff carries while it is in
+    FLIGHT. They say a call into the publication seam has not come back yet,
+    so the poll that finds them puts the park, its reason and its watermark
+    back the way that call found them. Reaching here is that call having come
+    back the one way it never has to: the branch is published and the label is
+    about to move. Left set, an issue bounced into implementing again later
+    would have a spent authorization park restored over it -- waiting on a
+    command whose watermark was consumed before the push this write records,
+    and holding a published implementation behind a decision nobody can make
+    twice.
+
+    The reading that handoff staged beside them is SPENT here rather than
+    dropped, and that is the difference between the four and the fifth. Two of
+    the seam's roads publish without ever reading the thread, so the reply
+    that ended the park is still above the watermark on this line -- and past
+    it the stage this issue moves to reads that reply as somebody's fresh
+    feedback and pays for a developer to answer a command nothing there can
+    act on.
+
+    All five for the same reason, which is the reason they are settled HERE:
+    nothing under `validating` drops any of them and implementing never sees
+    the issue again on this road, so a record left standing is one nothing
+    will ever come back for -- and a boundary applied after this write is one
+    a crash in the window it opens loses for good.
+    """
+    state.set(_state._READ_ONLY_BASELINE_SHA, None)
+    state.set(_state._HANDOFF_ANCHOR_SHA, None)
+    state.set(_state._HELD_PUBLICATION, None)
+    state.set(_state._HELD_PARK, None)
+    _late_parks._spends_a_held_reading(state)
 
 
 def _reset_implementing_counters(state: _pinned_state.PinnedState) -> None:

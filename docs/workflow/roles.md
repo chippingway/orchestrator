@@ -884,9 +884,12 @@ every standing park's notice gets — once, and by the next tick.
 `/orchestrator authorize-oversized <commit>` is the operator command that ends that park, and `late_authorize.py`
 owns everything it means THERE. One other park reads the same command, and reads it for itself: the implementing
 size gate's `late_unauthorized_exemption`, where an exemption names the candidate and no authorization stands
-beside it, answered by `implementing/late_command.py` and `implementing/late_consent.py` (see
+beside it, answered by `implementing/late_command.py` and `implementing/late_consent.py`, and brought to them on
+every poll by `implementing/late_recovery.py` — the owner that routes every park the size gate takes back through
+the publication seam before anything is spawned (see
 [`../state-machine/labels-and-state.md`](../state-machine/labels-and-state.md#pinned-state)). Nothing in this build
-takes that park, so on every ordinary issue this owner is the only reader there is. Its SYNTAX is
+CREATES that park — the recovery only answers one already standing — so on every ordinary issue this owner is the
+only reader there is. Its SYNTAX is
 `engine/messages.py`'s beside `/orchestrator continue`, because the drift
 hash has to leave both out — the tick that reads one answers it and hands the same issue on to a stage handler, so a
 hash counting it would meet that handler as a body edit nobody made.

@@ -90,12 +90,98 @@ _LAST_ACTION_COMMENT_ID = "last_action_comment_id"
 # place that knows.
 #
 # What this field may never be built into is a claim that some comment is
-# ours. The receipt is public text, deterministic from an issue and a commit,
-# and the login it would be paired with may be the operator's own -- so a
-# retraction written under a quoted receipt would be taken for one of ours and
-# deleted from the reading, publishing the authorization beneath it on consent
-# withdrawn. Only `orchestrator_comment_ids` says a comment is ours.
+# OURS, and the reason is where it lives rather than what it says. The record
+# is itself a comment on the issue, so a receipt written here as plain text is
+# published by the very write that records it -- readable, before the sentence
+# it names exists, by the human whose consent this park collects, from a login
+# they may share with us. Anything attributing a comment on that basis hands
+# them the power to have their own retraction deleted from the reading, with
+# the authorization beneath it publishing on consent withdrawn. Only
+# `orchestrator_comment_ids` says a comment is ours, and the one road that
+# adds to it without a write of its own is `late_recovery`, which proves what
+# it claims by a secret this field never holds.
 _HELD_RECEIPT = "late_held_authorization_receipt"
+
+# What a handoff into the publication seam has said and not yet accounted
+# for: one digest per comment, each recorded before the comment carrying its
+# secret goes out and dropped by the write the instant that post returns. What
+# it marks is the one API call in between, where a sentence of ours is on the
+# thread and nothing on the record names it.
+#
+# One that survives that write is answered by the LEDGER repair `late_recovery`
+# runs ahead of its own routing: the earliest comment whose body is that
+# sentence goes into `orchestrator_comment_ids`, no watermark moves, and the
+# entry is dropped. Cleared anywhere else -- with the park a publication
+# handoff was held across, say -- nothing is left able to find that comment,
+# and the next poll pays a developer to answer the orchestrator's own park
+# notice and consumes every human reply underneath it.
+#
+# What the digest commits to is the SENTENCE and not the sender -- the secret
+# AND the exact body it goes out on -- and that is the whole of what makes
+# recognizing one safe. A secret is unforgeable only until it is disclosed, and
+# posting the sentence discloses it: from that moment a reply quoting our
+# comment carries the secret too, and the login beside both is a token this
+# repository says may be shared with the human whose consent this park
+# collects. Ordering told the two apart only while our comment stood, and
+# ordering does not survive that comment being DELETED. Bound to the body,
+# their reply answers nothing -- a quote carries their words as well as ours.
+# What can still answer is a verbatim copy, which carries nobody's words to
+# lose, so passing over it takes nothing from anyone.
+#
+# So what the repair records IS a permanent claim against a comment id, in
+# `orchestrator_comment_ids` beside every comment this process posted itself,
+# and the body is what licenses one: the id it writes down names a comment
+# whose text is our sentence and nothing else, which carries nobody's words to
+# lose. The EARLIEST such comment is claimed, and a copy can only follow what
+# it copies, so reaching one takes our own comment being deleted first --
+# available to somebody already holding the token that authorizes publication
+# outright, over a body that was never theirs. What may never license an entry
+# there is the receipt above: that string is deterministic public text, so an
+# id recorded off it would let the human whose consent this park collects have
+# their own retraction deleted from every later reading.
+#
+# A LIST because the seam says more than one thing on the road that matters,
+# and a digest of one body is answered by that body alone.
+#
+# The FIRST entry is recorded before the seam is entered at all, in the same
+# write as the held park below -- a promise about the secret, which the client
+# refines to the sentence once there is a body to name. The seam can post the
+# moment it is called, so a receipt minted no earlier would leave the one
+# sentence nothing else covers.
+_HELD_PUBLICATION = "late_held_authorization_publication"
+
+# What the authorization park was before a handoff to that seam, recorded
+# ahead of the call and dropped by the same write. The seam parks under
+# reasons of its own DURABLY, so a rollback kept only in the frame that made
+# it dies with the process: the poll after a crash would find an issue waiting
+# under the seam's reason, over a watermark its notice moved past the command
+# an operator already wrote, and nothing anywhere saying what it had been.
+_HELD_PARK = "late_held_authorization_park"
+
+# How far the reading behind that handoff GOT, recorded in the same write and
+# spent by the one that ends this stage's hold on the issue.
+#
+# The seam consumes the command itself wherever it records an authorization
+# from it, and two of its roads publish without reading the thread at all: a
+# candidate the ceiling now lets through settles on its own count, and one an
+# authorization already on the record covers publishes as decided. On either,
+# the reply that ended the park is still above the watermark when the label
+# moves -- and the stage it moves to reads it as somebody's fresh feedback and
+# pays for a developer to answer a command nothing there can act on.
+#
+# Staged BEFORE the call for the reason the park beside it is. The handoff
+# writes durably and moves the label before this stage gets an answer back, so
+# a boundary applied on the way out is one a crash in that window loses, on an
+# issue implementing never sees again. Written down first, it is spent in that
+# same write, ahead of the label.
+#
+# What it may consume to is what the reading LOOKED at and no further, since a
+# tick consuming past whatever the tip has become since would swallow a reply
+# posted in between. And it is spent only where nobody is waiting any more: a
+# park the seam replaced is put back over the watermark it was found on, and
+# one the gate's own reading held is still owed the reply, so both drop this
+# rather than spending it.
+_HELD_COMMAND = "late_held_authorization_command"
 
 _AGENT_TIMEOUT = "agent_timeout"
 

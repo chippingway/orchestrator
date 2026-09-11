@@ -12,13 +12,15 @@ sending it back would pay for a second adjudicator over an answered question
 and risk a `split` cutting children out of work somebody decided ships whole.
 What is missing is a person, so the park asks for one.
 
-Nothing at the size gate routes a candidate here yet -- the publication policy
-that makes an exemption half a bypass is not this owner's to switch on -- and
-what that leaves is the CONTRACT a caller has to meet. The generation handed
-in has to be the one the calling tick froze and COUNTED, since the terms an
-authorization is recorded on are that pair, those additions, and that ceiling:
-a caller passing a record it read off the pinned comment instead would have a
-human authorizing a change nobody measured.
+No measurement TAKES this park yet -- the publication policy that makes an
+exemption half a bypass is not this owner's to switch on -- so what reaches it
+is an issue whose record already stands behind one, which `late_recovery`
+brings back to the gate on every poll. What that leaves is the CONTRACT a
+caller has to meet. The generation handed in has to be the one the calling
+tick froze and COUNTED, since the terms an authorization is recorded on are
+that pair, those additions, and that ceiling: a caller passing a record it
+read off the pinned comment instead would have a human authorizing a change
+nobody measured.
 
 The COUNT is deliberately not made durable. A generation carrying a reading
 past its ceiling is exactly what this workflow means by an adjudication in
@@ -63,6 +65,7 @@ from orchestrator.git.measurement import (
     additions as _additions,
     fingerprint as _fingerprint,
 )
+from orchestrator.github import pinned_state as _pinned_state
 from orchestrator.workflow.engine import (
     comments as _comments,
     guards as _guards,
@@ -99,11 +102,15 @@ log = logging.getLogger("orchestrator.workflow")
 # Both halves of the thread's answer are asked -- the receipt and the author
 # -- and that is the safe direction for SILENCING a sentence and the wrong one
 # for claiming a comment. These strings are public text, deterministic from an
-# issue and a commit, and the login may be the operator's own, so read as
+# issue and a commit, and recording one publishes it, since the record is
+# itself a comment; the login beside it may be the operator's own. So read as
 # proof of authorship a retraction written under a quoted receipt would be
 # taken for one of ours and deleted from the reading -- publishing the
 # authorization beneath it on consent withdrawn. Silencing a sentence costs a
-# poll; claiming a comment costs whatever its author said.
+# poll; claiming a comment costs whatever its author said. Attribution is
+# `late_recovery`'s, on the one thing that can bear it: a secret it commits to
+# by DIGEST before the seam is entered, stamped on every sentence that call
+# posts -- these among them, since both are worded inside it.
 _RECEIPTS = MappingProxyType({
     "parked": (
         "<!--orchestrator-unauthorized-exemption-parked:"
@@ -196,12 +203,53 @@ def _awaits_an_operator(gate: _records._Gate, candidate_sha: str) -> bool:
     candidate is measured like any other and an oversized one is routed to the
     adjudication that would rule on it, which is what a change with nobody's
     verdict behind it is owed.
+
+    A commit an override already names is refused too, and that is the fourth
+    thing rather than a fourth doubt: what this park waits for is a person,
+    and a recorded override is one. Read as still waiting, a retry after a
+    publication that failed would measure the same commit again and write new
+    terms over the ones a human actually agreed to.
     """
     if not gate.state.get(_state._AWAITING_HUMAN):
         return False
     if gate.state.get(_state._PARK_REASON) != _command.PARK_UNAUTHORIZED_EXEMPTION:
         return False
+    if _already_authorized(gate.state, candidate_sha):
+        return False
     return _exemption.read_exemption(gate.state) == candidate_sha
+
+
+def _already_authorized(
+    state: _pinned_state.PinnedState, candidate_sha: str,
+) -> bool:
+    """Whether an operator's authorization already covers this very commit.
+
+    The one thing that answers this park's own question, and the reason a
+    standing park is not by itself the door. What the park doubts is an
+    exemption with nobody behind it; a recorded override IS the person, named
+    against this commit and written from the reading that measured it. Once
+    one stands, the doubt is settled and the ordinary road recognizes the
+    commit as decided.
+
+    Which matters because the park can be standing over an answered question.
+    The write that records an authorization takes the park off, and the
+    publication it licenses can still fail -- a push the remote refused, a
+    checkout that moved under it -- leaving the seam parked under a reason of
+    its own and this park put back so the operator is not asked again. Read as
+    unanswered there, the retry measures the same commit afresh and records
+    NEW terms over the ones the human agreed to: a ceiling retuned in between
+    becomes the ceiling they are recorded as having authorized, and the
+    additions and digest are re-taken against a base that has moved. The terms
+    of a bypass are the terms somebody agreed to, so they are written once.
+
+    Exactly this commit, on the same rule the exemption is read by: an
+    override naming another is a decision a resumed developer's work has moved
+    past, and the candidate in hand is one nobody has authorized.
+    """
+    authorized = _overrides.read_publication_override(state)
+    if authorized is None:
+        return False
+    return authorized.publication.candidate_sha == candidate_sha
 
 
 def _holds_until_authorized(
@@ -226,6 +274,14 @@ def _holds_until_authorized(
     Nothing about a base this host cannot show is the operator's doing, and
     the park, the command and the record are all still there for the poll that
     can take it.
+
+    An authorized one goes to a settlement of its own, and for the half of
+    what that settlement does that has nothing to do with the ceiling: the
+    generation this gate froze has to be RETIRED before the push, or the
+    branch is frozen out of the ordinary base refresh for as long as the issue
+    lives and a later close is read as a live cycle to end. Only what the debt
+    rests on differs from the small candidate's, and it differs because a
+    person let this one through rather than a count.
 
     A candidate the ceiling lets through is not this park's to hold at all: it
     goes to the ordinary settlement, which publishes it and retires the record
@@ -259,7 +315,9 @@ def _holds_until_authorized(
     measured = replace(frozen, additions=counted.additions)
     if not measured.is_oversized:
         return _released(gate, measured)
-    return not _authorizes_the_park(gate, measured, parked_over)
+    if not _authorizes_the_park(gate, measured, parked_over):
+        return True
+    return _verdict_owner._authorized(gate, measured)
 
 
 def _released(gate: _records._Gate, generation: LateGeneration) -> bool:
@@ -432,13 +490,21 @@ def _owes_the_notice(gate: _records._Gate, receipt: str) -> bool:
     human is owed; read this way, the worst a reviewer sharing this token can
     do by quoting our notice back is cost a poll.
 
-    What may never be built on the same evidence is the opposite claim --
-    that some comment on the thread is OURS. The receipt is public text and
-    deterministic from the issue and the candidate, and the login may be the
-    operator's own, so a retraction they wrote under a quoted receipt would be
-    claimed, deleted from every later reading, and the authorization beneath
-    it would become the last word and publish on consent withdrawn. Only the
-    recorded id ledger says a comment is ours, and nothing here writes to it.
+    What may never be built on THIS evidence is the opposite claim -- that
+    some comment on the thread is OURS. The receipt is deterministic from the
+    issue and the candidate, and recording it publishes it: the record is
+    itself a comment, so the string is readable before the sentence it names
+    exists, by the operator whose consent this park collects and from a login
+    they may share with us. Claimed on that basis, a retraction they wrote
+    under it would be deleted from every later reading and the authorization
+    beneath it would become the last word and publish on consent withdrawn.
+
+    Nothing here writes the id ledger that says a comment is ours. The one
+    attribution `late_recovery` does make rests on a SECRET, minted per
+    handoff into the publication seam and recorded there by its digest alone
+    -- which is the claim this receipt cannot support and is not asked for.
+    Every sentence this owner words goes out from inside that seam call, so
+    the secret is on them too, beside the receipt this read is about.
     """
     if gate.state.get(_state._HELD_RECEIPT) != receipt:
         return False

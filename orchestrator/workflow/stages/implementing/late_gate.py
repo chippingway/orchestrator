@@ -195,14 +195,20 @@ def _holds_committed_work(
     mid-flight, and a crash between the count and the label costs a label
     write rather than another reading of the same diff.
     """
+    recovering = isinstance(work, _models._RecoveredWork)
     return _holds_candidate(_records._Gate(
         gh=gh, spec=spec, issue=issue, state=state, worktree=work.worktree,
-        reconciling=isinstance(work, _models._RecoveredWork),
+        reconciling=recovering,
         # Every recovery here answers a reading this gate itself recorded --
         # a late park a human replied to, an approval whose push never went
         # out, a frozen pair a crash stranded -- so the switch has nothing
         # left to say about any of them.
-        answering=isinstance(work, _models._RecoveredWork),
+        answering=recovering,
+        # And each of them proved the checkout on that reading's own commit
+        # before handing it over, so the head this owner reads is held to it:
+        # the worktree is writable in between, and a commit landing there is
+        # a candidate no reading covers.
+        candidate=work.candidate_sha if recovering else "",
     ))
 
 
@@ -362,10 +368,15 @@ def _moved_off_the_caller(
     a record about the wrong commit, and one after the push leaves the wrong
     commit on the pull request.
 
-    Silent where the caller named nothing, which is every seam that publishes
-    a checkout it did not just write -- the no-feedback bounce, the recovery
-    answering a recorded pair -- and where the two agree, which is every
-    ordinary tick.
+    A recovery names one for the same reason a run does, and proves it for a
+    sharper one: no developer ran, so the reading that licensed the recovery
+    is about a commit a previous tick recorded, and a head that moved between
+    that proof and this one is not a fresh candidate to measure in its place.
+    It is a commit an operator's authorization does not cover, published on
+    its own count while the record names another.
+
+    Silent where the caller named nothing -- a bounce over a checkout it did
+    not just write -- and where the two agree, which is every ordinary tick.
     """
     if not gate.candidate or gate.candidate == candidate_sha:
         return False

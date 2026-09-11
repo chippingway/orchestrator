@@ -35,10 +35,15 @@ refuses the push identically whether it came from a clean exit, a timeout, or a
 drift resume -- and so does an oversized one. That single seam is where the
 size gate beside this owner runs, which is what lets one measurement stand
 between every clean committed candidate and the branch it would be published
-on. The park it takes when a candidate cannot be measured has a recovery of
-its own here, for the reason the timeout's does: it is the only reader of what
-that park wrote, and what it owes a human is another reading rather than
-another agent.
+on.
+
+The parks that gate takes are recovered from `late_recovery` rather than from
+here, and the split is what each park is waiting FOR. The timeout's is this
+owner's because the watermark it persists is this owner's own reading, which
+nothing else has any claim on. The gate's three are waiting on a reading, a
+checkout, or an operator's decision -- none of them a fact about the run that
+finished -- so what they share is not the disposition but the seam they hand
+their answer back to, which is `_publish_committed_work` below.
 """
 from __future__ import annotations
 
@@ -57,7 +62,6 @@ from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.stages.implementing import (
-    checkout_recovery as _checkout_recovery,
     late_evidence as _late_evidence,
     late_gate as _late_gate,
     late_parks as _late_parks,
@@ -265,149 +269,6 @@ def _try_recover_implementing_timeout_park(
     return "pushed"
 
 
-def _try_recover_late_measurement_park(
-    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
-) -> bool:
-    """Re-measure a candidate a human has told the orchestrator to retry.
-
-    The recovery a measurement park earns, and it is deliberately not a
-    session retry. What failed was a READING -- a base the remote would not
-    name, an object this host does not hold, a diff nothing could pin -- and
-    the developer that produced the commit finished long ago, so paying for
-    another run would buy a second answer to a question nobody asked. The bare
-    `/orchestrator continue` is the operator saying the reading should be
-    taken again; everything else on the thread is guidance, which the ordinary
-    resume feeds to the developer.
-
-    Returns True when the command was answered and the caller must return, and
-    it answers every one of them: a command this reconciliation recognized is
-    never handed back to the generic parked-continue classifier, which would
-    refuse it as carrying no guidance -- the wrong thing to tell an operator
-    whose command is exactly the right one, and a refusal that consumes their
-    reply against a question nobody asked.
-
-    The committed work goes back through the same publication seam it came out
-    of, so the retry reaches the same three outcomes a fresh disposition does:
-    the branch is published, the candidate is routed to adjudication, or the
-    park is taken again with the reason it fails for now. A checkout that is
-    gone is the fourth, and it is the one outcome the seam cannot reach on its
-    own: there is no commit to read there, the recorded SHA is evidence no
-    fresh checkout may stand in for, and re-running the developer would answer
-    with different work -- so it parks saying exactly that, and the next
-    continue retries it once the worktree is back.
-
-    The park flags are cleared ahead of the publish, because clearing them is
-    what the answer means -- and the retry re-takes the park itself if the
-    reading is still not there. The comments are consumed in the same breath,
-    which is safe only because every one of them is a bare continue: nothing
-    with words in it is dropped here.
-    """
-    replies = _late_parks._answers_the_measurement_park(gh, issue, state)
-    if not replies:
-        return False
-    state.set(
-        _state._LAST_ACTION_COMMENT_ID,
-        max(reply.id for reply in replies),
-    )
-    wt = _worktree_paths._worktree_path(spec, issue.number)
-    if not wt.exists():
-        _late_evidence._holds_missing_candidate(gh, spec, issue, state, wt)
-        gh.write_pinned_state(issue, state)
-        return True
-    if _late_evidence._holds_moved_candidate(gh, spec, issue, state, wt):
-        gh.write_pinned_state(issue, state)
-        return True
-    state.set(_state._AWAITING_HUMAN, False)
-    state.set(_state._PARK_REASON, None)
-    _, _, _, dev_sid = _session_read._read_dev_session(state)
-    agent_result = AgentResult(
-        session_id=dev_sid,
-        last_message=(
-            "(orchestrator recovery: re-measuring the committed candidate)"
-        ),
-        exit_code=0,
-        timed_out=False,
-        stdout="",
-        stderr="",
-    )
-    _publish_committed_work(
-        gh, spec, issue, state, _models._RecoveredWork(agent_result, wt),
-    )
-    gh.write_pinned_state(issue, state)
-    return True
-
-
-def _recovers_a_late_park(
-    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
-) -> bool:
-    """Both parks the size gate takes, answered before anything is spawned.
-
-    Neither is a park a human can talk their way out of, which is what puts
-    them together and what puts them here. One is owed another READING and the
-    other another LOOK at the checkout, and on both the work in question is
-    committed already -- so what they must never reach is the spawn below,
-    which would buy a second developer run for an implementation the first one
-    finished.
-    """
-    if _try_recover_late_measurement_park(gh, spec, issue, state):
-        return True
-    return _try_recover_moved_candidate_park(gh, spec, issue, state)
-
-
-def _try_recover_moved_candidate_park(
-    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState
-) -> bool:
-    """Republish an approved commit whose checkout has been put back.
-
-    The way out of the one park a human cannot answer with words. What that
-    park refused was the HANDOFF -- the commit was measured and approved, and
-    the checkout it would have handed to review was somewhere else -- so what
-    settles it is the checkout coming back, not guidance and not another
-    developer run over work that is already committed.
-
-    Which makes it quiet: the approved commit is recorded beside the park, so
-    every tick asks one local question of the checkout and says nothing until
-    the answer changes. An operator who restores the worktree sees the branch
-    publish on the next poll without having to ask for it, and one who leaves
-    it where it is is not told the same thing once a tick.
-
-    What it hands on is the ordinary reconciliation, and the approval travels
-    with it rather than being spent on the way. The record is the gate's own
-    verdict about that exact commit, so the reconciliation republishes it
-    under it -- named against it and not measured again -- and the publication
-    that lands is what drops it. Spending it here instead would leave the
-    reconciliation asking the size question about a settled commit, against a
-    base that has moved since, and a park in the window between the two with
-    nothing on the issue naming what it is waiting for.
-    """
-    if state.get(_state._PARK_REASON) != _state._CANDIDATE_MOVED:
-        return False
-    wt = _worktree_paths._worktree_path(spec, issue.number)
-    if not wt.exists():
-        return False
-    if not _checkout_recovery._restored_checkout(issue, state, wt):
-        return False
-    state.set(_state._AWAITING_HUMAN, False)
-    state.set(_state._PARK_REASON, None)
-    _, _, _, dev_sid = _session_read._read_dev_session(state)
-    agent_result = AgentResult(
-        session_id=dev_sid,
-        last_message=(
-            "(orchestrator recovery: the approved commit is back in the "
-            "checkout)"
-        ),
-        exit_code=0,
-        timed_out=False,
-        stdout="",
-        stderr="",
-    )
-    _publish_committed_work(
-        gh, spec, issue, state, _models._RecoveredWork(agent_result, wt),
-    )
-    gh.write_pinned_state(issue, state)
-    return True
-
-
 def _holds_approved_commit(
     gh: GitHubClient,
     spec: config.RepoSpec,
@@ -462,6 +323,14 @@ def _dispose_approved_commit(
     A `_RecoveredWork` because no developer ran on this tick: the head is held
     to the record for the whole of it, and the switch's bypass is not an
     answer to a question the gate already asked.
+
+    Held to the record means NAMED on the work, not merely proved above it.
+    The proof that the checkout stands on the approved commit is taken before
+    this call and the gate reads the head again for itself, and the worktree
+    is writable in between: a commit landing there is measured as this tick's
+    candidate, approved in the original's place, and pushed -- so the approval
+    a human or a reading stood behind is cleared for a commit neither ever
+    saw. Named, the gate refuses it before anything is persisted or pushed.
     """
     _, _, _, dev_sid = _session_read._read_dev_session(state)
     agent_result = AgentResult(
@@ -475,7 +344,9 @@ def _dispose_approved_commit(
         stderr="",
     )
     _publish_committed_work(
-        gh, spec, issue, state, _models._RecoveredWork(agent_result, worktree),
+        gh, spec, issue, state, _models._RecoveredWork(
+            agent_result, worktree, _late_parks._approved_commit(state),
+        ),
     )
 
 
@@ -566,6 +437,12 @@ def _dispose_recorded_candidate(
     disposition, which is what makes the outcomes the same ones -- and it
     spawns nothing, because the run that produced this commit already
     finished.
+
+    The candidate those proofs were about is named on the work for the reason
+    every other recovery names one: the gate reads the head again, the
+    worktree is writable in between, and a commit landing there is a candidate
+    no reading covers -- measured and published under a record naming the one
+    the crashed tick froze.
     """
     _, _, _, dev_sid = _session_read._read_dev_session(state)
     agent_result = AgentResult(
@@ -579,7 +456,9 @@ def _dispose_recorded_candidate(
         stderr="",
     )
     _publish_committed_work(
-        gh, spec, issue, state, _models._RecoveredWork(agent_result, worktree),
+        gh, spec, issue, state, _models._RecoveredWork(
+            agent_result, worktree, _late_parks._recorded_candidate(state),
+        ),
     )
 
 

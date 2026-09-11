@@ -22,14 +22,22 @@ from unittest.mock import patch
 
 from orchestrator import config
 from orchestrator.git.measurement.models import FrozenCommit, MeasurementFailure
-from orchestrator.workflow.stages.implementing import state as _implementing_state
+from orchestrator.workflow.stages.implementing import (
+    continue_command as _continue_command,
+    late_parks as _late_parks,
+    state as _implementing_state,
+)
 from tests.workflow.fixtures import (
     LABEL_DECOMPOSING,
     MEASURED_CANDIDATE_SHA,
     SHA_LENGTH,
     _agent,
 )
+from tests.workflow.interleaving import _RacesPastTheStep
 from tests.workflow.stages.implementing import late_gate_test_support as support
+
+_ANSWERS_THE_PARK = "_answers_the_measurement_park"
+_PARKED_CONTINUE_DECISION = "_parked_continue_decision"
 
 _MOVED_SHA = "e" * SHA_LENGTH
 # What a checkout somebody moved reads as, and the two successive readings of
@@ -1029,6 +1037,92 @@ class LateGateReapedWorktreeTest(support._ParkedRetryCase, unittest.TestCase):
         # And which step it stopped at, which is what tells this refusal from
         # a base a fetch could not bring on the very same pair.
         self.assertEqual(failures[0]["measurement_failure"], _CHECKOUT_GONE)
+
+
+class _LandsTheRetry:
+    """One operator writing the retry command, the instant a step has run.
+
+    A class rather than a closure because a seam this repository patches is a
+    value with a name, and because it has to fire ONCE: hung on a read and
+    fired on every one of them, each later reading would answer against a
+    thread the one before it never saw.
+    """
+
+    def __init__(self, case) -> None:
+        self._case = case
+        self.landed = False
+
+    def __call__(self) -> None:
+        if not self.landed:
+            self.landed = True
+            self._case._reply(support.BARE_CONTINUE)
+
+
+class LateGateContinueRaceTest(support._ParkedRetryCase, unittest.TestCase):
+    """A retry command that lands between two of one tick's own thread reads.
+
+    Every road that reads a parked thread reads it again after the one above
+    it handed the tick back, and both roads behind this park's own would SPEND
+    the reply that ends it. The parked-continue classifier reads a command on
+    a park that is not a session failure as one carrying no answer, refuses it
+    and consumes the thread past its own refusal; the generic resume reads it
+    as guidance and pays for a developer to answer it. Either way the
+    operator's retry is gone and the reading they asked for is one nothing
+    will ever take.
+    """
+
+    def test_a_retry_landing_mid_read_is_kept(self) -> None:
+        # The window between this park's own reading of the thread and the
+        # classifier's. Answered there, the operator is asked for guidance
+        # they have no reason to write, and the watermark moves past both
+        # their command and the sentence asking.
+        mocks = self._races(_late_parks, _ANSWERS_THE_PARK)
+
+        self._assert_deferred(mocks)
+
+    def test_a_retry_landing_past_it_is_kept(self) -> None:
+        # And the window after it, which only the resume can still see. Read
+        # as guidance there, a developer is paid to answer a reply that asks
+        # for a reading rather than for work.
+        mocks = self._races(_continue_command, _PARKED_CONTINUE_DECISION)
+
+        self._assert_deferred(mocks)
+
+    def test_the_deferred_retry_re_measures(self) -> None:
+        # What deferring buys. Nothing was consumed, so the command is still
+        # the whole of the fresh batch on the next poll -- and the road that
+        # can act on it takes the reading again and publishes on it, with no
+        # developer paid for over work that is committed already.
+        self._races(_continue_command, _PARKED_CONTINUE_DECISION)
+
+        mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        self._assert_no_agent(mocks)
+        self._assert_published(mocks)
+
+    def _races(self, owner, step: str):
+        """Run one tick with the retry landing the instant `step` returns."""
+        self._seed(**{
+            support.AWAITING_HUMAN: True,
+            support.PARK_REASON: _late_parks.PARK_MEASUREMENT_FAILED,
+            support.LAST_ACTION_COMMENT_ID: support.PRIOR_ACTION_COMMENT_ID,
+            **support.recorded_generation(),
+        })
+        with patch.object(
+            owner, step,
+            _RacesPastTheStep(getattr(owner, step), _LandsTheRetry(self)),
+        ):
+            return self._run_gate()
+
+    def _assert_deferred(self, mocks) -> None:
+        """Nothing ran, nothing was said, and the command is still unread."""
+        self._assert_no_agent(mocks)
+        self._assert_held(mocks)
+        self.assertEqual(self.github.posted_comments, [])
+        self.assertEqual(
+            self._pinned()[support.LAST_ACTION_COMMENT_ID],
+            support.PRIOR_ACTION_COMMENT_ID,
+        )
 
 
 if __name__ == "__main__":

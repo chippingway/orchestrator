@@ -149,6 +149,43 @@ def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
     return _retired(gate, generation, _late_state.read_late_spends(gate.state))
 
 
+def _authorized(gate: _records._Gate, generation: LateGeneration) -> bool:
+    """Retire the generation an operator authorized past the ceiling, and publish.
+
+    The same close-safe retirement a small candidate earns, on the one road
+    that reaches a publication without going through it. The count here really
+    was this gate's own -- the pair frozen, the diff read, the ceiling
+    compared -- so everything the retirement exists for is true of it: a
+    generation left standing freezes this branch out of the ordinary base
+    refresh for as long as the issue lives, and is read as a live cycle by the
+    guard that ends one on a close.
+
+    What the debt REST on is the difference, and it is the reason this is not
+    `_accepted` with another argument. That road's approval says the ceiling
+    let the commit through, so the tick that comes back after a crash owes
+    nobody a question before it pushes. This one says a person did, which is a
+    permission that has to still be readable when it is spent -- so the basis
+    goes down as `AUTHORIZATION` and the readers that revalidate a debt an
+    operator's gesture is behind can tell the two apart.
+
+    True stops the publication, as it does everywhere else: a close ended this
+    cycle inside the write, so nothing is pushed, opened, or handed on.
+    """
+    log.info(
+        "issue=#%d publishes candidate %s at %d lines past a ceiling of %d "
+        "on an operator's own authorization; retiring cycle %d ahead of it",
+        gate.issue.number, generation.candidate_sha, generation.additions,
+        generation.threshold, generation.cycle_id,
+    )
+    _parks._approve(
+        gate.state,
+        generation.candidate_sha,
+        _frozen_lease(gate),
+        _parks.LateApprovalBasis.AUTHORIZATION,
+    )
+    return _retired(gate, generation, _late_state.read_late_spends(gate.state))
+
+
 def _frozen_lease(gate: _records._Gate) -> str:
     """The head an approval on the published side is pinned to.
 
@@ -410,6 +447,16 @@ def _unmeasured_verdict(
     this, it reaches the stage the publication hands the issue to as a flag
     describing a question nobody is waiting on.
 
+    The authorization park comes off too, and it comes off LATER -- past every
+    refusal above, on the line the verdict is decided. This is the only road
+    that ever publishes under one: the override an earlier tick recorded
+    answers the park's own question before the gate's door is reached, so
+    nothing here reads the thread and nothing else on the road would take the
+    flag down. But what that park waits for is a PERSON, and no reading
+    answers a person -- so a close that ended the cycle, or a record this
+    publication is superseded by, has to leave the operator waiting exactly as
+    it found them rather than unparking an issue nobody replied to.
+
     `permitted_sha` is handed straight back rather than derived, because only
     the caller knows which of the roads past the measurement this is. A
     transfer's is the one road whose publication may MOVE a human's verdict,
@@ -421,6 +468,7 @@ def _unmeasured_verdict(
     _supersedes_approval(gate, candidate_sha)
     if _superseded(gate, recorded):
         return _records._HELD
+    _parks._retire_authorized_park(gate.state)
     _owed_by_an_unmeasured_push(gate, candidate_sha, _frozen_lease(gate))
     return _records._GateVerdict(
         held=False,

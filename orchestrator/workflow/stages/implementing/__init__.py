@@ -15,12 +15,19 @@ retired and gates a fresh spawn against the per-issue daily cap, `resume` keeps
 the call shape every other stage wrote against, and `execution` runs one attempt
 plus the single poisoned-session retry behind it, in `worktree`'s checkout.
 
-What a finished run leaves behind is four more: `disposition` compares HEAD
+What a finished run leaves behind is seven more: `disposition` compares HEAD
 against the pre-agent SHA to tell this run's commit from carried-over work,
 `late_gate` measures whatever it is about to publish and holds a candidate
 past the size ceiling unpublished under `workflow:decomposing`, `publication`
-turns a clean tree into a pushed branch, a PR, and the validating handoff, and
-`parks` owns the five ways a commit-less or unpublishable run stops. The gate
+turns a clean tree into a pushed branch, a PR, and the validating handoff,
+`late_recovery` answers the three parks that gate takes -- one owed another
+reading, one another look at the checkout, and one a decision only an operator
+can make -- routing each back through the disposition's own publication seam
+ahead of any spawn, since on all three the work is committed already,
+`late_rollback` holds that last park across the seam call and puts it back
+where the call never returned, `late_authorship` says which comments on its
+thread are this stage's own words, and `parks` owns the five ways a
+commit-less or unpublishable run stops. The gate
 sits inside the disposition rather than beside it because being the ONE seam
 all three committed outcomes publish through -- a finished run, a timeout that
 committed first, and a branch a crash stranded -- is what makes the

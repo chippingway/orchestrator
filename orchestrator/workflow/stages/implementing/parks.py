@@ -24,10 +24,18 @@ same refusal with the other half missing -- `git status` failing, or an index
 entry git was told to stop comparing, establishes nothing about what the
 checkout carries -- and it is its own park because what an operator has to fix
 there is a repository rather than a file list. Every park here posts the HITL
-comment, ratchets `last_action_comment_id` past it so the next tick reads the
-human's reply and not its own notice, and emits `park_awaiting_human` -- but
-leaves the pinned-state write to the handler, so the park composes with
+comment, ratchets `last_action_comment_id` past its own notice so the next tick
+reads the human's reply and not that notice, and emits `park_awaiting_human` --
+but leaves the pinned-state write to the handler, so the park composes with
 whatever else that tick staged.
+
+Past its own notice and no FURTHER, which is the whole of what a run these
+parks end can be interleaved with. An agent takes minutes, and a human writing
+in that window has written something nothing here has read: ratcheted to
+whatever the thread ends on, the notice this park posts carries the watermark
+over their comment and it is skipped for good. On this stage that comment can
+be the `/orchestrator authorize-oversized` an adjudicated candidate is waiting
+for, and the road that could act on it never sees it.
 """
 from __future__ import annotations
 
@@ -182,6 +190,10 @@ def _on_question(
     state: PinnedState,
     agent_result: AgentResult,
 ) -> None:
+    # Taken before anything is posted, because what separates this park's own
+    # notice from a human's comment afterwards is which of them this ledger
+    # gained.
+    said_before = _comments._orchestrator_ids(state)
     raw = agent_result.last_message.strip()
     if raw and _session_read._is_session_limit_message(agent_result):
         park_reason = _park_session_limit(gh, issue, state, raw)
@@ -191,15 +203,60 @@ def _on_question(
         park_reason = _park_real_question(gh, issue, state, raw)
     else:
         park_reason = _park_silent_failure(gh, issue, state, agent_result)
-    latest = gh.latest_comment_id(issue)
-    if latest is not None:
-        state.set(_state._LAST_ACTION_COMMENT_ID, latest)
+    read_to = _read_this_far(gh, issue, state, said_before)
+    if read_to is not None:
+        state.set(_state._LAST_ACTION_COMMENT_ID, read_to)
     gh.emit_event(
         "park_awaiting_human",
         issue_number=issue.number,
         stage=stage_name(gh.workflow_label(issue)),
         reason=park_reason,
     )
+
+
+def _read_this_far(
+    gh: GitHubClient, issue: Issue, state: PinnedState, said_before: set,
+) -> int | None:
+    """How far a park ending a RUN may record this thread as read.
+
+    Past every comment of ours above the watermark and past nothing else. A
+    park's notice has to carry the watermark over itself, or the next tick
+    reads our own sentence as somebody's fresh guidance and pays a developer
+    to answer it. But the run this park ends took minutes, and a human writing
+    in that window wrote something no reading here has looked at: carried to
+    the thread's TIP instead, the notice takes their comment with it and it is
+    skipped for good. On this stage that comment can be the
+    `/orchestrator authorize-oversized` an adjudicated candidate is waiting
+    for, and the only road that could act on it never sees it.
+
+    So the walk stops at the first comment that is not ours, which is the
+    boundary between what this tick read and what landed behind its back.
+    Which comments are ours is read off the ledger every post writes to, since
+    that is the one record here that names them.
+
+    Two answers fall back to the tip, and each is the lesser of what is left.
+    A post whose id nothing could read adds nothing to that ledger, so no walk
+    could pass our own notice and every tick after would answer it as
+    guidance. And a watermark that was never set is a tick with nothing to
+    bound: the spawn behind it quoted the whole thread to the agent, so the
+    comments below have been answered rather than missed.
+    """
+    latest = gh.latest_comment_id(issue)
+    ours = _comments._orchestrator_ids(state)
+    read_to = state.get(_state._LAST_ACTION_COMMENT_ID)
+    if ours == said_before or not isinstance(read_to, int):
+        return latest
+    for seen in sorted(gh.comments_after(issue, read_to), key=_comment_id):
+        if _comment_id(seen) not in ours:
+            break
+        read_to = _comment_id(seen)
+    return read_to
+
+
+def _comment_id(seen) -> int:
+    """One comment's own address, or 0 for one nothing here can name."""
+    identified = getattr(seen, "id", None)
+    return identified if isinstance(identified, int) else 0
 
 
 def _on_unpublishable_tree(
@@ -274,15 +331,16 @@ def _park_unpushable_tree(
     reported: dict,
 ) -> None:
     """Post the refusal, hold the issue, and report it under its own reason."""
+    said_before = _comments._orchestrator_ids(state)
     _comments._post_issue_comment(gh, issue, state, message)
     state.set(_state._AWAITING_HUMAN, True)
     # Mirror `_on_question`: this needs human input, so stale transient state
     # must not auto-recover over it.
     state.set(_state._PARK_REASON, None)
     state.set(_state._SILENT_PARK_COUNT, 0)
-    latest = gh.latest_comment_id(issue)
-    if latest is not None:
-        state.set(_state._LAST_ACTION_COMMENT_ID, latest)
+    read_to = _read_this_far(gh, issue, state, said_before)
+    if read_to is not None:
+        state.set(_state._LAST_ACTION_COMMENT_ID, read_to)
     gh.emit_event(
         "park_awaiting_human",
         issue_number=issue.number,

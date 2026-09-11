@@ -256,6 +256,14 @@ where you put it rather than greeted a second time, so nothing runs again until 
   entirely: the issue parks on the edit first, and the decision has to be made again against the requirements as they
   now read.
 
+  Publishing it needs the issue's checkout, and where that is not ready the orchestrator holds rather than asking you
+  twice. The worktree has to be on this host, its tree carrying nothing a push would leave behind, and its head still
+  on the commit you named; where any of the three is not true, nothing is published, nothing is said, and your
+  command, the park and the record all stand exactly as they were — so the poll after you put the checkout back
+  publishes on the command you already wrote. A push that fails after your authorization is recorded is answered the
+  same way: the park comes back over the terms you agreed to instead of your decision being spent, and the retry
+  publishes that same commit. A reply that is not the command is guidance as always, and reaches the dev agent.
+
   What you authorize is one *adjudication* of one commit, not the issue. Anything that sends the candidate back to be
   adjudicated spends it — an edit you then certify with `/orchestrator continue`, guidance that resumes the dev agent
   (even where the agent answers that the committed work already covers it), or a record the orchestrator can no
