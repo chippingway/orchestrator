@@ -583,17 +583,23 @@ orchestrator/
                         here"; and the one read that is not a listing, which git directory a checkout and a clone
                         share, since a flat checkout's name says nothing about whose it is and a named one's claim
                         has to be tested. Both halves of the domain ask that one, so it is defined once and here
-      attribution.py    which configured repository a discovered artifact belongs to, by re-deriving each spec's
-                        own name for it; a name several entries could own -- every legacy flat branch on a shared
-                        clone, every checkout directory two lossily-sanitized slugs are handed -- is attributed to
-                        none of them. The flat pre-namespacing checkout is the one artifact no name can settle,
-                        since every entry derived it identically, so it is attributed by the clone the directory
-                        turns out to be a worktree of -- which answers every host whose entries keep their own
-                        clones and leaves the shared-clone case ambiguous. An entry whose OWN clone would not
-                        answer claims it too, since nothing ruled that entry out and dropping it is how a shared
-                        checkout reads as uniquely owned. Every unsettled shape names its claimants rather than
-                        nobody, because a tree none of them may take is standing on one of that issue's branches:
-                        the scan has to withhold the issue, not just the directory
+      attribution.py    which configured repository a local branch belongs to, by re-deriving each spec's own
+                        name for it; a name several entries could own -- every legacy flat branch on a shared
+                        clone, every namespaced one two lossily-sanitized slugs are handed -- is attributed to
+                        none of them, since a branch charged to the wrong repository is one a caller acts on
+                        against the wrong GitHub issue
+      checkout_attribution.py
+                        the same question for a checkout directory, which carries even less of a name. The flat
+                        pre-namespacing one no name can settle, since every entry derived it identically, is
+                        attributed by the clone the directory turns out to be a worktree of -- which answers every
+                        host whose entries keep their own clones and leaves the shared-clone case ambiguous. An
+                        entry whose OWN clone would not answer claims it too, since nothing ruled that entry out
+                        and dropping it is how a shared checkout reads as uniquely owned; a flat path that is some
+                        entry's worktrees root is not a checkout at all. The per-repository parent is the
+                        configuration's own ambiguity beside it: two entries the path sanitizer cannot tell apart
+                        are handed one directory, and both are refused outright. Every unsettled shape names its
+                        claimants rather than nobody, because a tree none of them may take is standing on one of
+                        that issue's branches: the scan has to withhold the issue, not just the directory
       inventory.py      the read-only scan over those reads: the flat checkouts read once for the host and put
                         to the clone each is a worktree of, paid for only where that listing found something --
                         one claimant holds the checkout, several withhold the whole issue from every one of them,
@@ -729,9 +735,10 @@ off a facade:
   what its absence costs; this package decides only what a snapshot ref IS and refuses everything outside it.
 - `worktrees/` — the creators call `commands`, `locks`, `branch_transport`, and their `paths` / `recovery` siblings;
   `decomposition` resolves its own path helper; `terminal` composes its local teardown from `cleanup`. The read-only
-  scan sits on the same owners: `inventory` calls `branch_probes`, `probes`, and `attribution`, and `paths` itself for
-  the checkout path it hands back; `probes` and `attribution` reach `paths` too, for the names they compare against,
-  and only the two probe owners reach `commands` — `branch_probes` the `locks` its listing is taken under as well.
+  scan sits on the same owners: `inventory` calls `branch_probes`, `probes`, `attribution`, and
+  `checkout_attribution`, and `paths` itself for the checkout path it hands back; `probes`, `attribution`, and
+  `checkout_attribution` reach `paths` too, for the names they compare against, and only the two probe owners reach
+  `commands` — `branch_probes` the `locks` its listing is taken under as well.
   `models` carries only data. Nothing in the scan writes, fetches, or names GitHub, which is what lets a caller take
   it at any point in a tick. The classification over it keeps that split visible:
   `evidence` calls `commands`, `locks`, `paths`, `probes` for the clone-identity read the scan owns, both
