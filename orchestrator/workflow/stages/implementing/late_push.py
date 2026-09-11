@@ -25,7 +25,9 @@ That one write is also where a rewrite's exemption finally moves. The permit
 commit it is about was on no remote when it was granted; here it is, so the
 verdict, the identity beside it, and the phase that spends the permission go
 down with the receipt that says the remote has it -- `late_rotation` owns
-which of those the comment owes and this owner owns the write they ride.
+which of those the comment owes, this owner owns the write they ride, and
+`late_transfer_telemetry` is asked past that write for the one record a move
+that really landed leaves.
 """
 from __future__ import annotations
 
@@ -40,6 +42,7 @@ from orchestrator.workflow.stages.implementing import (
     late_publication as _publication_gate,
     late_records as _records,
     late_rotation as _rotation,
+    late_transfer_telemetry as _transfer_telemetry,
     state as _state,
 )
 
@@ -363,7 +366,7 @@ A process that died in that window would leave a paid debt standing,
     if unproven:
         _parks._approve(gate.state, landed, landed, standing)
     gate.gh.write_pinned_state(gate.issue, gate.state)
-    _rotation._reports_the_transfer(gate, rotation)
+    _transfer_telemetry._reports_the_transfer(gate, rotation)
 
 
 def _owes_a_settlement(state: PinnedState, published: str) -> bool:

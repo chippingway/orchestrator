@@ -1624,7 +1624,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             branch pushed back onto an older published commit as a round nothing is left to close.
                             The exemption a rewrite earned rides that same write, staged by `late_rotation` and
                             asked whether or not anything else is owed, so a comment whose receipt already names the
-                            commit still gets the move if the write that should have carried it was lost
+                            commit still gets the move if the write that should have carried it was lost -- and
+                            `late_transfer_telemetry` is asked past that write, so a move that really landed is the
+                            only one reported
       late_accepted.py      the push an adjudication already accepted, taken with no measurement -- a verdict read
                             this exact diff and said it ships as one change -- but still named against the commit
                             that was DECIDED, still pinned to the head the reading was taken over, and made only
@@ -1770,10 +1772,20 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             equivalence, and neither is ever pushed for unleased. A permission the publication went
                             PAST is dropped instead, on the rollback's own terms (an outstanding record this build
                             can vouch for entirely), since the head it was granted against is gone and what is left
-                            is a claim about a push that cannot happen. What it reports is one `late_transfer` event
-                            -- both pairs, the pull request, the rewrite kind, and the proof -- and deliberately no
-                            second `late_verdict`, which would read as a second adjudication of work nobody was
-                            asked about twice
+                            is a claim about a push that cannot happen. What it stages is the transition and not
+                            what is said about it: the rewrite a verdict moved onto and the reading that proved the
+                            publication ride the answer, and the record is the telemetry owner's below
+      late_transfer_telemetry.py
+                            the one record a settled transfer leaves on both sinks -- one `late_transfer` event
+                            naming both pairs, the pull request, the rewrite kind, and which reading proved the
+                            push, correlated by a generation minted from what the pinned comment already says, since
+                            a transfer runs past the retirement that dropped the pair it was adjudicated under.
+                            Called by `late_push` on the far side of the write `late_rotation` stages into rather
+                            than by that owner, so the ordering is a property of the call site: a receipt GitHub
+                            refuses ends the tick and reports nothing, and a rotation that moved no verdict -- a
+                            permission left standing, one the publication went past -- says nothing either.
+                            Deliberately no second `late_verdict` beside it, which would read as a second
+                            adjudication of work nobody was asked about twice
       late_reconcile.py     the reading the dispatcher takes for a pair frozen and never counted, scoped to the
                             stage the record names and taken with no run behind it: measured at or under the ceiling
                             the candidate is PUBLISHED before the stage runs -- nothing goes back for a push a

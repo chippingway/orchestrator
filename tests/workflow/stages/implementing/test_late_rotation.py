@@ -8,7 +8,8 @@ turns on are made by that tail: the commit the push named, and the head the
 entry froze the pull request at. Both roads a permit accounts for are here --
 a remote still standing where the grant left it, and one a tick that pushed
 and died before its receipt already moved -- and each is asserted on the
-durable comment, the push the tail issued, and the one record it left.
+durable comment, the push the tail issued, and the one record the telemetry
+owner left past that comment's own write.
 """
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ from orchestrator.workflow.late_split import (
 from orchestrator.workflow.stages.implementing import (
     late_push as _push,
     late_records as _records,
+    late_transfer_telemetry as _telemetry_owner,
     state as _state,
 )
 from tests.workflow.stages.implementing import late_transfer_test_support as _support
@@ -47,6 +49,9 @@ EVENT_TRANSFER = "late_transfer"
 EVENT_VERDICT = "late_verdict"
 
 PINNED_WRITE = "write_pinned_state"
+
+# The telemetry owner's seam, which the push tail names for itself.
+REPORTS_THE_TRANSFER = "_reports_the_transfer"
 
 # The stage the transfer was entered from, as both sinks spell it.
 STAGE_TAG = "validating"
@@ -255,14 +260,34 @@ class AlreadyLandedTransferTest(_SettlementCase):
         self.assertEqual(recorded["source_sha"], REWRITTEN_SHA)
 
 
-class RefusedSettlementTest(_SettlementCase):
-    """A receipt GitHub refuses leaves the verdict where it was.
+class ReceiptAndRecordTest(_SettlementCase):
+    """The record rides the far side of the write that makes the move durable.
 
-    The window the settlement exists to close, read from the one side that can
-    still be wrong: the branch is on the remote and the write that would say
-    so did not land. Nothing may be believed durable there -- least of all a
-    verdict, which would then name a commit no receipt accounts for.
+    The window the settlement exists to close, read from both of its sides.
+    The branch is on the remote either way; what differs is whether the write
+    that would say so landed. Refused, nothing may be believed durable --
+    least of all a verdict, which would then name a commit no receipt accounts
+    for -- and nothing is reported. Taken, the push tail asks the telemetry
+    owner for itself, past that write, so the comment a reader finds at the
+    moment the record is made already carries the verdict it is about.
     """
+
+    def test_the_record_is_made_over_a_durable_move(self) -> None:
+        durable = []
+        reporting = self.enterContext(patch.object(
+            _telemetry_owner, REPORTS_THE_TRANSFER,
+            side_effect=lambda gate, rotation: durable.append(self._durable()),
+        ))
+
+        self._publishes(standing=LEASED_SHA, granted=False)
+
+        reporting.assert_called_once()
+        self.assertTrue(_exemption.is_exempt(durable[0], REWRITTEN_SHA))
+        self.assertEqual(durable[0].data[KEY_RECEIPT_SHA], REWRITTEN_SHA)
+        self.assertEqual(
+            self._records_of(EVENT_TRANSFER), [],
+            "the push tail names the telemetry owner and nothing else",
+        )
 
     def test_a_refused_receipt_moves_nothing(self) -> None:
         refusing = _RefusesTheReceipt(self.github)

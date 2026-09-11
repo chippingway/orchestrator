@@ -51,24 +51,18 @@ still finds outstanding is dropped, which is the rollback's own rule -- a
 group nobody can check is the only account there is of how the exemption came
 to name what it names.
 
-The record it emits is one `late_transfer` event and nothing else. In
-particular it is not a second `late_verdict`: a transfer carries a decision a
-human already made onto the object that replaced the one they made it about,
-and a second `single` on the stream would read as a second adjudication of
-work nobody was asked about twice.
+What it decides is the state transition and not what is said about it. The
+staged rotation carries the rewrite a verdict moved onto and the reading that
+proved the publication, and `late_transfer_telemetry` turns that into the one
+record both sinks get -- asked by the push tail on the far side of the write
+this owner stages into, so nothing is reported for a move GitHub refused.
 """
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
-from orchestrator.workflow.late_split import (
-    events as _events,
-    rewrites as _rewrites,
-    state as _late_state,
-    telemetry as _telemetry,
-)
-from orchestrator.workflow.late_split.models import LateGeneration
+from orchestrator.workflow.late_split import rewrites as _rewrites
 from orchestrator.workflow.stages.implementing import (
     late_publication as _publication_gate,
     late_records as _records,
@@ -267,64 +261,3 @@ def _abandoned(
     )
     _rewrites.clear_rewrite_authorization(gate.state)
     return _Rotation(staged=True)
-
-
-def _reports_the_transfer(gate: _records._Gate, rotation: _Rotation) -> None:
-    """Write the one record a settled transfer leaves on both sinks.
-
-    Reported once the move is durable rather than beside it, because a record
-    of a verdict that moved is worth nothing if the write carrying the move
-    was refused -- and a refused write ends this tick, so there is no road on
-    which the transfer stands unreported.
-
-    The correlation is minted the way every other record with no live
-    generation behind it is: a transfer runs past the retirement that dropped
-    the pair it was adjudicated under, so there is no cycle left to file it
-    against and one is derived from what the pinned comment already says.
-    Stable across retries, so a settlement that lands twice reports the same
-    attempt rather than a fresh one each tick.
-
-    The pair the record carries is the pair the exemption moved ONTO, since
-    that is what a later measurement of this same work would be joined on, and
-    the publication group comes off the AUTHORIZATION rather than off this
-    call: the record is the account of the pull request the transfer was
-    granted against, and the caller in the push tail has no entry of its own
-    to read one from.
-
-    No phase, and deliberately: the phases are the boundaries a generation's
-    reconciliation stands at, and a transfer is not one of them -- it happens
-    past the retirement that ended the last.
-    """
-    if not rotation.is_reportable:
-        return
-    rewrite = rotation.rewrite
-    _telemetry.emit_late_event(
-        gate.gh,
-        _events.LateEvent(
-            family=_events.LateEventFamily.TRANSFER,
-            rewrite_kind=rewrite.kind,
-            transfer_proof=rotation.proof,
-            transferred_from_sha=rewrite.from_sha,
-            transferred_from_base_sha=rewrite.from_base_sha,
-        ),
-        _reported(gate, rewrite),
-        stage=rewrite.source_stage,
-    )
-
-
-def _reported(
-    gate: _records._Gate, rewrite: _rewrites.LateRewrite,
-) -> LateGeneration:
-    """The generation one transfer record is correlated by."""
-    recorded = _late_state.read_late_generation(gate.state)
-    carried = replace(
-        _records._reportable(gate, recorded),
-        candidate_sha=rewrite.to_sha,
-        base_sha=rewrite.to_base_sha,
-        phase=None,
-    )
-    return carried.with_publication(
-        stage=rewrite.source_stage,
-        pr_number=rewrite.pr_number,
-        published_sha=rewrite.lease,
-    )
