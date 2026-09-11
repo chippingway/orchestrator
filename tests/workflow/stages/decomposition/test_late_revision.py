@@ -1,6 +1,14 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""The developer run guidance buys, and the candidate it comes back with."""
+"""The developer run guidance buys, and the candidate it comes back with.
+
+Both halves of one tick, driven together: the resume the guidance pays for and
+the prompt it carries, then the clean tree, re-frozen commit, and fresh
+measurement its result is proved through. Nothing ahead of that measurement is
+durable, so a run this tick does not reconcile is one the next tick pays for
+again -- while a reconciliation that PARKED is re-run on its own by a later
+bare continue, reading the same checkout with no second developer run.
+"""
 from __future__ import annotations
 
 from orchestrator.workflow.late_split.models import LateFailure

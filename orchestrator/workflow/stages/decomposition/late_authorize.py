@@ -84,10 +84,10 @@ requirements a human has since changed. Every term here would still match, so
 the record is bound to that answer by being DROPPED with it: `late_session`
 drops it where a result is thrown away and again where the run replacing that
 result is recorded, which is the statement of the rule no road gets around,
-and `late_revision` drops it where a re-freeze mints a fresh question. An
-authorization outliving the answer it was given for is the one shape it may
-not take: it would license the next adjudication's `single` on a permission
-nobody granted it.
+and `late_revision_reconciliation` drops it where a re-freeze mints a fresh
+question. An authorization outliving the answer it was given for is the one
+shape it may not take: it would license the next adjudication's `single` on a
+permission nobody granted it.
 """
 from __future__ import annotations
 

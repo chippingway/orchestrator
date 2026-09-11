@@ -955,11 +955,10 @@ and buys a fresh one, and a developer revision re-freezes and buys another — a
 candidate comes back over the same base at the same size, so every term above still matches. So the record is bound
 to its answer by being dropped **with** it: `late_session` drops it wherever a recorded result is discarded *and*
 wherever the run replacing that result is recorded — which is the statement of the rule no road gets around, since
-every one of them ends at a fresh spawn — and `late_revision` drops it wherever a re-freeze mints a fresh generation
-one step earlier, so the pinned comment never shows a permission for an answer the issue no longer holds. A record
-still readable at the settlement is
-therefore one whose answer nothing has replaced, and an operator whose decision was overtaken is asked again rather
-than having the next adjudication publish on their name.
+every one of them ends at a fresh spawn — and `late_revision_reconciliation` drops it wherever a re-freeze mints a
+fresh generation one step earlier, so the pinned comment never shows a permission for an answer the issue no longer
+holds. A record still readable at the settlement is therefore one whose answer nothing has replaced, and an operator
+whose decision was overtaken is asked again rather than having the next adjudication publish on their name.
 
 What that decision licenses is the SETTLEMENT below, which
 `late_settlement.py` owns the order of and writes the exemption itself in. Nothing in this mode makes that decision —

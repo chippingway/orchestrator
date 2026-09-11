@@ -36,10 +36,14 @@ and `late_content_replies` tells the fresh replies it counted apart -- what is
 work for an agent, and what is one of the two operator controls that are a
 decision about the candidate instead -- while `late_guidance` decides what a
 change to those requirements or an answer about them earns, `late_revision`
-owns the developer run guidance buys and the re-measured candidate it comes
-back with, `late_relabel` owns the label a live generation pins against the
-kill switch and a hand relabel, `late_owner` owns the fresh read that stands
-between a finished run and anything it earns,
+owns the developer run guidance buys and the followup it is resumed with --
+with `late_revision_obligations` holding the refusal a candidate the last
+adjudication already acted on earns instead of a revision, and
+`late_revision_reconciliation` the clean tree, re-frozen commit, and fresh
+measurement what that run left is proved through -- `late_relabel` owns the
+label a live generation pins against the kill switch and a hand relabel,
+`late_owner` owns the fresh read that stands between a finished run and
+anything it earns,
 `late_unsplit` owns the park an adjudicator's own `single` hands the issue to a
 human under and `late_authorize` the one command that ends it -- a trusted
 whole-comment `/orchestrator authorize-oversized <commit>`, proved against the

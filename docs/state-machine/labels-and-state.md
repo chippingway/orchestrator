@@ -2183,11 +2183,11 @@ rather than preserving.
   ([`late_session`](../../orchestrator/workflow/stages/decomposition/late_session.py)) — and one step earlier with
   the re-freeze a developer revision makes, which mints a fresh generation an acknowledged-but-unchanged candidate
   would otherwise match every term of
-  ([`late_revision`](../../orchestrator/workflow/stages/decomposition/late_revision.py)). A record outliving either
-  would license the NEXT adjudication's `single` on a permission nobody granted it. Beyond those it ends the way the
-  exemption above it does — a restart's projection, which keeps a whitelist of what is true about the ISSUE rather
-  than about the attempt, so these keys go the way the branch and the candidate they name do. A fresh cycle that
-  inherited one would carry a bypass nobody granted it, over work no operator ever read.
+  ([`late_revision_reconciliation`](../../orchestrator/workflow/stages/decomposition/late_revision_reconciliation.py)).
+  A record outliving either would license the NEXT adjudication's `single` on a permission nobody granted it. Beyond
+  those it ends the way the exemption above it does — a restart's projection, which keeps a whitelist of what is true
+  about the ISSUE rather than about the attempt, so these keys go the way the branch and the candidate they name do.
+  A fresh cycle that inherited one would carry a bypass nobody granted it, over work no operator ever read.
 
   Every term follows from what the record IS — a bypass of the one gate that stops unreviewed bulk reaching a pull
   request. A bypass may license exactly what a human looked at, so it is bound to the candidate rather than declared

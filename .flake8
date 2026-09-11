@@ -52,7 +52,6 @@ per-file-ignores =
     orchestrator/workflow/stages/decomposition/late_restart.py:WPS202
     orchestrator/workflow/stages/decomposition/late_cleanup.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_transaction.py:WPS202
-    orchestrator/workflow/stages/decomposition/late_revision.py:WPS201,WPS202
     orchestrator/workflow/stages/decomposition/late_reuse.py:WPS202
     orchestrator/workflow/stages/decomposition/late_session.py:WPS202
     orchestrator/workflow/stages/decomposition/split.py:WPS202
