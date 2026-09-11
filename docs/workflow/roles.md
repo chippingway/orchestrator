@@ -538,7 +538,9 @@ instead of spending it, on the rollback's own terms, since the head it was grant
 can be granted it. What a settled transfer leaves on both observability streams is one bounded `late_transfer`
 record — the issue, the pull request, both pairs, the rewrite kind, and which reading proved the push — and
 deliberately no second `late_verdict`, which would read as a second adjudication of work nobody was asked about
-twice.
+twice. That record is `late_transfer_telemetry.py`'s rather than the rotation's, and the push tail asks for it on
+the far side of the write the rotation stages into: a receipt GitHub refuses ends the tick having reported nothing,
+and a permission left standing or dropped moved no verdict and so says nothing either.
 
 The approval holds the switch back for the commit it *names* and no other, which is why the switch is asked twice —
 once at the door, cheaply, and once past the proof. An approval is a claim about one object id, and nothing can say

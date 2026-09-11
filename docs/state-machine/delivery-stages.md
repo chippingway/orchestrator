@@ -1635,14 +1635,16 @@ settlement, so a verdict is never left on a commit no remote carries — and onl
 that tick, since a refusal sends the rewrite to the ordinary gate, which publishes it whenever the count is under the
 ceiling. What that receipt leaves on both observability streams is one bounded `late_transfer` record naming both
 pairs, the pull request, the rewrite kind, and which reading proved the publication — the leased force-push that moved
-it, or the leased no-op a recovery finds it already standing on. A digest the standing permission already recorded is
-held to the reading the permit just took, since a grant that carried on would write its own answer over evidence
-nobody checked. Refused, nothing changes and the squash is measured exactly as above. And the permission is droppable
-in exactly one window — a force-push the remote refuses resets the branch back onto the commit the exemption never
-left, so the rollback takes the permission back and nothing else, while past the receipt the pull request carries the
-rewritten commit and there is nothing to take back. The squash is not the only rewrite decided on those terms: the
-per-tick base refresh publishes a clean rebase of the same branch once this stage has handed the issue on, and it
-hands the same gate the same evidence ([`labels-and-state.md#base-refresh`](labels-and-state.md#base-refresh)).
+it, or the leased no-op a recovery finds it already standing on. That record is `late_transfer_telemetry`'s rather
+than the rotation's, asked by the push tail past the settling write, so nothing is reported for a move GitHub
+refused. A digest the standing permission already recorded is held to the reading the permit just took, since a grant
+that carried on would write its own answer over evidence nobody checked. Refused, nothing changes and the squash is
+measured exactly as above. And the permission is droppable in exactly one window — a force-push the remote refuses
+resets the branch back onto the commit the exemption never left, so the rollback takes the permission back and nothing
+else, while past the receipt the pull request carries the rewritten commit and there is nothing to take back. The squash
+is not the only rewrite decided on those terms: the per-tick base refresh publishes a clean rebase of the same branch
+once this stage has handed the issue on, and it hands the same gate the same evidence
+([`labels-and-state.md#base-refresh`](labels-and-state.md#base-refresh)).
 
 The conflict stage's clean rebase is the third rewrite an exemption may ride, and it reaches it from the other end.
 That refresh does not drive `workflow:resolving_conflict`, so the replay a branch which has stopped merging cleanly
