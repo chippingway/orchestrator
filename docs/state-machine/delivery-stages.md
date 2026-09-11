@@ -730,7 +730,10 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
     carries the identity of the accepted contribution beside it, since the retirement below takes the frozen pair it
     was read over off the record), the handoff label, and the accepted notice — because these are the barriers
     protecting the *record* rather than an effect: the last write drops the generation entirely, and both the sweep
-    and a receipt adopted from the thread read that generation to decide there is anything to end. Past that write a
+    and a receipt adopted from the thread read that generation to decide there is anything to end. The one effect
+    among them is the PUSH, and it carries a barrier of its own immediately before the transport — the latch beside
+    the pull request's own state, since everything between the reconciliation that last read it and this push is
+    time either can end in; Past that write a
     refusal is too late, so the answer there is a **reinstatement**: the generation is still in the call's own memory,
     and it is written back and cancelled from there. What was published stays published — the exemption, the notice,
     and the handoff label are none of them this owner's to take back;
@@ -2228,6 +2231,13 @@ only an answer taken after it can still give. So does the *initial* publication 
 `workflow:implementing`, for the window the gate's own barrier cannot cover — that one ends a cycle, and the write
 that approves a candidate retires the cycle before the push, so an approval whose push failed comes back with
 nothing left to cancel and nothing between the settled reading and a pull request nobody wants.
+
+And so does the push a settled adjudication makes from `workflow:decomposing`, which reaches the transport directly
+rather than through the gated call and therefore makes that call's barrier for itself. The window there is the
+widest of any: the pull request was last read by the settlement's own reconciliation, and the exemption, the
+identity, the debt, the park persist and both checkout proofs all run between that reading and the push. A refusal
+leaves the verdict and its approval durable and parks `late_pr_unreconciled`, so the retry asks for the same commit
+against the same head once a human has said what an accepted commit with no pull request to join should do.
 
 A branch some owner deliberately moved OFF the approved commit never reaches that refusal, because an approval whose
 commit was abandoned is superseded and the owner doing the abandoning drops it: the auto rebase's reset — which puts

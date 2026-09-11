@@ -1706,8 +1706,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             only one reported
       late_accepted.py      the push an adjudication already accepted, taken with no measurement -- a verdict read
                             this exact diff and said it ships as one change -- but still named against the commit
-                            that was DECIDED, still pinned to the head the reading was taken over, and made only
-                            over a checkout re-proved to be the one that verdict was reached about
+                            that was DECIDED, still pinned to the head the reading was taken over, made only
+                            over a checkout re-proved to be the one that verdict was reached about, and refused
+                            outright where the publication ENDED in the meantime. This road reaches the transport
+                            directly rather than through the gated call, so it makes that call's own barrier for
+                            itself -- and the window is the widest any publication has, since the pull request was
+                            last read by the reconciliation and the exemption, the identity, the debt, the park
+                            persist and both checkout probes all run between that reading and the push. Nothing
+                            about an ending moves the branch, so the lease would succeed and the force-push would
+                            walk a merged pull request's branch back onto the commits it merged
       late_rewrite.py       the publication a squash-on-approval may rewrite and the push it then makes, and the
                             switch asked ahead of both: a squash is NEW work by the switch's own definition -- the
                             commit it publishes is one it makes itself -- so `DECOMPOSE=off` reads no pull request

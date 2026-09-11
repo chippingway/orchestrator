@@ -299,7 +299,9 @@ not on this host stops the tick instead of letting the stage run over a candidat
 reconciliation takes end in a push, so an issue that is closed and a pull request that has merged or been closed are
 each handed back to the stage terminal ahead of it. Work that ends *after* the gate has read it — a close a poll
 latched, or a pull request somebody merged or closed in the window behind the entry freeze, whose branch is still
-at the head this tick froze so the lease would succeed — is refused immediately before the push itself.
+at the head this tick froze so the lease would succeed — is refused immediately before the push itself. The push a
+settled adjudication makes from `workflow:decomposing` carries the same barrier, and needs it most: it reaches the
+transport directly, and its pull request was last read several steps back.
 That same reading is
 what a measurement park here is retried by: it retakes the parked pair once a poll and asks nobody first, so a
 transport that comes back settles the park without the human it mentioned ever replying, and each of those readings
