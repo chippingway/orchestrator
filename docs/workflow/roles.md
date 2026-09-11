@@ -501,6 +501,15 @@ or stopped being readable between the tick's first reading and there answers not
 push: a second pull request is opened over the work and `pr_number` overwritten with it, losing the pointer to
 whatever a human just decided.
 
+One ending is deliberately *not* one here. A `discussion` plan PR the humans have settled — merged or closed — is an
+agreement rather than a delivery, and it is the same carve-out the stage's own terminals make: finalizing on a
+merged plan would close the issue `done` with no developer ever having run, so the tick carries on and what it
+licenses is an implementation with a pull request of its own. That plan is therefore not a pull request this push
+joins, and never one it may be held back by. It is told from an implementation by the two records those terminals
+use — a live `discussion_plan_path`, or a `discussion_plan_sha` the PR's head is still standing on — read off the
+reading already in hand, so a plan this stage has since pushed over reads as the implementation it has become and
+is held like any other.
+
 And `DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
 recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing
 about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the

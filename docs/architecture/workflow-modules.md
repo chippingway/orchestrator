@@ -2072,13 +2072,7 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             one, and the CANDIDATE itself where the gate admitted it because its pull request is
                             already standing on it, since a lease the transport reads for itself adopts whatever
                             tip somebody moved to in the window and force-pushes over it -- work that ENDED
-                            refused immediately before that push and nowhere else: a close a poll observed, since
-                            the gate's own barrier ends a CYCLE and the roads reaching here have none left to
-                            cancel, and the pull request this push would JOIN, which is the one the gate proved
-                            where there is one and otherwise the one the RECORD names -- a plan PR on the ref the
-                            dev commits went to, or this stage's own from a round that crashed -- since the reuse
-                            behind the push is a lookup by branch, and one that ended in the window answers nothing
-                            to it, so a second pull request is opened and `pr_number` overwritten with it -- the
+                            refused immediately before that push, which `push_barrier` beside this owns -- the
                             pull
                             request opened or reused for it, which is that same pull request by NUMBER on the
                             delivered road and never a second one where it closed in between, and the commit the
@@ -2089,6 +2083,22 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             been proved on both sides of the push, since the worktree is writable while those
                             requests run -- and spending the record of that commit once the handoff it was owed
                             lands
+      push_barrier.py       what may have ended between this tick's readings and the push it is about, asked
+                            immediately before the transport and nowhere else: everything above spends a run, a
+                            reading or a proof, and each is time a poll on another worker can find the world
+                            changing under. Two endings -- a close a poll LATCHED, which the issue object cannot
+                            give since it is the snapshot the tick opened with, and the pull request this push
+                            would JOIN, which is the one the gate proved where it proved one and otherwise the one
+                            the RECORD names: reuse is a lookup by branch, so one that ended in the window answers
+                            nothing to it, a second pull request is opened over the work, and `pr_number` is
+                            overwritten with it. One ending is not an ending for this push and is the reason this
+                            is an owner rather than an open-state check: a `discussion` plan the humans SETTLED is
+                            an agreement rather than a delivery -- the stage ahead lets such a tick carry on for
+                            the same reason, since finalizing on it would close the issue `done` with no developer
+                            having run -- and what it licenses is an implementation with a pull request of its
+                            own. Told apart by the two records the stage's own terminals use, read off the same
+                            reading rather than a second fetch, and never offered to the road whose number came
+                            from a receipt. Refusing writes nothing
       checkout_guards.py    the proof that the worktree is still the thing that was measured, asked of the
                             commit AND of the tree because work can appear beside a commit without moving it:
                             a head that has left the approved commit, and a tree that cannot be proved to carry

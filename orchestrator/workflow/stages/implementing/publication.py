@@ -46,19 +46,14 @@ from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import client as _client, pinned_state as _pinned_state
-from orchestrator.workflow.engine import (
-    guards as _guards,
-    observations as _observations,
-)
-from orchestrator.workflow.late_split import payloads as _payloads
+from orchestrator.workflow.engine import guards as _guards
 from orchestrator.workflow.stages.implementing import (
     checkout_guards as _checkout,
     dev_pr as _dev_pr,
     handoff as _handoff,
-    late_overflow as _overflow,
     late_parks as _late_parks,
     models as _models,
-    state as _state,
+    push_barrier as _barrier,
 )
 
 log = logging.getLogger("orchestrator.workflow")
@@ -106,64 +101,6 @@ def _leased_against(
     if approved.delivered_pr:
         return published
     return _late_parks._approved_lease(state) or None
-
-
-def _ended_before_the_push(
-    gh: _client.GitHubClient,
-    spec: config.RepoSpec,
-    issue: Issue,
-    state: _pinned_state.PinnedState,
-    approved: _models._ApprovedWork,
-) -> bool:
-    """Whether the work this push is about ended while the tick was working.
-
-    Two endings, asked immediately before the transport because that is the
-    only point at which either answer is still true: everything above spends a
-    run, a reading, or a proof that a poll on another worker can find the world
-    changing under.
-
-    The PULL REQUEST is the one this push would JOIN, which is whichever of two
-    the tick has: the one the gate proved, where it admitted the candidate
-    because that pull request is already standing on it, and otherwise the one
-    the record names -- the `discussion` stage's plan pull request sitting on
-    the very ref the dev commits went to, or this stage's own from a round that
-    crashed before its relabel. Both are reused rather than opened, and the
-    reuse is a lookup by BRANCH: one that ended between the tick's first
-    reading and here answers nothing to that lookup, so a second pull request
-    is opened over the work and `pr_number` is overwritten with it -- which is
-    how the pointer to what a human just closed is lost. An issue that records
-    none is the first publication, which has nothing to have ended and spends
-    no request.
-
-    Read fail-CLOSED, like every reading standing immediately before an effect
-    nothing can undo: what refusing costs is the poll that asks again, and what
-    falling through costs is a branch and a pull request nobody asked for.
-
-    The CLOSE is asked last and of the process-wide latch rather than of the
-    issue object, which is the snapshot the tick opened with. Last because the
-    reading above it is a request: a close landing while that request is in
-    flight would be answered one push too late by a latch read before it, and
-    this one costs nothing, so the cheap answer gets the final word.
-    """
-    number = approved.delivered_pr or _payloads.as_identity(
-        state.get(_state._PR_NUMBER),
-    )
-    if number and not _overflow._PublicationReading.still_open(gh, number):
-        log.warning(
-            "repo=%s issue=#%d cannot read pull request #%d as open before "
-            "the push that would join it; refusing rather than publishing "
-            "onto a publication that has ended",
-            spec.slug, issue.number, number,
-        )
-        return True
-    if not _observations.close_observed(spec.slug, issue.number):
-        return False
-    log.warning(
-        "repo=%s issue=#%d was observed closed before its branch was pushed; "
-        "refusing the push rather than putting work on an issue nobody wants",
-        spec.slug, issue.number,
-    )
-    return True
 
 
 def _publication_intent(
@@ -321,7 +258,7 @@ def _on_commits(
         return
     if _checkout._dirtied_before_the_push(
         gh, issue, state, published, wt,
-    ) or _ended_before_the_push(gh, spec, issue, state, approved):
+    ) or _barrier._ended_before_the_push(gh, spec, issue, state, approved):
         return
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     if not _branch_transport._push_branch(

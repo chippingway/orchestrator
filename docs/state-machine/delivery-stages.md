@@ -2247,8 +2247,14 @@ be force-moved. The process-wide close latch is asked **last**, because the read
 landing while that request is in flight is one only an answer taken after it can still give. Refused, nothing is
 pushed, relabelled or announced, and the record is left for the cleanup it is owed.
 
-The *initial* publication on `workflow:implementing` carries the latch half of the same barrier, for the window the
-gate's own cancellation cannot cover — that one ends a cycle, and the write that approves a candidate retires the
+The *initial* publication on `workflow:implementing` carries a barrier of its own, which
+`implementing/push_barrier.py` owns. Its two endings are the latch and the pull request its push would **join** —
+the one the gate proved, or else the one the record names — since the reuse behind that push is a lookup by branch,
+so one that ended in the window answers nothing to it and a second pull request is opened with `pr_number`
+overwritten. A `discussion` plan the humans have **settled** is exempt, on the same grounds the stage's own
+terminals exempt one: a merged plan is an agreement rather than a delivery, so the implementation it licenses gets a
+pull request of its own rather than being held back for it. The latch half covers the window the
+gate's own cancellation cannot — that one ends a cycle, and the write that approves a candidate retires the
 cycle before the push, so an approval whose push failed comes back with nothing left to cancel. And so does the push
 a settled adjudication makes from `workflow:decomposing`, which reaches the transport directly rather than through
 the gated call: its window is the widest of any, since the pull request was last read by the settlement's own

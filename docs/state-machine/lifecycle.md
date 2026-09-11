@@ -233,6 +233,14 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      through where the remote will not answer,
                                      so a blink costs a poll rather than
                                      stranding the issue
+     a settled `discussion` plan   ► not an ending for the push that follows:
+     PR the record still names        a merged plan is an agreement, and what
+                                      it licenses is an implementation with a
+                                      pull request of its own. The stage's own
+                                      terminals make the same carve-out, and
+                                      for the same reason -- finalizing there
+                                      would close the issue `done` with no
+                                      developer having run
      work that ENDS after it      ─► refused immediately before the push and
                                      nowhere else: everything above that line
                                      spends a reading, a diff or a request. A
