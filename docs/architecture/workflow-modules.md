@@ -1117,20 +1117,22 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       late_content.py       WHICH content the two late-local fingerprints are taken over -- the title and body, and
                             the trusted-thread run the ratcheting watermark covers -- what a comparison against a
                             recorded baseline says moved, and the floor a comment has to clear to be a REPLY rather
-                            than conversation the issue was already carrying. Both controls a fresh reply can be
-                            are reported beside the guidance off the same walk, classified by
-                            `late_content_replies`; the digests themselves are the `late_split/identity` owner's
+                            than conversation the issue was already carrying. What each reply past that floor IS
+                            comes back from `late_content_replies` on the same walk, reported beside the bare
+                            `/orchestrator continue` this owner reads for itself, since that one earns a flag and
+                            no record; the digests themselves are the `late_split/identity` owner's
       late_content_replies.py
-                            which of those fresh replies is a requirement and which is an operator control -- a
-                            bare `/orchestrator continue`, and the whole-comment
-                            `/orchestrator authorize-oversized <commit>` the last of which in a batch is the
-                            request, carried forward with a malformed argument intact so the owner that refuses one
-                            has the command to refuse. Neither is guidance, since nothing hands an agent a decision
-                            about the candidate that already exists as work to do, and prose around either is
-                            guidance because neither is the whole comment then. Both are recognized through
-                            `engine/messages` rather than re-read here, and neither is kept out of the digest the
-                            owner above takes -- a counted command edited after the fact is exactly what that
-                            digest exists to catch
+                            which fresh reply is a requirement a developer may be resumed against, and which is the
+                            whole-comment `/orchestrator authorize-oversized <commit>` that licenses a publication
+                            past the size gate -- the last of those in a batch being the request, since a corrected
+                            commit below a mistyped one is what a human who wrote both meant, and carried forward
+                            with a malformed argument intact so the owner that refuses one has the command to
+                            refuse. Neither that command nor a bare continue is guidance, because nothing hands an
+                            agent a decision about the candidate that already exists as work to do, and prose
+                            around either is guidance because neither is the whole comment then. Both are
+                            recognized through `engine/messages` rather than re-read here, and neither is kept out
+                            of the digest the owner above takes -- a counted command edited after the fact is
+                            exactly what that digest exists to catch
       late_guidance.py      what that comparison earns: the baseline a first tick takes, the park an edit wins over
                             every concurrent answer, the certificate a bare continue writes, the question a real
                             answer reopens, the continue that answers none, and the routing of the `single` park to
