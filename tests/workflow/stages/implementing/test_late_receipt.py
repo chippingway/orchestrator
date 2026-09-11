@@ -55,18 +55,54 @@ _MOVED_HEAD = "e" * SHA_LENGTH
 
 _VALIDATING = (support.GATE_ISSUE_NUMBER, LABEL_VALIDATING)
 
+# The branch a pull request nobody opened for this issue is on: the shape a
+# record whose `branch` and `pr_number` disagree leaves, and the one that
+# would have the seam push somewhere nothing has published.
+_ANOTHER_BRANCH = f"{_BRANCH}-elsewhere"
+
 # What a branch this stage has pushed before carries: the note naming the
-# commit it sent, and the pull request that push opened. Both, because the
-# remote reading behind them is what tells adjudicated work this issue
-# delivered from a tip somebody else moved the branch to.
+# commit it sent, the pull request that push opened, and the branch both are
+# about. All three, because the remote reading behind them is what tells
+# adjudicated work this issue delivered from a tip somebody else moved the
+# branch to -- and because the seam behind the answer resolves its own branch
+# from this record and reuses whatever open pull request is on it.
 _PUBLISHED_BY_THIS_STAGE = MappingProxyType({
     _KEY_PUBLISHED_SHA: MEASURED_CANDIDATE_SHA,
     "pr_number": _PR_NUMBER,
+    "branch": _BRANCH,
 })
 
 
-class UnauthorizedReceiptTest(legacy._LegacyExemptionCase, unittest.TestCase):
-    """A receipt standing beside an exemption nobody authorized."""
+class _ReceiptCase(legacy._LegacyExemptionCase):
+    """An issue whose branch this stage has pushed before."""
+
+    def _receipt_for_a_legacy_exemption(self) -> None:
+        """The note an older binary's automatic exemption left on its push."""
+        self._seed_legacy(**_PUBLISHED_BY_THIS_STAGE)
+
+    def _stand_the_pull_request_on(
+        self, head: str, branch: str = _BRANCH,
+    ) -> None:
+        """Put this issue's open pull request on `head`, or take it away.
+
+        `branch` is what the pull request's own head names, which a case about
+        a record disagreeing with itself moves off the branch the seam would
+        push -- the one shape that would have the answer license a push onto a
+        branch nothing has published.
+        """
+        if not head:
+            return
+        opened = FakePR(
+            number=_PR_NUMBER,
+            head_branch=branch,
+            head=FakePRRef(sha=head, ref=branch),
+        )
+        self.github.add_pr(opened)
+        self.github.existing_open_pr[branch] = opened
+
+
+class DeliveredReceiptTest(_ReceiptCase, unittest.TestCase):
+    """Adjudicated work the pull request this stage opened already carries."""
 
     def test_a_delivered_receipt_finishes_up(self) -> None:
         # The window this seam's own receipt exists for, read from the far
@@ -83,6 +119,43 @@ class UnauthorizedReceiptTest(legacy._LegacyExemptionCase, unittest.TestCase):
         self._assert_unmeasured(mocks)
         self.assertIn(_VALIDATING, self.github.label_history)
 
+    def test_it_publishes_nothing_a_second_time(self) -> None:
+        # What "finishing the bookkeeping" has to mean, and the whole of why
+        # the reading is held to the branch as well as the tip: the seam
+        # behind this answer pushes the branch IT resolves and reuses the open
+        # pull request on it. Named the same, the push has nothing to send and
+        # the lookup finds the very pull request the reading proved; named
+        # differently, the same road would publish to a branch nobody has
+        # pushed and open a second pull request over the same work.
+        self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
+        self._receipt_for_a_legacy_exemption()
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self.assertEqual(
+            mocks[support.PUSH_BRANCH].call_args.args[2], _BRANCH,
+        )
+        self.assertEqual(self.github.opened_prs, [])
+        self.assertEqual(
+            self._pinned()["pr_number"], _PR_NUMBER,
+        )
+
+    def test_a_pull_request_elsewhere_is_measured(self) -> None:
+        # The record disagreeing with itself: the pull request it names is
+        # open on a branch this seam would not push, so nothing here can say
+        # the work has been delivered where the push would land. Waved
+        # through, the push would go to the branch the record resolves and a
+        # SECOND pull request would be opened over the same commit.
+        self._stand_the_pull_request_on(
+            MEASURED_CANDIDATE_SHA, branch=_ANOTHER_BRANCH,
+        )
+        self._receipt_for_a_legacy_exemption()
+
+        mocks = self._run_gate(added_lines=support.OVERSIZED_ADDITIONS)
+
+        self._assert_measured(mocks)
+        self._assert_held(mocks)
+
     def test_a_tip_no_receipt_names_is_measured(self) -> None:
         # Both halves are required and neither is widened. A head the remote
         # happens to agree with says nothing about how it got there, so
@@ -95,6 +168,10 @@ class UnauthorizedReceiptTest(legacy._LegacyExemptionCase, unittest.TestCase):
 
         self._assert_measured(mocks)
         self._assert_held(mocks)
+
+
+class UnauthorizedReceiptTest(_ReceiptCase, unittest.TestCase):
+    """A receipt standing beside an exemption nobody authorized."""
 
     def test_a_stale_receipt_is_measured(self) -> None:
         # Both endings of the same publication: a pull request a human pushed
@@ -145,24 +222,7 @@ class UnauthorizedReceiptTest(legacy._LegacyExemptionCase, unittest.TestCase):
         self._assert_unmeasured(mocks)
         self._assert_published(mocks)
 
-    def _receipt_for_a_legacy_exemption(self) -> None:
-        """The note an older binary's automatic exemption left on its push."""
-        self._seed_legacy(**_PUBLISHED_BY_THIS_STAGE)
-
-    def _stand_the_pull_request_on(self, head: str) -> None:
-        """Put this issue's open pull request on `head`, or take it away."""
-        if not head:
-            return
-        opened = FakePR(
-            number=_PR_NUMBER,
-            head_branch=_BRANCH,
-            head=FakePRRef(sha=head),
-        )
-        self.github.add_pr(opened)
-        self.github.existing_open_pr[_BRANCH] = opened
-
-
-class VouchedReceiptTest(legacy._LegacyExemptionCase, unittest.TestCase):
+class VouchedReceiptTest(_ReceiptCase, unittest.TestCase):
     """The two receipts that still answer, and what each is evidence of."""
 
     def test_a_measured_receipt_answers_alone(self) -> None:

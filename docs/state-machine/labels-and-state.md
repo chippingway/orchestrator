@@ -1014,7 +1014,10 @@ The keys that matter for the state machine fall into a few groups:
   the pull request is already standing on: the push would move nothing, and what would be held back is the
   bookkeeping behind a publication that has already happened. Which pull request that is differs by seam — a call
   taken past one hands over the head it froze, while the implementing seam freezes none and reads the remote for
-  the number its record names, against a commit `implementing_published_sha` says this stage pushed.
+  the number its record names, against a commit `implementing_published_sha` says this stage pushed *and* the
+  branch that seam would push. That last one is what makes the push a no-op rather than a second publication: the
+  seam resolves its own branch from the record and reuses whatever pull request is open on it, so a record naming
+  one on another branch would have it push where nothing has published and open a second pull request.
 
   `late_evidence_missing` is the adjudication's counterpart, taken
   under `workflow:decomposing` before the hold or any spawn: the checkout is there and one of the two recorded

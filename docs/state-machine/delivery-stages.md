@@ -2210,7 +2210,14 @@ only the process-wide close latch can say so; that one is asked immediately befo
 behind it would find nothing to finalize while the handler spawned an agent. What advances the issue there is the
 cleanup pass every latched close is owed. The gated publication carries the same barrier of its own, immediately
 before the push and nowhere else in it: every guard above that line spends a reading, a diff or a request after it,
-so a close landing in one of those windows would be answered one push too late. So does the *initial* publication on
+so an ending landing in one of those windows would be answered one push too late. Two things can have ended there.
+A close a poll latched is one. The *pull request* is the other, and it is the one nothing above catches: the gate
+refuses to **enter** a call on one that is already over, so the only way one reaches the push is by merging or
+closing in the window behind that reading — and its branch is still at the head this tick froze, so the lease
+succeeds and the force-push moves a merged pull request's branch back onto the commits it merged. That reading is
+fail-*closed*, the opposite of the same one at the reconciliation's door, since there falling through costs a poll
+and here a branch nothing can put back; and it is asked only where this tick read a pull request at all, so
+`DECOMPOSE=off` still spends no request. So does the *initial* publication on
 `workflow:implementing`, for the window the gate's own barrier cannot cover — that one ends a cycle, and the write
 that approves a candidate retires the cycle before the push, so an approval whose push failed comes back with
 nothing left to cancel and nothing between the settled reading and a pull request nobody wants.

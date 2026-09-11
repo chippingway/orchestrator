@@ -469,10 +469,18 @@ adjudication. `implementing_published_sha` is that same window one step further 
 because the effects are already out: past the push a pull request carries the work and only the relabel is owed, so a
 reading that came back oversized there would hold nothing back and route a *published* branch to adjudication. It
 answers alone only for a commit the gate measured on the way out; beside an exemption nothing authorizes it answers
-for nothing, since the note is never cleared and nothing on this side froze a publication to check it against. The
-fourth is the one an unauthorized exemption still earns: a commit the pull request this call froze is ALREADY
+for nothing on its own, since the note is never cleared. The
+fourth is the one an unauthorized exemption still earns: a commit the pull request is ALREADY
 standing on, where the push would move nothing and what would be held back is the bookkeeping behind a publication
-that has happened. And
+that has happened. Which pull request that is differs by seam. A call taken past one hands over the head it froze;
+the implementing seam freezes none — its push is what *opens* a pull request — so there the remote is read for the
+number the record names, and only for an open one standing on a commit `implementing_published_sha` says this stage
+pushed *and* open on the branch that seam would push. Every half is required: without the receipt a legacy exemption
+would publish unmeasured over any head a remote happened to agree with; without the remote reading it would publish
+on a local note the branch has since moved off; and without the branch the seam — which resolves its own branch from
+the record and reuses whatever pull request is open on it — would push somewhere nothing has published and open a
+*second* pull request over the same work. Verified equal, the push has nothing to send and the lookup finds the very
+pull request the reading proved, which is what makes this bookkeeping rather than a publication. And
 `DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
 recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing
 about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the

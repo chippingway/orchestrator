@@ -60,6 +60,7 @@ from __future__ import annotations
 import logging
 
 from orchestrator.git.measurement import fingerprint as _fingerprint
+from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
     formats as _formats,
@@ -200,10 +201,15 @@ def _already_on_its_pull_request(
     in whether a publication was frozen on the way in. A call PAST one hands
     its own frozen entry over and this reads it; the implementing seam freezes
     none -- its push is what opens a pull request -- so the reading is taken
-    here, and only for a commit this stage's own receipt says it pushed. An
-    entry too damaged to name a publication is not evidence a pull request
-    stands anywhere and answers nothing, rather than falling back to a road
-    that would ask the remote instead.
+    here, and only for a pull request this stage's own receipt and its own
+    branch both name. An entry too damaged to name a publication is not
+    evidence a pull request stands anywhere and answers nothing, rather than
+    falling back to a road that would ask the remote instead.
+
+    What the answer licenses is BOOKKEEPING and never a second publication.
+    The seam behind it pushes the branch it resolves from the record and
+    reuses the open pull request on that branch, so the reading is held to
+    both: same branch, same tip, and the push has nothing left to send.
     """
     if not _exemption.is_exempt(gate.state, candidate_sha):
         return ""
@@ -225,21 +231,32 @@ def _delivered_before_the_relabel(
 
     The window between a push that opened a pull request and a relabel that
     never landed, read from the far end. Nothing froze a publication here, so
-    the two halves of the proof are taken together: the RECEIPT says this
-    stage pushed the commit, which is what tells adjudicated work this issue
-    delivered from a tip somebody else moved the branch to, and the REMOTE
-    says the pull request is standing on it still.
+    every half of the proof is taken together: the RECEIPT says this stage
+    pushed the commit, which is what tells adjudicated work this issue
+    delivered from a tip somebody else moved the branch to; the REMOTE says
+    the pull request is standing on it still; and the BRANCH that pull request
+    is open on is the one the seam behind this would push.
 
-    Both are required and neither is widened. Without the receipt a legacy
-    exemption would publish unmeasured on any head a remote happened to agree
-    with; without the remote reading it would publish on a local note that is
-    never cleared, over a pull request the branch has since moved off.
+    That last one is what makes "the push moves nothing" true rather than
+    merely likely, and it is the whole reason the carve-out is safe. The seam
+    resolves its own branch from the record and pushes THAT, then reuses
+    whatever open pull request is on it -- so a record naming a pull request
+    on some other branch would have this answer license a push to a branch
+    nobody has published and a SECOND pull request opened over the same work.
+    Verified equal, the push has nothing to send and the lookup behind it
+    finds the very pull request this reading proved, which is the difference
+    between finishing bookkeeping and publishing again.
+
+    All of it is required and none of it is widened. Without the receipt a
+    legacy exemption would publish unmeasured on any head a remote happened to
+    agree with; without the remote reading it would publish on a local note
+    that is never cleared, over a pull request the branch has since moved off.
 
     Refused for a pull request this host could not read, one that has merged
-    or been closed, and one standing anywhere else -- each of which is a
-    publication nothing here can show, so the candidate goes to the ordinary
-    cumulative reading and an oversized one waits for the authorization it is
-    missing.
+    or been closed, one standing on another commit, and one open on another
+    branch -- each of which is a publication nothing here can show, so the
+    candidate goes to the ordinary cumulative reading and an oversized one
+    waits for the authorization it is missing.
     """
     if _parks._published_commit(gate.state) != candidate_sha:
         return False
@@ -248,6 +265,10 @@ def _delivered_before_the_relabel(
         return False
     reading = _overflow._PublicationReading.taken(gate.gh, number)
     if reading.refusal is not None or reading.state != _overflow._OPEN:
+        return False
+    if reading.head_branch != _worktree_paths._resolve_branch_name(
+        gate.state, gate.spec, gate.issue.number,
+    ):
         return False
     return _payloads.as_hex(
         reading.head, _formats.COMMIT_LENGTHS,

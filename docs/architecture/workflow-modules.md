@@ -1378,9 +1378,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             standing on, where the push moves nothing and only the bookkeeping behind a publication
                             that has happened is left -- read off the entry a caller past a publication froze, or,
                             where none was (the implementing seam, whose push is what OPENS a pull request), off
-                            the remote for the number the record names and only for a commit this stage's own
-                            receipt says it pushed -- and work that is over, since a merged or closed issue is
-                            finalized before any handler reaches the gate. The publication DEBT such a commit
+                            the remote for the number the record names, and there only for an open pull request
+                            standing on a commit this stage's own receipt says it pushed AND open on the branch the
+                            seam behind the answer would push, since that seam resolves its own branch and reuses
+                            whatever pull request is on it: named differently, the answer would license a push onto
+                            a branch nothing has published and a SECOND pull request over the same work -- and work
+                            that is over, since a merged or closed issue is finalized before any handler reaches
+                            the gate. The publication DEBT such a commit
                             leaves is the same question one field over, answered off the approval's own recorded
                             basis rather than inferred: the two bases an operator's gesture is behind defer to this
                             reading, a gate-owned `reading` approval is untouched, and an approval an older binary
@@ -1637,17 +1641,27 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             this gate has already ruled on; a hold is the whole of what the tick did, parked or
                             handed to the adjudication, rather than a bare permission, and anything else carries the
                             commit the push is named against, the head it is leased against, and the head the pull
-                            request stands on now, which is what says whether the push has anything left to do
+                            request stands on now, which is what says whether the push has anything left to do.
+                            Whether that publication has ENDED is this owner's too, asked immediately before the
+                            push it answered for: a close a poll latched, and a pull request merged or closed in the
+                            window behind the entry freeze -- whose branch is still at the head this tick froze, so
+                            the lease SUCCEEDS and the force-push moves a merged pull request's branch back onto the
+                            commits it merged. Read fail-CLOSED, the opposite of the same reading at the
+                            reconciliation's door, since there falling through costs a poll and here a branch
+                            nothing can put back; and asked only where this tick READ a pull request, so an install
+                            with `DECOMPOSE=off` still spends no request
       late_push.py          the one call every gated push onto a pull request the remote already carries goes
                             through -- measure, push named against the measured candidate and leased against the
                             frozen head, spend the debt it paid, close what the route owed for it (in that same
                             write, since past it neither the approval nor the generation is left to say a round was
                             owed, while the caller still has a relabel and a write to make), record what reached the
                             remote so a tick that dies
-                            past the push neither re-reads nor re-pushes it, refuse a close a poll latched
-                            immediately before the push and nowhere else here, since every guard above spends a
-                            reading, a diff or a request after it and a close landing in one of those windows would
-                            be answered one push too late, and prove the checkout again on the far
+                            past the push neither re-reads nor re-pushes it, refuse work that ENDED -- an issue a
+                            poll saw closed, a pull request somebody merged or closed -- immediately before the push
+                            and nowhere else here, since every guard above spends a reading, a diff or a request
+                            after it and an ending landing in one of those windows would be answered one push too
+                            late (the question itself is `late_publication`'s, beside the entry it is the far end
+                            of), and prove the checkout again on the far
                             side of the effect -- AHEAD of that write, so what the proof answers rides it: a
                             checkout that moved or was dirtied holds the handoff rather than the publication, and
                             the claim it owes lands with the receipt rather than one write behind it, where a crash

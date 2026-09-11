@@ -24,7 +24,10 @@ from dataclasses import dataclass, replace as _replace
 
 from orchestrator import config
 from orchestrator.git.measurement import commits as _measurement_commits
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import (
+    payloads as _payloads,
+    state as _late_state,
+)
 from orchestrator.workflow.stages.implementing import (
     late_freeze as _freeze,
     late_gate as _gate,
@@ -32,6 +35,7 @@ from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
     late_records as _records,
     late_verdict as _verdict_owner,
+    state as _state,
 )
 
 log = logging.getLogger("orchestrator.workflow")
@@ -222,6 +226,59 @@ def _unentered(
         lease=entered.head,
         permitted_sha=verdict.permitted_sha,
     )
+
+
+def _publication_ended(
+    gate: _records._Gate, published: _PublishedCandidate,
+) -> bool:
+    """Whether this publication ended while the tick was working up to it.
+
+    Two endings, read together because they are asked at one point for one
+    reason: the push is about to happen, and everything above this line spent
+    a reading, a diff or a request that a poll on another worker could find
+    the world changing under. Either answer holds the tick -- nothing pushed,
+    nothing relabelled, nothing announced -- and leaves the record exactly as
+    it stands for the cleanup it is owed.
+
+    The CLOSE is asked of the process-wide latch rather than of the issue,
+    which is the snapshot the tick opened with and cannot say what a later
+    poll saw. It costs no request, so it goes first.
+
+    The PULL REQUEST is the one the entry was frozen against, re-read here
+    because the freeze is behind the whole gated reading: a pull request
+    somebody merged or closed in that window still has its branch at the head
+    this tick froze, so the lease SUCCEEDS and the push rewrites work that is
+    over -- a merge commit's branch force-moved back onto the commits it
+    merged. Read fail-CLOSED, the opposite of the same reading taken at the
+    reconciliation's door: there the alternative to falling through is
+    stranding an issue whose remote was briefly unreachable, and here it is
+    rewriting a branch nobody can undo.
+
+    Asked only where this tick READ a pull request, which `standing` is the
+    record of: an install with `DECOMPOSE=off` keeps candidates out of the
+    gate and out of every request it would spend, and a push that never froze
+    an entry has no publication of this owner's to have ended.
+    """
+    if gate.close_was_observed:
+        log.warning(
+            "repo=%s issue=#%d was observed closed before its branch was "
+            "pushed; refusing the push rather than putting work on an issue "
+            "nobody wants",
+            gate.spec.slug, gate.issue.number,
+        )
+        return True
+    if not published.standing:
+        return False
+    number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
+    if _overflow._PublicationReading.still_open(gate.gh, number):
+        return False
+    log.warning(
+        "repo=%s issue=#%d records pull request #%s, which this host cannot "
+        "read as open before the push; refusing rather than force-moving a "
+        "branch whose pull request is over",
+        gate.spec.slug, gate.issue.number, number,
+    )
+    return True
 
 
 def _checkout_head(gate: _records._Gate) -> str:

@@ -336,6 +336,10 @@ class _PublicationReading:
 
     state: str = ""
     head: str | None = None
+    # The branch that head is the tip OF, which is the other half of naming a
+    # publication: a pull request standing on the commit in hand says nothing
+    # about where a push would land unless it is the branch that push names.
+    head_branch: str | None = None
     refusal: _records._PublicationEntry | None = None
 
     def standing_head(
@@ -416,6 +420,32 @@ class _PublicationReading:
         return reading.state != _OPEN
 
     @classmethod
+    def still_open(cls, gh: GitHubClient, number: int) -> bool:
+        """Whether this pull request is one a push may still land on.
+
+        The same reading as `is_over` beside it and the opposite failure
+        direction, because the two answer for opposite sides of an effect.
+        That one guards a tick handing itself back, where a remote that would
+        not answer has to fall through or every briefly unreachable issue
+        would strand. This one stands immediately before a PUSH, where the
+        alternative to refusing is rewriting a branch whose pull request
+        somebody merged -- so a reading that did not come back answers False,
+        and what that costs is the poll that takes it again.
+
+        A caller naming no pull request answers False too, and that is not a
+        refusal of the ordinary road: the only callers here are the ones whose
+        publication was frozen against a pull request the record named, so a
+        number that has gone missing between the freeze and the push is the
+        record disagreeing with itself.
+        """
+        if not number:
+            return False
+        reading = cls.taken(gh, number)
+        if reading.refusal is not None:
+            return False
+        return reading.state == _OPEN
+
+    @classmethod
     def taken(cls, gh: GitHubClient, number: int) -> _PublicationReading:
         """Ask the remote for a pull request's state and head, or refuse."""
         try:
@@ -435,9 +465,11 @@ class _PublicationReading:
     def _facts(cls, gh: GitHubClient, number: int) -> _PublicationReading:
         """The lookup and the two lazy reads behind it, as one reading."""
         pull_request = gh.get_pr(number)
+        head = getattr(pull_request, "head", None)
         return cls(
             state=gh.pr_state(pull_request),
-            head=getattr(getattr(pull_request, "head", None), "sha", None),
+            head=getattr(head, "sha", None),
+            head_branch=getattr(head, "ref", None),
         )
 
 

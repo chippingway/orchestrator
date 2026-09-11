@@ -295,8 +295,10 @@ and a head that moved off the frozen one each park rather than push. A pair froz
 ahead of the handler on the next tick, by the dispatcher, on the stage the record names — and one whose checkout is
 not on this host stops the tick instead of letting the stage run over a candidate nobody read. Both roads that
 reconciliation takes end in a push, so an issue that is closed and a pull request that has merged or been closed are
-each handed back to the stage terminal ahead of it, and a close a poll latched while the tick worked is refused
-immediately before the push itself. That same reading is
+each handed back to the stage terminal ahead of it. Work that ends *after* the gate has read it — a close a poll
+latched, or a pull request somebody merged or closed in the window behind the entry freeze, whose branch is still
+at the head this tick froze so the lease would succeed — is refused immediately before the push itself.
+That same reading is
 what a measurement park here is retried by: it retakes the parked pair once a poll and asks nobody first, so a
 transport that comes back settles the park without the human it mentioned ever replying, and each of those readings
 is held silently while it goes on stopping at the step the standing notice named. Full flow:
