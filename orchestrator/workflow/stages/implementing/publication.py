@@ -288,7 +288,15 @@ def _on_commits(
     # an initial publication froze none and reads the remote for itself -- and
     # says so rather than leaving whatever the last published-side push wrote,
     # which would date this receipt to an attempt it was not made under.
-    _late_parks._record_publication(state, published, "")
+    #
+    # The pull request goes down WITH it, and this is the only line that can
+    # write it: `pr_number` is the relabel's, which is the very write the
+    # window this receipt exists for is missing. Recorded here, a tick that
+    # dies before that relabel leaves an identity the next poll can prove
+    # instead of a branch it would have to search.
+    _late_parks._record_publication(
+        state, published, "", getattr(pr, "number", 0) or 0,
+    )
     if _checkout._moved_after_the_push(
         gh, issue, state, published, wt,
     ) or _checkout._dirtied_after_the_push(gh, issue, state, published, wt):

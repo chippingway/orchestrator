@@ -20,8 +20,8 @@ a SECOND pull request is opened over the same work, and the issue is handed on
 as though the whole thing had been published all along.
 
 So the note is proof of nothing by itself, and what makes it proof is asked of
-the REMOTE: the pull request the record names, open, with its head in this
-repository, standing on this exact commit, and open on the branch the seam
+the REMOTE: the pull request the receipt itself names, open, with its head in
+this repository, standing on this exact commit, and open on the branch the seam
 behind the answer would push. Every one of those is required and none of them
 is widened. Without the receipt, any head a remote happened to agree with would
 do. Without the remote reading, a local note over a pull request the branch has
@@ -29,6 +29,15 @@ moved off would do. Without the repository, a fork carrying the same ref name
 over the same commit would answer for a publication this issue never made. And
 without the branch, a record naming a pull request on some other ref would
 license a push to a branch nothing has published.
+
+The NUMBER is the receipt's OWN, written with it, and it is never searched for.
+`pr_number` is what the relabel writes, which is exactly the write this window
+is missing -- a push that landed and a process that died before it -- and the
+only other way to name a pull request is a lookup by branch, which answers with
+whatever is open on that ref: a REPLACEMENT somebody opened after closing the
+original satisfies it, and the relabel, the debt and the receipt behind the
+answer are all spent against a publication this stage never made. Absent or
+unreadable, the proof refuses.
 
 A call taken PAST a publication asks none of it. That seam freezes an entry of
 its own -- the pull request, the stage, and the head it is standing on, each
@@ -86,7 +95,6 @@ from orchestrator.workflow.stages.implementing import (
     late_overflow as _overflow,
     late_parks as _parks,
     late_records as _records,
-    state as _state,
 )
 
 log = logging.getLogger("orchestrator.workflow")
@@ -100,8 +108,8 @@ _UNREADABLE_RECEIPT = (
 )
 
 _NO_PULL_REQUEST = (
-    "this issue records no pull request for it to be on, and none is open on "
-    "the branch this publication would push"
+    "the receipt names no pull request this build can read, so nothing says "
+    "which publication carries the commit"
 )
 
 _UNREADABLE_PULL_REQUEST = (
@@ -235,12 +243,15 @@ def _delivered_before_the_relabel(
     branch. Each names itself, because what the caller does with one is park a
     human over it and they are different things to reconcile.
 
-    Which pull request is asked of the record FIRST and of the branch after
-    it, because the record is not always written: the handoff is what records
-    a number, and a push that landed before a moved checkout or a crash
-    stopped that write leaves a receipt with nothing beside it. The branch
-    lookup is the same one the seam behind this would make, and what it finds
-    is proved on exactly the terms a recorded number is.
+    Which pull request is read off the RECEIPT GROUP rather than off
+    `pr_number`, and never searched for. `pr_number` is the relabel's write,
+    which is the very one the window this proof exists for is missing -- a
+    push that landed and a process that died before it -- so the identity goes
+    down with the receipt instead, where it covers exactly that window.
+    Absent or unreadable it refuses: the only other way to name a pull request
+    is a lookup by branch, and that answers with whatever is open on the ref,
+    so a REPLACEMENT somebody opened after closing the original would be taken
+    for the publication this stage made.
 
     The MALFORMED receipt is asked first and apart from the comparison below
     it, because that comparison cannot see it: every late commit field is read
@@ -262,38 +273,10 @@ def _delivered_before_the_relabel(
         )
     if _parks._published_commit(gate.state) != candidate_sha:
         return _Delivered()
-    number = _payloads.as_identity(
-        gate.state.get(_state._PR_NUMBER),
-    ) or _opened_on_the_branch(gate)
+    number = _parks._published_pull_request(gate.state)
     if not number:
         return _Delivered(refusal=_NO_PULL_REQUEST)
     return _proved_against(gate, number, candidate_sha)
-
-
-def _opened_on_the_branch(gate: _records._Gate) -> int:
-    """The pull request open on the branch this seam pushes, or 0 for none.
-
-    The window where a receipt is real and the RECORD names nothing: the
-    push landed and opened a pull request, and the write that records its
-    number is the handoff -- which a moved checkout, a dirtied tree or a
-    crash can stop. So an issue can carry a receipt for the commit a pull
-    request is standing on while `pr_number` has never been written.
-
-    Looked up exactly as the seam behind this looks one up, because it is
-    the same question: which pull request this push would join. Nothing is
-    opened here and nothing is chosen -- what comes back goes through the
-    same proof a recorded number does, held to this repository, this branch
-    and this commit -- so what the lookup buys is a publication that can be
-    PROVED where it would otherwise only have been reused blind, with the
-    lease and the bound number that follow from proving it.
-    """
-    found = gate.gh.find_open_pr(
-        branch=_worktree_paths._resolve_branch_name(
-            gate.state, gate.spec, gate.issue.number,
-        ),
-        base=gate.spec.base_branch,
-    )
-    return getattr(found, "number", 0) or 0
 
 
 def _proved_against(

@@ -2418,6 +2418,15 @@ rather than preserving.
   alone: `late_approved_basis` goes down, is carried, and is dropped with it by every write named above, and says
   which owner granted the debt — spelled out beside the accepted candidate it shares its window with, under
   [late generation state](#late-generation-state).
+- **Published pull request.** `implementing_published_pr` is the pull request the recorded publication went onto,
+  written with the receipt below and never on its own. The receipt says a commit reached a remote and the head it
+  replaced dates that to one attempt; neither says which pull request now carries the work, which is what the
+  bookkeeping behind a landed push is bound by. `pr_number` cannot stand in: that is the relabel's write, so it is
+  missing for exactly the window the receipt exists for — a push that landed and a process that died before it —
+  and the only other way to name one is a lookup by branch, which answers with whatever is open on that ref. A
+  replacement somebody opened after closing the original satisfies such a lookup, so recovery would bind the
+  relabel, the debt and the receipt to a publication this stage never made. Read fail-closed like every other late
+  identity, and absent or unreadable the delivery proof refuses rather than searching.
 - **Published commit.** `implementing_published_sha` is the commit the last gated push carried — the one that passed
   the gate, or the checkout's own head on a push the switch named none for, since `DECOMPOSE` keeps candidates out of
   the gate rather than off the remote and is an operator's to turn back on. It keeps the implementing spelling it was
@@ -2444,9 +2453,11 @@ rather than preserving.
   finished work or for the retry behind a repair. Nothing is outside it — a commit an exemption names or an approval
   owes a push for least of all: each answers whether a fresh *reading* is needed and says nothing about where the
   work went, and the delivered road records the commit as a debt before it pushes, so a crash there leaves an
-  approval with no lease to publish under. Which pull request is asked of the record first and of the *branch* after
-  it, since the handoff is what records a number and a push that landed before a crash leaves a receipt with nothing
-  beside it.
+  approval with no lease to publish under. Which pull request is the *receipt's own*, written with it by the push
+  that landed rather than by the relabel behind it — `implementing_published_pr`, the third member of the receipt
+  group. It is never searched for: `pr_number` is the relabel's write, which is the one this window is missing, and
+  a lookup by branch answers with whatever is open on that ref, so a replacement somebody opened after closing the
+  original would be taken for the publication this stage made. Absent or unreadable, the proof refuses.
 
   What the answer then carries is the pull request *number*, because a reading is a
   moment: the push behind it is leased against that exact commit, so a branch moved in the window rejects it rather

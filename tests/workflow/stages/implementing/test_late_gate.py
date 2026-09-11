@@ -41,6 +41,9 @@ _KEY_APPROVED_SHA = "late_approved_sha"
 _KEY_RECEIPT_SHA = "implementing_published_sha"
 _KEY_APPROVED_BASIS = "late_approved_basis"
 _KEY_PR_NUMBER = "pr_number"
+# The pull request the receipt names, written with it by the push that landed
+# rather than by the relabel behind it.
+_KEY_RECEIPT_PR = "implementing_published_pr"
 _KEY_BRANCH = "branch"
 # The pull request this stage's own push opened, which the receipt beside it
 # is only evidence for while the remote still agrees.
@@ -339,10 +342,12 @@ class MovedCheckoutDebtTest(support._GateCase, unittest.TestCase):
     def _delivered_by_this_stage(self) -> None:
         """The receipt this stage's own push left, and the publication it is.
 
-        All three, because the receipt is only evidence beside them: the note
-        naming the commit, the pull request that push opened, and the branch
-        both are about. Read on its own it says what was PUSHED and nothing
-        about where it went or whether it is still there.
+        All of them, because the receipt is only evidence beside them: the
+        note naming the commit, the pull request that push opened -- recorded
+        with the note, since the relabel that records `pr_number` is the write
+        this window is missing -- and the branch both are about. Read on its
+        own the note says what was PUSHED and nothing about where it went or
+        whether it is still there.
         """
         branch = _issue_branch(support.GATE_ISSUE_NUMBER)
         opened = FakePR(
@@ -354,6 +359,7 @@ class MovedCheckoutDebtTest(support._GateCase, unittest.TestCase):
         self.github.existing_open_pr[branch] = opened
         self._seed(**{
             _KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA,
+            _KEY_RECEIPT_PR: _DELIVERED_PR_NUMBER,
             _KEY_PR_NUMBER: _DELIVERED_PR_NUMBER,
             _KEY_BRANCH: branch,
         })

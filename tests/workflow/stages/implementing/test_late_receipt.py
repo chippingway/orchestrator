@@ -47,6 +47,10 @@ from tests.workflow.stages.implementing import late_gate_test_support as support
 
 _KEY_PUBLISHED_SHA = "implementing_published_sha"
 _KEY_PR_NUMBER = "pr_number"
+# The pull request the receipt itself names, written with it by the push that
+# landed. `pr_number` is the relabel's write, which is the one this window is
+# missing, so this is the only identity a recovery has that is not a search.
+_KEY_PUBLISHED_PR = "implementing_published_pr"
 # What a proven-delivery attempt makes durable BEFORE it pushes, and what a
 # tick dying in that window leaves behind: the commit named as owed a push,
 # with no lease beside it -- the head it would have been pinned to was the
@@ -106,6 +110,7 @@ _SHOUTED_REPO = "ChippingWay/Orchestrator"
 # this issue delivered from a tip somebody else moved the branch to.
 _PUBLISHED_BY_THIS_STAGE = MappingProxyType({
     _KEY_PUBLISHED_SHA: MEASURED_CANDIDATE_SHA,
+    _KEY_PUBLISHED_PR: _PR_NUMBER,
     _KEY_PR_NUMBER: _PR_NUMBER,
     "branch": _BRANCH,
 })
@@ -441,6 +446,78 @@ class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
         self._assert_measured(mocks)
         self._assert_held(mocks)
 
+
+
+class ReceiptIdentityTest(_ReceiptCase, unittest.TestCase):
+    """Which pull request the receipt is about, and what happens with none.
+
+    `pr_number` is the relabel's write, and the relabel is exactly what this
+    window is missing: a push that landed and a process that died before it.
+    So the identity goes down WITH the receipt, and where it is absent or
+    unreadable the proof refuses rather than looking one up.
+
+    Looking one up is the failure this pins. A lookup by branch answers with
+    whatever is open on that ref -- so a replacement somebody opened after
+    closing the original satisfies every other term here, and the relabel, the
+    debt and the receipt behind the answer would all be spent against a
+    publication this stage never made.
+    """
+
+    def test_a_receipt_with_no_identity_is_held(self) -> None:
+        # Absent, and unreadable: a field an older build never wrote, and one
+        # a hand edit or a half-written crash left outside this domain's
+        # vocabulary. Neither names a publication, and there is no second
+        # place to look that is not a search.
+        for described, identity in (
+            ("names none", None),
+            ("names one nothing can read", _MALFORMED_RECEIPT),
+        ):
+            with self.subTest(receipt=described):
+                self._receipt_naming(identity)
+
+                mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+                self._assert_unmeasured(mocks)
+                self._assert_held(mocks)
+
+    def test_a_replacement_is_never_adopted(self) -> None:
+        # The shape a branch lookup cannot tell from the real thing: the pull
+        # request this stage published was closed, and another was opened over
+        # the same branch at the same commit. Every other term agrees -- the
+        # repository, the branch, the head -- and only the identity the
+        # receipt carries says it is somebody else's publication.
+        self._receipt_naming(None)
+        self.github.get_pr(_PR_NUMBER).state = _CLOSED
+        self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
+
+        mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        self._assert_unmeasured(mocks)
+        self._assert_held(mocks)
+
+    def test_pr_number_is_not_a_substitute(self) -> None:
+        # `pr_number` naming the very same pull request does not answer for
+        # the receipt either: it is the relabel's write, so trusting it here
+        # would be trusting exactly the write this window proves is missing.
+        self._receipt_naming(None)
+        self._seed(**{
+            _KEY_PUBLISHED_SHA: MEASURED_CANDIDATE_SHA,
+            _KEY_PR_NUMBER: _PR_NUMBER,
+            "branch": _BRANCH,
+        })
+
+        mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        self._assert_unmeasured(mocks)
+        self._assert_held(mocks)
+
+    def _receipt_naming(self, identity) -> None:
+        """A proved publication whose receipt carries `identity` as its PR."""
+        self.setUp()
+        self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
+        self._seed(**{
+            **_PUBLISHED_BY_THIS_STAGE, _KEY_PUBLISHED_PR: identity,
+        })
 
 
 class CollidingRecordTest(_ReceiptCase, unittest.TestCase):

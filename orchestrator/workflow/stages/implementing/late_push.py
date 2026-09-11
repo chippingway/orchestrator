@@ -380,7 +380,10 @@ A process that died in that window would leave a paid debt standing,
         )
         _records._spend(gate.state, gate.spends)
         _parks._forget_approval(gate.state)
-        _parks._record_publication(gate.state, landed, superseded)
+        _parks._record_publication(
+            gate.state, landed, superseded,
+            gate.entry.pr_number if gate.entry else 0,
+        )
     if unproven:
         _parks._approve(gate.state, landed, landed, standing)
     gate.gh.write_pinned_state(gate.issue, gate.state)

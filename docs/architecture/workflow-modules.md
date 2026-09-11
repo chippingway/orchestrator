@@ -1421,11 +1421,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             writes its own receipt across the damaged field and destroys what an operator would
                             have repaired it from.
                             The park writes nothing else -- the receipt, the recorded number and any debt beside
-                            them stand for the terminal or the retry. Which pull request is asked of the record
-                            first and of the BRANCH after it, since the handoff is what records a number and a
-                            push that landed before a moved checkout or a crash stopped that write leaves a
-                            receipt with nothing beside it; what the lookup finds is proved on exactly the terms a
-                            recorded number is. NOTHING is outside the park, an exemption or an approval naming
+                            them stand for the terminal or the retry. Which pull request is the RECEIPT's own,
+                            written with it by the push that landed and never searched for: `pr_number` is the
+                            relabel's write, which is the one this window is missing, and a lookup by branch
+                            answers with whatever is open on that ref -- so a REPLACEMENT somebody opened after
+                            closing the original would be taken for the publication this stage made, and the
+                            relabel, the debt and the receipt would all be spent against it. Absent or unreadable
+                            the proof refuses. NOTHING is outside the park, an exemption or an approval naming
                             the same commit least of all: each answers whether the candidate needs a fresh READING
                             and says nothing about where the work went, and the delivered road records the commit
                             as a debt BEFORE it pushes -- so a tick dying there leaves an approval with no lease,

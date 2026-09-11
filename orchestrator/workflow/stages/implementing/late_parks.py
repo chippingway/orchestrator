@@ -1101,8 +1101,28 @@ def _publication_from(state: _pinned_state.PinnedState, head: str) -> str:
     return _published_commit(state)
 
 
+def _published_pull_request(state: _pinned_state.PinnedState) -> int:
+    """The pull request the recorded publication went onto, or 0 for none.
+
+    The third member of the receipt group, and the one the bookkeeping behind
+    a landed push is bound by: the commit says what reached a remote, the head
+    it replaced dates that to one attempt, and this says which pull request
+    now carries it.
+
+    Read fail-closed like every other late identity, so a hand-edited or
+    truncated value is no pull request rather than one nothing checked. What a
+    reader does with 0 is refuse -- there is no second place to look that is
+    not a search, and a search by branch answers with whatever is open on the
+    ref rather than with the publication this receipt is about.
+    """
+    return _payloads.as_identity(state.get(_state._PUBLISHED_PR)) or 0
+
+
 def _record_publication(
-    state: _pinned_state.PinnedState, published: str, superseded: str,
+    state: _pinned_state.PinnedState,
+    published: str,
+    superseded: str,
+    pull_request: int = 0,
 ) -> None:
     """Record the commit a push put on the remote, and the head it replaced.
 
@@ -1111,8 +1131,18 @@ def _record_publication(
     that vouches for a publication somebody else moved, so the second half is
     written on EVERY receipt -- cleared where there is no head to name rather
     than left for the next receipt to inherit from the last.
+
+    The pull request travels with them for the same reason and answers the
+    question neither of them does: which publication now carries the commit.
+    Left to the relabel that records `pr_number`, it is missing for exactly
+    the window the receipt exists for -- a push that landed and a process that
+    died before that write -- and a reader with no identity there falls back
+    to a lookup by branch, which a replacement somebody opened over the same
+    ref satisfies. Cleared with the rest where a caller names none, never
+    inherited from the receipt before.
     """
     state.set(_state._PUBLISHED_SHA, published)
+    state.set(_state._PUBLISHED_PR, pull_request or None)
     state.set(_state._PUBLISHED_LEASE, superseded or None)
 
 

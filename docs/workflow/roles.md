@@ -487,11 +487,13 @@ question that failed; and the road that admits a delivered candidate records the
 pushes, so a tick dying there leaves an approval with no lease beside it. Waved past on one, the retry publishes
 with nothing to lease against and reuses whatever pull request a branch lookup finds.
 
-Which pull request is asked of the record first and of the **branch** after it, because the record is not always
-written: the handoff is what records a number, so a push that landed before a moved checkout or a crash stopped that
-write leaves a receipt with nothing beside it. The lookup is the same one the seam would make, and what it finds is
-proved on exactly the terms a recorded number is — so that window is finished with a leased no-op and a bound pull
-request rather than a blind reuse.
+Which pull request is the **receipt's own**, written with it by the push that landed rather than by the relabel
+behind it, and it is never searched for. `pr_number` is the relabel's write, so it is missing for exactly the window
+this proof exists for — a push that landed and a process that died before it — and the only other way to name one is
+a lookup by branch, which answers with whatever is open on that ref: a replacement somebody opened after closing the
+original satisfies every other term, and the relabel, the debt and the receipt would all be spent against a
+publication this stage never made. Absent or unreadable, the proof refuses, and what that costs is a park a human
+repairs.
 
 And because a reading is a moment rather than a guarantee, the answer carries the pull request *number* rather than
 a bare permission. The push behind it is leased against that exact commit, so a branch somebody moved in the window
