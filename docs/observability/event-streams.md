@@ -125,8 +125,8 @@ file is the durable record.
   plus `_finalize_if_pr_merged` (in `workflow/engine/terminals.py`, which also owns those arcs) from
   `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks
   and from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; plus the `discussion` stage's
-  plan-PR terminal (`workflow/stages/discussion/terminal.py`), which polls the recorded plan PR at handler entry and
-  drains the same `_finalize_merged_pr` arc when the humans merged it; extras: `pr_number`, `sha`,
+  plan-PR terminal (`workflow/stages/discussion/plan_terminal.py`), which polls the recorded plan PR at handler entry
+  and drains the same `_finalize_merged_pr` arc when the humans merged it; extras: `pr_number`, `sha`,
   `merge_method="external"`, `review_round`, `conflict_round`, `retry_count` — a plan PR carries none of those three
   counters, so its record reports `review_round: 0` and drops the other two with the rest of the null extras;
   `stage` names the stage the issue was in at finalize entry — spelled literally as `discussion` on that path, since

@@ -33,11 +33,15 @@ a published plan is with the humans and `terminal` asks what they did with it,
 a park this stage wrote is the humans' turn and earns a round only once one of
 them replies, a checkout already holding work is preserved rather than run
 over, otherwise the round and then its disposition -- and it is where the stage
-stops: nothing below it reaches another stage. `terminal` is also the only
-thing here that ends the issue: a plan PR the humans merged or closed finalizes
-it and takes the checkout and the branches with it, an open one changes and
-reaps nothing however long they take, and an issue closed before any plan
-reached a pull request is recorded as rejected with the tree left where it is.
+stops: nothing below it reaches another stage. `terminal` is also where the
+issue ends, and it divides that with `plan_terminal`: the second is the verdict
+-- merged or closed finalizes the issue and takes the checkout and the branches
+with it, an open one changes and reaps nothing however long the humans take --
+and the first holds the order that verdict is asked for in, the lookup that
+finds a pull request a crash left out of the records (holding there on one
+still open and on one GitHub would not serve, and handing on only a decided
+one), and the issue closed before any plan reached one at all, which is
+recorded as rejected with the tree left where it is.
 `session` is what keeps a conversation on one agent across all of them: the
 pinned spec and session id a round is locked to, the trust filter
 both the prompt and the consumed watermark are drawn through, and the choice

@@ -31,6 +31,7 @@ _OWNERS = (
     "park_messages",
     "parks",
     "plan_pr",
+    "plan_terminal",
     "publication",
     "publication_parks",
     "records",
