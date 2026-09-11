@@ -27,7 +27,7 @@ was left standing on, which the next push to the branch moves. Recorded, a
 later tick can say which publication a generation was entered on; re-read, it
 would answer with whatever the issue has become.
 
-Five readings refuse rather than report, and each of them is a push this gate
+Six readings refuse rather than report, and each of them is a push this gate
 would otherwise wave through on evidence nobody took. A tree that is not
 PROVABLY clean is one whose diff is not the diff a push would publish -- and a
 `git status` that established nothing names no paths, which is what a clean
@@ -35,14 +35,27 @@ tree names too. A pull request nothing could read, or one that is closed or
 merged, is not a publication a measurement means anything against -- and all
 three of those readings are taken inside one refusal, since a fetched pull
 request is a lazy object and the requests that fail are the attribute accesses
-behind the lookup. A head the CALLER named that is no whole object id, or that
-is not the head this pull request is standing on, is a disagreement between
-two readings of one fact rather than a choice between them: preferring either
-would freeze a tip the branch would not be pushed onto. And a head that has
-MOVED off what a live record froze is somebody else's push landing between the
-freeze and this tick: the frozen pair no longer describes what this branch
-would add to that pull request, so the reading is refused and the record is
-left standing rather than re-entered over a publication it was never taken on.
+behind the lookup. A pull request open on a BRANCH other than the one this
+publication will push is the record disagreeing with itself: the number and
+the branch are two fields on one pinned comment, and an entry frozen on the
+head alone would have the settlement, the receipt and the relabel all spent
+against a publication the push never touches. A head the CALLER named that is
+no whole object id, or that is not the head this pull request is standing on,
+is a disagreement between two readings of one fact rather than a choice
+between them: preferring either would freeze a tip the branch would not be
+pushed onto. And a head that has MOVED off what a live record froze is
+somebody else's push landing between the freeze and this tick: the frozen pair
+no longer describes what this branch would add to that pull request, so the
+reading is refused and the record is left standing rather than re-entered over
+a publication it was never taken on.
+
+Two readings here answer no entry at all. A pull request that has merged or
+been closed is a terminal state the ISSUE's own flag cannot show, and both
+sides of an effect need it: the reconciliation that hands a tick back reads it
+fail-OPEN, so a remote that would not answer costs a poll rather than
+stranding an issue, and the barrier immediately before a push reads the same
+fact fail-CLOSED, since what falling through costs there is a branch nothing
+can put back.
 """
 from __future__ import annotations
 
@@ -95,6 +108,16 @@ _UNREADABLE_PULL_REQUEST = "pull request #{number} could not be read"
 
 
 _CLOSED_PULL_REQUEST = "pull request #{number} is {state} rather than open"
+
+
+# What a pull request open on some other branch is refused as. The record's
+# own two fields disagreeing is exactly the shape this catches, so both are
+# named: the branch the push is about to take, and the one the pull request
+# the SAME record points at is open on.
+_DISAGREEING_BRANCH = (
+    "pull request #{number} is open on `{read}` rather than on `{expected}`, "
+    "which is the branch this publication would push"
+)
 
 
 _UNREADABLE_HEAD = (
@@ -214,7 +237,7 @@ def _frozen_entry(
     if not number:
         return _records._PublicationEntry(refusal=_NO_PULL_REQUEST)
     return _entered_on(
-        gate.gh, stage, number, entered.head, _this_issues_own(gate, entered),
+        gate.gh, stage, number, entered, _this_issues_own(gate, entered),
     )
 
 
@@ -275,7 +298,7 @@ def _entered_on(
     gh: GitHubClient,
     stage: WorkflowLabel,
     number: int,
-    expected: str,
+    entered: _records._Entered,
     landed: frozenset,
 ) -> _records._PublicationEntry:
     """Freeze the pull request this call is entered on, or say why not.
@@ -314,7 +337,7 @@ def _entered_on(
                 number=number, state=reading.state,
             ),
         )
-    return reading.standing_head(number, stage, expected, landed)
+    return reading.standing_head(number, stage, entered, landed)
 
 
 @dataclass(frozen=True)
@@ -336,25 +359,40 @@ class _PublicationReading:
 
     state: str = ""
     head: str | None = None
+    # The branch that head is the tip OF, which is the other half of naming a
+    # publication: a pull request standing on the commit in hand says nothing
+    # about where a push would land unless it is the branch that push names.
+    head_branch: str | None = None
     refusal: _records._PublicationEntry | None = None
 
     def standing_head(
         self,
         number: int,
         stage: WorkflowLabel,
-        expected: str,
+        entered: _records._Entered,
         landed: frozenset,
     ) -> _records._PublicationEntry:
         """The head this call freezes, or why the two readings name none.
 
-        Three refusals rather than a preference. A pull request naming no
-        usable head is one nothing can be pinned against. A caller-named head
-        that is not a whole object id is the same failure one step earlier --
-        it is not dropped in favour of the read, because a caller that
-        established a head made its own decision on it and a fallback would
-        pin the push to a fact that decision was never taken over. And two
-        whole ids that are not the same commit are a publication that moved
-        while this tick was in flight.
+        The BRANCH comes first, because it is what makes every answer below it
+        about the same publication. The number and the branch are two fields
+        on one pinned comment and they can disagree: a `branch` a hand edit
+        moved, or a `pr_number` left over from a cycle that ran on another
+        ref. Frozen on the SHA alone, an entry describing a pull request on
+        branch B would license a push that names branch A -- so the
+        settlement, the receipt and the relabel would all be spent against a
+        publication this push never touched. It is refused rather than
+        preferred either way, since neither field is evidence the other is
+        wrong.
+
+        Three refusals follow rather than a preference. A pull request naming
+        no usable head is one nothing can be pinned against. A caller-named
+        head that is not a whole object id is the same failure one step
+        earlier -- it is not dropped in favour of the read, because a caller
+        that established a head made its own decision on it and a fallback
+        would pin the push to a fact that decision was never taken over. And
+        two whole ids that are not the same commit are a publication that
+        moved while this tick was in flight.
 
         With one exception, and it is not a preference either: a tip a
         DURABLE record says this issue put there is this issue's OWN push
@@ -371,13 +409,20 @@ class _PublicationReading:
         let them differ, the tip is what says whether the push has anything
         left to send.
         """
+        if entered.branch and self.head_branch != entered.branch:
+            return _records._PublicationEntry(
+                refusal=_DISAGREEING_BRANCH.format(
+                    number=number, read=self.head_branch,
+                    expected=entered.branch,
+                ),
+            )
         observed = _payloads.as_hex(self.head, _formats.COMMIT_LENGTHS)
         if not observed:
             return _records._PublicationEntry(
                 refusal=_UNREADABLE_HEAD.format(number=number),
             )
-        named = _payloads.as_hex(expected, _formats.COMMIT_LENGTHS)
-        if expected and not named:
+        named = _payloads.as_hex(entered.head, _formats.COMMIT_LENGTHS)
+        if entered.head and not named:
             return _records._PublicationEntry(refusal=_UNNAMEABLE_HEAD)
         if named and named != observed and observed not in landed:
             return _records._PublicationEntry(
@@ -388,6 +433,50 @@ class _PublicationReading:
         return _records._PublicationEntry(
             stage=stage, pr_number=number, published_sha=observed,
         )
+
+    @classmethod
+    def is_over(cls, gh: GitHubClient, number: int) -> bool:
+        """Whether this pull request has already merged or been closed.
+
+        The terminal state an ISSUE's own flag cannot show: a merge leaves the
+        issue open until a stage terminal reads it and finalizes the work,
+        while everything a reconciliation does in between ends in a push onto
+        exactly this pull request -- which the freeze above refuses to enter a
+        call on, so such a tick would park a human over a publication that is
+        finished.
+
+        Read fail-OPEN, which is the other way round from everything else
+        here and is the point: a reading that did not come back says nothing
+        about whether the publication is over, and answering True on one would
+        strand every issue whose remote was briefly unreachable. So an
+        unreadable pull request, and a caller naming none at all, both leave
+        the tick to the road that takes its own reading and parks with the
+        reason it fails for.
+        """
+        reading = cls._of(gh, number)
+        return reading is not None and reading.state != _OPEN
+
+    @classmethod
+    def still_open(cls, gh: GitHubClient, number: int) -> bool:
+        """Whether this pull request is one a push may still land on.
+
+        The same reading as `is_over` beside it and the opposite failure
+        direction, because the two answer for opposite sides of an effect.
+        That one guards a tick handing itself back, where a remote that would
+        not answer has to fall through or every briefly unreachable issue
+        would strand. This one stands immediately before a PUSH, where the
+        alternative to refusing is rewriting a branch whose pull request
+        somebody merged -- so a reading that did not come back answers False,
+        and what that costs is the poll that takes it again.
+
+        A caller naming no pull request answers False too, and that is not a
+        refusal of the ordinary road: the only callers here are the ones whose
+        publication was proved against a pull request the record named, so a
+        number that has gone missing between that proof and the push is the
+        record disagreeing with itself.
+        """
+        reading = cls._of(gh, number)
+        return reading is not None and reading.state == _OPEN
 
     @classmethod
     def taken(cls, gh: GitHubClient, number: int) -> _PublicationReading:
@@ -406,12 +495,28 @@ class _PublicationReading:
         )
 
     @classmethod
+    def _of(cls, gh: GitHubClient, number: int) -> _PublicationReading | None:
+        """One numbered pull request as it reads now, or None for no reading.
+
+        The shared half of the two answers above, so each of them spells only
+        the direction it fails in. None is "this host cannot say", which
+        covers a caller naming no pull request at all and a request that did
+        not come back.
+        """
+        if not number:
+            return None
+        reading = cls.taken(gh, number)
+        return reading if reading.refusal is None else None
+
+    @classmethod
     def _facts(cls, gh: GitHubClient, number: int) -> _PublicationReading:
         """The lookup and the two lazy reads behind it, as one reading."""
         pull_request = gh.get_pr(number)
+        head = getattr(pull_request, "head", None)
         return cls(
             state=gh.pr_state(pull_request),
-            head=getattr(getattr(pull_request, "head", None), "sha", None),
+            head=getattr(head, "sha", None),
+            head_branch=getattr(head, "ref", None),
         )
 
 

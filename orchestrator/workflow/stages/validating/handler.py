@@ -54,14 +54,18 @@ def _finalize_validating_terminal(
 
     External merge: a human merged the PR while the reviewer was queued.
     Finalize to `done` rather than running the reviewer against a branch that
-    already landed. Closed-issue counterpart: the closed-`validating` sweep
-    yields issues a human closed without a merged PR (the change was rejected
-    mid-review, or the PR was closed-without-merge); flip to `rejected` so the
-    reviewer does not spawn against a closed issue and the PR is not relabeled
-    back to `in_review`. The in_review / fixing handlers carry equivalent
-    terminal checks.
+    already landed. Closed PR: one somebody closed without merging, which
+    leaves the ISSUE open and so is invisible to the counterpart below --
+    flip to `rejected` rather than spawning a reviewer against work a human
+    has already rejected. Closed-issue counterpart: the closed-`validating`
+    sweep yields issues a human closed without a merged PR; flip to `rejected`
+    so the reviewer does not spawn against a closed issue and the PR is not
+    relabeled back to `in_review`. The in_review / fixing handlers carry
+    equivalent terminal checks.
     """
     if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
+        return True
+    if _terminals._finalize_if_pr_closed(gh, spec, issue, state):
         return True
     return _terminals._finalize_if_issue_closed(gh, spec, issue, state)
 

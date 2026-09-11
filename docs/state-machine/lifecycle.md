@@ -217,6 +217,37 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      would have been taken beside
      PR unreadable, closed, merged ► the same park: nothing to measure
                                      against, and nowhere for the push to land
+     PR open on another branch    ─► the same park. The number and the branch
+                                     are two fields on one pinned comment: an
+                                     entry frozen on the head alone would
+                                     settle against a publication the push
+                                     never touches
+     work that ENDED before the   ─► handed back to the stage terminal, which
+     reconciliation opened           marks the issue done or rejected with the
+                                     record, the branch and the debt left as
+                                     they are. Two facts: the issue object,
+                                     and the PR the record names -- a merge
+                                     leaves the issue open until a terminal
+                                     reads it, and there is nowhere for this
+                                     push to land. The PR reading falls
+                                     through where the remote will not answer,
+                                     so a blink costs a poll rather than
+                                     stranding the issue
+     work that ENDS after it      ─► refused immediately before the push and
+                                     nowhere else: everything above that line
+                                     spends a reading, a diff or a request. A
+                                     merged or closed PR still has its branch
+                                     at the frozen head, so the lease would
+                                     SUCCEED and the force-push would walk
+                                     terminal work backwards -- so this
+                                     reading fails CLOSED, is taken whatever
+                                     DECOMPOSE says, and a latched close is
+                                     asked after it, since the reading itself
+                                     is a window. Nothing pushed, nothing
+                                     relabelled, nothing announced. The
+                                     initial publication and the settled
+                                     adjudication's own push each carry the
+                                     same barrier
      PR head moved off the frozen  ► the same park, the record left naming the
      one                             head it froze -- somebody pushed in
                                      between, so the frozen pair no longer
@@ -241,6 +272,24 @@ than a second source of truth: where the two disagree, the handler pages are aut
        label=workflow:documenting (final-docs) ──► in_review
      MAX_REVIEW_ROUNDS exhausted ─► park HITL
      squash failure ─► park HITL on workflow:validating, no relabel
+
+   implementing / validating / documenting (no PR-state arc of their own, so
+   the three terminals are asked at entry, ahead of every gate, push and
+   spawn; implementing asks its two behind the plan-PR question):
+     pr merged externally               ─► done (external merge)
+     pr closed unmerged                 ─► rejected. The ISSUE stays open, so
+                                            the closed-issue terminal beside
+                                            it never sees one -- and the size
+                                            gate below would measure the
+                                            committed candidate again and push
+                                            it, opening a SECOND pull request
+                                            over work a human turned down,
+                                            while validating and documenting
+                                            would spawn over it
+     issue closed, PR also closed       ─► rejected (+ branch cleanup)
+     a PR fetch that failed             ─► nothing written: a transient
+                                            failure may not mis-label a
+                                            merged-PR issue
 
    in_review (orchestrator never merges; merged arc always external):
      pr merged externally               ─► done (close + cleanup)

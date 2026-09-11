@@ -16,6 +16,14 @@ nothing and hands the issue on to nothing. Anything else carries the two
 commits the push has to be named and pinned by, plus the head the pull request
 is standing on now, which is what says whether the push has anything left to
 do at all.
+
+Whether that publication has ENDED is this owner's too, and it is asked
+immediately before the push rather than beside the answer above: everything
+between the two is a reading, a diff or a request that a poll on another
+worker can find the world changing under. A pull request merged or closed in
+that window keeps its branch at the head this tick froze, so the lease would
+SUCCEED and the force-push would walk terminal work backwards; a close a poll
+latched is the same refusal one field over.
 """
 from __future__ import annotations
 
@@ -24,7 +32,10 @@ from dataclasses import dataclass, replace as _replace
 
 from orchestrator import config
 from orchestrator.git.measurement import commits as _measurement_commits
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import (
+    payloads as _payloads,
+    state as _late_state,
+)
 from orchestrator.workflow.stages.implementing import (
     late_freeze as _freeze,
     late_gate as _gate,
@@ -32,6 +43,7 @@ from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
     late_records as _records,
     late_verdict as _verdict_owner,
+    state as _state,
 )
 
 log = logging.getLogger("orchestrator.workflow")
@@ -219,6 +231,63 @@ def _unentered(
         lease=entered.head,
         permitted_sha=verdict.permitted_sha,
     )
+
+
+def _publication_ended(gate: _records._Gate) -> bool:
+    """Whether this publication ended while the tick was working up to it.
+
+    Two endings, read together because they are asked at one point for one
+    reason: the push is about to happen, and everything above this line spent
+    a reading, a diff or a request that a poll on another worker could find
+    the world changing under. Either answer holds the tick -- nothing pushed,
+    nothing relabelled, nothing announced -- and leaves the record exactly as
+    it stands for the cleanup it is owed.
+
+    The PULL REQUEST is the one this issue's record names, re-read here
+    because everything that read it before is behind the whole gated
+    measurement: one somebody merged or closed in that window still has its
+    branch at the head this tick froze, so the lease SUCCEEDS and the push
+    rewrites work that is over -- a merge commit's branch force-moved back
+    onto the commits it merged. Read fail-CLOSED, the opposite of the same
+    reading taken at the reconciliation's door: there the alternative to
+    falling through is stranding an issue whose remote was briefly
+    unreachable, and here it is rewriting a branch nobody can undo.
+
+    Asked of EVERY publication this owner makes onto a pull request the remote
+    already carries, whatever the switch says and whether or not an entry was
+    frozen. `DECOMPOSE=off` keeps candidates out of the MEASUREMENT, which is
+    what that switch is for; it does not say a merged pull request may be
+    force-moved, and a barrier that read the frozen entry would be off on
+    exactly the installs whose pushes nothing else re-reads. An issue whose
+    record names no pull request is the initial publication, which has none to
+    have ended.
+
+    The CLOSE is asked LAST and of the process-wide latch rather than of the
+    issue, which is the snapshot the tick opened with and cannot say what a
+    later poll saw. Last because the reading above it is a REQUEST: a close
+    landing while that request is in flight would be answered one push too
+    late by a latch read before it, and this one costs nothing, so the cheap
+    answer is the one that gets the final word.
+    """
+    number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
+    if number and not _overflow._PublicationReading.still_open(
+        gate.gh, number,
+    ):
+        log.warning(
+            "repo=%s issue=#%d records pull request #%d, which this host "
+            "cannot read as open before the push; refusing rather than "
+            "force-moving a branch whose pull request is over",
+            gate.spec.slug, gate.issue.number, number,
+        )
+        return True
+    if not gate.close_was_observed:
+        return False
+    log.warning(
+        "repo=%s issue=#%d was observed closed before its branch was pushed; "
+        "refusing the push rather than putting work on an issue nobody wants",
+        gate.spec.slug, gate.issue.number,
+    )
+    return True
 
 
 def _checkout_head(gate: _records._Gate) -> str:

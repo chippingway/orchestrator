@@ -84,9 +84,12 @@ def _publishes(
 
     `entered` is what the caller already established and this owner may not
     re-read: a stage a same-tick relabel wrote, and the head the caller pinned
-    its own decision to. Both are frozen onto the record, so the push this
-    tick makes and the one a settled adjudication makes later are pinned to
-    the same fact.
+    its own decision to. The BRANCH is added to it here, because this is where
+    the two facts meet -- the entry the gate freezes has to be about the pull
+    request this push will actually land on, and nothing else in the call has
+    both the branch and the reading in hand. All of it is frozen onto the
+    record, so the push this tick makes and the one a settled adjudication
+    makes later are pinned to the same fact.
 
     `entered.reconciling` says no developer ran on this tick, which is what
     tells a checkout that moved from a resumed developer's fresh commit -- the
@@ -109,6 +112,17 @@ def _publishes(
     records the debt for it beforehand, so a crash there leaves an approval
     the reconciliation ahead of the next handler pays as a leased no-op and
     then re-proves here.
+
+    Work that ENDED -- an issue a poll saw closed, a pull request somebody
+    merged or closed -- is refused immediately before the push and nowhere
+    else in this owner, because that is the only point at which the answer is
+    still true: every guard above spends a reading, a diff or a request after
+    it, and an ending landing in one of those windows would be answered one
+    push too late. What work nobody wants may never earn is exactly this
+    effect, so the refusal is HELD -- nothing pushed, nothing relabelled,
+    nothing announced -- and the record is left exactly as it stands for the
+    cleanup it is owed. `late_publication` beside this owns the question,
+    since a publication that has ended is the far end of the one it froze.
     """
     gate = _replace(
         gate,
@@ -116,10 +130,14 @@ def _publishes(
         spends=entered.spends,
         rewrite=entered.rewrite,
     )
-    published = _publication_gate._holds_published_work(gate, entered)
+    published = _publication_gate._holds_published_work(
+        gate, _replace(entered, branch=branch),
+    )
     if published.held:
         return _PushedCandidate(held=True)
     published = _repinned(published)
+    if _publication_gate._publication_ended(gate):
+        return _PushedCandidate(held=True)
     if not _pushed(gate, branch, published):
         return _PushedCandidate()
     # The proof comes first and its answer rides the settlement's own write,

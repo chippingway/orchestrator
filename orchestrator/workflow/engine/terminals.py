@@ -70,6 +70,9 @@ from orchestrator.workflow.state import WorkflowLabel, stage_name
 
 log = logging.getLogger("orchestrator.workflow")
 
+# The pinned field every terminal here reads the linked pull request by.
+_PR_NUMBER = "pr_number"
+
 
 def _finalize_if_pr_merged(
     gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
@@ -89,7 +92,7 @@ def _finalize_if_pr_merged(
     immediately); False when there is nothing to do (no `pr_number`, PR
     fetch failed, or PR is not merged).
     """
-    pr_number = state.get("pr_number")
+    pr_number = state.get(_PR_NUMBER)
     if pr_number is None:
         return False
     try:
@@ -117,6 +120,56 @@ def _finalize_if_pr_merged(
     return True
 
 
+def _finalize_if_pr_closed(
+    gh: GitHubClient, spec: config.RepoSpec, issue: Issue, state: PinnedState,
+) -> bool:
+    """Flip the issue to `rejected` when its linked PR closed without merging.
+
+    The third terminal the sweep stages need, and the one nothing else
+    answers. `_finalize_if_pr_merged` drains the merge and
+    `_finalize_if_issue_closed` drains a human closing the ISSUE; a pull
+    request somebody closed while the issue stayed open is neither, and it
+    reaches `implementing`, `validating` and `documenting` as an ordinary
+    tick. What those do with it is the point: implementing measures the
+    committed candidate again and pushes it -- opening a second pull request,
+    since the first is gone -- while validating and documenting spawn a
+    reviewer or a docs agent against work a human has already rejected.
+
+    `_handle_in_review` and `_handle_fixing` have always drained it inline
+    through their own PR-state arcs, and this is the same arc lifted out so
+    the stages that carry no such arc can ask it in the one place it has to be
+    asked: ahead of every gate, every push and every spawn.
+
+    Returns True when the issue was finalized and the caller must return;
+    False where there is no `pr_number`, the fetch failed, or the pull request
+    is anything but closed-without-merge. A fetch that failed is deliberately
+    NOT a hold: the merged terminal beside this one already defers on that
+    reading, and answering twice would stop every tick whose remote blinked.
+    """
+    pr_number = state.get(_PR_NUMBER)
+    if pr_number is None:
+        return False
+    try:
+        pr = gh.get_pr(int(pr_number))
+    except Exception:
+        log.exception(
+            "issue=#%s could not fetch PR #%s while checking whether it was "
+            "closed without merging; leaving alone", issue.number, pr_number,
+        )
+        return False
+    if gh.pr_state(pr) != _ISSUE_STATE_CLOSED:
+        return False
+    _finalize_rejected_pr(_ReviewTerminalContext(
+        gh=gh,
+        spec=spec,
+        issue=issue,
+        state=state,
+        pr=pr,
+        stage=stage_name(gh.workflow_label(issue)),
+    ))
+    return True
+
+
 @dataclass(frozen=True)
 class _ReviewTerminalContext:
     gh: GitHubClient
@@ -128,7 +181,7 @@ class _ReviewTerminalContext:
 
     @property
     def pr_number(self) -> int:
-        return int(self.state.get("pr_number"))
+        return int(self.state.get(_PR_NUMBER))
 
     @property
     def conflict_round(self):
@@ -281,7 +334,7 @@ class _ClosedIssuePR:
 def _closed_issue_pr(
     gh: GitHubClient, issue: Issue, state: PinnedState,
 ) -> _ClosedIssuePR:
-    raw_number = state.get("pr_number")
+    raw_number = state.get(_PR_NUMBER)
     if raw_number is None:
         return _ClosedIssuePR(number=None)
     number = int(raw_number)

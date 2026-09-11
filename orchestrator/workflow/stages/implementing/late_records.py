@@ -28,6 +28,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import (
     endings as _endings,
     formats as _formats,
@@ -175,6 +176,23 @@ class _Gate:
     # from the checkout and the remote by the time this owner could ask.
     rewrite: _rewrites.LateRewrite | None = None
 
+    @property
+    def close_was_observed(self) -> bool:
+        """Whether a poll has read this issue closed since the tick opened.
+
+        The process-wide latch rather than the issue object, and the two are
+        different facts. The object is a snapshot the tick opened with, and
+        everything a publication spends between that fetch and its push -- a
+        remote read, a diff, a worktree probe -- is time a poll on another
+        worker can find the issue closed in. The latch is what that poll
+        leaves behind, so this is the only reading that can answer for the
+        window rather than for the moment the fetch happened.
+
+        Costs no request, which is why it can be asked as late as the step it
+        guards rather than once at the door.
+        """
+        return _observations.close_observed(self.spec.slug, self.issue.number)
+
 
 @dataclass(frozen=True)
 class _Entered:
@@ -201,6 +219,15 @@ class _Entered:
 
     stage: WorkflowLabel | None = None
     head: str = ""
+    # The branch this publication will be PUSHED to, which the caller resolves
+    # for itself. It is the other half of naming a publication: a pull request
+    # standing on the commit in hand says nothing about where the push would
+    # land unless it is open on the branch that push names, and the record
+    # those two are read off can disagree with itself -- a `branch` a hand
+    # edit moved, or a `pr_number` from a cycle whose branch was different.
+    # Frozen against the read, an entry can never describe one pull request
+    # while the push behind it moves another.
+    branch: str = ""
     # The commit the caller means to publish, where it read one for itself.
     # This owner proves the checkout's head independently, and between the
     # caller's read and that one the worktree is writable -- so a commit
@@ -255,11 +282,21 @@ class _GateVerdict:
     still publish the same commit. Read off the record instead, that
     publication would rotate a human's verdict onto a rewrite this tick
     declined to vouch for.
+
+    `delivered_pr` is the third, and it travels for the same reason as the
+    commit: only the answer that admitted this candidate read the pull request
+    it is already standing on, and the seam behind it would otherwise resolve
+    a branch for itself and reuse whatever pull request happened to be open on
+    that. What the number buys is a push it can LEASE against the very commit
+    the reading proved, and bookkeeping bound to the pull request that proof
+    was about rather than to whatever a second lookup finds. Zero on every
+    road that proved no such publication, which is every road but one.
     """
 
     held: bool
     candidate_sha: str = ""
     permitted_sha: str = ""
+    delivered_pr: int = 0
 
 
 # What every held answer is, since a hold names no commit: there is nothing

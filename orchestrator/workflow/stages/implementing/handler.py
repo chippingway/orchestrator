@@ -130,25 +130,35 @@ def _recorded_pr_holds_the_tick(
 ) -> bool:
     """True when the PR this issue records is why nothing else may run.
 
-    Three answers, because the question ahead of the merged-PR terminal has
-    three. A PR that is still the `discussion` stage's plan -- by its live
-    record, or by the commit that record names -- lets the tick continue but
-    must not finalize: closing the issue as `done` on a merged plan would end
-    it without a developer ever running, on the strength of a document whose
+    Three answers, because the question ahead of the PR terminals has three. A
+    PR that is still the `discussion` stage's plan -- by its live record, or
+    by the commit that record names -- lets the tick continue but must not
+    finalize: closing the issue as `done` on a merged plan would end it
+    without a developer ever running, on the strength of a document whose
     content is work still to do. A PR that is something else is
-    handed to the terminal, which decides on the merge as it always has. And a
+    handed to the terminals, which decide on it as they always have. And a
     PR that could not be read at all ends the tick here, unfinalized and
-    unspawned: the terminal would fetch it a second time, and a request that
+    unspawned: a terminal would fetch it a second time, and a request that
     failed once and succeeded next would finalize exactly the plan the first
     answer existed to protect. Nothing is written, so the next tick asks again
     from the same durable state.
+
+    TWO terminals, because a pull request ends in two ways and this stage
+    carries no arc of its own for either. A merge finalizes to `done`. One
+    somebody CLOSED without merging finalizes to `rejected`, and it has to be
+    answered here rather than further down: everything below reaches the size
+    gate, which would measure the committed candidate again and push it -- and
+    with the pull request gone, the push would open a second one over work a
+    human has already rejected.
     """
     plan_verdict = _recorded_pr_is_the_plan(gh, issue, state)
     if plan_verdict is None:
         return True
     if plan_verdict:
         return False
-    return _terminals._finalize_if_pr_merged(gh, spec, issue, state)
+    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
+        return True
+    return _terminals._finalize_if_pr_closed(gh, spec, issue, state)
 
 
 def _unfinished_discussion_holds_the_tick(

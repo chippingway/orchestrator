@@ -46,7 +46,10 @@ from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import client as _client, pinned_state as _pinned_state
-from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import (
+    guards as _guards,
+    observations as _observations,
+)
 from orchestrator.workflow.stages.implementing import (
     checkout_guards as _checkout,
     dev_pr as _dev_pr,
@@ -68,6 +71,58 @@ _UNPROVABLE_HEAD_PARK = (
     "what is stopping the read, then reply and the orchestrator will resume "
     "the session."
 )
+
+
+def _leased_against(
+    state: _pinned_state.PinnedState,
+    approved: _models._ApprovedWork,
+    published: str,
+) -> str | None:
+    """The SHA the remote ref has to be at for this push to be allowed.
+
+    Three answers, and the one that matters is the one a bare `None` gets
+    wrong. `None` lets the transport take its OWN reading of the remote and
+    lease against whatever it finds, which is right for the ordinary initial
+    publication -- there is no pull request yet, and the lease is there only
+    so a self-restart's re-push is not refused as a non-fast-forward.
+
+    It is wrong for a publication the gate admitted BECAUSE the pull request
+    is already standing on the commit. That answer is a reading, and between
+    it and this push the branch is somebody else's to move: leased against a
+    fresh reading, a tip that moved in the window is adopted as the lease and
+    the candidate is force-pushed over it. Leased against the commit the proof
+    was about, the same push sends nothing where the branch has not moved and
+    is refused outright where it has.
+
+    The third is an approval taken on the PUBLISHED side, which a settled
+    adjudication sends back here: the reading it was measured under is only
+    worth what the head it was taken over still is, so the push is pinned to
+    that head and a pull request somebody moved during the adjudication
+    rejects it instead of being force-overwritten.
+    """
+    if approved.delivered_pr:
+        return published
+    return _late_parks._approved_lease(state) or None
+
+
+def _close_beat_the_push(spec: config.RepoSpec, issue: Issue) -> bool:
+    """Whether a poll read this issue closed while the tick was working.
+
+    Asked of the process-wide latch rather than of the issue object, which is
+    the snapshot the tick opened with: everything spent since that fetch --
+    the run itself, the reading, the proofs around it -- is time a poll on
+    another worker can find the issue closed in, and the latch is what that
+    poll leaves behind. It costs no request, which is why it can be asked as
+    late as the step it guards rather than once at the door.
+    """
+    if not _observations.close_observed(spec.slug, issue.number):
+        return False
+    log.warning(
+        "repo=%s issue=#%d was observed closed before its branch was pushed; "
+        "refusing the push rather than putting work on an issue nobody wants",
+        spec.slug, issue.number,
+    )
+    return True
 
 
 def _publication_intent(
@@ -201,27 +256,31 @@ def _on_commits(
     the docs pass, which commit it or destroy it. Cleanliness proved at the
     top of the disposition is a fact about a moment that has passed by the
     time either effect runs.
+
+    A close a poll observed is refused immediately before the push, on the
+    same terms every gated publication onto an open pull request refuses one.
+    The gate's own barrier ends the CYCLE, which answers every candidate a
+    record is still live for -- and the roads this seam reaches it by are
+    exactly the ones where none is: an approval whose push failed retires its
+    generation before that push, so the retry comes back with nothing left to
+    cancel and nothing else between the reading and the effect. What a closed
+    issue may never earn is this effect, so the refusal is held: nothing
+    pushed, no pull request opened, no handoff, and the debt left exactly as
+    it stands for the cleanup a latched close is owed.
     """
     agent_result = approved.agent_result
     wt = _worktree_paths._worktree_path(spec, issue.number)
     published = _publication_intent(gh, issue, state, approved, wt)
     if published is None:
         return
-    if _checkout._dirtied_before_the_push(gh, issue, state, published, wt):
+    if _checkout._dirtied_before_the_push(
+        gh, issue, state, published, wt,
+    ) or _close_beat_the_push(spec, issue):
         return
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     if not _branch_transport._push_branch(
         spec, wt, branch, revision=published,
-        # The head an approval taken on the PUBLISHED side was frozen
-        # against, where there is one. A candidate a settled adjudication
-        # sends back here was measured against a pull request the remote
-        # already carries, and the reading it was measured under is only worth
-        # what the head it was taken over still is -- so the push is pinned to
-        # that head and a pull request somebody moved during the adjudication
-        # rejects it instead of being force-overwritten. None for an initial
-        # publication, whose push reads the remote for itself as it always
-        # did: there was no pull request to freeze.
-        force_with_lease=_late_parks._approved_lease(state) or None,
+        force_with_lease=_leased_against(state, approved, published),
     ):
         # Park on awaiting_human like the timeout/question paths. Otherwise the
         # worktree's commits keep _has_new_commits() true, so every poll would
@@ -234,8 +293,11 @@ def _on_commits(
         # _handle_implementing writes pinned state after we return.
         return
     pr = _dev_pr._reuse_or_open_pr(
-        gh, spec, issue, state, _models._PRWork(agent_result, wt, branch),
+        gh, spec, issue, state,
+        _models._PRWork(agent_result, wt, branch, approved.delivered_pr),
     )
+    if pr is None:
+        return
     # The push landed, so what was an intent is now a receipt: staged here so
     # the handoff write below carries it, and so a relabel that does not land
     # leaves the next tick something to recognize an already published branch
@@ -244,10 +306,9 @@ def _on_commits(
     # says so rather than leaving whatever the last published-side push wrote,
     # which would date this receipt to an attempt it was not made under.
     _late_parks._record_publication(state, published, "")
-    if _checkout._moved_after_the_push(gh, issue, state, published, wt):
-        _owes_the_handoff(state, published)
-        return
-    if _checkout._dirtied_after_the_push(gh, issue, state, published, wt):
+    if _checkout._moved_after_the_push(
+        gh, issue, state, published, wt,
+    ) or _checkout._dirtied_after_the_push(gh, issue, state, published, wt):
         _owes_the_handoff(state, published)
         return
     _handoff._advance_to_validating(gh, issue, state, pr, branch)

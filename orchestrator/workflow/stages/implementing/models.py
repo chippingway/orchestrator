@@ -81,11 +81,24 @@ class _ApprovedWork(_AgentWork):
     """
 
     candidate_sha: str = ""
+    # The pull request the gate proved is already standing on that commit,
+    # where it proved one. The push it licenses moves nothing, so what the
+    # number is for is pinning both halves of the bookkeeping behind it: the
+    # lease, which is the candidate itself, and the pull request the relabel
+    # hands on. Zero on every ordinary publication, which opens or reuses one
+    # by branch as it always did.
+    delivered_pr: int = 0
 
 
 @dataclass(frozen=True)
 class _PRWork(_AgentWork):
     branch: str
+    # The pull request this publication is finishing the bookkeeping for,
+    # where a reading proved the branch is already standing on the commit.
+    # Named rather than looked up again, because the answer that admitted the
+    # candidate proved THAT pull request: a second lookup a moment later can
+    # find it closed and open another over the same work.
+    delivered_pr: int = 0
 
 
 @dataclass(frozen=True)

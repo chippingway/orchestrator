@@ -1054,11 +1054,17 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - **Internal flow**: a `retry_cap` park whose sentence was never said is replayed at entry, ahead of every step below
   (`_replay_owed_notice` — see [the retry budget](labels-and-state.md#the-retry-budget)); it says what the park is
   for and writes, and the tick carries on.
-  0. **External-merge / closed-issue short-circuit.** `_finalize_if_pr_merged` flips a merged PR to `done`
-     (`merge_method="external"`); `_finalize_if_issue_closed` flips a closed issue to `rejected` and emits
-     `pr_closed_without_merge` + cleans up the branch only when the linked PR is also closed (an open PR with a
-     manually-closed issue is left alone for operator salvage). Both helpers defer without writing state when the PR
-     fetch fails so a transient failure cannot mis-label a merged-PR issue. The merge terminal is reached only past
+  0. **External-merge / closed-PR / closed-issue short-circuit.** `_finalize_if_pr_merged` flips a merged PR to
+     `done` (`merge_method="external"`); `_finalize_if_pr_closed` flips one somebody closed *without* merging to
+     `rejected`, emitting `pr_closed_without_merge` and cleaning up the branch; `_finalize_if_issue_closed` flips a
+     closed issue to `rejected` and emits the same event + cleans up the branch only when the linked PR is also
+     closed (an open PR with a manually-closed issue is left alone for operator salvage). The middle one is the arc
+     `in_review` and `fixing` have always had inline, lifted out for the stages that carry none — `implementing`,
+     `validating` and `documenting`: a closed PR leaves the ISSUE open, so nothing else here sees it, and the size
+     gate below would measure the committed candidate again and push it, opening a second pull request since the
+     first is gone, while the other two would spawn a reviewer or a docs agent over work a human has rejected. All
+     three defer without writing state when the PR
+     fetch fails so a transient failure cannot mis-label a merged-PR issue. Both PR terminals are reached only past
      the plan question, which two records answer. A live `discussion_plan_path` says the recorded PR is the
      `discussion` stage's plan whatever its head is now — the handoff below retires that record durably before anything
      spawns, so nothing here has pushed yet and a head that moved is the humans editing the design they are agreeing to
@@ -2210,6 +2216,39 @@ of them, because its approval carries no pull-request head by design — its pus
 request — so a crash between the two leaves exactly the shape this would otherwise call damaged and park instead of
 finishing. `workflow:decomposing` is excluded because the settlement there holds evidence this would be reading half
 of.
+
+**Both of those roads end in a push, so what is over is asked ahead of either.** The terminal that drains finished
+work runs inside the stage handler, which is *behind* this owner — so without a barrier the crash window the whole
+reconciliation exists for becomes the way work reaches a pull request nobody can merge. Two facts are read and both
+hand the tick straight back: the issue OBJECT, and the PULL REQUEST the record names, which the issue's own flag
+cannot show — a merge leaves the issue open until a terminal reads it, and a merged or closed pull request is nowhere
+for this push to land, so without this the road ends in `late_measurement_failed` and parks a human over a
+publication that is finished. The pull request is read fail-*open*, so a remote that would not answer falls through
+to the road that takes its own reading and parks with the reason it fails for — and it is read *behind* the three
+record questions rather than at the owner's door, since it is a request and the only ticks its answer can change are
+the ones with something left to reconcile. Behind either, the handler's own terminal marks the issue `done` or
+`rejected` with the record, the branch and the debt left exactly as they are.
+
+Everything spent past that point — the stage check, the checkout probe, the remote read, the diff — is time a poll on
+another worker can find the world changing in, so the gated publication carries a barrier of its own immediately
+before the push and nowhere else in it. Two things can have ended there. The *pull request* is asked first and is the
+one nothing above catches: the gate refuses to **enter** a call on one that is already over, so the only way one
+reaches the push is by merging or closing in the window behind that reading — and its branch is still at the head
+this tick froze, so the lease succeeds and the force-push moves a merged pull request's branch back onto the commits
+it merged. That reading is fail-*closed*, the opposite of the same one at the door, since there falling through costs
+a poll and here a branch nothing can put back; and it is taken for every push onto a pull request the record names,
+`DECOMPOSE=off` included — that switch decides what enters the *measurement*, not whether a merged pull request may
+be force-moved. The process-wide close latch is asked **last**, because the reading above it is a request and a close
+landing while that request is in flight is one only an answer taken after it can still give. Refused, nothing is
+pushed, relabelled or announced, and the record is left for the cleanup it is owed.
+
+The *initial* publication on `workflow:implementing` carries the latch half of the same barrier, for the window the
+gate's own cancellation cannot cover — that one ends a cycle, and the write that approves a candidate retires the
+cycle before the push, so an approval whose push failed comes back with nothing left to cancel. And so does the push
+a settled adjudication makes from `workflow:decomposing`, which reaches the transport directly rather than through
+the gated call: its window is the widest of any, since the pull request was last read by the settlement's own
+reconciliation and the exemption, the identity, the debt, the park persist and both checkout proofs all run between
+that reading and the push. A refusal there leaves the verdict and its approval durable for the retry.
 
 **A record read off its own stage stops the tick.** The reading was taken under one publication and one stage, and
 both are terms of it, so a pair frozen on `fixing` and read while the issue wears `workflow:validating` may not

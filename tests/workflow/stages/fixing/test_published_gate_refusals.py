@@ -36,6 +36,11 @@ FIXING = fixing.FIXING
 ISSUE = fixing.ISSUE
 PR_HEAD_SHA = fixing.PR_HEAD_SHA
 PR_NUMBER = fixing.PR_NUMBER
+
+# A branch this issue's record does not name: what a pull request left over
+# from a cycle that ran on another ref is open on, and the one shape where the
+# number and the branch on one pinned comment disagree.
+_ANOTHER_BRANCH = f"{fixing.BRANCH}-elsewhere"
 PUSH_BRANCH = fixing.PUSH_BRANCH
 SHA_BEFORE = fixing.SHA_BEFORE
 STAGE_FIXING = fixing.STAGE_FIXING
@@ -355,6 +360,22 @@ class FrozenPublicationIdentityTest(
             scenario.github.pinned_data(ISSUE)[support.KEY_PUBLISHED_PR],
             PR_NUMBER,
         )
+
+    def test_a_pull_request_on_another_branch_refuses(self) -> None:
+        # The number and the branch are two fields on one pinned comment and
+        # they can disagree -- a `branch` a hand edit moved, or a `pr_number`
+        # left over from a cycle that ran on another ref. Frozen on the head
+        # alone, the entry would describe a pull request the push never
+        # touches: the settlement, the receipt and the relabel would all be
+        # spent against somebody else's publication.
+        scenario = self._seed_fix_round()
+        _published_pr(scenario).head = fixing.FakePRRef(
+            sha=PR_HEAD_SHA, ref=_ANOTHER_BRANCH,
+        )
+
+        mocks = self._run_fix_round(scenario)
+
+        self._assert_refused(scenario, mocks)
 
     def test_a_damaged_publication_refuses(self) -> None:
         # The marker says the reading was taken on a publication and the

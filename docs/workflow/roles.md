@@ -461,8 +461,28 @@ in that window brings back here with its generation already retired: re-deciding
 question against a base that has moved since, and route work a human may already have adjudicated back into
 adjudication. `implementing_published_sha` is that same window one step further on and the one that matters most,
 because the effects are already out: past the push a pull request carries the work and only the relabel is owed, so a
-reading that came back oversized there would hold nothing back and route a *published* branch to adjudication. And
-`DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
+reading that came back oversized there would hold nothing back and route a *published* branch to adjudication.
+
+That window is real and nothing closes it, but the receipt does not prove the tick is still *in* it. The note says
+what this stage last **pushed** and nothing about where it went or whether it is still there, and it is never
+cleared, so a branch published rounds ago carries one for the rest of the issue's life. So the same proof stands
+behind it on every road, and which reading takes it differs by seam. A call taken past a publication hands over the
+head it froze, and the two are compared. The implementing seam froze none — its push is what *opens* a pull request
+— so there the remote is read for the number the record names, and it answers only for an open pull request standing
+on this exact commit *and* open on the branch that seam would push. Every half is required: without the receipt, any
+head a remote happened to agree with would do; without the remote reading, a note over a pull request the branch has
+moved off would do; and without the branch — which the seam resolves from the record for itself — a `pr_number` left
+over from a cycle on another ref would license a push where nothing has published and a second pull request opened
+over the same work.
+
+And because a reading is a moment rather than a guarantee, the answer carries the pull request *number* rather than
+a bare permission. The push behind it is leased against that exact commit, so a branch somebody moved in the window
+rejects it instead of being force-overwritten, and the bookkeeping is bound to that pull request by number, so one
+somebody closed in the window holds the tick instead of earning a second pull request over work the first already
+carries. A call taken past a publication is held to the same branch one step earlier: the entry freeze refuses a
+pull request open anywhere but on the branch its push will name.
+
+And `DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
 recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing
 about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the
 publication is handed a candidate the gate never looked at while the record beside it names a different commit as the

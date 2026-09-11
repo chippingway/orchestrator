@@ -108,7 +108,8 @@ and until then a granted permission simply stands.
 This owner is the order those questions are asked in and nothing else. What a
 tick is ABOUT is `late_records`, the pair it measures over is `late_freeze`,
 the reading itself is `late_reading`, what a recovery proves first is
-`late_evidence`, what a rewrite of an accepted commit may carry with it is
+`late_evidence`, what a receipt has to prove before it vouches for anything is
+`late_delivery`, what a rewrite of an accepted commit may carry with it is
 `late_transfer`, what an answer earns is `late_verdict`, and what a refusal
 costs is `late_parks`.
 """
@@ -131,6 +132,7 @@ from orchestrator.workflow.late_split import (
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
     late_consent as _consent,
+    late_delivery as _delivery,
     late_freeze as _freeze,
     late_parks as _parks,
     late_reading as _reading,
@@ -259,6 +261,13 @@ def _decided(
     already calls decided has nothing left to earn. Refused, the candidate
     falls through to the measurement exactly as it always did.
 
+    The delivery proof is taken ONCE, at the top and for every candidate,
+    because the road past the measurement that rests on it -- a commit this
+    stage's own receipt names -- may not take a second reading of its own: a
+    second answer is a second chance to disagree with a decision already made.
+    It costs no request unless the receipt names the candidate in hand, and
+    none at all on a call that froze a publication of its own.
+
     The permit's answer is kept APART from the other three rather than folded
     into the one reason, because the two license different things. All four
     say the candidate may publish without a reading; only the permit says a
@@ -284,7 +293,8 @@ def _decided(
             candidate_sha,
             _consent._holds_until_authorized(gate, recorded, candidate_sha),
         )
-    decided = _needs_no_measuring(gate, recorded, candidate_sha)
+    delivered = _delivery._delivered_before_the_relabel(gate, candidate_sha)
+    decided = _needs_no_measuring(gate, recorded, candidate_sha, delivered)
     permitted = decided or _transfer._carried_over(gate, candidate_sha)
     if permitted:
         log.info(
@@ -292,8 +302,12 @@ def _decided(
             gate.issue.number, candidate_sha, permitted,
         )
         return _verdict_owner._unmeasured_verdict(
-            gate, recorded, candidate_sha,
-            permitted_sha="" if decided else candidate_sha,
+            gate, recorded, _records._GateVerdict(
+                held=True,
+                candidate_sha=candidate_sha,
+                permitted_sha="" if decided else candidate_sha,
+                delivered_pr=delivered,
+            ),
         )
     answered = (
         recorded.candidate_sha == candidate_sha
@@ -430,10 +444,10 @@ def _unnameable(
     return _records._HELD
 
 
-def _needs_no_measuring(
-    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
+def _already_decided(
+    gate: _records._Gate, candidate_sha: str, delivered: int,
 ) -> str:
-    """Why this commit publishes without a reading, or "" where it needs one.
+    """Why the RECORD says this commit needs no reading, or "" if it does not.
 
     Three records say a commit was already DECIDED about, and they say it the
     same way: by naming one commit and only it, so anything committed on top
@@ -466,6 +480,39 @@ def _needs_no_measuring(
     So the commit is recognized rather than re-read, the pull request that
     already carries it is reused, and the relabel is finished.
 
+    What the receipt is held to is `late_delivery`'s, and it differs by seam
+    rather than being skipped on either. A call taken PAST a publication froze
+    the head the pull request is standing on, and the two are read together
+    here. One taken before it froze nothing, so the same question goes to the
+    remote -- the pull request the record names, open, on the branch this seam
+    would push, standing on this exact commit -- because a note that is never
+    cleared is not on its own evidence that anything still carries the work.
+    """
+    if _exemption.is_exempt(gate.state, candidate_sha):
+        return _ADJUDICATED
+    if _approved_on_a_reading(gate, candidate_sha):
+        return _APPROVED
+    if _parks._published_commit(gate.state) != candidate_sha:
+        return ""
+    frozen = gate.entry.published_sha if gate.entry else ""
+    vouched = (
+        _delivery._receipt_answers_alone(gate, candidate_sha, delivered)
+        and (not frozen or frozen == candidate_sha)
+    )
+    return _PUBLISHED if vouched else ""
+
+
+def _needs_no_measuring(
+    gate: _records._Gate,
+    recorded: LateGeneration,
+    candidate_sha: str,
+    delivered: int,
+) -> str:
+    """Why this commit publishes without a reading, or "" where it needs one.
+
+    The records that say a commit was already decided about come first, and
+    `_already_decided` beside this owns all of them.
+
     The switch is the last answer and is asked last, here rather than at the
     door, for the one state the door could not settle. An approval keeps
     the switch from bypassing, because a commit this gate decided has to be
@@ -488,23 +535,9 @@ def _needs_no_measuring(
     will publish. Read as "in the gate" instead, an install with the switch
     off measures exactly the work it turned the gate off for.
     """
-    if _exemption.is_exempt(gate.state, candidate_sha):
-        return _ADJUDICATED
-    if _approved_on_a_reading(gate, candidate_sha):
-        return _APPROVED
-    if _parks._published_commit(gate.state) == candidate_sha:
-        # The receipt is a local note, and what it is evidence FOR is that the
-        # pull request carries the commit. On the published side this call has
-        # already frozen the head that pull request is on, so the two are read
-        # together: a receipt naming a commit the remote has moved off records
-        # a publication that is over, and skipping the reading for it would
-        # wave through work the pull request no longer has. Where nothing was
-        # frozen the receipt answers alone -- that is the initial publication,
-        # whose window is between the push that opened a pull request and the
-        # relabel that never landed.
-        frozen = gate.entry.published_sha if gate.entry else ""
-        if not frozen or frozen == candidate_sha:
-            return _PUBLISHED
+    decided = _already_decided(gate, candidate_sha, delivered)
+    if decided:
+        return decided
     already_read = (
         recorded.candidate_sha == candidate_sha or gate.answering
     )

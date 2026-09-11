@@ -2425,7 +2425,14 @@ rather than preserving.
   what tells a candidate a later tick still owes a push from one it has already made. On that side it is read
   together with the head the gate froze, because it is a local note about a remote fact: a receipt naming a commit
   the pull request has since moved off is a record of a publication that is over, and the candidate goes back through
-  the ordinary reading rather than being waved past as already published. For the same reason it is not evidence that
+  the ordinary reading rather than being waved past as already published. On the implementing seam no head was frozen
+  to check it against, so the same question is put to the *remote*: the pull request the record names, open, on the
+  branch that seam would push, standing on this exact commit. Anything short of that and the candidate goes back
+  through the ordinary reading — the note alone would skip it, push, and open a second pull request over work the
+  first one already carries. What the answer then carries is the pull request *number*, because a reading is a
+  moment: the push behind it is leased against that exact commit, so a branch moved in the window rejects it rather
+  than being force-overwritten, and the bookkeeping is bound to that pull request, so one closed in the window holds
+  the tick rather than earning a second one over the same work. For the same reason it is not evidence that
   a pull request found somewhere OTHER than where a caller entered it got there by this issue's own push: it is never
   cleared, so a branch a revert or a rewrite rewound onto a commit published rounds ago would be measured and
   force-pushed over. Only the three readings a live window drops — the candidate a caller names, `late_approved_sha`,
