@@ -66,7 +66,7 @@ last is held by the loader itself rather than by a check.
   `git/credentials.py`, `git/ref_discovery.py`, `git/ref_transport.py`, `git/snapshots/refs.py`, and the three
   `git/measurement/` owners that log, which all report on the same token, `ls-remote`, fetch, push, and diff
   plumbing),
-  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the fourteen
+  `orchestrator.base_sync` (`git/base_sync/state.py`), `orchestrator.worktree_lifecycle` (the fifteen
   `git/worktrees/` owners that log, plus `runtime/artifacts.py` and `runtime/artifact_records.py` above them — when a
   maintenance pass ran, why it did not, and the record one candidate's answer could not be written as are facts about
   the same artifacts the owners under it report on, so an operator filtering for what
@@ -646,17 +646,25 @@ orchestrator/
                         with three answers may not have a fourth -- which is why the status read is behind one
                         too, since naming the tree it reports on resolves a path an agent can turn into a
                         symlink loop. Nothing here writes or fetches on either side
-      claims.py         the GitHub side of the same question: the issue fetch, the authenticated pinned read and
-                        the two checks that its payload is a state at all, the exactly-one-terminal-label rule an
-                        ending has to pass, the open pull requests still standing on a branch or on the recorded
-                        number, and whether a terminal pull request carries a tip the base does not. The branch
-                        claims are asked of both layouts this orchestrator publishes an issue under whether or
-                        not the host still holds them, and neither they nor the commit accounting name a base,
-                        since a thread retargeted onto another base stands on the branch and holds the commit
-                        just as squarely. Every read is behind its own boundary, the lazy fields included, and
-                        every boundary answers with a retention rather than a default
-      eligibility.py    the side-effect-free classifier over both: the GitHub gates that settle a candidate on
-                        their own, then one tip proof run over every commit an artifact holds, with the base
+      claims.py         the GitHub side of the same question, asked about the issue: the issue fetch, the
+                        authenticated pinned read and the two checks that its payload is a state at all, the
+                        exactly-one-terminal-label rule an ending has to pass, and the open pull requests still
+                        standing on a branch or on the recorded number. The branch claims are asked of both
+                        layouts this orchestrator publishes an issue under whether or not the host still holds
+                        them, and they name no base, since a thread retargeted onto another base stands on the
+                        branch just as squarely. Every read is behind its own boundary, the lazy fields
+                        included, and every boundary answers with a retention rather than a default
+      commit_claims.py  the same side asked about one commit: whether a terminal pull request exactly accounts
+                        for a branch tip the base does not carry. The lookup is by object id rather than by
+                        branch name, so a pull request that used this branch for some earlier round does not
+                        account for what is on it now, and it names no base either -- what makes the commit
+                        safe to delete is that GitHub holds it, wherever the thread carrying it is pointed.
+                        Only a pull request that has ended reclaims: a lookup that could not be taken is
+                        retained on rather than read as an absence, and one still open is retained on too,
+                        since a disagreement between two readings of the same remote is not one to settle in
+                        favour of deleting
+      eligibility.py    the side-effect-free classifier over all three: the GitHub gates that settle a candidate
+                        on their own, then one tip proof run over every commit an artifact holds, with the base
                         established once for the whole candidate. Every checkout is read on its own -- two trees
                         with two HEADs and two reflogs, where an issue is holding both layouts. Each owes that
                         proof as a branch does
@@ -754,7 +762,8 @@ off a facade:
   ignored-path one git leaves out of it and out of its own refusal to remove a dirty worktree), and
   `branch_transport` for the one question a local ref may not answer — what the remote says a branch is at;
   `claims` names GitHub and reaches `paths` for the branch names it asks GitHub about rather than for anything on
-  disk; `eligibility` calls both and nothing else. None of the three writes anything, on the host or on GitHub.
+  disk; `commit_claims` names GitHub alone, since the commit it asks about is handed to it; `eligibility` calls all
+  three and nothing else. None of the four writes anything, on the host or on GitHub.
   The pass over them is where that stops, and only its own step owner writes: `discovery` calls `inventory`,
   `attribution`, and `paths`, plus `ref_discovery` for the namespace listing no local read can answer; `reclaim`
   calls `commands`, `locks`, and `ref_transport` for the leased delete; `maintenance` calls `eligibility`,

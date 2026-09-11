@@ -5,10 +5,11 @@
 The remote half of a reclamation decision. A checkout and a branch on this
 host say nothing about whether the work they carry is finished -- only the
 issue does, and only its pull requests say whether anybody is still standing
-on the branch. Three questions are put here: whether the issue has actually
-ended, whether an open pull request still claims one of these branches, and
-whether a commit the base does not carry is one a terminal pull request
-already accounted for.
+on the branch. Two questions are put here: whether the issue has actually
+ended, and whether an open pull request still claims one of these branches.
+Either settles a candidate before any artifact is read; what a terminal pull
+request published is a question about one commit rather than about the issue,
+and ``commit_claims`` owns it.
 
 Every read is behind its own boundary, and every boundary produces a
 retention rather than a raise or a default. A pull-request lookup that failed
@@ -34,7 +35,7 @@ from typing import Any
 from orchestrator import config
 from orchestrator.git.worktrees import paths
 from orchestrator.git.worktrees.models import Retention, RetentionReason
-from orchestrator.github import issues as github_issues, pull_requests as github_pull_requests
+from orchestrator.github import issues as github_issues
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.state import WorkflowLabel, label_for_name
@@ -311,68 +312,3 @@ def _open_pull_request_retentions(
                 RetentionReason.OPEN_PULL_REQUEST, branch,
             ),)
     return retentions
-
-
-def _commit_accounting(
-    gh: GitHubClient, branch: str, head_sha: str,
-) -> tuple[Retention, ...]:
-    """Whether a terminal pull request exactly accounts for one branch tip.
-
-    The second way a branch the base does not contain can still be safe to
-    delete. The first is the base itself; this is the pull request the commit
-    went out on and a human then closed without merging -- rejected work is
-    still published work, and the branch is a local copy of something GitHub
-    has.
-
-    Exact, and it is the commit that makes it so. The lookup is by object id
-    rather than by branch name, so a pull request that once used this branch
-    for some earlier round does not account for what is on it now; a pull
-    request that CARRIES the tip has this exact commit under review, whether
-    or not its head has moved past it since.
-
-    No base is named, for the same reason the open-pull-request claim names
-    none: what makes the commit safe to delete here is that GitHub holds it,
-    and a pull request retargeted onto another base holds it exactly as well.
-    Filtered by the configured base, that publication would read as no
-    publication at all and the branch carrying it would be reclaimed.
-
-    Three answers, and only one of them reclaims. A lookup that could not be
-    taken is retained on rather than read as "no pull request", because that
-    reading is what deletes an unpublished branch. A pull request still open
-    is retained on too -- the claim checks above should have caught it, and a
-    disagreement between two readings of the same remote is not something to
-    resolve in favour of deleting.
-    """
-    try:
-        return _carrying_pull_request(gh, branch, head_sha)
-    except Exception:
-        log.warning(
-            "the pull requests carrying %s on %r could not be read while "
-            "classifying artifacts", head_sha, branch, exc_info=True,
-        )
-        return (Retention(
-            RetentionReason.PULL_REQUEST_UNREADABLE, branch,
-        ),)
-
-
-def _carrying_pull_request(
-    gh: GitHubClient, branch: str, head_sha: str,
-) -> tuple[Retention, ...]:
-    """The accounting itself, inside the boundary that owns its failures.
-
-    Split from the boundary rather than written under it so the lookup and
-    the state read it walks into are one guarded step: the pull request comes
-    back lazy, so reading its state is another request, and a caller told
-    only about the first would take a failure in the second as a pull request
-    that is not open.
-    """
-    accounted = gh.find_pr_for_commit(branch=branch, head_sha=head_sha)
-    if accounted is github_pull_requests.PR_LOOKUP_UNREADABLE:
-        return (Retention(
-            RetentionReason.PULL_REQUEST_UNREADABLE, branch,
-        ),)
-    if accounted is None:
-        return (Retention(RetentionReason.UNACCOUNTED_COMMITS, branch),)
-    if gh.pr_state(accounted) == _OPEN_PULL_REQUEST:
-        return (Retention(RetentionReason.OPEN_PULL_REQUEST, branch),)
-    return ()

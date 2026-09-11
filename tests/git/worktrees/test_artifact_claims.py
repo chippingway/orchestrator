@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """What GitHub says about a candidate: whether it ended, and who still claims it.
 
+The questions that settle a candidate before any artifact is read. What a
+terminal pull request published is asked about one commit rather than about
+the issue, and its cases live beside its owner in ``test_commit_claims``.
+
 The reads here never touch the host, so the clone these specs name does not
 exist: what is under test is which answer each question turns into, and a
 repository on disk would only slow that down. The failures are driven through
@@ -91,11 +95,6 @@ def _claims(gh, spec, branches=(BRANCH,), **pinned) -> tuple:
     return claims._open_pull_request_retentions(
         gh, spec, ISSUE_NUMBER, branches, PinnedState(data=dict(pinned)),
     )
-
-
-def _accounting(gh) -> tuple:
-    """What accounts for the tip this issue's branch is standing on."""
-    return claims._commit_accounting(gh, BRANCH, TIP_SHA)
 
 
 class TerminalValidationTest(unittest.TestCase):
@@ -335,66 +334,6 @@ class RecordedPullRequestTest(unittest.TestCase):
             _reasons(kept), (RetentionReason.PULL_REQUEST_UNREADABLE,),
         )
         self.assertEqual(kept[0].subject, f"#{RECORDED_PR_NUMBER}")
-
-
-class CommitAccountingTest(unittest.TestCase):
-    """Whether a terminal pull request exactly accounts for one branch tip."""
-
-    def setUp(self) -> None:
-        self.gh = _github()
-
-    def test_a_terminal_request_carrying_it_accounts(self) -> None:
-        # Rejected work is still published work: the commit exists in a pull
-        # request that outlives the branch, so the local copy is a copy.
-        self.gh.add_pr(_pull_request(RECORDED_PR_NUMBER, BRANCH, TIP_SHA))
-
-        self.assertEqual(_accounting(self.gh), ())
-
-    def test_a_request_onto_another_base_accounts(self) -> None:
-        # What makes the commit safe to delete here is that GitHub holds it,
-        # which a pull request retargeted onto another base does just as well.
-        self.gh.add_pr(_pull_request(
-            RECORDED_PR_NUMBER, BRANCH, TIP_SHA, base=OTHER_BASE_BRANCH,
-        ))
-
-        self.assertEqual(_accounting(self.gh), ())
-
-    def test_a_tip_nothing_carries_is_unaccounted(self) -> None:
-        self.assertEqual(
-            _reasons(_accounting(self.gh)),
-            (RetentionReason.UNACCOUNTED_COMMITS,),
-        )
-
-    def test_an_unlistable_branch_is_not_an_absence(self) -> None:
-        # The reading that deletes an unpublished branch if it is taken for a
-        # no, which is why the lookup has an answer of its own for it.
-        self.gh.unreadable_pr_lookups.add(BRANCH)
-
-        self.assertEqual(
-            _reasons(_accounting(self.gh)),
-            (RetentionReason.PULL_REQUEST_UNREADABLE,),
-        )
-
-    def test_a_lookup_that_raised_is_the_same(self) -> None:
-        with patch.object(
-            self.gh, "find_pr_for_commit", side_effect=RuntimeError("no"),
-        ):
-            self.assertEqual(
-                _reasons(_accounting(self.gh)),
-                (RetentionReason.PULL_REQUEST_UNREADABLE,),
-            )
-
-    def test_a_request_still_open_accounts_for_none(self) -> None:
-        # A disagreement between two readings of the same remote is not one
-        # to settle in favour of deleting.
-        self.gh.add_pr(_pull_request(
-            RECORDED_PR_NUMBER, BRANCH, TIP_SHA, state=OPEN_PR_STATE,
-        ))
-
-        self.assertEqual(
-            _reasons(_accounting(self.gh)),
-            (RetentionReason.OPEN_PULL_REQUEST,),
-        )
 
 
 if __name__ == "__main__":

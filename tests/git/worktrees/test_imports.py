@@ -21,6 +21,7 @@ from orchestrator.git.worktrees import (
     checkout_attribution,
     claims,
     cleanup,
+    commit_claims,
     creation,
     decomposition,
     discovery,
@@ -57,6 +58,7 @@ _MODULES = (
     "orchestrator.git.worktrees.checkout_attribution",
     "orchestrator.git.worktrees.claims",
     "orchestrator.git.worktrees.cleanup",
+    "orchestrator.git.worktrees.commit_claims",
     "orchestrator.git.worktrees.creation",
     "orchestrator.git.worktrees.decomposition",
     "orchestrator.git.worktrees.discovery",
@@ -138,22 +140,23 @@ _OWNER_ONLY_NAMES = (
 # the one asking which branches a tree of the clone is standing on, counted
 # against the clone's own worktree entries because git drops one whose backlink
 # is missing without saying so -- and the two runners under them, the issue,
-# pinned-state, and pull-request reads GitHub answers with and the boundaries
-# around each of them, and the composition that turns both into one verdict per
-# candidate, with every checkout read on its own against the base and the branch
-# tips the whole candidate shares, that checkout's three-read order and the
-# record carrying what it is measured against, the tables each of those is
-# charged through, the tip read that falls back to the remote, the HEAD read
-# spent twice, and the proof an eligible verdict is handed over as. Then the
-# pass that spends one of those verdicts: the discovery over both halves at
-# once -- the remote listing and the namespace pattern it asks for, the
-# attribution and the grouping over it, the layout reading and the merge that
-# widens one candidate, and the whole scan those produce -- the three
-# commit-pinned teardown steps and the argv each runs, and the pass itself: the
-# injected guard's type, the quiet period, the reason-to-outcome table, and
-# every gate, step, and answer between them. Naming the whole surface makes a
-# helper added to an owner an edit here rather than a definition site nothing
-# checks.
+# pinned-state, and open-pull-request reads GitHub answers with and the
+# boundaries around each of them, the accounting a terminal pull request gives
+# for one commit the base does not carry and the boundary around that too, and
+# the composition that turns all of it into one verdict per candidate, with
+# every checkout read on its own against the base and the branch tips the whole
+# candidate shares, that checkout's three-read order and the record carrying
+# what it is measured against, the tables each of those is charged through, the
+# tip read that falls back to the remote, the HEAD read spent twice, and the
+# proof an eligible verdict is handed over as. Then the pass that spends one of
+# those verdicts: the discovery over both halves at once -- the remote listing
+# and the namespace pattern it asks for, the attribution and the grouping over
+# it, the layout reading and the merge that widens one candidate, and the whole
+# scan those produce -- the three commit-pinned teardown steps and the argv
+# each runs, and the pass itself: the injected guard's type, the quiet period,
+# the reason-to-outcome table, and every gate, step, and answer between them.
+# Naming the whole surface makes a helper added to an owner an edit here rather
+# than a definition site nothing checks.
 _OWNER_DEFINED = (
     ("ActivityGuard", maintenance),
     ("ArtifactInventory", models),
@@ -194,6 +197,7 @@ _OWNER_DEFINED = (
     ("_LOCAL_REF_PREFIX", evidence),
     ("_LOCAL_REF_PREFIX", reclaim),
     ("_OPEN_PULL_REQUEST", claims),
+    ("_OPEN_PULL_REQUEST", commit_claims),
     ("_ORCHESTRATOR_BRANCH_REFS", branch_probes),
     ("_ORCHESTRATOR_REMOTE_REFS", discovery),
     ("_OUTCOMES", maintenance),
@@ -233,7 +237,7 @@ _OWNER_DEFINED = (
     ("_candidate_keys", discovery),
     ("_candidate_layout", discovery),
     ("_candidate_order", discovery),
-    ("_carrying_pull_request", claims),
+    ("_carrying_pull_request", commit_claims),
     ("_checked_out_branches", evidence),
     ("_checkout_clone", probes),
     ("_checkout_entries", probes),
@@ -257,7 +261,7 @@ _OWNER_DEFINED = (
     ("_cleared_tips", maintenance),
     ("_clone_read", evidence),
     ("_colliding_worktree_slugs", checkout_attribution),
-    ("_commit_accounting", claims),
+    ("_commit_accounting", commit_claims),
     ("_commit_count_from_stdout", recovery),
     ("_countable_legacy_checkouts", checkout_attribution),
     ("_current_names", discovery),
@@ -355,8 +359,8 @@ _OWNER_DEFINED = (
 # handler selection is keyed on.
 _REPORTING_OWNERS = (
     attribution, branch_probes, checkout_attribution, claims, cleanup,
-    creation, decomposition, discovery, evidence, inventory, maintenance,
-    probes, reclaim, terminal,
+    commit_claims, creation, decomposition, discovery, evidence, inventory,
+    maintenance, probes, reclaim, terminal,
 )
 
 

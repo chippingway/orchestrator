@@ -4,9 +4,9 @@
 
 The one place in this domain that deletes something nobody asked it to delete.
 Everything under it is a reading -- the discovery in ``discovery``, the
-classification in ``eligibility``, the fail-closed probes in ``evidence`` and
-``claims`` -- and this module is where those readings are turned into three
-mutations and one answer per candidate.
+classification in ``eligibility``, the fail-closed probes in ``evidence``,
+``claims``, and ``commit_claims`` -- and this module is where those readings
+are turned into three mutations and one answer per candidate.
 
 What it does NOT touch is as much of its contract as what it does. No workflow
 label is written, no pinned state, no comment, and no agent session is started
