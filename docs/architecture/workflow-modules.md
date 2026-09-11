@@ -1147,11 +1147,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the two owners below in turn rather than re-exporting what they hold
       late_revision_obligations.py
                             the refusal a candidate the last adjudication already acted on earns instead of a
-                            revision, asked ahead of the notice and the spawn: children it created, which a second
-                            manifest over the top of would strand, and a recorded snapshot obligation in ANY state,
-                            since a moved `candidate_sha` leaves the reclamation comparing a ref against a commit it
-                            no longer names. The hand-back is the reconciliation owner's own park, so a refusal
-                            exits on the terms every other late park does
+                            revision, asked on BOTH roads into one -- ahead of the notice and the spawn guidance
+                            buys, and ahead of the re-read a bare continue takes without either. Two effects put a
+                            candidate past replacing: children it created, which a second manifest over the top of
+                            would strand, and a recorded snapshot obligation, refused in ANY state because a moved
+                            `candidate_sha` leaves the reclamation comparing a ref against a commit it no longer
+                            names and none of the states proves the ref absent -- an untypeable ledger entry
+                            answering yes with them, since one this binary could not read may be exactly that
+                            obligation. The hand-back is the reconciliation owner's own park, so a refusal exits on
+                            the terms every other late park does
       late_revision_reconciliation.py
                             the clean tree, re-frozen commit, and fresh measurement a finished run's result is
                             proved through (which carries none of the last generation's split receipts, and none of
