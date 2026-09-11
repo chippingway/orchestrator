@@ -219,6 +219,15 @@ class _Entered:
 
     stage: WorkflowLabel | None = None
     head: str = ""
+    # The branch this publication will be PUSHED to, which the caller resolves
+    # for itself. It is the other half of naming a publication: a pull request
+    # standing on the commit in hand says nothing about where the push would
+    # land unless it is open on the branch that push names, and the record
+    # those two are read off can disagree with itself -- a `branch` a hand
+    # edit moved, or a `pr_number` from a cycle whose branch was different.
+    # Frozen against the read, an entry can never describe one pull request
+    # while the push behind it moves another.
+    branch: str = ""
     # The commit the caller means to publish, where it read one for itself.
     # This owner proves the checkout's head independently, and between the
     # caller's read and that one the worktree is writable -- so a commit

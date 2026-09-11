@@ -63,6 +63,11 @@ TIMEOUT_PUSHED_DETAIL = support.TIMEOUT_PUSHED_DETAIL
 config = support.config
 patch = support.patch
 
+# What a pull request reads as once somebody has closed it without merging,
+# and where the issue behind one lands.
+_CLOSED = "closed"
+LABEL_REJECTED = "rejected"
+
 # The round the fixture parks on, and the one a published recovery moves it to.
 PARKED_ROUND = 1
 SPENT_ROUND = 2
@@ -133,22 +138,22 @@ class DeferredPushRecoveryTest(
         self.assertEqual(pinned[REVIEW_ROUND], PARKED_ROUND)
         self._assert_park_stands(scenario, PARK_PUSH_FAILED)
 
-    def test_a_closed_pull_request_refuses_the_retry(self) -> None:
-        # A closed pull request has nowhere for the push to land, so the entry
-        # refuses and the gate parks on its own reason. The caller announces
-        # no recovery and moves no label: it would be saying a park healed
-        # that the gate has just replaced.
+    def test_a_closed_pull_request_ends_the_issue(self) -> None:
+        # A pull request somebody closed without merging leaves the ISSUE
+        # open, so nothing about the issue's own state says the work is over
+        # -- and every road below this ends in a push onto exactly that pull
+        # request. The terminal answers it ahead of the recovery: the work is
+        # rejected, nothing is pushed, and no reviewer is spawned over it.
         scenario = self._seed_deferred_push()
-        scenario.github.get_pr(RECOVERY_PR).state = "closed"
+        scenario.github.get_pr(RECOVERY_PR).state = _CLOSED
 
         mocks = self._recover(scenario)
 
         mocks[PUSH_BRANCH].assert_not_called()
-        pinned = self._pinned(scenario)
-        self.assertTrue(pinned[AWAITING_HUMAN])
-        self.assertEqual(pinned[PARK_REASON], PARK_MEASUREMENT_FAILED)
-        self.assertEqual(pinned[REVIEW_ROUND], PARKED_ROUND)
-        self.assertEqual(scenario.github.label_history, [])
+        mocks[RUN_AGENT].assert_not_called()
+        self.assertIn(
+            (RECOVERY_ISSUE, LABEL_REJECTED), scenario.github.label_history,
+        )
 
     def test_a_crashed_tick_counts_no_round(self) -> None:
         # The push landed and the write carrying its receipt went down with

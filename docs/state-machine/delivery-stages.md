@@ -1054,11 +1054,16 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - **Internal flow**: a `retry_cap` park whose sentence was never said is replayed at entry, ahead of every step below
   (`_replay_owed_notice` — see [the retry budget](labels-and-state.md#the-retry-budget)); it says what the park is
   for and writes, and the tick carries on.
-  0. **External-merge / closed-issue short-circuit.** `_finalize_if_pr_merged` flips a merged PR to `done`
-     (`merge_method="external"`); `_finalize_if_issue_closed` flips a closed issue to `rejected` and emits
-     `pr_closed_without_merge` + cleans up the branch only when the linked PR is also closed (an open PR with a
-     manually-closed issue is left alone for operator salvage). Both helpers defer without writing state when the PR
-     fetch fails so a transient failure cannot mis-label a merged-PR issue. The merge terminal is reached only past
+  0. **External-merge / closed-PR / closed-issue short-circuit.** `_finalize_if_pr_merged` flips a merged PR to
+     `done` (`merge_method="external"`); `_finalize_if_pr_closed` flips one somebody closed *without* merging to
+     `rejected`, emitting `pr_closed_without_merge` and cleaning up the branch; `_finalize_if_issue_closed` flips a
+     closed issue to `rejected` and emits the same event + cleans up the branch only when the linked PR is also
+     closed (an open PR with a manually-closed issue is left alone for operator salvage). The middle one is the
+     arc `in_review` and `fixing` have always had inline, lifted out for the stages that carry none: a closed PR
+     leaves the ISSUE open, so nothing else here sees it, and the size gate below would measure the committed
+     candidate again and push it — opening a second pull request, since the first is gone. All three defer without
+     writing state when the PR fetch fails so a transient failure cannot mis-label a merged-PR issue. Both PR
+     terminals are reached only past
      the plan question, which two records answer. A live `discussion_plan_path` says the recorded PR is the
      `discussion` stage's plan whatever its head is now — the handoff below retires that record durably before anything
      spawns, so nothing here has pushed yet and a head that moved is the humans editing the design they are agreeing to

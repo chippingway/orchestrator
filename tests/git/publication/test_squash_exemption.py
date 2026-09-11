@@ -55,6 +55,10 @@ KEY_PUBLISHED_SHA = "implementing_published_sha"
 KEY_APPROVED_SHA = "late_approved_sha"
 KEY_APPROVED_LEASE = "late_approved_lease"
 
+# A branch this issue's record does not name: what a pull request left over
+# from a cycle that ran on another ref is open on.
+_ANOTHER_BRANCH = "orchestrator/somebody-elses/issue-1"
+
 
 class SquashedExemptionRealGitTest(
     _AdjudicatedSquashMixin,
@@ -304,6 +308,19 @@ class InterruptedSquashRealGitTest(
         accepted = self._head_sha()
 
         squash_run = self._interrupted(gate, head=MOVED_HEAD)
+
+        self._assert_nothing_moved(gate, accepted, squash_run)
+
+    def test_a_pull_request_elsewhere_grants_nothing(self) -> None:
+        # The record disagreeing with itself: the number it names is open on a
+        # branch this squash would not push. Frozen on the head alone, the
+        # entry would describe somebody else's publication -- and the transfer
+        # sitting behind it would move a human's verdict onto a commit pushed
+        # to a branch that pull request never carried.
+        gate = self._adjudicated(head_branch=_ANOTHER_BRANCH)
+        accepted = self._head_sha()
+
+        squash_run = self._squashes(gate)
 
         self._assert_nothing_moved(gate, accepted, squash_run)
 

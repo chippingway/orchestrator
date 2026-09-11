@@ -84,7 +84,10 @@ def _publishes(
 
     `entered` is what the caller already established and this owner may not
     re-read: a stage a same-tick relabel wrote, and the head the caller pinned
-    its own decision to. Both are frozen onto the record, so the push this
+    its own decision to. The BRANCH is added to it here, because this is where
+    the two facts meet -- the entry the gate freezes has to be about the pull
+    request this push will actually land on, and nothing else in the call has
+    both the branch and the reading in hand. Both are frozen onto the record, so the push this
     tick makes and the one a settled adjudication makes later are pinned to
     the same fact.
 
@@ -127,7 +130,9 @@ def _publishes(
         spends=entered.spends,
         rewrite=entered.rewrite,
     )
-    published = _publication_gate._holds_published_work(gate, entered)
+    published = _publication_gate._holds_published_work(
+        gate, _replace(entered, branch=branch),
+    )
     if published.held:
         return _PushedCandidate(held=True)
     published = _repinned(published)

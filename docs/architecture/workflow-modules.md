@@ -263,7 +263,11 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             Nothing here decides an issue is out: the ledger reading is handed in, so the park
                             quotes the numbers the refusal was made on
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
-                            share, and the two entry-time finalizers
+                            share, and the three entry-time finalizers the stages carrying no PR-state arc of their
+                            own ask in order: a merged pull request, one somebody CLOSED without merging -- which
+                            leaves the ISSUE open, so the third sees nothing and the stage would otherwise measure
+                            and push onto a pull request that is gone, or spawn over work a human has rejected --
+                            and a closed issue
     tick.py                 one repo's polling pass and the order it drives: the base refresh, the
                             community-contribution sweep above, the skill-catalog emission, and the scheduler
                             handoff or in-tick execution behind them -- with the sequential mode of that execution
@@ -1618,17 +1622,24 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             is proved present here
       late_overflow.py      what a gate call taken PAST publication freezes before it may measure -- the stage it is
                             taking the issue out of, the pull request the work already has, and the head that pull
-                            request is standing on -- and the five refusals that make freezing them fail closed: a
+                            request is standing on -- and the six refusals that make freezing them fail closed: a
                             tree that is not provably clean, a pull request nothing could read, one that is closed or
-                            merged, a caller-named head that is no whole object id or that disagrees with the head
+                            merged, one open on a BRANCH other than the one this publication will push, a
+                            caller-named head that is no whole object id or that disagrees with the head
                             this owner reads, and a head that moved off what a live record froze; asked behind the
                             switch, so an install with the gate off pays neither the read nor the park. Also what a
                             record already carrying a publication is re-proved against -- the whole frozen identity
                             rather than the head alone, since a branch reused across two pull requests puts the same
                             commit at the tip of both -- and what the CALLER established rather than what this owner
                             would re-read: the head it pinned its own decision to, checked against the one this owner
-                            reads rather than substituted for it, and the stage a same-tick remote relabel
-                            wrote over a cached one. That comparison has one carve-out and it is not a preference: a
+                            reads rather than substituted for it, the BRANCH it resolved and is about to push, and
+                            the stage a same-tick remote relabel wrote over a cached one. The branch is asked first
+                            because it is what makes every answer behind it about the same publication: the number
+                            and the branch are two fields on one pinned comment and they can disagree -- a `branch` a
+                            hand edit moved, or a `pr_number` left over from a cycle that ran on another ref -- so an
+                            entry frozen on the head alone would describe a pull request the push never touches,
+                            and the settlement, the receipt, the relabel and the exact-on-PR carve-out would all be
+                            spent against somebody else's publication. That comparison has one carve-out and it is not a preference: a
                             tip a DURABLE RECORD says this issue put there -- an approval's commit, a live record's,
                             or `implementing_published_sha` read with `implementing_published_lease`, the head that
                             receipt replaced -- is this issue's own push having landed, which is the window an

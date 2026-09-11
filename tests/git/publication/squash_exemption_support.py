@@ -116,6 +116,7 @@ class _AdjudicatedSquashMixin:
         base: str = "",
         accepted: str = "",
         authorized: bool = True,
+        head_branch: str = "",
     ):
         """The gate for an issue whose exemption names the pre-squash head.
 
@@ -136,8 +137,11 @@ class _AdjudicatedSquashMixin:
         issue that went on committing after its verdict looks like: the
         publication is seeded on the tip the squash would collapse, and the
         exemption on the one commit a human actually ruled on.
+
+        `head_branch` opens the pull request somewhere the squash would not
+        push, which is the one shape the record's own two fields disagree in.
         """
-        gate = _squash_gate(self, PublicationSeed())
+        gate = _squash_gate(self, PublicationSeed(head_branch=head_branch))
         accepted = accepted or self._head_sha()
         recorded_base = base or self._base_sha()
         recorded_digest = digest or self._contribution(accepted)

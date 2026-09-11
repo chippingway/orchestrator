@@ -97,6 +97,15 @@ _UNREADABLE_PULL_REQUEST = "pull request #{number} could not be read"
 _CLOSED_PULL_REQUEST = "pull request #{number} is {state} rather than open"
 
 
+# What a pull request open on some other branch is refused as. The record's
+# own two fields disagreeing is exactly the shape this catches, so both are
+# named: the branch the push is about to take, and the one the pull request
+# the SAME record points at is open on.
+_DISAGREEING_BRANCH = (
+    "pull request #{number} is open on `{read}` rather than on `{expected}`, "
+    "which is the branch this publication would push"
+)
+
 _UNREADABLE_HEAD = (
     "pull request #{number} names no head this reading could use"
 )
@@ -214,7 +223,7 @@ def _frozen_entry(
     if not number:
         return _records._PublicationEntry(refusal=_NO_PULL_REQUEST)
     return _entered_on(
-        gate.gh, stage, number, entered.head, _this_issues_own(gate, entered),
+        gate.gh, stage, number, entered, _this_issues_own(gate, entered),
     )
 
 
@@ -275,7 +284,7 @@ def _entered_on(
     gh: GitHubClient,
     stage: WorkflowLabel,
     number: int,
-    expected: str,
+    entered: _records._Entered,
     landed: frozenset,
 ) -> _records._PublicationEntry:
     """Freeze the pull request this call is entered on, or say why not.
@@ -314,7 +323,7 @@ def _entered_on(
                 number=number, state=reading.state,
             ),
         )
-    return reading.standing_head(number, stage, expected, landed)
+    return reading.standing_head(number, stage, entered, landed)
 
 
 @dataclass(frozen=True)
@@ -346,19 +355,30 @@ class _PublicationReading:
         self,
         number: int,
         stage: WorkflowLabel,
-        expected: str,
+        entered: _records._Entered,
         landed: frozenset,
     ) -> _records._PublicationEntry:
         """The head this call freezes, or why the two readings name none.
 
-        Three refusals rather than a preference. A pull request naming no
-        usable head is one nothing can be pinned against. A caller-named head
-        that is not a whole object id is the same failure one step earlier --
-        it is not dropped in favour of the read, because a caller that
-        established a head made its own decision on it and a fallback would
-        pin the push to a fact that decision was never taken over. And two
-        whole ids that are not the same commit are a publication that moved
-        while this tick was in flight.
+        The BRANCH comes first, because it is what makes every answer below it
+        about the same publication. The number and the branch are two fields
+        on one pinned comment and they can disagree: a `branch` a hand edit
+        moved, or a `pr_number` left over from a cycle that ran on another
+        ref. Frozen on the SHA alone, an entry describing a pull request on
+        branch B would license the carve-out for a commit that pull request is
+        standing on while the push names branch A -- so the settlement, the
+        receipt and the relabel would all be spent against a publication this
+        push never touched. It is refused rather than preferred either way,
+        since neither field is evidence the other is wrong.
+
+        Three refusals follow rather than a preference. A pull request naming
+        no usable head is one nothing can be pinned against. A caller-named
+        head that is not a whole object id is the same failure one step
+        earlier -- it is not dropped in favour of the read, because a caller
+        that established a head made its own decision on it and a fallback
+        would pin the push to a fact that decision was never taken over. And
+        two whole ids that are not the same commit are a publication that
+        moved while this tick was in flight.
 
         With one exception, and it is not a preference either: a tip a
         DURABLE record says this issue put there is this issue's OWN push
@@ -375,13 +395,20 @@ class _PublicationReading:
         let them differ, the tip is what says whether the push has anything
         left to send.
         """
+        if entered.branch and self.head_branch != entered.branch:
+            return _records._PublicationEntry(
+                refusal=_DISAGREEING_BRANCH.format(
+                    number=number, read=self.head_branch,
+                    expected=entered.branch,
+                ),
+            )
         observed = _payloads.as_hex(self.head, _formats.COMMIT_LENGTHS)
         if not observed:
             return _records._PublicationEntry(
                 refusal=_UNREADABLE_HEAD.format(number=number),
             )
-        named = _payloads.as_hex(expected, _formats.COMMIT_LENGTHS)
-        if expected and not named:
+        named = _payloads.as_hex(entered.head, _formats.COMMIT_LENGTHS)
+        if entered.head and not named:
             return _records._PublicationEntry(refusal=_UNNAMEABLE_HEAD)
         if named and named != observed and observed not in landed:
             return _records._PublicationEntry(

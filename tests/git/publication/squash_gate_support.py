@@ -118,6 +118,11 @@ class PublicationSeed:
     issue: Any = None
     head: str = ""
     state: str = OPEN
+    # The branch the pull request is open on, for a case about the one shape
+    # where the pinned comment's own two fields disagree: a `pr_number` left
+    # over from a cycle that ran on another ref, or a `branch` a hand edit
+    # moved. Empty is the ordinary answer -- the branch this squash pushes.
+    head_branch: str = ""
     # The number the pinned comment records, where a case wants one nothing
     # put on the client -- which is what a lookup that fails reads as.
     pinned_number: int = 0
@@ -223,13 +228,20 @@ def _squash_gate(fixture, seed: PublicationSeed):
     github.add_issue(issue)
     github.add_pr(FakePR(
         number=SQUASH_PR_NUMBER,
-        head_branch=fixture.branch,
+        head_branch=seed.head_branch or fixture.branch,
         head=FakePRRef(sha=seed.head or fixture._head_sha()),
         merged=seed.state == MERGED,
         state=CLOSED if seed.state == MERGED else seed.state,
     ))
     github.seed_state(
-        issue.number, pr_number=seed.pinned_number or SQUASH_PR_NUMBER,
+        issue.number,
+        pr_number=seed.pinned_number or SQUASH_PR_NUMBER,
+        # Persisted beside the number, as every publication that opens a pull
+        # request persists it: a record naming one without the other is the
+        # legacy shape, where the branch resolver answers with the pre-slug
+        # ref -- and a fixture that seeded that while putting the pull request
+        # on a slug-namespaced branch would be a record no tick can produce.
+        branch=fixture.branch,
     )
     return _late_records._gate(
         github,

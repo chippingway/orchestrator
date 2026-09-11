@@ -289,7 +289,9 @@ is half a bypass, and a commit only it names is measured like any other. The one
 the bookkeeping behind a publication that has already happened — a pull request this call froze and found standing on
 that exact commit finishes its relabel, receipt and debt, since the push would move nothing and holding it back would
 strand published work under a stage no later tick advances. The stage, the pull request, and the
-head it stands on are frozen into the record before any effect; the push it allows is named against the measured
+head it stands on are frozen into the record before any effect — and that pull request has to be open on the branch
+this publication will push, since the number and the branch are two fields on one pinned comment and a record whose
+two disagree would settle against a publication the push never touches; the push it allows is named against the measured
 commit and leased against that frozen head; a tree that is not provably clean, an unreadable or closed pull request,
 and a head that moved off the frozen one each park rather than push. A pair frozen and never counted is measured
 ahead of the handler on the next tick, by the dispatcher, on the stage the record names — and one whose checkout is

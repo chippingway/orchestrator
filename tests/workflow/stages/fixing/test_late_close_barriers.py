@@ -61,8 +61,20 @@ from tests.workflow.stages.fixing.test_late_dispatch import (
 
 _REPO_SLUG = _TEST_SPEC.slug
 
-# What a pull request reads as once it is over, whichever way it ended.
+# What a pull request reads as once it is over, whichever way it ended, and
+# the two labels an issue behind one lands on.
 _CLOSED = "closed"
+_REJECTED = "rejected"
+_DONE = "done"
+
+# The stage the fixing support does not name, since its own fixtures never
+# sit on it.
+_IMPLEMENTING = "workflow:implementing"
+
+# The three stages that carry no PR-state arc of their own, and so reach a
+# pull request somebody closed as an ordinary tick unless a terminal says
+# otherwise. `in_review` and `fixing` drain one inline and are not here.
+_SWEPT_STAGES = (_IMPLEMENTING, fixing.VALIDATING, fixing.DOCUMENTING)
 
 # The debt a tick that died between the retirement and the push leaves: one
 # commit owed a publication, and the head the pull request was standing on
@@ -74,7 +86,7 @@ _OWED_PUBLICATION = MappingProxyType({
 })
 
 
-def _owing(case):
+def _owing(case, label: str = fixing.FIXING):
     """An issue whose only late record is a push an approval still owes.
 
     Seeded rather than reached through the frozen pair beside it, because the
@@ -83,7 +95,7 @@ def _owing(case):
     from and the approval is the whole of what says a push is owed.
     """
     github = FakeGitHubClient()
-    issue = make_issue(ISSUE, label=fixing.FIXING)
+    issue = make_issue(ISSUE, label=label)
     github.add_issue(issue)
     github.seed_state(
         ISSUE,
@@ -202,15 +214,47 @@ class TerminalPullRequestTest(
     """A pull request that is over, on an issue nobody has closed yet.
 
     The other terminal state, and the one the closed-issue guard cannot see.
-    A merge leaves the ISSUE open until the stage terminal behind this owner
-    reads it and finalizes the work, and everything this owner does in between
-    ends in a push onto exactly that pull request -- which the gate refuses to
-    freeze an entry against, so the road below would park the issue for a
-    human over a publication that is finished.
+    A merge leaves the ISSUE open until a stage terminal reads it and
+    finalizes the work, and everything this owner does in between ends in a
+    push onto exactly that pull request -- which the gate refuses to freeze an
+    entry against, so the road below would park the issue for a human over a
+    publication that is finished.
+
+    Handing back is only half an answer, so the stages it hands back TO are
+    run here too. The terminal that drains such an issue lives inside the
+    handler, and a stage with no arc for a pull request somebody closed
+    without merging simply carries on: on `implementing` the size gate
+    measures the committed candidate again and pushes it -- opening a SECOND
+    pull request, since the first is gone -- and on `validating` and
+    `documenting` a reviewer or a docs agent is spawned over work a human has
+    already rejected.
     """
 
     def setUp(self) -> None:
         self._fresh_process()
+
+    def test_each_stage_finalizes_rather_than_running(self) -> None:
+        for stage in _SWEPT_STAGES:
+            with self.subTest(stage=stage):
+                github, issue = _owing(self, stage)
+                _ended(github)
+
+                mocks = self._route_to_the_stage(github, issue)
+
+                mocks[PUSH_BRANCH].assert_not_called()
+                mocks[fixing.RUN_AGENT].assert_not_called()
+                self.assertIn((ISSUE, _REJECTED), github.label_history)
+
+    def test_a_merged_one_still_finalizes_as_done(self) -> None:
+        # The other ending, so the arc added beside it is about the CLOSE
+        # rather than about terminal pull requests having stopped working.
+        github, issue = _owing(self, fixing.VALIDATING)
+        _ended(github, merged=True)
+
+        mocks = self._route_to_the_stage(github, issue)
+
+        mocks[PUSH_BRANCH].assert_not_called()
+        self.assertIn((ISSUE, _DONE), github.label_history)
 
     def test_a_terminal_pull_request_is_handed_on(self) -> None:
         # Both endings, and both roads out of this owner. Neither has anywhere

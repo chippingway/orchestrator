@@ -475,7 +475,9 @@ standing on, where the push would move nothing and what would be held back is th
 that has happened. Which pull request that is differs by seam. A call taken past one hands over the head it froze;
 the implementing seam freezes none — its push is what *opens* a pull request — so there the remote is read for the
 number the record names, and only for an open one standing on a commit `implementing_published_sha` says this stage
-pushed *and* open on the branch that seam would push. That proof is what `implementing_published_sha` is held to on
+pushed *and* open on the branch that seam would push. A call taken past a publication is held to the same
+branch, one step earlier: the entry freeze refuses a pull request open anywhere but on the branch its push
+will name. That proof is what `implementing_published_sha` is held to on
 every road, adjudicated or measured: the note says what this stage last *pushed* and nothing about where it went or
 whether it is still there, so a stale one over a pull request that is gone would otherwise skip the reading, push,
 open a second pull request, and hand the issue on.
