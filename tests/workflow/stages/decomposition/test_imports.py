@@ -32,6 +32,7 @@ _OWNERS = (
     "late_children",
     "late_cleanup",
     "late_content",
+    "late_content_replies",
     "late_coordinator",
     "late_guidance",
     "late_handback",

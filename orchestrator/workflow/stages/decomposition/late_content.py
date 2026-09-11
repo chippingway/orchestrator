@@ -36,9 +36,9 @@ drift is deliberate. It is a change to the requirements with no new comment to
 read it out of, which is exactly what a title edit is, so it is answered the
 same way rather than lost.
 
-Two of the things a human can write are not requirements at all, and this
-owner tells them apart from the guidance rather than from the digest: a bare
-`/orchestrator continue` and a whole-comment
+Two of the things a human can write are not requirements at all, and which
+fresh reply is which is `late_content_replies`' reading rather than this
+owner's: a bare `/orchestrator continue` and a whole-comment
 `/orchestrator authorize-oversized <commit>` are operator controls, reported
 beside the guidance so the owner that answers a park can act on the one it is
 waiting for. What they are NOT is guidance -- nothing hands either to an agent
@@ -48,9 +48,7 @@ opposite of what the global `user_content_hash` does with them, and
 deliberately: there a counted command would fire a drift the stage below was
 never asking about, while here the digest's whole job is to notice a counted
 comment that was EDITED after the fact, and a command left out of it could be
-rewritten into requirements nothing would see. Only the WHOLE comment is
-either command. Prose around one is prose, which is what keeps a paragraph
-mentioning the authorization from becoming a bypass of the size gate.
+rewritten into requirements nothing would see.
 
 Neither digest is taken here. Both are the `late_split/identity` owner's --
 the domain that already spells what a late generation is keyed by, hashing
@@ -77,8 +75,10 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import comments as _comments, drift as _engine_drift, messages as _messages
 from orchestrator.workflow.late_split import formats as _formats, identity as _identity
 from orchestrator.workflow.late_split.models import LateGeneration
+from orchestrator.workflow.stages.decomposition import (
+    late_content_replies as _replies,
+)
 from orchestrator.workflow.stages.decomposition.late_models import (
-    _LateAuthorization,
     _LateContentSignal,
     _LateFingerprint,
 )
@@ -132,13 +132,13 @@ def _read_content_signal(
         ),
         guidance=tuple(
             issue_comment for issue_comment in fresh
-            if _is_guidance(issue_comment)
+            if _replies._is_guidance(issue_comment)
         ),
         bare_continue=any(
             _messages._is_bare_orchestrator_continue(issue_comment)
             for issue_comment in fresh
         ),
-        authorization=_authorization(fresh),
+        authorization=_replies._authorization(fresh),
     )
 
 
@@ -229,52 +229,6 @@ def _fresh_replies(trusted: list, state: PinnedState, watermark) -> list:
         issue_comment for issue_comment in trusted
         if issue_comment.id > floor
     ]
-
-
-def _authorization(fresh: list) -> _LateAuthorization | None:
-    """The last authorization the fresh replies carry, if any of them is one.
-
-    The last rather than the first, because a batch is read in thread order
-    and a human who wrote the command twice meant the second -- a corrected
-    commit below a mistyped one is the request, not the line it corrects.
-
-    Whatever was written is carried forward, a malformed commit included: a
-    command nobody could act on is one this workflow owes an answer to, and a
-    reader handed nothing at all could not tell it from a line nobody typed.
-    What is required here is only that the comment can be NAMED, because the
-    record made from it names that comment and an authorization nothing can
-    attribute is the one thing that record may not become.
-    """
-    latest = None
-    for issue_comment in fresh:
-        named = _messages._authorized_oversized_candidate(issue_comment)
-        if named is not None and issue_comment.id > 0:
-            latest = _LateAuthorization(
-                candidate_sha=named, comment_id=issue_comment.id,
-            )
-    return latest
-
-
-def _is_guidance(issue_comment) -> bool:
-    """Whether one fresh trusted comment carries something to act on.
-
-    A bare `/orchestrator continue` is not guidance: it is an operator control
-    that says to proceed with what is already recorded, and feeding it to an
-    agent as a requirement would answer a question with the word "continue".
-    A whole-comment `/orchestrator authorize-oversized <commit>` is not
-    guidance for the same reason and one of its own: it is a decision about
-    the candidate that already exists, so handing it to a developer would
-    answer a question about scope with a commit id and re-freeze the very
-    change an operator just said may publish. Prose AROUND either command is
-    guidance, since neither is the whole comment then.
-    An empty body is not guidance either -- a reaction or an attachment with
-    no text in it says nothing a developer could revise against.
-    """
-    if _messages._is_bare_orchestrator_continue(issue_comment):
-        return False
-    if _messages._authorized_oversized_candidate(issue_comment) is not None:
-        return False
-    return bool((issue_comment.body or "").strip())
 
 
 def _thread_digest(trusted: list) -> str:

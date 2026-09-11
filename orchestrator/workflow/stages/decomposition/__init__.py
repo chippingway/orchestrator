@@ -32,11 +32,14 @@ question is open -- the plan one where the gate was entered before publication,
 and the implementation one the work is already on where it was entered past it
 -- `late_session` owns the run's pinned record and the tracked spawn over it,
 `late_content` fingerprints the requirements the candidate was frozen against
-and `late_guidance` decides what a change to them or an answer about them
-earns, `late_revision` owns the developer run guidance buys and the re-measured
-candidate it comes back with, `late_relabel` owns the label a live generation
-pins against the kill switch and a hand relabel, `late_owner` owns the fresh
-read that stands between a finished run and anything it earns,
+and `late_content_replies` tells the fresh replies it counted apart -- what is
+work for an agent, and what is one of the two operator controls that are a
+decision about the candidate instead -- while `late_guidance` decides what a
+change to those requirements or an answer about them earns, `late_revision`
+owns the developer run guidance buys and the re-measured candidate it comes
+back with, `late_relabel` owns the label a live generation pins against the
+kill switch and a hand relabel, `late_owner` owns the fresh read that stands
+between a finished run and anything it earns,
 `late_unsplit` owns the park an adjudicator's own `single` hands the issue to a
 human under and `late_authorize` the one command that ends it -- a trusted
 whole-comment `/orchestrator authorize-oversized <commit>`, proved against the
