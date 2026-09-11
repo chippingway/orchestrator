@@ -46,17 +46,21 @@ recorded as rejected with the tree left where it is.
 pinned spec and session id a round is locked to, the trust filter
 both the prompt and the consumed watermark are drawn through, and the choice
 between resuming a live session and rebuilding the whole conversation for a
-round that has none to resume. `run` is the round itself, opened in the issue's
-own `issue-N` worktree, and it owns the probes that bracket the spawn as well
-as the records it stages around it, because both are about telling this round's
-work apart from what the checkout was already carrying. `settlement` reads
-those probes as the single answer a tick acts on, and decides what a commit
-found on the branch is: this stage's to publish where the open-round record
-says one of its rounds was in flight, and somebody else's to report otherwise
--- the same test a moved tip and a reply into a park are both settled by.
-`outcomes` is where the write contract is enforced: commits and a dirty tree
-are checked before interruption and before the analysis, so an agent that
-started implementing is judged on what it wrote rather than read as a design.
+round that has none to resume. `round_evidence` is what the checkout was
+already carrying, read before anything may prepare it -- preparing one
+force-removes a dirty tree that carries no commits, so the tree an operator
+needs and the tip a dead round left are both read while they still exist.
+`run` is the round itself, opened in the issue's own `issue-N` worktree, and
+what it records about what that round opened on is there for the same reason
+those probes are: telling this round's work apart from what the checkout was
+already holding. `settlement` reads that evidence as the single answer a tick
+acts on, and decides what a commit found on the branch is: this stage's to
+publish where the open-round record says one of its rounds was in flight, and
+somebody else's to report otherwise -- the same test a moved tip and a reply
+into a park are both settled by. `outcomes` is where the write contract is
+enforced: commits and a dirty tree are checked before interruption and before
+the analysis, so an agent that started implementing is judged on what it wrote
+rather than read as a design.
 
 Publishing what that judgement passes divides by the question each owner
 answers. `artifact` takes the one reading of the branch every other owner

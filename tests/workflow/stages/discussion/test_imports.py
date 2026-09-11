@@ -36,6 +36,7 @@ _OWNERS = (
     "publication_parks",
     "records",
     "recovery",
+    "round_evidence",
     "run",
     "session",
     "settled_prs",

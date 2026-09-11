@@ -1191,11 +1191,18 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             closed unmerged to `rejected`, an open one writing and reaping nothing
       session.py            the pinned agent and session a conversation is locked to, the filter its replies are drawn
                             through, and the prompt paired with the replies it read
+      round_evidence.py     what the checkout was holding before a round could open over it: the tree read as a
+                            status rather than a path list, since the list form answers its own failure the way a
+                            clean tree does and what follows a clean answer force-removes the tree, and the tip
+                            compared against the anchor the last round recorded -- falling back to that round's
+                            branch where the directory has gone, and held where neither read could answer. Taken
+                            ahead of the restorer in `run`, which is the step that would erase what they report
       run.py                one round in the issue's own worktree, the restorer that checkout is rebuilt by, and the
                             branch and SHA it records opening on
-      settlement.py         one reading of the tree and the round anchor, and the ownership test the commit it
-                            finds is settled by: this stage's to publish where a round was in flight, and
-                            somebody else's to report otherwise, under a park this stage wrote and off one alike
+      settlement.py         one reading of the evidence above -- the tree and the round anchor -- and the ownership
+                            test the commit it finds is settled by: this stage's to publish where a round was in
+                            flight, and somebody else's to report otherwise, under a park this stage wrote and off
+                            one alike
       outcomes.py           the pause, timeout, write, and response decisions one finished round is classified by, and
                             their routing
       publication.py        the re-runnable order a publishable commit earns: the durable marker that makes the

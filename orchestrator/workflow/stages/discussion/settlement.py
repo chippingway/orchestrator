@@ -34,7 +34,7 @@ from orchestrator.workflow.stages.discussion import (
     models as _models,
     publication as _publication,
     publication_parks as _publication_parks,
-    run as _run,
+    round_evidence as _round_evidence,
     state as _state,
 )
 
@@ -54,10 +54,12 @@ def _checkout_reading(run: _models._DiscussionRun) -> _models._CheckoutReading:
     So the anchor is only asked of a readable tree, an unanswerable reading is
     reported as an unreadable checkout, and `moved` is never true on either.
     """
-    state = _run._stranded_worktree_state(run)
-    moved = _run._round_anchor_moved(run) if state.readable else None
+    state = _round_evidence._stranded_worktree_state(run)
+    moved = (
+        _round_evidence._round_anchor_moved(run) if state.readable else None
+    )
     if moved is None:
-        return _models._CheckoutReading(state=_run._UNREADABLE_TREE)
+        return _models._CheckoutReading(state=_round_evidence._UNREADABLE_TREE)
     return _models._CheckoutReading(state=state, moved=moved)
 
 
@@ -91,7 +93,9 @@ def _settle_commit_under_park(
         _settle_recovered_commit(run)
         return
     if not already_asked:
-        _checkout_parks._park_blocked_resume(run, _run._CLEAN_TREE)
+        _checkout_parks._park_blocked_resume(
+            run, _round_evidence._CLEAN_TREE,
+        )
 
 
 def _settle_moved_checkout(run: _models._DiscussionRun) -> None:
