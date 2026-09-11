@@ -29,6 +29,7 @@ from tests.workflow.fixtures import (
     SHA_LENGTH,
     _agent,
     _analytics_records,
+    _authorized_exemption,
 )
 from tests.workflow.stages.implementing import late_gate_test_support as support
 
@@ -183,7 +184,7 @@ class LateGatePushTest(support._GateCase, unittest.TestCase):
         )
 
     def test_the_exempt_commit_is_pushed(self) -> None:
-        self._seed(**{support.KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA})
+        self._seed(**_authorized_exemption())
 
         mocks = self._run_gate()
 
@@ -299,7 +300,7 @@ class MovedCheckoutDebtTest(support._GateCase, unittest.TestCase):
         # would publish an adjudicated commit without anything revalidating
         # the operator authorization behind it.
         self._seed(**{
-            support.KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA,
+            **_authorized_exemption(),
             _KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
         })
 
@@ -405,9 +406,7 @@ class LateGateExemptionTest(support._ParkedRetryCase, unittest.TestCase):
         # same ceiling and adjudicate it again, forever.
         for runs_left, ledger in support.LEDGERS.items():
             with self.subTest(runs_left=runs_left):
-                self._seed(**{
-                    support.KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA, **ledger,
-                })
+                self._seed(**{**_authorized_exemption(), **ledger})
 
                 mocks = self._run_gate()
 
@@ -419,7 +418,7 @@ class LateGateExemptionTest(support._ParkedRetryCase, unittest.TestCase):
         for runs_left, ledger in support.LEDGERS.items():
             with self.subTest(runs_left=runs_left):
                 self._seed(**{
-                    support.KEY_EXEMPT_SHA: _OTHER_SHA, **ledger,
+                    **_authorized_exemption(_OTHER_SHA), **ledger,
                 })
 
                 mocks = self._run_gate(
@@ -443,7 +442,7 @@ class LateGateExemptionTest(support._ParkedRetryCase, unittest.TestCase):
             support.LAST_ACTION_COMMENT_ID: support.PRIOR_ACTION_COMMENT_ID,
             "dev_agent": "codex",
             "dev_session_id": support.DEV_SESSION,
-            support.KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA,
+            **_authorized_exemption(),
             **support.recorded_generation(candidate_sha=_OTHER_SHA),
         })
         self._reply("put it back on the commit we already agreed")

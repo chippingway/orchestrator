@@ -447,21 +447,32 @@ has already overtaken.
   whose command is exactly right, so the park is re-taken saying the recorded commit is not on this host and the
   next continue retries it once the worktree is back.
 
-Five candidates skip the measurement and none is a bypass. Three are commits this workflow has already *decided*
+Six candidates skip the measurement and none is a bypass. Four are commits this workflow has already *decided*
 about, and each names one commit and only it, so work committed on top of any of them is measured as the fresh
 candidate it is. `late_exempt_sha` names the commit an authorized settlement accepted — never an adjudicator's own
-`single`, which parks for that decision rather than making it; between the settlement and the publication it also
-holds the branch out of the base refresh — but on two conditions, since the record is never cleared and freezing on
-its presence would take every issue that ever earned a verdict out of the refresh for good. The head has to still be
-that commit, and the stage that has to act on it has to still have the issue: past the handoff the branch is review's,
-and keeping a pushed branch in step with base is the PR-aware sync's job.
+`single`, which parks for that decision rather than making it — and it is asked as a PAIR with the `late_override_*`
+group beside it, because an exemption alone records a DECISION rather than a decider: the adjudicator that wrote it
+is an agent, and an agent proposing to publish past the ceiling is what the ceiling is there for. The pair is proved
+rather than parsed, since every term of an authorization but the digest is the pinned comment agreeing with itself:
+the contribution between the pair the record names is fingerprinted again here and held to what that record says.
+Only the exemption, and the candidate goes to the ordinary cumulative reading —
+`implementing/late_authority.py` is where the two are asked together. Between the settlement and the publication the
+exemption also holds the branch out of the base refresh — but on two conditions, since the record is never cleared
+and freezing on its presence would take every issue that ever earned a verdict out of the refresh for good. The head
+has to still be that commit, and the stage that has to act on it has to still have the issue: past the handoff the
+branch is review's, and keeping a pushed branch in step with base is the PR-aware sync's job.
 
 `late_approved_sha` names the commit the gate itself approved and has still to push, which a crash
 in that window brings back here with its generation already retired: re-deciding it there would measure a settled
 question against a base that has moved since, and route work a human may already have adjudicated back into
 adjudication. `implementing_published_sha` is that same window one step further on and the one that matters most,
 because the effects are already out: past the push a pull request carries the work and only the relabel is owed, so a
-reading that came back oversized there would hold nothing back and route a *published* branch to adjudication. And
+reading that came back oversized there would hold nothing back and route a *published* branch to adjudication. It
+answers alone only for a commit the gate measured on the way out; beside an exemption nothing authorizes it answers
+for nothing, since the note is never cleared and nothing on this side froze a publication to check it against. The
+fourth is the one an unauthorized exemption still earns: a commit the pull request this call froze is ALREADY
+standing on, where the push would move nothing and what would be held back is the bookkeeping behind a publication
+that has happened. And
 `DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
 recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing
 about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the
@@ -935,6 +946,35 @@ A contribution this host cannot fingerprint is not answered at all: nothing abou
 doing, so the next tick takes the same reading again rather than asking them to decide twice. And drift outranks the
 command entirely — an edited title, body or counted comment parks the issue on the edit first, consuming nothing, so
 the decision is made again against the requirements as they now read.
+
+The same command ends one other park, which `implementing/late_authority.py` decides is owed and
+`implementing/late_consent.py` takes and answers. A live issue can carry an exemption with no `late_override_*` group
+beside it — an older build wrote one on a `single` verdict alone — and so can any issue whose authorization was
+hand-edited or half-written. The candidate there is measured like every other one: at or below the ceiling it
+publishes on its count, exactly `MAX_ADDED_LINES` included, and past it the issue parks
+`late_unauthorized_exemption` rather than going back to an adjudication that has already answered — routing it there
+would pay for a second adjudicator over a settled question and risk a `split` cutting children out of work somebody
+decided ships whole. The park deletes nothing, so the exemption an authorization would be checked against is still
+there, and it is answered by the same whole-comment command under the same trust and staleness rules — read where
+the reading is, so whichever seam took the park can end it: on `workflow:implementing` the parked tick reaches it
+through the disposition's own recovery, and on the five stages that publish onto an open pull request through the
+debt reconciliation the dispatcher runs ahead of every handler. What that command earns there is the same
+`late_override_*` group written from the gate's own reading, and the park itself keeps the pair and not the count,
+since a generation answering *oversized* is what the dispatcher restores `workflow:decomposing` over.
+
+The publication DEBT such a commit leaves is that question one field over, and it is answered off the debt's own
+recorded `late_approved_basis` rather than inferred from the records beside it. The settlement writes the exemption
+and the approval in one breath, so an `adjudication` or `authorization` basis is a debt an operator's gesture is
+behind and may be spent only while that gesture can still be read; a `reading` basis is the gate's own count at or
+below the ceiling and is spent by the tick after a crash without asking anybody. An approval an older binary wrote
+carries no basis at all, and there the exemption is the only evidence left — read conservatively, so a comment that
+CLAIMS an exemption and cannot say which commit it is about is the adjudication's debt rather than this workflow's
+own. The rewrite TRANSFER asks the same first question before it grants a permit: moving an exemption nothing
+authorizes would hand the rewritten commit a permission the accepted one never had, and what follows a granted one is
+the authorization, so a squash of an authorized candidate stays authorized and a squash of a legacy one gains nothing.
+
+The one candidate the park never holds is a commit the pull request already stands on, where the push would move
+nothing and only the bookkeeping behind a publication that has happened is left.
 
 Past that write the tick carries straight on to the answer it already had, and the settlement below runs on the same
 poll. The question it asks is of the RECORD rather than of the reply. It compares every frozen term — the commit, the

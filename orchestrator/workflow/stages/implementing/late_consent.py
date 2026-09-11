@@ -2,25 +2,24 @@
 # SPDX-License-Identifier: Apache-2.0
 """The park an adjudicated candidate with nobody behind it waits on.
 
-What an oversized reading is owed where the exemption naming the candidate has
-no operator authorization standing behind it -- the record an older binary
-wrote, where a `single` verdict recorded an exemption on its own, and the
-record a hand edit or a half-written crash leaves. It is a HOLD rather than a
-route back to `workflow:decomposing`, and that difference is the whole of what
-the compatibility is worth: the change has already been ruled one change, so
-sending it back would pay for a second adjudicator over an answered question
-and risk a `split` cutting children out of work somebody decided ships whole.
-What is missing is a person, so the park asks for one.
+What an oversized reading is owed where `late_authority` beside this says the
+exemption naming the candidate has no operator authorization standing behind
+it -- the record an older binary wrote, where a `single` verdict recorded an
+exemption on its own, and the record a hand edit or a half-written crash
+leaves. It is a HOLD rather than a route back to `workflow:decomposing`, and
+that difference is the whole of what the compatibility is worth: the change
+has already been ruled one change, so sending it back would pay for a second
+adjudicator over an answered question and risk a `split` cutting children out
+of work somebody decided ships whole. What is missing is a person, so the park
+asks for one.
 
-No measurement TAKES this park yet -- the publication policy that makes an
-exemption half a bypass is not this owner's to switch on -- so what reaches it
-is an issue whose record already stands behind one, which `late_recovery`
-brings back to the gate on every poll. What that leaves is the CONTRACT a
-caller has to meet. The generation handed in has to be the one the calling
-tick froze and COUNTED, since the terms an authorization is recorded on are
-that pair, those additions, and that ceiling: a caller passing a record it
-read off the pinned comment instead would have a human authorizing a change
-nobody measured.
+The gate reaches this owner with nothing measured, which is the CONTRACT it
+meets in return: the generation handed in is the one the calling tick froze,
+and the reading is taken here. The terms an authorization is recorded on are
+that pair, those additions, and that ceiling, so a road that read a count off
+the pinned comment instead would have a human authorizing a change nobody
+measured. An issue already standing behind the park comes back the same way,
+which `late_recovery` drives on every poll.
 
 The COUNT is deliberately not made durable. A generation carrying a reading
 past its ceiling is exactly what this workflow means by an adjudication in
@@ -65,13 +64,11 @@ from orchestrator.git.measurement import (
     additions as _additions,
     fingerprint as _fingerprint,
 )
-from orchestrator.github import pinned_state as _pinned_state
 from orchestrator.workflow.engine import (
     comments as _comments,
     guards as _guards,
 )
 from orchestrator.workflow.late_split import (
-    exemption as _exemption,
     overrides as _overrides,
     payloads as _payloads,
     state as _late_state,
@@ -170,98 +167,16 @@ _PARK_NOTICE = (
 )
 
 
-def _awaits_an_operator(gate: _records._Gate, candidate_sha: str) -> bool:
-    """Whether this issue stands on the authorization park, over THIS commit.
-
-    The one condition anything here is entered under, and the whole of what
-    keeps the policy off every other issue. Nothing in this build takes this
-    park, so the answer is False everywhere in production -- what the door
-    exists for is the issue that is somehow already behind it: a record a hand
-    edit left, or a build that once took the park.
-
-    Three things, and the exemption is the one that says what the park is
-    ABOUT. The flag alone is any of a dozen questions a human is holding; the
-    reason alone is a park somebody has already answered; and the two together
-    over a commit nothing exempts are a park held for a change no adjudicator
-    ever ruled on.
-
-    Which is the difference between this policy and a bypass. What the park
-    collects is HALF of a two-part one -- an adjudication that the change is
-    one coherent change, and an operator who read it and agreed to publish
-    past the ceiling -- and only the two together license anything. Entered
-    without the first half, a command alone would earn the `late_override_*`
-    group, take the park off and publish a candidate nobody has ruled on,
-    which is the one outcome the ceiling exists to catch.
-
-    Exactly this commit, because an exemption is a claim about ONE object id.
-    One naming another commit is a ruling a resumed developer's fresh work has
-    moved past, and it says nothing about the change in hand. Read through the
-    domain's own reader, so an abbreviation, prose, or a shape an older binary
-    wrote reads back as no exemption rather than as one nothing can compare.
-
-    Refused, the tick takes the ordinary road below and nothing here runs: the
-    candidate is measured like any other and an oversized one is routed to the
-    adjudication that would rule on it, which is what a change with nobody's
-    verdict behind it is owed.
-
-    A commit an override already names is refused too, and that is the fourth
-    thing rather than a fourth doubt: what this park waits for is a person,
-    and a recorded override is one. Read as still waiting, a retry after a
-    publication that failed would measure the same commit again and write new
-    terms over the ones a human actually agreed to.
-    """
-    if not gate.state.get(_state._AWAITING_HUMAN):
-        return False
-    if gate.state.get(_state._PARK_REASON) != _command.PARK_UNAUTHORIZED_EXEMPTION:
-        return False
-    if _already_authorized(gate.state, candidate_sha):
-        return False
-    return _exemption.read_exemption(gate.state) == candidate_sha
-
-
-def _already_authorized(
-    state: _pinned_state.PinnedState, candidate_sha: str,
-) -> bool:
-    """Whether an operator's authorization already covers this very commit.
-
-    The one thing that answers this park's own question, and the reason a
-    standing park is not by itself the door. What the park doubts is an
-    exemption with nobody behind it; a recorded override IS the person, named
-    against this commit and written from the reading that measured it. Once
-    one stands, the doubt is settled and the ordinary road recognizes the
-    commit as decided.
-
-    Which matters because the park can be standing over an answered question.
-    The write that records an authorization takes the park off, and the
-    publication it licenses can still fail -- a push the remote refused, a
-    checkout that moved under it -- leaving the seam parked under a reason of
-    its own and this park put back so the operator is not asked again. Read as
-    unanswered there, the retry measures the same commit afresh and records
-    NEW terms over the ones the human agreed to: a ceiling retuned in between
-    becomes the ceiling they are recorded as having authorized, and the
-    additions and digest are re-taken against a base that has moved. The terms
-    of a bypass are the terms somebody agreed to, so they are written once.
-
-    Exactly this commit, on the same rule the exemption is read by: an
-    override naming another is a decision a resumed developer's work has moved
-    past, and the candidate in hand is one nobody has authorized.
-    """
-    authorized = _overrides.read_publication_override(state)
-    if authorized is None:
-        return False
-    return authorized.publication.candidate_sha == candidate_sha
-
-
 def _holds_until_authorized(
     gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
 ) -> bool:
     """Measure this candidate afresh, and hold it unless an operator says go.
 
-    What an issue behind this park earns instead of the record's own answer.
-    The exemption standing on it is exactly what the park doubts -- an
-    adjudicator's ruling with nobody behind it -- so reading it as "already
-    decided" would publish the bypass the park was taken to withhold, and the
-    commit would go out on nobody's authority at all.
+    The whole of what a commit an unauthorized exemption names earns, and the
+    one road into this owner. The exemption standing on it is exactly what is
+    doubted -- an adjudicator's ruling with nobody behind it -- so reading it
+    as "already decided" would publish half a bypass, and the commit would go
+    out on nobody's authority at all.
 
     Measured rather than read back, because the terms an authorization is
     recorded on have to be this tick's: the pair it froze, the count it took,

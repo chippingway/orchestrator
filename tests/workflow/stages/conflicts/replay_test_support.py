@@ -29,6 +29,7 @@ from orchestrator.workflow.late_split import (
 from orchestrator.workflow.stages.conflicts import state as _state
 from orchestrator.workflow.stages.implementing import late_parks as _parks
 from orchestrator.workflow.state import WorkflowLabel
+from tests.support.authorization import _authorize
 from tests.workflow.repo_values import (
     CONTRIBUTION_DIGEST,
     DIGEST_LENGTH,
@@ -105,13 +106,19 @@ GRANTED_REPLAY = _rewrites.LateRewrite(
 )
 
 
-def adjudicated_state(*, identity: bool = True, damaged: tuple = ()) -> dict:
+def adjudicated_state(
+    *, identity: bool = True, authorized: bool = True, damaged: tuple = (),
+) -> dict:
     """The pinned fields a settled `single` verdict leaves on this issue.
 
     Written through the record's own owners rather than spelled out, so a case
     is seeded with exactly what an adjudication produces -- and damaged the way
     a live comment gets damaged, by taking a member out of a group that really
     round-tripped.
+
+    `authorized=False` is the comment an older binary left: the exemption with
+    no operator decision behind it, which is half a bypass and earns no
+    transfer onto the commit a replay produces.
     """
     state = PinnedState(state_data={})
     _exemption.record_exemption(state, ADJUDICATED_HEAD)
@@ -121,6 +128,10 @@ def adjudicated_state(*, identity: bool = True, damaged: tuple = ()) -> dict:
             base_sha=ADJUDICATED_BASE,
             candidate_sha=ADJUDICATED_HEAD,
             fingerprint=CONTRIBUTION_DIGEST,
+        )
+    if authorized:
+        _authorize(
+            state, ADJUDICATED_HEAD, ADJUDICATED_BASE, CONTRIBUTION_DIGEST,
         )
     for taken in damaged:
         state.data.pop(taken, None)

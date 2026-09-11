@@ -28,6 +28,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import (
     endings as _endings,
     formats as _formats,
@@ -175,6 +176,23 @@ class _Gate:
     # from the checkout and the remote by the time this owner could ask.
     rewrite: _rewrites.LateRewrite | None = None
 
+    @property
+    def close_was_observed(self) -> bool:
+        """Whether a poll has read this issue closed since the tick opened.
+
+        The process-wide latch rather than the issue object, and the two are
+        different facts. The object is a snapshot the tick opened with, and
+        everything a publication spends between that fetch and its push -- a
+        remote read, a diff, a worktree probe -- is time a poll on another
+        worker can find the issue closed in. The latch is what that poll
+        leaves behind, so this is the only reading that can answer for the
+        window rather than for the moment the fetch happened.
+
+        Costs no request, which is why it can be asked as late as the step it
+        guards rather than once at the door.
+        """
+        return _observations.close_observed(self.spec.slug, self.issue.number)
+
 
 @dataclass(frozen=True)
 class _Entered:
@@ -247,19 +265,32 @@ class _GateVerdict:
     gate, and a candidate the gate then lets through publishes on the count
     rather than on the exemption.
 
-    The two are separate because the write past the push turns on the second
-    and only the second. A permission standing on the comment is evidence a
-    permit was once granted, not that it still holds: a repointed pull
-    request, a relabelled issue, a moved remote, or a contribution that no
-    longer fingerprints alike each refuse it while the ordinary reading may
+    The first two are separate because the write past the push turns on the
+    second and only the second. A permission standing on the comment is
+    evidence a permit was once granted, not that it still holds: a repointed
+    pull request, a relabelled issue, a moved remote, or a contribution that
+    no longer fingerprints alike each refuse it while the ordinary reading may
     still publish the same commit. Read off the record instead, that
     publication would rotate a human's verdict onto a rewrite this tick
     declined to vouch for.
+
+    `basis` is what ADMITTED this candidate, carried as the wire value the
+    approval group records. It travels for the reason the commit does: the
+    caller's next step records a debt, and only the answer that let the
+    candidate past can say what that debt rests on. Re-derived at the write
+    instead, a proof that succeeded here and fails a moment later -- a store
+    that stopped answering between the two readings -- would record an
+    operator's bypass as ordinary unmeasured debt, which the tick after a
+    crash then spends without asking anyone.
+
+    Empty for every road that decided nothing to carry, and read back as the
+    ordinary unmeasured basis there.
     """
 
     held: bool
     candidate_sha: str = ""
     permitted_sha: str = ""
+    basis: str = ""
 
 
 # What every held answer is, since a hold names no commit: there is nothing

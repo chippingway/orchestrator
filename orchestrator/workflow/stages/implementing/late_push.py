@@ -109,6 +109,17 @@ def _publishes(
     records the debt for it beforehand, so a crash there leaves an approval
     the reconciliation ahead of the next handler pays as a leased no-op and
     then re-proves here.
+
+    A close a poll observed is refused immediately before the push and nowhere
+    else in this owner, because that is the only point at which the answer is
+    still true: every guard above spends a reading, a diff or a request after
+    it, and a close landing in one of those windows would be answered one push
+    too late. What a closed issue may never earn is exactly this effect, so
+    the refusal is HELD -- nothing pushed, nothing relabelled, nothing
+    announced -- and the record is left exactly as it stands for the cleanup a
+    latched close is owed. Asked of the process-wide latch rather than of the
+    issue, which is the snapshot the tick opened with and cannot say what a
+    later poll saw.
     """
     gate = _replace(
         gate,
@@ -120,6 +131,14 @@ def _publishes(
     if published.held:
         return _PushedCandidate(held=True)
     published = _repinned(published)
+    if gate.close_was_observed:
+        log.warning(
+            "repo=%s issue=#%d was observed closed before its branch was "
+            "pushed; refusing the push rather than putting work on an issue "
+            "nobody wants",
+            gate.spec.slug, gate.issue.number,
+        )
+        return _PushedCandidate(held=True)
     if not _pushed(gate, branch, published):
         return _PushedCandidate()
     # The proof comes first and its answer rides the settlement's own write,

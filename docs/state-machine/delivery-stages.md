@@ -1165,7 +1165,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      implementation the first one finished. Each hands its answer to the same committed-work seam a finished run
      publishes through, so a recovery reaches exactly the outcomes a fresh disposition does — published, held, or
      parked again with the reason it fails for now — and decides nothing the gate would have decided. None of them
-     CREATES a park; no road in this build takes the third one at all.
+     CREATES a park; the third one is taken by the reading itself, on an oversized candidate whose exemption has no
+     operator authorization behind it.
      - The third is the one every poll reaches, because an issue behind it has committed work and no run to dispose:
        nothing else on the tick would measure the candidate again or say a sentence the park still owes. What a poll
        costs is what the thread says — the command is acted on, guidance falls through to the ordinary resume, and a
@@ -1260,7 +1261,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        cannot keep committing into the worktree after the timeout is recorded.
      - new commits + clean tree → the **late size gate** first (`implementing/late_gate.py` and the
        `late_records` / `late_freeze` / `late_evidence` / `late_verdict` / `late_parks` owners under it, plus
-       `late_consent` / `late_command` for the `late_unauthorized_exemption` park no road in this build CREATES,
+       `late_authority` for whether an adjudicated commit has a human behind it and `late_consent` / `late_command`
+       for the `late_unauthorized_exemption` park an oversized one without one takes,
        whose standing form the recovery above routes on every poll), the
        one seam
        all three committed dispositions publish through — a run that finished, a timeout that had committed, and a
@@ -1271,11 +1273,17 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        ([`../configuration.md`](../configuration.md#cadence-and-budgets)) added lines routes the issue to
        `workflow:decomposing` with nothing pushed and no pull request opened; at or below it publishes as below and
        the generation is dropped, leaving `late_retired_cycle_id` so the next candidate cannot answer to the same
-       cycle number. Three commits skip the measurement because this workflow already decided about them, each
+       cycle number. Four commits skip the measurement because this workflow already decided about them, each
        named exactly and only by its own record: the one an authorized settlement accepted (`late_exempt_sha`,
-       which an adjudicator's own `single` never writes -- that parks for the decision), the one the
-       gate approved and has still to push (`late_approved_sha`), and the one this stage already pushed
-       (`implementing_published_sha`). So does every candidate while `DECOMPOSE=off` — except
+       which an adjudicator's own `single` never writes -- that parks for the decision) *and* an operator
+       authorized (the `late_override_*` group, whose recorded pair is fingerprinted again here and held to the
+       digest it carries — an exemption alone is half a bypass and goes to the ordinary reading), the one the
+       gate approved and has still to push (`late_approved_sha`, unless its `late_approved_basis` says the debt
+       rests on that same unauthorized exemption), the one this stage already pushed
+       (`implementing_published_sha`, which answers alone only for a commit the gate measured on the way out), and
+       the one an open pull request this call froze is already standing on, where the push would move nothing and
+       only the bookkeeping behind a publication that has happened is owed. So does every candidate while
+       `DECOMPOSE=off` — except
        one this issue has a recorded generation for *that same commit*, one it owes a push for, and
        one **answering a reading the gate itself recorded**. A generation naming some OTHER candidate is one a
        resumed developer's fresh commit has moved past, and the fresh commit is new work: published untouched with
@@ -2185,6 +2193,19 @@ because an approval is a claim about ONE commit — and a checkout that is absen
 to join it, so a handler run behind any of those works from a publication the approved work is not on: the reviewer
 votes on a head nobody adjudicated, the merge gate offers a human that head, and the docs pass commits on top of it.
 Announced once, since an operator has to put the checkout back before anything changes.
+
+**Both of those roads end in a push, so a close is asked twice.** The terminal that drains a closed issue runs inside
+the stage handler, which is *behind* this owner — so without a barrier the crash window the whole reconciliation
+exists for becomes the way work reaches a pull request on an issue somebody closed. The issue OBJECT is asked at the
+door: closed, the tick is handed straight back, and the handler's own terminal flips it to `rejected` with the
+record, the branch and the debt left exactly as they are to drain. Everything spent past that door — the stage check,
+the checkout probe, the remote read, the diff — is time a poll on another worker can find the issue closed in, and
+only the process-wide close latch can say so; that one is asked immediately before each of the two pushes and
+**stops** the tick instead of handing it back, since the object this tick holds still reads open and a terminal
+behind it would find nothing to finalize while the handler spawned an agent. What advances the issue there is the
+cleanup pass every latched close is owed. The gated publication carries the same barrier of its own, immediately
+before the push and nowhere else in it: every guard above that line spends a reading, a diff or a request after it,
+so a close landing in one of those windows would be answered one push too late.
 
 A branch some owner deliberately moved OFF the approved commit never reaches that refusal, because an approval whose
 commit was abandoned is superseded and the owner doing the abandoning drops it: the auto rebase's reset — which puts

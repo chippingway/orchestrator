@@ -277,6 +277,28 @@ def _publishes_the_debt(
     unpayable = _unpayable_debt(gate, approved)
     if unpayable:
         return _unreachable_debt(gate, unpayable)
+    if gate.close_was_observed:
+        # The guard at the reconciliation's door reads the issue OBJECT, which
+        # is the snapshot the tick opened with -- and the proof above spends a
+        # worktree probe, a head read and a status read after it. A close
+        # landing in that window would be answered one push too late, on a
+        # pull request nobody wants.
+        #
+        # It STOPS the tick rather than handing it back, which the door guard
+        # does not have to do: there the object says closed, so the stage's
+        # own terminal is next and drains the issue. Here only the process
+        # knows -- the object this tick is holding still reads open -- so the
+        # terminal reads an open issue, finds nothing to finalize, and the
+        # handler behind it spawns an agent on an issue somebody closed. What
+        # advances the issue instead is the cleanup pass every latched close
+        # is owed, which is what settles the latch.
+        log.info(
+            "issue=#%d was observed closed while its debt was being "
+            "reconciled; stopping the tick rather than putting work on an "
+            "issue nobody wants",
+            gate.issue.number,
+        )
+        return True
     log.info(
         "issue=#%d records a commit an approval owes a push for and no "
         "generation to reconcile it from; publishing it before the stage runs",

@@ -1353,14 +1353,33 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             one the worktree is writable and a commit landing there is a different candidate, and
                             every RECOVERY names one too, since no developer ran and the reading that licensed it
                             was about a commit a previous tick recorded -- the three records that
-                            say a commit is already decided (the adjudication's exemption, the gate's own unspent
-                            approval, and the commit this stage already pushed), a record already answering, and
-                            the count that answers a pair nothing has yet. An issue ALREADY standing on the
-                            authorization park, over an exemption naming this very commit, is asked ahead of every
-                            one of them and answered by `late_consent` instead: what that park doubts is the
-                            exemption itself, so reading it here as "already decided" would publish the bypass the
-                            park was taken to withhold. Nothing in this build takes that park, so the question is
-                            False on every ordinary tick
+                            say a commit is already decided (the adjudication's exemption asked as a pair with the
+                            operator authorization beside it, the gate's own unspent approval, and the commit this
+                            stage already pushed), the commit an open pull request this call froze already stands
+                            on, a record already answering, and the count that answers a pair nothing has yet. A
+                            commit an exemption names and no authorization stands behind takes none of those roads
+                            and is answered by `late_consent` past the switch instead: the exemption is an agent's
+                            verdict, so reading it here as "already decided" would publish half a bypass
+      late_authority.py     whether the human behind an adjudicated commit is one this issue can show, which is
+                            what every road past the measurement asks before it takes one. The exemption and the
+                            `late_override_*` authorization are asked TOGETHER and both held to naming one commit,
+                            since either alone is half a bypass -- an exemption records that an adjudicator ruled
+                            the change one whole, and only an operator's own gesture says a human agreed to publish
+                            past the ceiling. Neither is believed on its shape: every term of an authorization but
+                            the digest is the pinned comment agreeing with itself, so the contribution between the
+                            pair the record names is fingerprinted again here and held to what that record says,
+                            and a reading this host cannot take refuses on the same footing as one that disagrees.
+                            What a refusal costs is the measurement the gate would have taken anyway. Two things
+                            are never held back by it: a commit the pull request this call froze is ALREADY
+                            standing on, where the push moves nothing and only the bookkeeping behind a publication
+                            that has happened is left, and work that is over, since a merged or closed issue is
+                            finalized before any handler reaches the gate. The publication DEBT such a commit
+                            leaves is the same question one field over, answered off the approval's own recorded
+                            basis rather than inferred: the two bases an operator's gesture is behind defer to this
+                            reading, a gate-owned `reading` approval is untouched, and an approval an older binary
+                            wrote with no basis falls back to the exemption -- read conservatively, so a comment
+                            that CLAIMS one and cannot say which commit it is about is the adjudication's debt
+                            rather than this workflow's own
       late_consent.py       the park an adjudicated candidate with no operator authorization behind it waits on,
                             the one door into it -- an issue standing on it over an exemption naming the commit in
                             hand, which is the whole of what keeps the policy off every other issue. All three are
@@ -1418,9 +1437,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             comment is ours; what an unclaimed sentence of ours costs is standing in the reading as
                             somebody's word, which is no command, so the park holds. The notices are worded on
                             the side of publication the park was taken on, since guidance reaches a developer only
-                            where the ordinary resume is still in front of the issue. No road at the gate TAKES
-                            this park yet; what reaches the policy is an issue whose record already stands behind
-                            one, brought back to the gate by `late_recovery` on every poll
+                            where the ordinary resume is still in front of the issue. What reaches this owner is
+                            every candidate `late_authority` beside it calls exempt on a record nobody authorized,
+                            and an issue already standing behind the park is brought back to the gate by
+                            `late_recovery` on every poll
       late_command.py       which reply on a standing park a tick should act on, and nothing else: no record is
                             written and nothing is decided. The LAST fresh trusted reply, because reading the
                             batch as a set is what poisons a park -- a reply matching nothing is never consumed
@@ -1620,7 +1640,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             write, since past it neither the approval nor the generation is left to say a round was
                             owed, while the caller still has a relabel and a write to make), record what reached the
                             remote so a tick that dies
-                            past the push neither re-reads nor re-pushes it, and prove the checkout again on the far
+                            past the push neither re-reads nor re-pushes it, refuse a close a poll latched
+                            immediately before the push and nowhere else here, since every guard above spends a
+                            reading, a diff or a request after it and a close landing in one of those windows would
+                            be answered one push too late, and prove the checkout again on the far
                             side of the effect -- AHEAD of that write, so what the proof answers rides it: a
                             checkout that moved or was dirtied holds the handoff rather than the publication, and
                             the claim it owes lands with the receipt rather than one write behind it, where a crash
@@ -1716,6 +1739,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             evidence naming a bounded kind from a stage that really makes that kind -- the two are
                             one claim, so a `conflict_rebase` offered from `validating` types in both halves while
                             describing a rewrite that stage does not make -- and every end of both contributions,
+                            an operator authorization standing behind the exemption it would move, proved through
+                            the owner the GATE proves one through, since moving an exemption nothing authorizes
+                            would hand the rewritten commit a permission the accepted one never had,
                             no authorization this build cannot read already standing for that exemption -- a grant
                             REPLACES that group rather than adding to it, so an unreadable claim about the exempt
                             commit is evidence a transfer may not overwrite to repair -- the publication this call
@@ -1811,7 +1837,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             It stops the tick outright where the checkout that pair names is not on this host and
                             where the label has left the stage the pair was frozen on, since neither a re-entry nor
                             the handler is this process's to pick -- and it retires its own measurement park on a
-                            record whose split has settled, which is a group with no count that owes no reading
+                            record whose split has settled, which is a group with no count that owes no reading.
+                            Both roads end in a PUSH, so a CLOSED issue is answered ahead of either: the object the
+                            tick opened with is read at the door and the tick handed back, since the stage terminal
+                            behind the handler is what drains such an issue. The process-wide latch is the other
+                            fact and is asked immediately before each push, because everything between that door
+                            and the effect -- the stage check, the checkout probe, the whole gated reading -- is
+                            time a poll on another worker can find the issue closed in; that one STOPS the tick,
+                            since the object still reads open and a terminal behind it would find nothing to
+                            finalize while the handler spawned an agent
       late_claims.py        what a post-publication record claims and what it cannot produce: whether a live one
                             still owes its count, and -- ahead of both reconciliations -- the four refusals a record
                             that cannot make a claim whole earns. Read off the RAW fields, because the parse is what
@@ -1837,7 +1871,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             and only from a checkout still standing on that commit. One that is absent, unreadable,
                             or standing elsewhere PARKS rather than standing down: the debt says a commit the pull
                             request does not carry was allowed to join it, so a handler behind any of those reads a
-                            publication the approved work is not on. A push that LANDS closes what its caller never
+                            publication the approved work is not on. A close a poll latched while the proof above
+                            was being taken stops the tick between that proof and the push, since the object this
+                            tick holds still reads open and only the latch can answer for the window. A push that LANDS closes what its caller never
                             got to -- the route bookkeeping the approval carried past its own retirement, and the
                             transient park that failed push left -- since no tick behind this one can, and one that
                             misses again leaves both alone and says nothing: a second mention is one nobody can

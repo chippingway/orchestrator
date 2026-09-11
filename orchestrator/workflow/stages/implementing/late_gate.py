@@ -56,24 +56,39 @@ fresh candidate. A reconciliation has no such run, so a head that moved
 between the proof its caller took and the one taken here is a checkout
 something moved mid-tick, and it is refused rather than measured or pushed.
 
-Five candidates skip the measurement, and none is a bypass. Three of them are
+Six candidates skip the measurement, and none is a bypass. Four of them are
 commits this workflow has already DECIDED about, and they are recognized the
 same way, by naming one commit and only it -- work committed on top of any of
 them is measured as the fresh candidate it is. One is the exact commit an
-adjudication accepted, which the exemption names. One is the commit an
+adjudication accepted AND an operator authorized: the exemption is a verdict
+an agent reached, so on its own it says a change was ruled one whole and says
+nothing about who agreed to put an oversized change on a pull request, and the
+two records together are what a bypass is. A commit only the exemption names
+-- an older binary's automatic exemption, or one whose authorization this
+build cannot read whole -- is measured like any other candidate, and
+`late_authority` beside this owns what an oversized reading of one earns. One
+is the commit an
 approval still owes a push: a crash between the write that approves a
 candidate and the push it licenses brings the same commit back here with its
 generation already retired, and re-deciding it there would re-measure a
 settled question against a base that has moved since -- routing work a human
-may already have adjudicated back into adjudication. One approval is not that,
-and it defers: a commit an approval names only because a rewrite TRANSFER let
-it past was never read here at all, so the permit that licensed it is re-asked
-over the record the grant left rather than answered on the object id. One is
-the commit this
+may already have adjudicated back into adjudication. Two approvals are not
+that, and both defer: a commit an approval names only because a rewrite
+TRANSFER let it past was never read here at all, so the permit that licensed
+it is re-asked over the record the grant left rather than answered on the
+object id, and a commit an approval names on an unauthorized exemption's own
+grounds is that exemption one field over, so it is answered by the same
+reading. A gate-owned approval -- every one for a candidate the reading found
+at or below the ceiling -- is untouched by either. One is the commit this
 stage already PUSHED, which is that window one step further on: past the push
 a pull request carries the work and only the relabel is owed, so a reading
 that came back oversized there would hold nothing back and route a published
-branch to adjudication. The fourth is a NEW candidate while `DECOMPOSE` is
+branch to adjudication. One is the commit its own pull request is already
+standing on while an exemption nothing authorizes names it: the push would
+move nothing, so what is being decided is whether the bookkeeping behind a
+publication that has already happened may finish, and holding that back would
+strand published work under a stage no later tick advances. The fifth is a
+NEW candidate while `DECOMPOSE` is
 off -- the switch decides whether new work enters the gate and decides nothing
 about work already in it, about a reconciliation answering a reading the gate
 itself recorded, or about a commit it has already approved or published. In it
@@ -82,7 +97,7 @@ resumed developer's fresh commit has moved past, so the fresh commit is the
 new work the switch publishes untouched and the superseded record is retired
 rather than left over a commit nothing will push.
 
-The fifth is the only one no record names in advance: a REWRITE of the exact
+The sixth is the only one no record names in advance: a REWRITE of the exact
 commit an authorized settlement accepted. A squash on approval and the refresh's own
 clean base rebase each replace that commit with an object carrying the
 identical contribution, and the one-commit rule that makes the exemption safe
@@ -108,7 +123,9 @@ and until then a granted permission simply stands.
 This owner is the order those questions are asked in and nothing else. What a
 tick is ABOUT is `late_records`, the pair it measures over is `late_freeze`,
 the reading itself is `late_reading`, what a recovery proves first is
-`late_evidence`, what a rewrite of an accepted commit may carry with it is
+`late_evidence`, whether an adjudicated commit has a human behind it is
+`late_authority`, what an oversized one with nobody behind it waits on is
+`late_consent`, what a rewrite of an accepted commit may carry with it is
 `late_transfer`, what an answer earns is `late_verdict`, and what a refusal
 costs is `late_parks`.
 """
@@ -124,12 +141,10 @@ from orchestrator.git.measurement import (
 )
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import (
-    exemption as _exemption,
-    state as _late_state,
-)
+from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
+    late_authority as _authority,
     late_consent as _consent,
     late_freeze as _freeze,
     late_parks as _parks,
@@ -163,7 +178,7 @@ _MOVED_OFF_THE_CALLER_PARK = (
 )
 
 
-_ADJUDICATED = "was adjudicated as one change"
+_ADJUDICATED = "was adjudicated as one change an operator authorized"
 
 _APPROVED = "is the commit this gate approved and has still to push"
 
@@ -268,22 +283,25 @@ def _decided(
     so the write past the push is handed this commit and not the record, and
     a permit that refused rotates nothing however readable the permission
     beside it still is.
+
+    What ADMITTED the candidate travels with it, because this is the only
+    place that knows and because a second answer taken later is a second
+    chance to fail: proving an operator's authorization is a git reading, and
+    a store that stopped answering between the proof here and the write that
+    records the debt would leave that bypass looking like ordinary unmeasured
+    debt -- which the tick after a crash spends without asking anyone. One
+    answer here is a human's; every other road past the measurement is this
+    workflow's own record, and each of those already answers for itself.
+
+    Behind every record and the switch sits the one candidate that is none of
+    them: a commit an exemption names and no authorization stands behind. It
+    is asked LAST because each answer above outranks it -- an authorized pair
+    publishes, a pull request already standing on the commit finishes its
+    bookkeeping, and an install with the gate switched off measures nothing at
+    all -- and what it earns is a reading of its own, held for the person the
+    exemption cannot show. `late_consent` owns that road and the command that
+    ends it.
     """
-    if _consent._awaits_an_operator(gate, candidate_sha):
-        # An issue already behind the authorization park, over an exemption
-        # naming this very commit, is the one place a record saying "decided"
-        # may not be believed: what that park doubts is the exemption itself,
-        # an adjudicator's ruling with no operator behind it, so reading it
-        # here would publish the bypass the park exists to withhold. It is
-        # asked ahead of every other question for that reason, and it is the
-        # only entry into the policy -- nothing in this build takes the park,
-        # so the answer is False on every ordinary tick and every candidate
-        # takes the road below, the one a park over a commit nothing exempts
-        # takes too.
-        return _held_or_published(
-            candidate_sha,
-            _consent._holds_until_authorized(gate, recorded, candidate_sha),
-        )
     decided = _needs_no_measuring(gate, recorded, candidate_sha)
     permitted = decided or _transfer._carried_over(gate, candidate_sha)
     if permitted:
@@ -294,6 +312,12 @@ def _decided(
         return _verdict_owner._unmeasured_verdict(
             gate, recorded, candidate_sha,
             permitted_sha="" if decided else candidate_sha,
+            basis=_admitted_by(decided),
+        )
+    if _authority._unauthorized_exemption(gate, candidate_sha):
+        return _held_or_published(
+            candidate_sha,
+            _consent._holds_until_authorized(gate, recorded, candidate_sha),
         )
     answered = (
         recorded.candidate_sha == candidate_sha
@@ -320,6 +344,24 @@ def _held_or_published(
     return _records._GateVerdict(held=False, candidate_sha=candidate_sha)
 
 
+def _admitted_by(decided: str) -> str:
+    """The basis the debt a candidate admitted without a reading rests on.
+
+    One road past the measurement is a human's -- the exemption an operator
+    authorized -- and the debt it leaves may be spent only while that
+    authorization can still be read. Every other road is a record this
+    workflow made for itself and re-derives on the next tick, so the debt
+    behind one answers for its own bypass and the tick after a crash spends it
+    without asking anybody.
+
+    Said here rather than at the write, because the answer above is what knows
+    and a proof taken a second time is a second chance to fail.
+    """
+    if decided != _ADJUDICATED:
+        return str(_parks.LateApprovalBasis.UNMEASURED)
+    return str(_parks.LateApprovalBasis.ADJUDICATION)
+
+
 def _approved_on_a_reading(
     gate: _records._Gate, candidate_sha: str,
 ) -> bool:
@@ -344,8 +386,20 @@ def _approved_on_a_reading(
     Refused, the ordinary cumulative gate measures the rewrite like any other
     candidate: an oversized change nothing may publish unmeasured is exactly
     what an unvalidatable permission leaves behind.
+
+    A debt the EXEMPTION left defers on the same footing and for the same
+    reason, and `late_authority` is where its provenance is read. The
+    settlement writes the approval and the exemption in one breath, so an
+    approval resting on that adjudication is the adjudication wearing another
+    field -- and where nothing authorizes the exemption, nothing authorizes
+    the debt either. A gate-owned approval, which is every approval for a
+    candidate the reading found at or below the ceiling, is untouched by it:
+    that one is this gate's own answer brought back by a crash, and no human
+    was ever owed a decision about it.
     """
     if _parks._approved_commit(gate.state) != candidate_sha:
+        return False
+    if _authority._unauthorized_debt(gate, candidate_sha):
         return False
     return not _transfer._licensed_by_a_permit(gate.state)
 
@@ -430,27 +484,44 @@ def _unnameable(
     return _records._HELD
 
 
-def _needs_no_measuring(
-    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
-) -> str:
-    """Why this commit publishes without a reading, or "" where it needs one.
+def _already_decided(gate: _records._Gate, candidate_sha: str) -> str:
+    """Why the RECORD says this commit needs no reading, or "" if it does not.
 
     Three records say a commit was already DECIDED about, and they say it the
     same way: by naming one commit and only it, so anything committed on top
     of any of them is work nobody decided about and is measured as the fresh
     candidate it is.
 
-    The exemption is a verdict a human's adjudication reached, and it outlives
-    the publication because the gate would otherwise measure the same
-    candidate past the same ceiling forever. The approval is this gate's own
-    -- with the one exception a permit granted it, which defers to that permit
-    rather than answering on the object id alone -- and it lives only until
-    the push it licenses lands: the write that
+    The first is the exemption, and it is asked as a PAIR with the
+    authorization beside it. What the exemption records is that an
+    adjudication ruled the change one coherent whole, which is an agent's
+    answer; what an operator's authorization records is that a human who read
+    it agreed to publish past the ceiling. Only the two together are a bypass
+    -- a guard against agents putting unreviewed bulk on a pull request may
+    not be waived by an agent saying it should be -- so a commit only the
+    exemption names goes to the ordinary cumulative gate, which is what an
+    older binary's automatic exemption gets and what a hand-edited or
+    half-written authorization costs. The pair outlives the publication
+    because the gate would otherwise measure the same candidate past the same
+    ceiling forever.
+
+    The approval is this gate's own -- with two exceptions, a permit that
+    granted it, which defers to that permit rather than answering on the
+    object id alone, and the debt an unauthorized exemption left, which is
+    that exemption wearing another field and defers to the same reading -- and
+    it lives only until the push it licenses lands: the write that
     approves a candidate drops the generation naming it, so a crash before the
     push brings the same commit back here with nothing left to say it was
     already settled. Measuring it again is not a second opinion -- the base
     has moved since, so it is a different question -- and answering it can
     route work a human already adjudicated straight back into adjudication.
+
+    Between the two sits the one answer an unauthorized exemption still earns:
+    a commit its own pull request is ALREADY standing on. The push would move
+    nothing, so what would be held back is the bookkeeping behind a
+    publication that has happened -- and published work under a stage nothing
+    will advance is worse than the unmeasured push this rule exists to stop,
+    which is not on offer either way.
 
     The publication record is that same window read from its far end, and the
     one that matters most because the effects are already out, and it is the
@@ -465,6 +536,44 @@ def _needs_no_measuring(
     nothing left to hold back -- the one outcome this gate exists to prevent.
     So the commit is recognized rather than re-read, the pull request that
     already carries it is reused, and the relabel is finished.
+    """
+    if _authority._publishes_on_an_exemption(gate, candidate_sha):
+        return _ADJUDICATED
+    delivered = _authority._already_on_its_pull_request(gate, candidate_sha)
+    if delivered:
+        return delivered
+    if _approved_on_a_reading(gate, candidate_sha):
+        return _APPROVED
+    if _parks._published_commit(gate.state) != candidate_sha:
+        return ""
+    # The receipt is a local note, and what it is evidence FOR is that the
+    # pull request carries the commit. On the published side this call has
+    # already frozen the head that pull request is on, so the two are read
+    # together: a receipt naming a commit the remote has moved off records a
+    # publication that is over, and skipping the reading for it would wave
+    # through work the pull request no longer has. Where nothing was frozen
+    # the receipt answers alone -- that is the initial publication, whose
+    # window is between the push that opened a pull request and the relabel
+    # that never landed -- and it answers alone only for a commit this gate
+    # measured on the way out. For one an exemption names and nothing
+    # authorizes there is no frozen head to check it against and the note is
+    # never cleared, so a remote that has moved off the commit would have it
+    # republished unmeasured and unleased.
+    frozen = gate.entry.published_sha if gate.entry else ""
+    vouched = (
+        _authority._receipt_answers_alone(gate, candidate_sha)
+        and (not frozen or frozen == candidate_sha)
+    )
+    return _PUBLISHED if vouched else ""
+
+
+def _needs_no_measuring(
+    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
+) -> str:
+    """Why this commit publishes without a reading, or "" where it needs one.
+
+    The records first, which `_already_decided` beside this answers, and the
+    switch behind them.
 
     The switch is the last answer and is asked last, here rather than at the
     door, for the one state the door could not settle. An approval keeps
@@ -480,31 +589,17 @@ def _needs_no_measuring(
     seen.
 
     "A record already in the gate" is a record about THIS commit, which is the
-    same claim by one commit and only it the three above are recognized by. A
-    generation naming some OTHER candidate is one a resumed developer's fresh
-    commit has moved past, and the fresh commit is new work: measured where
-    the switch is on, published untouched where it is off, and in both cases
-    the superseded record is retired rather than left over a commit nothing
-    will publish. Read as "in the gate" instead, an install with the switch
-    off measures exactly the work it turned the gate off for.
+    same claim by one commit and only it every record above is recognized by.
+    A generation naming some OTHER candidate is one a resumed developer's
+    fresh commit has moved past, and the fresh commit is new work: measured
+    where the switch is on, published untouched where it is off, and in both
+    cases the superseded record is retired rather than left over a commit
+    nothing will publish. Read as "in the gate" instead, an install with the
+    switch off measures exactly the work it turned the gate off for.
     """
-    if _exemption.is_exempt(gate.state, candidate_sha):
-        return _ADJUDICATED
-    if _approved_on_a_reading(gate, candidate_sha):
-        return _APPROVED
-    if _parks._published_commit(gate.state) == candidate_sha:
-        # The receipt is a local note, and what it is evidence FOR is that the
-        # pull request carries the commit. On the published side this call has
-        # already frozen the head that pull request is on, so the two are read
-        # together: a receipt naming a commit the remote has moved off records
-        # a publication that is over, and skipping the reading for it would
-        # wave through work the pull request no longer has. Where nothing was
-        # frozen the receipt answers alone -- that is the initial publication,
-        # whose window is between the push that opened a pull request and the
-        # relabel that never landed.
-        frozen = gate.entry.published_sha if gate.entry else ""
-        if not frozen or frozen == candidate_sha:
-            return _PUBLISHED
+    decided = _already_decided(gate, candidate_sha)
+    if decided:
+        return decided
     already_read = (
         recorded.candidate_sha == candidate_sha or gate.answering
     )

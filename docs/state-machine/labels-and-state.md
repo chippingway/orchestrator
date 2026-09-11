@@ -670,25 +670,22 @@ The keys that matter for the state machine fall into a few groups:
   has to be written from anyway. Left durable, the park would be relabelled out from under itself on the very next
   poll and nothing could ever answer it.
 
-  An issue standing on this park is the one place the size gate may not believe its own record. `late_exempt_sha`
-  is exactly what the park doubts, so reading it as *already decided* would publish the very bypass the park was
-  taken to withhold — every syntactically valid command, a wrong SHA and an abbreviation included, would push. So
-  the gate asks whether the park is standing ahead of every other question and hands the candidate to
-  `implementing/late_consent.py`, which measures it **afresh** — the pair frozen, the diff counted, the ceiling
-  read on the tick that acts — and publishes only what an operator named. That door is the whole of what keeps the
-  policy off every other issue: nothing in this build takes the park, so the question is False on every ordinary
-  tick and the road behind it is untouched.
+  `late_exempt_sha` on its own is exactly what this park doubts, so the size gate never reads it as *already
+  decided*: it is asked as a pair with the `late_override_*` group beside it, and a commit only the exemption names
+  goes to the ordinary cumulative reading. `implementing/late_authority.py` is where the two are asked together,
+  and a candidate it calls exempt-but-unauthorized is handed to `implementing/late_consent.py`, which measures it
+  **afresh** — the pair frozen, the diff counted, the ceiling read on the tick that acts — and publishes only what
+  the count or an operator allows.
 
-  Three things open it, and `late_exempt_sha` naming **this very commit** is the third. The flag alone is any of a
-  dozen questions a human is holding; the reason alone is a park somebody has already answered; and the two
-  together over a commit nothing exempts are a park held for a change no adjudicator ever ruled on. What this park
-  collects is one half of the two-part bypass above, so entered without the other half a command alone would earn
-  the `late_override_*` group, take the park off, and publish a candidate carrying only the operator's half of the
-  record — the one outcome the ceiling exists to catch. The exemption is read through the domain's own object-id
+  The door into that owner is `late_exempt_sha` naming **this very commit** and no authorization this build can
+  read back whole standing behind it, which is the whole of what keeps the policy off every other issue. What this
+  park collects is one half of the two-part bypass above, so entered without the other half a command alone would
+  earn the `late_override_*` group and publish a candidate carrying only the operator's half of the record — the
+  one outcome the ceiling exists to catch. The exemption is read through the domain's own object-id
   reader, so an abbreviation, prose, or a shape an older binary wrote is no exemption rather than one nothing can
   compare; and one naming another commit is a ruling a resumed developer's work has moved past, which says nothing
-  about the change in hand. Where the door refuses, the tick takes the ordinary road below and this policy does not
-  run at all: the candidate is measured like any other and an oversized one is routed to `workflow:decomposing` for
+  about the change in hand. Where the door refuses, the tick takes the ordinary road below: the candidate is
+  measured like any other and an oversized one is routed to `workflow:decomposing` for
   the adjudication a change with nobody's verdict behind it is owed.
 
   A candidate the fresh count puts at or below the ceiling is not this
@@ -1005,10 +1002,11 @@ The keys that matter for the state machine fall into a few groups:
   over again — over a watermark that would move past whatever the operator wrote in between, taking their decision
   with it.
 
-  The park, its command, the fresh reading behind it and the routing that answers it are all in place. What is not
-  is any road that CREATES the park: no measurement takes it, so on this build the door is closed and the whole
-  policy is reachable only by an issue whose record already stands behind it. Making an exemption half a bypass —
-  the change that would start taking it — is a separate one.
+  What CREATES the park is the reading itself, on both sides of publication: a candidate `late_authority` calls
+  exempt-but-unauthorized and the count then puts strictly past `MAX_ADDED_LINES`. A change at or below the ceiling
+  — exactly `MAX_ADDED_LINES` included — publishes on its own count and never reaches it, and a commit the pull
+  request this call froze is already standing on is never held that way either: the push would move nothing, and
+  what would be held back is the bookkeeping behind a publication that has already happened.
 
   `late_evidence_missing` is the adjudication's counterpart, taken
   under `workflow:decomposing` before the hold or any spawn: the checkout is there and one of the two recorded
@@ -2243,9 +2241,14 @@ rather than preserving.
   waiting for, and the group a trusted whole-comment `/orchestrator authorize-oversized <commit>` on that park
   writes — from the size gate's OWN reading rather than from anything already on the comment.
 
-  The record is durable evidence and nothing more: what a candidate publishes under is decided by the gate and by
-  `late_exempt_sha` beside this group, and what recording an authorization buys is that a human's gesture survives a
-  crash, a cleared generation, and a fresh process. The settlement that publishes reads it back, compares every
+  The record is durable evidence and nothing more: what a candidate publishes under is decided by the gate, which
+  asks this group and `late_exempt_sha` beside it TOGETHER through
+  [`late_authority`](../../orchestrator/workflow/stages/implementing/late_authority.py) — the exemption is an
+  adjudicator's answer, so a commit only it names is measured — and re-fingerprints the pair this group records
+  before it lets one publish. The rewrite transfer asks the same owner the same question before it moves an
+  exemption, and the write that moves one carries this group with it. What recording an authorization buys is that
+  a human's gesture survives a crash, a cleared generation, and a fresh process. The settlement that publishes reads
+  it back, compares every
   frozen term — the candidate, the base, the additions and the threshold — against the generation in hand, and then
   fingerprints the contribution AGAIN and holds it to `late_override_fingerprint`. That last comparison is what the
   digest is recorded for: the other terms are the pinned comment agreeing with itself, while the digest is answered

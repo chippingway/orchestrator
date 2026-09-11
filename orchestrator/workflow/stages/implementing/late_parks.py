@@ -123,8 +123,7 @@ class LateApprovalBasis(StrEnum):
 # gesture can still be read. Named as a group because that is the question a
 # reader has of the basis -- whether a debt has to be revalidated, rather than
 # which owner granted it -- so the membership is stated once here instead of
-# being re-derived by each of them. Nothing reads it while the gate has no road
-# collecting an authorization, and it is the whole of what the two share.
+# being re-derived by each of them, and it is the whole of what the two share.
 AUTHORIZED_BASES = frozenset((
     LateApprovalBasis.ADJUDICATION,
     LateApprovalBasis.AUTHORIZATION,

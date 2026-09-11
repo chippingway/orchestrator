@@ -19,10 +19,15 @@ from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.implementing import (
     late_command as _command,
     late_consent as _consent,
+    late_parks as _parks,
     late_verdict as _verdict_owner,
     state as _state,
 )
-from tests.workflow.fixtures import MEASURED_BASE_SHA, MEASURED_CANDIDATE_SHA
+from tests.workflow.fixtures import (
+    MEASURED_BASE_SHA,
+    MEASURED_CANDIDATE_SHA,
+    _authorized_exemption,
+)
 from tests.workflow.interleaving import _RacesTheStep
 from tests.workflow.stages.implementing import (
     late_consent_test_support as support,
@@ -34,72 +39,27 @@ _ORCH_MARKER = _comments._ORCH_COMMENT_MARKER
 _RESUMED_AGAINST_IT = "the developer is resumed against it"
 
 
-class StandingParkTest(support._ConsentCase, unittest.TestCase):
-    """The one door into this policy, and what each half of it answers.
-
-    Nothing in this build takes the park, so the door is the whole of what
-    keeps the policy off every other issue.
-    """
-
-    def test_only_this_park_is_behind_the_door(self) -> None:
-        # Each says who is waiting behind which question. The flag alone is
-        # any of a dozen things a human is holding, and the reason alone is a
-        # park somebody has already answered.
-        for described, parked, seeded, expected in (
-            ("standing", True, {}, True),
-            ("another reason", True, {_state._PARK_REASON: "late_worktree_missing"}, False),
-            ("nobody waiting", True, {_state._AWAITING_HUMAN: False}, False),
-            ("nothing at all", False, {}, False),
-        ):
-            with self.subTest(park=described):
-                self.setUp()
-                self._seed(parked=parked, **seeded)
-
-                self.assertIs(self._at_the_door(), expected)
-
-    def test_only_an_adjudicated_commit_is_behind_it(self) -> None:
-        # What this park collects is HALF of a two-part bypass: an
-        # adjudicator's ruling that the change is one change, and an operator
-        # who agreed to publish it past the ceiling. Entered without the
-        # first, a command alone would earn the override group, take the park
-        # off, and publish a candidate nobody has ruled on.
-        for described, exempted in (
-            ("this candidate", MEASURED_CANDIDATE_SHA),
-            ("another commit", support.STRANGER_SHA),
-            ("nothing at all", None),
-            ("an abbreviation", MEASURED_CANDIDATE_SHA[:support.ABBREVIATED]),
-            ("prose", "the one above"),
-        ):
-            with self.subTest(exemption=described):
-                self.setUp()
-                self._seed(**{support.KEY_EXEMPT_SHA: exempted})
-
-                self.assertIs(
-                    self._at_the_door(), exempted == MEASURED_CANDIDATE_SHA,
-                )
-
-    def _at_the_door(self) -> bool:
-        return _consent._awaits_an_operator(
-            self._gate(), MEASURED_CANDIDATE_SHA,
-        )
-
-
 class GateDoorTest(support._ConsentCase, unittest.TestCase):
     """Which road one whole gate decision takes, and what it leaves behind.
 
-    The policy behind the door and the ordinary measurement below it reach
-    the same two verdicts, so a case asking only what came back could not
-    tell which of them decided.
+    This owner's road and the ordinary measurement beside it reach the same
+    two verdicts, so a case asking only what came back could not tell which of
+    them decided.
     """
 
     def test_a_command_publishes_nothing_unruled(self) -> None:
-        # The end of the same road, through the gate that walks it. Entered on
-        # the park fields alone, a command naming the freshly measured head
-        # earns the override group, takes the park off, and hands the caller a
-        # publish verdict -- a bypass carrying only the operator's half of it.
+        # What the park collects is HALF of a two-part bypass: an
+        # adjudicator's ruling that the change is one change, and an operator
+        # who agreed to publish it past the ceiling. Reached without the
+        # first, a command alone would earn the override group and publish a
+        # candidate nobody has ruled on -- so a commit no exemption names goes
+        # to the ordinary reading, which routes an oversized one to the
+        # adjudication that has never seen it.
         for described, exempted in (
             ("nothing at all", None),
             ("another commit", support.STRANGER_SHA),
+            ("an abbreviation", MEASURED_CANDIDATE_SHA[:support.ABBREVIATED]),
+            ("prose", "the one above"),
         ):
             with self.subTest(exemption=described):
                 self.setUp()
@@ -117,10 +77,10 @@ class GateDoorTest(support._ConsentCase, unittest.TestCase):
                     support.KEY_OVERRIDE_CANDIDATE_SHA, self._pinned(),
                 )
 
-    def test_an_adjudicated_commit_still_publishes(self) -> None:
-        # The other direction, so the door is narrowed rather than shut: the
-        # candidate an adjudicator did rule on is answered by the policy
-        # exactly as before, on the operator's command and this tick's count.
+    def test_an_adjudicated_commit_takes_this_road(self) -> None:
+        # The other direction: the candidate an adjudicator did rule on and
+        # nobody authorized is answered here rather than by the ordinary
+        # reading, on the operator's command and this tick's own count.
         self._seed(**support.measured_pair())
         commanded = self._reply(support.AUTHORIZE)
 
@@ -131,6 +91,21 @@ class GateDoorTest(support._ConsentCase, unittest.TestCase):
         self.assertEqual(decided.verdict.candidate_sha, MEASURED_CANDIDATE_SHA)
         self.assertEqual(
             self._pinned()[support.KEY_OVERRIDE_COMMENT_ID], commanded,
+        )
+
+    def test_an_authorized_commit_skips_the_reading(self) -> None:
+        # And the far side of the same road, which is what a recorded
+        # authorization buys: the exemption and the terms an operator granted
+        # it on both name the commit, so the gate publishes it without a
+        # count and without asking anybody a second time.
+        self._seed(parked=False, **_authorized_exemption())
+
+        decided = self._decides()
+
+        self.assertFalse(decided.verdict.held)
+        self.assertFalse(decided.measured)
+        self.assertEqual(
+            decided.verdict.basis, str(_parks.LateApprovalBasis.ADJUDICATION),
         )
 
 
