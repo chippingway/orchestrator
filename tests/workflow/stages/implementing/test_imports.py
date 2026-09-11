@@ -52,6 +52,7 @@ _OWNERS = (
     "late_rewrite",
     "late_rotation",
     "late_transfer",
+    "late_transfer_telemetry",
     "late_verdict",
     "models",
     "parks",
