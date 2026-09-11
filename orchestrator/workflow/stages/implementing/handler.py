@@ -143,22 +143,22 @@ def _recorded_pr_holds_the_tick(
     answer existed to protect. Nothing is written, so the next tick asks again
     from the same durable state.
 
-    TWO terminals, because a pull request ends in two ways and this stage
-    carries no arc of its own for either. A merge finalizes to `done`. One
-    somebody CLOSED without merging finalizes to `rejected`, and it has to be
-    answered here rather than further down: everything below reaches the size
-    gate, which would measure the committed candidate again and push it -- and
-    with the pull request gone, the push would open a second one over work a
-    human has already rejected.
+    TWO terminals off ONE reading, because a pull request ends in two ways,
+    this stage carries no arc of its own for either, and two fetches are two
+    moments -- a merge landing between them reads open to the first and merged
+    to the second, which the closed arc is right to ignore. A merge finalizes
+    to `done`. One somebody CLOSED without merging finalizes to `rejected`,
+    and both have to be answered here rather than further down: everything
+    below reaches the size gate, which would measure the committed candidate
+    again and push it -- and with the pull request gone, the push would open a
+    second one over work a human has already rejected.
     """
     plan_verdict = _recorded_pr_is_the_plan(gh, issue, state)
     if plan_verdict is None:
         return True
     if plan_verdict:
         return False
-    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
-        return True
-    return _terminals._finalize_if_pr_closed(gh, spec, issue, state)
+    return _terminals._pr_terminal_stops_the_tick(gh, spec, issue, state)
 
 
 def _unfinished_discussion_holds_the_tick(

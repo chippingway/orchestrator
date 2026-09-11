@@ -80,6 +80,19 @@ _RECORDED_PR_UNREADABLE_PARK = (
     "re-running any agent."
 )
 
+_FOREIGN_BRANCH_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change, "
+    "but pull request #{number} -- the one it was measured against -- is open "
+    "on `{read}` rather than on `{expected}`, which is the branch this issue "
+    "would push. The number and the branch are separate fields on the pinned "
+    "comment and these two do not describe the same publication, so nothing "
+    "was handed on: publishing would grow a branch that pull request never "
+    "carried while recording its number as the change the candidate is in. "
+    "Repair the pinned comment, then the next tick asks again against the "
+    "same frozen commit."
+)
+
+
 _SETTLED_PUBLICATION_PARK = (
     "this issue's committed candidate was adjudicated as one coherent change, "
     "but pull request #{number} -- the one it was measured against -- is "
@@ -189,6 +202,13 @@ def _reconciled_publication(context: _LateContext) -> bool:
     A head that moved is the same refusal one field over, and the owner that
     tells it apart from this settlement's own landed push is asked for it.
 
+    The BRANCH is checked beside it, because a head alone is not a publication.
+    The number and the branch are separate fields on one pinned comment and
+    this road pushes the branch it resolves for itself -- so a pull request
+    standing at the frozen head on some other ref would pass every check above
+    while the push grew a branch that pull request never carried and the
+    handoff named it as the change the candidate is in.
+
     The number is recorded on the way out for the reason the road above
     records one: the publication asks its recorded pull request first, and the
     one this issue entered the gate with may not be the one it was measured
@@ -212,10 +232,47 @@ def _reconciled_publication(context: _LateContext) -> bool:
             context,
             _SETTLED_PUBLICATION_PARK.format(number=number, state=settled),
         )
+    if not _reconciled_branch(context, reading.head_branch, number):
+        return False
     if not _late_proof._reconciled_head(context, reading.head, number):
         return False
     context.state.set(_PR_NUMBER, number)
     return True
+
+
+def _reconciled_branch(
+    context: _LateContext, observed: str | None, number: int,
+) -> bool:
+    """Prove the publication is open on the branch this settlement will push.
+
+    Asked before the head, because it is what makes the head mean anything: a
+    commit is the tip of a ref, and a pull request standing at the frozen SHA
+    on some ref this issue never publishes to is somebody else's publication
+    that happens to agree.
+
+    Compared against the branch the SEAM resolves rather than against anything
+    read back, since the question is where the push behind this verdict will
+    actually land. Refused rather than preferred either way -- neither field is
+    evidence the other is wrong -- and the record is left exactly as it stands
+    for the human who reconciles it.
+    """
+    branch = _worktree_paths._resolve_branch_name(
+        context.state, context.spec, context.issue.number,
+    )
+    if observed == branch:
+        return True
+    log.error(
+        "issue=#%d was adjudicated against PR #%d, which is open on %r rather "
+        "than on %r; refusing to publish the accepted candidate onto a "
+        "publication the push would not touch",
+        context.issue.number, number, observed, branch,
+    )
+    return _late_proof._unreconciled(
+        context,
+        _FOREIGN_BRANCH_PARK.format(
+            number=number, read=observed, expected=branch,
+        ),
+    )
 
 
 def _dropped_settled_pr(context: _LateContext) -> bool:

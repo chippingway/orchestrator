@@ -31,6 +31,7 @@ from tests.support.fakes import (
     FakePR,
     make_issue,
 )
+from tests.workflow import value_helpers as _value_helpers
 from tests.workflow.fixtures import LABEL_DECOMPOSING
 
 SHA_LENGTH = 40
@@ -61,7 +62,15 @@ PLAN_PR_NUMBER = 77
 PUBLISHED_PR_NUMBER = 78
 PUBLISHED_HEAD_SHA = "d" * SHA_LENGTH
 PUBLISHED_SOURCE_STAGE = "workflow:fixing"
-PUBLISHED_BRANCH = "orchestrator/chippingway__orchestrator/issue-4242"
+# The branch that pull request is open on, which is the branch this issue's
+# own publication pushes. A real record can only name the two together: the
+# settlement resolves the branch for itself and pushes THAT, so a pull request
+# open anywhere else is one its push would never touch.
+PUBLISHED_BRANCH = _value_helpers._issue_branch(LATE_ISSUE_NUMBER)
+
+# A branch this issue never publishes to, for the case where the pinned
+# comment's own number and branch disagree.
+FOREIGN_BRANCH = f"{PUBLISHED_BRANCH}-elsewhere"
 PLAN_PR_BODY = "the design this plan PR was opened with"
 PLAN_BRANCH = "orchestrator/plan"
 

@@ -475,6 +475,14 @@ moved off would do; and without the branch — which the seam resolves from the 
 over from a cycle on another ref would license a push where nothing has published and a second pull request opened
 over the same work.
 
+A proof that fails **parks** rather than handing the commit back to the ordinary reading, because that reading is
+not a neutral answer: a count under the ceiling publishes, which force-pushes a branch nothing could confirm and
+opens the second pull request by another road. The park writes nothing else — the receipt, the recorded number and
+whatever push is still owed stand exactly as they were, for the terminal that drains finished work or for the retry
+behind a repair. Only two candidates are outside it: one an adjudication's exemption names, and one an approval
+already owes a push for. Each is a durable decision of this workflow's own, carrying its own lease, and holding
+either over a note that cannot be proved would strand the work those records exist to finish.
+
 And because a reading is a moment rather than a guarantee, the answer carries the pull request *number* rather than
 a bare permission. The push behind it is leased against that exact commit, so a branch somebody moved in the window
 rejects it instead of being force-overwritten, and the bookkeeping is bound to that pull request by number, so one

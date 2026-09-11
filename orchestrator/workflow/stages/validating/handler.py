@@ -57,15 +57,16 @@ def _finalize_validating_terminal(
     already landed. Closed PR: one somebody closed without merging, which
     leaves the ISSUE open and so is invisible to the counterpart below --
     flip to `rejected` rather than spawning a reviewer against work a human
-    has already rejected. Closed-issue counterpart: the closed-`validating`
+    has already rejected. Both come off ONE reading, since two fetches are
+    two moments and a merge landing between them reads open to the first and
+    merged to the second -- which the closed arc is right to ignore, while
+    the reviewer spawns behind it. Closed-issue counterpart: the closed-`validating`
     sweep yields issues a human closed without a merged PR; flip to `rejected`
     so the reviewer does not spawn against a closed issue and the PR is not
     relabeled back to `in_review`. The in_review / fixing handlers carry
     equivalent terminal checks.
     """
-    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
-        return True
-    if _terminals._finalize_if_pr_closed(gh, spec, issue, state):
+    if _terminals._pr_terminal_stops_the_tick(gh, spec, issue, state):
         return True
     return _terminals._finalize_if_issue_closed(gh, spec, issue, state)
 

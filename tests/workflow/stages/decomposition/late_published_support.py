@@ -36,11 +36,18 @@ def seed_published_pr(
     *,
     head: str = PUBLISHED_HEAD_SHA,
     pr_state: str = "open",
+    head_branch: str = PUBLISHED_BRANCH,
 ) -> FakePR:
-    """Add the pull request a post-publication verdict is measured against."""
+    """Add the pull request a post-publication verdict is measured against.
+
+    Open on the branch this issue's own publication pushes, which is the only
+    pairing a tick can produce: the handoff that opened it records the number
+    and the branch together. `head_branch` moves it off that branch, which is
+    the one shape where the pinned comment's own two fields disagree.
+    """
     published = FakePR(
         number=PUBLISHED_PR_NUMBER,
-        head_branch=PUBLISHED_BRANCH,
+        head_branch=head_branch,
         head=FakePRRef(sha=head),
         state=pr_state,
     )

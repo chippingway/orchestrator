@@ -33,8 +33,10 @@ from tests.workflow.stages.decomposition.late_settlement_support import (
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
+    FOREIGN_BRANCH,
     KEYS,
     OTHER_SHA,
+    PUBLISHED_BRANCH,
     PUBLISHED_HEAD_SHA,
     PUBLISHED_PR_NUMBER,
     PUBLISHED_SOURCE_STAGE,
@@ -110,14 +112,24 @@ class _PublishedVerdictMixin:
         ))
 
     def _seed_published(self, *, stage=None, **pr_fields) -> None:
-        """Re-seed this issue as one whose verdict was taken past publication."""
+        """Re-seed this issue as one whose verdict was taken past publication.
+
+        The branch is pinned beside the generation because that is what the
+        handoff which opened this pull request wrote: a record carrying a
+        number and no branch is the legacy shape, where the resolver answers
+        with a pre-slug ref -- so a fixture seeding one while putting the pull
+        request on a namespaced branch would be a record no tick produces, and
+        every reader asked to reconcile the two would be right to refuse.
+        """
         seed_published_pr(self.github, **pr_fields)
         entered = (
             published_generation(stage=stage) if stage
             else published_generation()
         )
         self.github.seed_state(
-            self.issue.number, **generation_state(entered),
+            self.issue.number,
+            branch=PUBLISHED_BRANCH,
+            **generation_state(entered),
         )
 
     def _assert_unpublished(self, outcome) -> None:
@@ -347,6 +359,19 @@ class PublishedVerdictRefusalTest(
         # Something pushed to it during the adjudication, so what the verdict
         # was taken over is not what the branch would come to.
         self._seed_published(head=OTHER_SHA)
+
+        outcome = self._settle()
+
+        self._assert_unpublished(outcome)
+
+    def test_a_publication_elsewhere_is_refused(self) -> None:
+        # The number and the branch are separate fields on one pinned comment
+        # and this road pushes the branch it resolves for itself. A pull
+        # request standing at the frozen head on some other ref passes every
+        # other check here -- so waved through, the push would grow a branch
+        # that pull request never carried while the handoff named it as the
+        # change the accepted candidate is in.
+        self._seed_published(head_branch=FOREIGN_BRANCH)
 
         outcome = self._settle()
 

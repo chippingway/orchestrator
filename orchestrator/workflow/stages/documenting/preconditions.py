@@ -41,13 +41,14 @@ def _finalize_documenting_terminal(
 ) -> bool:
     """Terminal issue/PR short-circuits before the docs pass runs.
 
-    External merge: if the PR was merged before the docs pass ran,
-    finalize to `done` rather than fetching the branch and running the
-    documenting agent against an already-landed PR. Closed PR: one
-    somebody closed without merging leaves the ISSUE open, so the
-    counterpart below never sees it -- flip to `rejected` rather than
-    running the docs agent against rejected work and pushing onto a pull
-    request that is gone. Closed-issue counterpart: the
+    Both PR endings come off ONE reading. External merge: if the PR was
+    merged before the docs pass ran, finalize to `done` rather than
+    fetching the branch and running the documenting agent against an
+    already-landed PR. Closed PR: one somebody closed without merging
+    leaves the ISSUE open, so the counterpart below never sees it -- flip
+    to `rejected` rather than running the docs agent against rejected
+    work and pushing onto a pull request that is gone. Closed-issue
+    counterpart: the
     closed-`documenting` sweep yields issues a human closed without a
     merged PR -- flip to `rejected` so the docs agent does not run
     against a closed issue.
@@ -55,9 +56,7 @@ def _finalize_documenting_terminal(
     Returns True when the issue was routed to a terminal state and the
     caller must return.
     """
-    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
-        return True
-    if _terminals._finalize_if_pr_closed(gh, spec, issue, state):
+    if _terminals._pr_terminal_stops_the_tick(gh, spec, issue, state):
         return True
     return _terminals._finalize_if_issue_closed(gh, spec, issue, state)
 

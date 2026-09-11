@@ -1063,7 +1063,9 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      `validating` and `documenting`: a closed PR leaves the ISSUE open, so nothing else here sees it, and the size
      gate below would measure the committed candidate again and push it, opening a second pull request since the
      first is gone, while the other two would spawn a reviewer or a docs agent over work a human has rejected. All
-     three defer without writing state when the PR
+     two PR endings come off ONE guarded reading rather than a fetch each, since two fetches are two moments and a
+     merge landing between them reads open to the first and merged to the second — which the close arc is right to
+     ignore, while the stage runs anyway. All of them defer without writing state when the PR
      fetch fails so a transient failure cannot mis-label a merged-PR issue. Both PR terminals are reached only past
      the plan question, which two records answer. A live `discussion_plan_path` says the recorded PR is the
      `discussion` stage's plan whatever its head is now — the handoff below retires that record durably before anything

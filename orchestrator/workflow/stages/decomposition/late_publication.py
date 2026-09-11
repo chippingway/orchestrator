@@ -6,7 +6,12 @@ Both roads out of an adjudication entered on the published side have to ask
 the same question before they act, and neither can look it up: the entry the
 gate froze names the pull request the work is already on and the head it was
 standing on, so what a settlement or a split owes is a PROOF that those two
-are still what they were rather than a search. A settlement publishes onto
+are still what they were rather than a search. The BRANCH that head is the tip
+of is read with them, because the number and the branch are separate fields on
+one pinned comment and a settlement pushes the branch it resolves for itself:
+proved on the SHA alone, a pull request standing at the frozen head on some
+other ref would be accepted, and the push would grow a branch that pull request
+never carried while the handoff named it. A settlement publishes onto
 that pull request; a `split` closes it over a supersession and hands the work
 to
 children. Both are irreversible on the remote, and both are wrong if somebody
@@ -94,6 +99,14 @@ class _PublicationReading:
 
     state: str = ""
     head: str | None = None
+    # The branch that head is the tip OF. The other half of naming a
+    # publication: a pull request standing on the commit a verdict was reached
+    # over says nothing about where a push would land unless it is open on the
+    # branch that push names, and the two are separate fields on one pinned
+    # comment. Read here because it comes off the same lazy object as the head
+    # and a caller that fetched again for it would have a second request to
+    # guard.
+    head_branch: str | None = None
     refused: bool = False
     # Whether the caller's own receipt is already on this pull request's
     # thread. Asked inside the same guarded read as the other two, because it
@@ -222,9 +235,11 @@ def _publication_facts(
 ) -> _PublicationReading:
     """The lookup and the lazy reads behind it, as one reading."""
     pull_request = gh.get_pr(number)
+    head = getattr(pull_request, "head", None)
     return _PublicationReading(
         state=gh.pr_state(pull_request),
-        head=getattr(getattr(pull_request, "head", None), "sha", None),
+        head=getattr(head, "sha", None),
+        head_branch=getattr(head, "ref", None),
         superseded=bool(receipt) and _carries_receipt(
             gh, pull_request, receipt,
         ),

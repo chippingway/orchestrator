@@ -54,6 +54,7 @@ from orchestrator.workflow.stages.implementing import (
     checkout_guards as _checkout,
     dev_pr as _dev_pr,
     handoff as _handoff,
+    late_overflow as _overflow,
     late_parks as _late_parks,
     models as _models,
 )
@@ -105,16 +106,45 @@ def _leased_against(
     return _late_parks._approved_lease(state) or None
 
 
-def _close_beat_the_push(spec: config.RepoSpec, issue: Issue) -> bool:
-    """Whether a poll read this issue closed while the tick was working.
+def _ended_before_the_push(
+    gh: _client.GitHubClient,
+    spec: config.RepoSpec,
+    issue: Issue,
+    approved: _models._ApprovedWork,
+) -> bool:
+    """Whether the work this push is about ended while the tick was working.
 
-    Asked of the process-wide latch rather than of the issue object, which is
-    the snapshot the tick opened with: everything spent since that fetch --
-    the run itself, the reading, the proofs around it -- is time a poll on
-    another worker can find the issue closed in, and the latch is what that
-    poll leaves behind. It costs no request, which is why it can be asked as
-    late as the step it guards rather than once at the door.
+    Two endings, asked immediately before the transport because that is the
+    only point at which either answer is still true: everything above spends a
+    run, a reading, or a proof that a poll on another worker can find the world
+    changing under.
+
+    The PULL REQUEST is asked only where the gate proved one -- a publication
+    it admitted BECAUSE that pull request is already standing on the commit --
+    and there it has to be asked here rather than at the bookkeeping behind
+    the push. That proof and the push are two moments: one somebody closed in
+    between is a publication this tick may not add to, and the lease makes no
+    difference, since a branch nobody moved accepts the push whatever became
+    of the pull request over it. An ordinary initial publication has none to
+    have ended, so it spends no request. Read fail-CLOSED, like every reading
+    standing immediately before an effect nothing can undo.
+
+    The CLOSE is asked last and of the process-wide latch rather than of the
+    issue object, which is the snapshot the tick opened with. Last because the
+    reading above it is a request: a close landing while that request is in
+    flight would be answered one push too late by a latch read before it, and
+    this one costs nothing, so the cheap answer gets the final word.
     """
+    if approved.delivered_pr and not _overflow._PublicationReading.still_open(
+        gh, approved.delivered_pr,
+    ):
+        log.warning(
+            "repo=%s issue=#%d cannot read pull request #%d as open before "
+            "the push its own receipt is about; refusing rather than "
+            "publishing onto a publication that has ended",
+            spec.slug, issue.number, approved.delivered_pr,
+        )
+        return True
     if not _observations.close_observed(spec.slug, issue.number):
         return False
     log.warning(
@@ -257,16 +287,18 @@ def _on_commits(
     top of the disposition is a fact about a moment that has passed by the
     time either effect runs.
 
-    A close a poll observed is refused immediately before the push, on the
-    same terms every gated publication onto an open pull request refuses one.
-    The gate's own barrier ends the CYCLE, which answers every candidate a
-    record is still live for -- and the roads this seam reaches it by are
-    exactly the ones where none is: an approval whose push failed retires its
-    generation before that push, so the retry comes back with nothing left to
-    cancel and nothing else between the reading and the effect. What a closed
-    issue may never earn is this effect, so the refusal is held: nothing
-    pushed, no pull request opened, no handoff, and the debt left exactly as
-    it stands for the cleanup a latched close is owed.
+    Work that ENDED is refused immediately before the push, on the same terms
+    every gated publication onto an open pull request refuses one. A close a
+    poll observed is one half: the gate's own barrier ends the CYCLE, which
+    answers every candidate a record is still live for -- and the roads this
+    seam reaches it by are exactly the ones where none is, since an approval
+    whose push failed retires its generation before that push. The pull
+    request the gate PROVED is the other, on the one road that has one: the
+    proof and the push are two moments, and one somebody closed in between is
+    a publication this tick may not add to. What work nobody wants may never
+    earn is this effect, so the refusal is held: nothing pushed, no pull
+    request opened, no handoff, and the receipt and debt left exactly as they
+    stand for the cleanup or the retry they are owed.
     """
     agent_result = approved.agent_result
     wt = _worktree_paths._worktree_path(spec, issue.number)
@@ -275,7 +307,7 @@ def _on_commits(
         return
     if _checkout._dirtied_before_the_push(
         gh, issue, state, published, wt,
-    ) or _close_beat_the_push(spec, issue):
+    ) or _ended_before_the_push(gh, spec, issue, approved):
         return
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     if not _branch_transport._push_branch(

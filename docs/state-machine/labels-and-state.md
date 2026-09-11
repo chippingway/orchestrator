@@ -2427,9 +2427,14 @@ rather than preserving.
   the pull request has since moved off is a record of a publication that is over, and the candidate goes back through
   the ordinary reading rather than being waved past as already published. On the implementing seam no head was frozen
   to check it against, so the same question is put to the *remote*: the pull request the record names, open, on the
-  branch that seam would push, standing on this exact commit. Anything short of that and the candidate goes back
-  through the ordinary reading — the note alone would skip it, push, and open a second pull request over work the
-  first one already carries. What the answer then carries is the pull request *number*, because a reading is a
+  branch that seam would push, standing on this exact commit. Anything short of that PARKS rather than falling
+  through to the reading: measured and found small the commit would simply be published, which force-pushes a branch
+  nothing could confirm and opens a second pull request over work the first one already carries. The park writes
+  nothing else — the receipt, the recorded number and any debt beside them stand for the terminal that drains
+  finished work or for the retry behind a repair. A commit an exemption names and one an approval owes a push for
+  are outside it: each is a durable decision carrying its own lease, and holding either would strand it.
+
+  What the answer then carries is the pull request *number*, because a reading is a
   moment: the push behind it is leased against that exact commit, so a branch moved in the window rejects it rather
   than being force-overwritten, and the bookkeeping is bound to that pull request, so one closed in the window holds
   the tick rather than earning a second one over the same work. For the same reason it is not evidence that

@@ -7,6 +7,7 @@ usage-verdict receipt it posts (tracked before the pinned-state write)."""
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from orchestrator.github import PinnedState
 from orchestrator.workflow.engine import terminals
@@ -46,6 +47,16 @@ _USAGE_TOTAL_TOKENS = 45200
 _USAGE_TOTAL_COST = 0.87
 _NO_USAGE_ISSUE_NUMBER = 206
 _NO_USAGE_PR_NUMBER = 20600
+_ONE_READING_ISSUE_NUMBER = 207
+_ONE_READING_PR_NUMBER = 20700
+
+
+def _client_with_issue(number: int, label: str):
+    """A fresh fake client carrying one labelled issue."""
+    github = FakeGitHubClient()
+    seeded = make_issue(number, label=label)
+    github.add_issue(seeded)
+    return github, seeded
 
 
 def _receipt_bodies(gh: FakeGitHubClient, issue_number: int) -> list[str]:
@@ -319,6 +330,100 @@ class FinalizeMergedPrTest(unittest.TestCase, _PatchedWorkflowMixin):
         )
 
         self.assertEqual(_receipt_bodies(gh, _NO_USAGE_ISSUE_NUMBER), [])
+
+
+class PrTerminalOneReadingTest(unittest.TestCase, _PatchedWorkflowMixin):
+    """Both endings of one pull request, decided off one fetch.
+
+    The stages that carry no PR-state arc of their own ask for both, and two
+    fetches would be two moments: a merge landing between them answers `open`
+    to the first and `merged` to the second, which a closed-without-merge arc
+    is right to ignore -- and the stage behind it runs anyway, spawning a
+    reviewer or measuring a candidate onto work that has already landed.
+    """
+
+    def test_it_spends_one_reading_for_both(self) -> None:
+        # The direct pin, because the race is invisible in the outcome of any
+        # single run: what closed the window is that there is no second read
+        # for a merge to land inside.
+        gh, issue, state = self._linked(merged=False, pr_state="open")
+        counted = _CountsTheReads(gh)
+
+        with counted.held():
+            self._run(
+                lambda: self.assertFalse(
+                    terminals._pr_terminal_stops_the_tick(
+                        gh, _TEST_SPEC, issue, state,
+                    ),
+                ),
+                run_agent=_agent(),
+            )
+
+        self.assertEqual(counted.reads, 1)
+
+    def test_each_ending_is_decided(self) -> None:
+        # And both are actually answered off that one reading, so the single
+        # fetch is not bought by dropping one of the two terminals.
+        for described, merged, label in (
+            ("merged", True, "done"),
+            ("closed without merging", False, "rejected"),
+        ):
+            with self.subTest(pull_request=described):
+                history = self._finalized(merged)
+
+                self.assertIn((_ONE_READING_ISSUE_NUMBER, label), history)
+
+    def _finalized(self, merged: bool) -> list:
+        """Run the terminal over an ended pull request, and report the labels."""
+        gh, issue, state = self._linked(merged=merged, pr_state=_STATE_CLOSED)
+        self._run(
+            lambda: self.assertTrue(
+                terminals._pr_terminal_stops_the_tick(
+                    gh, _TEST_SPEC, issue, state,
+                ),
+            ),
+            run_agent=_agent(),
+        )
+        return gh.label_history
+
+    def _linked(self, *, merged: bool, pr_state: str):
+        """An issue whose recorded pull request is in that state."""
+        gh, issue = _client_with_issue(
+            _ONE_READING_ISSUE_NUMBER, _VALIDATING_LABEL,
+        )
+        gh.add_pr(FakePR(
+            number=_ONE_READING_PR_NUMBER,
+            head_branch=_issue_branch(_ONE_READING_ISSUE_NUMBER),
+            head=FakePRRef(sha=_PR_HEAD_SHA),
+            merged=merged,
+            state=pr_state,
+        ))
+        return gh, issue, _state_with_pr_number(
+            gh, _ONE_READING_ISSUE_NUMBER, _ONE_READING_PR_NUMBER,
+        )
+
+
+class _CountsTheReads:
+    """How many times one terminal call fetched the pull request it decides on.
+
+    A class rather than a `Mock` wrapper because the fake's own lookup has to
+    keep working: what is being counted is the number of MOMENTS the answer
+    was read at, and a double that stopped returning the pull request would
+    measure nothing.
+    """
+
+    def __init__(self, github) -> None:
+        self.reads = 0
+        self._github = github
+        self._wrapped = github.get_pr
+
+    def __call__(self, *called, **options):
+        self.reads += 1
+        return self._wrapped(*called, **options)
+
+    def held(self):
+        """Patch the lookup this counts, for the duration of one call."""
+        return patch.object(self._github, "get_pr", self)
 
 
 if __name__ == "__main__":

@@ -263,11 +263,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             Nothing here decides an issue is out: the ledger reading is handed in, so the park
                             quotes the numbers the refusal was made on
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
-                            share, and the three entry-time finalizers the stages carrying no PR-state arc of their
-                            own ask in order: a merged pull request, one somebody CLOSED without merging -- which
-                            leaves the ISSUE open, so the third sees nothing and the stage would otherwise measure
-                            and push onto a pull request that is gone, or spawn over work a human has rejected --
-                            and a closed issue
+                            share, and the entry-time finalizers. The stages carrying no PR-state arc of their own
+                            ask for both pull-request endings off ONE guarded reading -- a merge, and a close
+                            nobody merged, which leaves the ISSUE open so the closed-issue arc behind it sees
+                            nothing while the stage measures and pushes onto a pull request that is gone or spawns
+                            over work a human rejected. One reading rather than a fetch each, because two fetches
+                            are two moments: a merge landing between them answers open to the first and merged to
+                            the second, which the close arc is right to ignore, and the stage runs anyway
     tick.py                 one repo's polling pass and the order it drives: the base refresh, the
                             community-contribution sweep above, the skill-catalog emission, and the scheduler
                             handoff or in-tick execution behind them -- with the sequential mode of that execution
@@ -1408,7 +1410,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             answers only for an open pull request standing on this exact commit AND open on the
                             branch that seam would push, which it resolves for itself. The answer is the NUMBER
                             rather than a permission, because a reading is a moment: it pins the lease its push is
-                            held to, which is that commit, and the pull request its bookkeeping belongs to
+                            held to, which is that commit, and the pull request its bookkeeping belongs to. A proof
+                            that FAILS is a park rather than a fall-through, and the size of the candidate is why:
+                            measured and found small it would be published, which force-pushes a branch nothing
+                            could confirm and opens a second pull request over work the first may already carry.
+                            The park writes nothing else -- the receipt, the recorded number and any debt beside
+                            them stand for the terminal or the retry. Two candidates are outside it and neither
+                            falls through: a commit an adjudication's exemption names and one an approval owes a
+                            push for, each a durable decision with its own lease that holding would strand
       late_consent.py       the park an adjudicated candidate with no operator authorization behind it waits on,
                             the one door into it -- an issue standing on it over an exemption naming the commit in
                             hand, which is the whole of what keeps the policy off every other issue. All three are
@@ -2053,9 +2062,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             answer that admitted it was about: a published approval's frozen head where there is
                             one, and the CANDIDATE itself where the gate admitted it because its pull request is
                             already standing on it, since a lease the transport reads for itself adopts whatever
-                            tip somebody moved to in the window and force-pushes over it -- a close a poll
-                            observed refused immediately before that push and nowhere else, since the gate's own
-                            barrier ends a CYCLE and the roads reaching here have none left to cancel -- the pull
+                            tip somebody moved to in the window and force-pushes over it -- work that ENDED
+                            refused immediately before that push and nowhere else: a close a poll observed, since
+                            the gate's own barrier ends a CYCLE and the roads reaching here have none left to
+                            cancel, and the pull request the gate PROVED, since that proof and the push are two
+                            moments and a branch nobody moved accepts the push whatever became of the pull request
+                            over it -- the pull
                             request opened or reused for it, which is that same pull request by NUMBER on the
                             delivered road and never a second one where it closed in between, and the commit the
                             push carried (decided once ahead of the push --

@@ -268,6 +268,14 @@ def _decided(
     It costs no request unless the receipt names the candidate in hand, and
     none at all on a call that froze a publication of its own.
 
+    A proof that FAILED holds the tick rather than falling through to the
+    measurement, and it is asked before anything else acts on the candidate.
+    The commit is one the record says this stage already pushed, so a count
+    under the ceiling does not make republishing safe -- it force-pushes a
+    branch nothing here could confirm and opens a second pull request over
+    work the first may already carry. `late_delivery` owns which candidates
+    that covers and what the park says.
+
     The permit's answer is kept APART from the other three rather than folded
     into the one reason, because the two license different things. All four
     say the candidate may publish without a reading; only the permit says a
@@ -294,6 +302,8 @@ def _decided(
             _consent._holds_until_authorized(gate, recorded, candidate_sha),
         )
     delivered = _delivery._delivered_before_the_relabel(gate, candidate_sha)
+    if _delivery._holds_an_unprovable_receipt(gate, candidate_sha, delivered):
+        return _records._HELD
     decided = _needs_no_measuring(gate, recorded, candidate_sha, delivered)
     permitted = decided or _transfer._carried_over(gate, candidate_sha)
     if permitted:
@@ -306,7 +316,7 @@ def _decided(
                 held=True,
                 candidate_sha=candidate_sha,
                 permitted_sha="" if decided else candidate_sha,
-                delivered_pr=delivered,
+                delivered_pr=delivered.number,
             ),
         )
     answered = (
@@ -445,7 +455,9 @@ def _unnameable(
 
 
 def _already_decided(
-    gate: _records._Gate, candidate_sha: str, delivered: int,
+    gate: _records._Gate,
+    candidate_sha: str,
+    delivered: _delivery._Delivered,
 ) -> str:
     """Why the RECORD says this commit needs no reading, or "" if it does not.
 
@@ -496,7 +508,7 @@ def _already_decided(
         return ""
     frozen = gate.entry.published_sha if gate.entry else ""
     vouched = (
-        _delivery._receipt_answers_alone(gate, candidate_sha, delivered)
+        _delivery._receipt_answers_alone(gate, delivered)
         and (not frozen or frozen == candidate_sha)
     )
     return _PUBLISHED if vouched else ""
@@ -506,7 +518,7 @@ def _needs_no_measuring(
     gate: _records._Gate,
     recorded: LateGeneration,
     candidate_sha: str,
-    delivered: int,
+    delivered: _delivery._Delivered,
 ) -> str:
     """Why this commit publishes without a reading, or "" where it needs one.
 

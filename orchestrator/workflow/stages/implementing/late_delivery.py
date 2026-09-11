@@ -41,15 +41,35 @@ branch somebody moved in the window rejects it instead of being force-
 overwritten, and the relabel is handed that pull request by number, so one
 somebody closed in the window holds the tick instead of earning another one
 over work the first already carries.
+
+A proof that FAILS is a hold rather than a fall-through, and that is the whole
+of what the reading is worth. The commit under it is one this stage's own
+record says already went to a remote, so there is no reading of it that makes
+republishing safe: measured and found small it would be force-pushed onto a
+branch nothing here could confirm and a second pull request opened over it,
+which is the exact outcome on every road this proof exists to close. So the
+tick parks with the receipt, the pull request number and whatever debt stands
+beside them left untouched -- there for the terminal that drains finished work,
+and there for the retry once a human has reconciled the record with the remote.
+
+Two candidates are outside that hold and neither is a fall-through: a commit an
+adjudication's exemption names, and one an approval already owes a push for.
+Each is a DURABLE decision of this workflow's own, carrying its own lease and
+its own debt, and holding either over a receipt that cannot be proved would
+strand exactly the work those records exist to finish.
 """
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 
+from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.late_split import (
+    exemption as _exemption,
     formats as _formats,
     payloads as _payloads,
+    state as _late_state,
 )
 from orchestrator.workflow.stages.implementing import (
     late_overflow as _overflow,
@@ -61,10 +81,73 @@ from orchestrator.workflow.stages.implementing import (
 log = logging.getLogger("orchestrator.workflow")
 
 
+# Why the publication a receipt names could not be shown, spelled as the park
+# comment reads it. Each is a different thing for an operator to reconcile.
+_NO_PULL_REQUEST = "this issue records no pull request for it to be on"
+
+_UNREADABLE_PULL_REQUEST = (
+    "pull request #{number} could not be read from this host"
+)
+
+_SETTLED_PULL_REQUEST = (
+    "pull request #{number} is {state} rather than open"
+)
+
+_FOREIGN_BRANCH = (
+    "pull request #{number} is open on `{read}` rather than on `{expected}`, "
+    "which is the branch this publication would push"
+)
+
+_MOVED_HEAD = (
+    "pull request #{number} stands at `{read}` rather than on that commit"
+)
+
+
+# What the unprovable-receipt refusal is logged and reported as.
+_UNPROVABLE_RECEIPT = "the publication its own receipt names cannot be shown"
+
+
+_UNPROVABLE_RECEIPT_PARK = (
+    "{mentions} this issue's pinned comment records that `{candidate}` has "
+    "already been pushed, and this tick cannot show the publication that "
+    "receipt is about: {refusal}. That note is never cleared, so measuring "
+    "the commit again and publishing it would force-push a branch nothing "
+    "here could confirm and open a second pull request over work the first "
+    "may already carry. Nothing was pushed and nothing was discarded, and the "
+    "receipt, the recorded pull request and whatever push is still owed are "
+    "all left exactly as they stand. Reconcile the pinned comment with what "
+    "is on the remote, or commit again so the candidate is measured afresh."
+)
+
+
+@dataclass(frozen=True)
+class _Delivered:
+    """The publication a receipt names, or the reason none could be shown.
+
+    Both together because a caller needs both: the NUMBER is what the
+    bookkeeping behind a proved publication is bound to, and the REFUSAL is
+    what the park over an unprovable one has to tell a human -- a pull request
+    somebody closed, one the branch moved off, and one open on another ref are
+    three different things to reconcile.
+
+    Empty on both counts for a call this question is not about at all: one
+    that froze a publication of its own, and one whose receipt names some
+    other commit.
+    """
+
+    number: int = 0
+    refusal: str = ""
+
+    @property
+    def is_proved(self) -> bool:
+        """Whether a pull request was shown standing on the commit."""
+        return bool(self.number)
+
+
 def _delivered_before_the_relabel(
     gate: _records._Gate, candidate_sha: str,
-) -> int:
-    """The pull request already standing on this commit, or 0 where none is.
+) -> _Delivered:
+    """The pull request already standing on this commit, or why none is.
 
     Nothing froze a publication here, so every half of the proof is taken
     together: the RECEIPT says this stage pushed the commit, which is what
@@ -87,55 +170,67 @@ def _delivered_before_the_relabel(
     have already decided to publish by the time one could disagree. It costs no
     request unless the receipt names the candidate in hand.
 
-    Zero for a call that froze a publication, which has its own proof and
-    spends no request on this one. Zero too for a pull request this host could
-    not read, one that has merged or been closed, one standing on another
-    commit, and one open on another branch -- each of which is a publication
-    nothing here can show, so the candidate goes to the reading it would have
-    had anyway.
+    Empty for a call that froze a publication, which has its own proof and
+    spends no request on this one, and for a receipt naming some other commit
+    -- neither is a question about the candidate in hand.
+
+    A REFUSAL is the answer everywhere else the proof does not hold: a pull
+    request this host could not read, one that has merged or been closed, one
+    standing on another commit, and one open on another branch. Each names
+    itself, because what the caller does with one is park a human over it and
+    the four are four different things to reconcile.
     """
     number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
-    if gate.entry is not None or not number:
-        return 0
+    if gate.entry is not None:
+        return _Delivered()
     if _parks._published_commit(gate.state) != candidate_sha:
-        return 0
+        return _Delivered()
+    if not number:
+        return _Delivered(refusal=_NO_PULL_REQUEST)
+    return _proved_against(gate, number, candidate_sha)
+
+
+def _proved_against(
+    gate: _records._Gate, number: int, candidate_sha: str,
+) -> _Delivered:
+    """Hold one numbered pull request to what the push behind it would do.
+
+    Every term is compared against what the SEAM resolves rather than against
+    anything the reading supplies for itself, since the question is whether its
+    push would move anything: the branch it would push is the one the record
+    names, and the commit it would send is the candidate in hand.
+    """
     reading = _overflow._PublicationReading.taken(gate.gh, number)
-    if reading.refusal is not None or reading.state != _overflow._OPEN:
-        return 0
-    if not _stands_where_the_push_would_land(gate, reading, candidate_sha):
-        return 0
+    if reading.refusal is not None:
+        return _Delivered(
+            refusal=_UNREADABLE_PULL_REQUEST.format(number=number),
+        )
+    if reading.state != _overflow._OPEN:
+        return _Delivered(refusal=_SETTLED_PULL_REQUEST.format(
+            number=number, state=reading.state,
+        ))
+    branch = _worktree_paths._resolve_branch_name(
+        gate.state, gate.spec, gate.issue.number,
+    )
+    if reading.head_branch != branch:
+        return _Delivered(refusal=_FOREIGN_BRANCH.format(
+            number=number, read=reading.head_branch, expected=branch,
+        ))
+    observed = _payloads.as_hex(reading.head, _formats.COMMIT_LENGTHS)
+    if observed != candidate_sha:
+        return _Delivered(refusal=_MOVED_HEAD.format(
+            number=number, read=observed or reading.head,
+        ))
     log.info(
         "issue=#%d records pull request #%d already standing on %s; what is "
         "left for it is the bookkeeping behind a publication that happened",
         gate.issue.number, number, candidate_sha,
     )
-    return number
-
-
-def _stands_where_the_push_would_land(
-    gate: _records._Gate,
-    reading: _overflow._PublicationReading,
-    candidate_sha: str,
-) -> bool:
-    """Whether this reading is the branch and the tip the seam would publish.
-
-    Both compared against what the SEAM resolves rather than against anything
-    the reading supplies for itself, since the question is whether its push
-    would move anything: the branch it would push is the one the record names,
-    and the commit it would send is the candidate in hand.
-    """
-    branch = _worktree_paths._resolve_branch_name(
-        gate.state, gate.spec, gate.issue.number,
-    )
-    if reading.head_branch != branch:
-        return False
-    return _payloads.as_hex(
-        reading.head, _formats.COMMIT_LENGTHS,
-    ) == candidate_sha
+    return _Delivered(number=number)
 
 
 def _receipt_answers_alone(
-    gate: _records._Gate, candidate_sha: str, delivered: int,
+    gate: _records._Gate, delivered: _Delivered,
 ) -> bool:
     """Whether a local receipt may vouch for this commit with nothing beside it.
 
@@ -145,23 +240,64 @@ def _receipt_answers_alone(
     no frozen head to lease against, onto a pull request that may have moved,
     merged, closed, or never have been the one this issue records.
 
-    So the proof above is asked of every receipt this seam would answer on,
-    measured or adjudicated alike. What that costs is the relabel finishing a
-    poll later where the remote disagrees -- the candidate goes to the ordinary
-    cumulative reading, and the commit stays exactly where it is meanwhile.
-
     A call that DID freeze a publication is a different question and answers
     True here: the head it froze is checked against the commit by the reader
     behind this, which is the proof that road takes for itself.
     """
-    if gate.entry is not None:
-        return True
-    if delivered:
-        return True
-    log.info(
-        "issue=#%d records a receipt for %s and no open pull request this "
-        "host can read as standing on it; measuring the candidate rather "
-        "than republishing on a note nothing confirms",
-        gate.issue.number, candidate_sha,
+    return gate.entry is not None or delivered.is_proved
+
+
+def _holds_an_unprovable_receipt(
+    gate: _records._Gate, candidate_sha: str, delivered: _Delivered,
+) -> bool:
+    """Park a candidate whose own receipt names a publication nothing can show.
+
+    Fail-CLOSED, and the alternative is what makes it so. This commit is one
+    the record says this stage already pushed, so measuring it is not a
+    neutral fallback: a count under the ceiling publishes it, which force-
+    pushes a branch nothing here could confirm and opens a second pull request
+    over work the first may already carry. There is no reading of an
+    unprovable publication that makes republishing onto it safe.
+
+    Parked rather than held silently, because none of the four refusals clears
+    itself: a number the record never had, one this host cannot read, a pull
+    request somebody settled, and one open somewhere else are each a
+    disagreement between the pinned comment and the remote that a person
+    resolves. The park writes nothing else -- the receipt, the recorded pull
+    request, and any debt beside them stand exactly as they were, for the
+    terminal that drains finished work or for the retry behind a repair.
+
+    Two candidates are outside this and neither is a fall-through. A commit an
+    adjudication's EXEMPTION names publishes on that verdict, and one an
+    APPROVAL owes a push for publishes on that debt and its own recorded
+    lease. Both are durable decisions of this workflow's own, taken before any
+    receipt was written, and holding either over a note that cannot be proved
+    would strand exactly the work those records exist to finish.
+
+    Silent for every candidate no receipt names, which is every ordinary tick,
+    and for a call that froze a publication of its own.
+    """
+    if not delivered.refusal:
+        return False
+    if _exemption.is_exempt(gate.state, candidate_sha):
+        return False
+    if _parks._approved_commit(gate.state) == candidate_sha:
+        return False
+    log.error(
+        "issue=#%d records a receipt for %s and cannot show the publication "
+        "it names (%s); refusing to measure and republish a commit this "
+        "stage has already pushed",
+        gate.issue.number, candidate_sha, delivered.refusal,
     )
-    return False
+    return _parks._parked(
+        gate,
+        _records._reportable(
+            gate, _late_state.read_late_generation(gate.state),
+        ),
+        _UNPROVABLE_RECEIPT,
+        _UNPROVABLE_RECEIPT_PARK.format(
+            mentions=config.HITL_MENTIONS,
+            candidate=candidate_sha,
+            refusal=delivered.refusal,
+        ),
+    )

@@ -33,6 +33,7 @@ from unittest.mock import patch
 
 from orchestrator.workflow.stages.implementing import (
     late_overflow as _overflow,
+    publication as _publication,
 )
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
@@ -41,7 +42,7 @@ from tests.workflow.fixtures import (
     SHA_LENGTH,
     _issue_branch,
 )
-from tests.workflow.interleaving import _RacesTheStep
+from tests.workflow.interleaving import _RacesPastTheStep, _RacesTheStep
 from tests.workflow.stages.implementing import late_gate_test_support as support
 
 _KEY_PUBLISHED_SHA = "implementing_published_sha"
@@ -68,6 +69,10 @@ _VALIDATING = (support.GATE_ISSUE_NUMBER, LABEL_VALIDATING)
 _REVISION = "revision"
 _LEASE = "force_with_lease"
 _STILL_OPEN = "still_open"
+
+# The last step this seam takes before its barrier, which is the window a poll
+# on another worker can end the publication in.
+_PUBLICATION_INTENT = "_publication_intent"
 
 # What a pull request reads as once somebody has ended it.
 _CLOSED = "closed"
@@ -143,6 +148,27 @@ class DeliveredReceiptTest(_ReceiptCase, unittest.TestCase):
         self.assertEqual(pushed.kwargs[_REVISION], MEASURED_CANDIDATE_SHA)
         self.assertEqual(pushed.args[2], _BRANCH)
 
+    def test_one_closing_before_the_push_sends_none(self) -> None:
+        # The barrier the push itself owes, raced into the window it exists
+        # for: the gate proved the pull request open, and a poll on another
+        # worker closes it before the transport runs. The lease makes no
+        # difference there -- a branch nobody moved accepts the push whatever
+        # became of the pull request over it -- so the reading is retaken
+        # immediately before the push rather than only at the bookkeeping
+        # behind it.
+        with patch.object(
+            _publication,
+            _PUBLICATION_INTENT,
+            _RacesPastTheStep(
+                _publication._publication_intent, self._closes_it,
+            ),
+        ):
+            mocks = self._oversized()
+
+        self._assert_held(mocks)
+        self.assertEqual(self.github.opened_prs, [])
+        self.assertNotIn(_VALIDATING, self.github.label_history)
+
     def test_a_pull_request_closing_opens_none(self) -> None:
         # The far end of the same window. Looked up by branch a moment later,
         # a pull request somebody closed answers None and the seam opens a
@@ -167,42 +193,81 @@ class DeliveredReceiptTest(_ReceiptCase, unittest.TestCase):
         self.github.get_pr(_PR_NUMBER).state = _CLOSED
 
 
+# Every way the publication a receipt names can fail to be shown, each named
+# by what the pinned comment and the remote disagree about.
+_UNPROVABLE = MappingProxyType({
+    "no pull request at all": ("", _BRANCH, {}),
+    "one this host cannot read": ("", _BRANCH, _PUBLISHED_BY_THIS_STAGE),
+    "one the branch moved off": (
+        _MOVED_HEAD, _BRANCH, _PUBLISHED_BY_THIS_STAGE,
+    ),
+    "one open somewhere else": (
+        MEASURED_CANDIDATE_SHA, _ANOTHER_BRANCH, _PUBLISHED_BY_THIS_STAGE,
+    ),
+    "one somebody ended": (
+        MEASURED_CANDIDATE_SHA, _BRANCH, _PUBLISHED_BY_THIS_STAGE,
+    ),
+})
+
+
 class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
-    """Every record the note stands beside that proves nothing at all."""
+    """Every record the note stands beside that proves nothing at all.
 
-    def test_an_unprovable_receipt_is_measured(self) -> None:
-        # Each half of the proof, missing on its own. No pull request recorded
-        # at all, one this host cannot read, one the branch has moved off, one
-        # somebody ended, and one open where this seam would never push. On
-        # every one of them the note is all that is left -- and it is never
-        # cleared, so answering on it would republish unmeasured onto a
-        # publication nothing here can show.
-        for described, standing, branch, recorded in (
-            ("no pull request at all", "", _BRANCH, {}),
-            ("one this host cannot read", "", _BRANCH, _PUBLISHED_BY_THIS_STAGE),
-            ("one the branch moved off", _MOVED_HEAD, _BRANCH, _PUBLISHED_BY_THIS_STAGE),
-            (
-                "one open somewhere else",
-                MEASURED_CANDIDATE_SHA, _ANOTHER_BRANCH, _PUBLISHED_BY_THIS_STAGE,
-            ),
-        ):
+    Held fail-CLOSED rather than measured, and the size of the candidate is
+    exactly why. Falling through to the reading is not a neutral answer: a
+    count under the ceiling PUBLISHES, which force-pushes a branch nothing
+    here could confirm and opens a second pull request over work the first may
+    already carry -- the outcome the whole proof exists to close, reached by
+    the commonest reading there is.
+    """
+
+    def test_an_unprovable_receipt_is_held(self) -> None:
+        # Each half of the proof, missing on its own, against a candidate the
+        # ceiling would wave straight through. No pull request recorded at
+        # all, one this host cannot read, one the branch has moved off, one
+        # open where this seam would never push, and one somebody closed.
+        for described in _UNPROVABLE:
             with self.subTest(record=described):
-                self.setUp()
-                self._stand_the_pull_request_on(standing, branch=branch)
-                self._seed(**{
-                    _KEY_PUBLISHED_SHA: MEASURED_CANDIDATE_SHA, **recorded,
-                })
+                self._seeded(described)
 
-                mocks = self._oversized()
+                mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
 
-                self._assert_measured(mocks)
+                self._assert_unmeasured(mocks)
                 self._assert_held(mocks)
+
+    def test_the_record_is_left_for_the_retry(self) -> None:
+        # What the park may not cost: the receipt, the pull request it names,
+        # and the commit itself are what a terminal drains and what a repaired
+        # record republishes from, so the refusal writes the park and nothing
+        # else.
+        self._seeded("one the branch moved off")
+
+        self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        pinned = self._pinned()
+        self.assertTrue(pinned[support.AWAITING_HUMAN])
+        self.assertEqual(
+            pinned[support.PARK_REASON], support.PARK_MEASUREMENT_FAILED,
+        )
+        self.assertEqual(pinned[_KEY_PUBLISHED_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertEqual(pinned[_KEY_PR_NUMBER], _PR_NUMBER)
+
+    def test_an_oversized_one_is_held_the_same_way(self) -> None:
+        # The same answer on the road that would have been held anyway, so the
+        # refusal reads as one rule rather than as a size question.
+        self._seeded("one open somewhere else")
+
+        mocks = self._oversized()
+
+        self._assert_unmeasured(mocks)
+        self._assert_held(mocks)
 
     def test_a_tip_no_receipt_names_is_measured(self) -> None:
         # The other half, and it is not widened either: a head the remote
         # happens to agree with says nothing about how it got there, so
         # without the note beside it any branch somebody else pushed the
-        # commit to would wave the candidate past.
+        # commit to would wave the candidate past. Nothing here claims a
+        # publication, so nothing is held back either.
         self._stand_the_pull_request_on(MEASURED_CANDIDATE_SHA)
         self._seed(pr_number=_PR_NUMBER, branch=_BRANCH)
 
@@ -210,6 +275,17 @@ class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
 
         self._assert_measured(mocks)
         self._assert_held(mocks)
+
+    def _seeded(self, described: str) -> None:
+        """One record whose receipt names a publication nothing can show."""
+        standing, branch, recorded = _UNPROVABLE[described]
+        self.setUp()
+        self._stand_the_pull_request_on(standing, branch=branch)
+        if described == "one somebody ended":
+            self.github.get_pr(_PR_NUMBER).state = _CLOSED
+        self._seed(**{
+            _KEY_PUBLISHED_SHA: MEASURED_CANDIDATE_SHA, **recorded,
+        })
 
 
 if __name__ == "__main__":
