@@ -52,18 +52,24 @@ for, and `late_handback` hands the label on and retires the cycle --
 gate its one spawn is charged to, and the hold that keeps a park nothing
 supersedes ahead of the evidence probe, the pull-request hold, and the content
 read -- `late_notice` owns the sentence any late park still owes the thread,
-`late_parks` every reason a late exit hands the issue back under and the
-durable write each of them rides out on, `late_coordinator` owns the order
-those are asked in, `late_verdict` what one finished reply decides and
-`late_outcome` what every completion leaves on the record, and
+`late_park_state` the reasons, standing claim, watermark, and durable write,
+`late_park_delivery` the release and reconciliation of that sentence, and
+`late_parks` the decisions that take, stage, retire, or answer the park.
+`late_coordinator` owns their order: `late_admission` recovers owed effects and
+asks `late_evidence` to prove the record and frozen pair before taking the hold.
+`late_attempt` records the
+attempt with retry charges held back, `late_execution` runs and reads the agent,
+and `late_completion` guards every completion before settling it. `late_verdict`
+interprets one finished reply, `late_outcome` records every completion, and
 `late_models` carries what they hand each other. The budget both
 `retry_cap` owners are decided by is neither of theirs: it is the shared
 `engine/retry_budget.py`, so a park taken on either road is the same durable
 reason, answered by the same command, and audited on the same stream.
-`late_snapshot`, `late_children`, and `late_transaction` are the ordered split
-itself -- the candidate preserved on an immutable ref, the children cut from
-it, and the supersession behind them -- while `late_cleanup` owns what that
-leaves the remote holding, `late_cancellation` owns the irreversible ending an
+`late_split_preparation` proves the snapshot and creates durable children through
+`late_snapshot` and `late_children`. `late_transaction` orders their announcement,
+the supersession, and the guarded handoff to `late_retirement`, which retires
+the generation, activates its children, and attempts branch reclamation.
+`late_cleanup` owns what that leaves the remote holding, `late_cancellation` owns the irreversible ending an
 owner observed closed earns, `late_sweep` is the cleanup-only pass that
 revisits an owner a human closed mid-cycle, and `late_restart` owns the fresh
 cycle an operator authorizes by taking that ending's `rejected` back off. What
