@@ -145,7 +145,6 @@ from orchestrator.workflow.late_split import state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
     late_authority as _authority,
-    late_consent as _consent,
     late_freeze as _freeze,
     late_parks as _parks,
     late_reading as _reading,
@@ -293,14 +292,13 @@ def _decided(
     answer here is a human's; every other road past the measurement is this
     workflow's own record, and each of those already answers for itself.
 
-    Behind every record and the switch sits the one candidate that is none of
-    them: a commit an exemption names and no authorization stands behind. It
-    is asked LAST because each answer above outranks it -- an authorized pair
-    publishes, a pull request already standing on the commit finishes its
-    bookkeeping, and an install with the gate switched off measures nothing at
-    all -- and what it earns is a reading of its own, held for the person the
-    exemption cannot show. `late_consent` owns that road and the command that
-    ends it.
+    A commit an exemption names and no authorization stands behind is none of
+    those answers, so it falls through to the ordinary measurement like any
+    other candidate -- which is the whole of what the compatibility costs.
+    What an oversized reading of one earns is decided where every other
+    reading is settled, by `late_verdict`: a hold for the person the exemption
+    cannot show rather than a second adjudication, which `late_consent` owns
+    along with the command that ends it.
     """
     decided = _needs_no_measuring(gate, recorded, candidate_sha)
     permitted = decided or _transfer._carried_over(gate, candidate_sha)
@@ -313,11 +311,6 @@ def _decided(
             gate, recorded, candidate_sha,
             permitted_sha="" if decided else candidate_sha,
             basis=_admitted_by(decided),
-        )
-    if _authority._unauthorized_exemption(gate, candidate_sha):
-        return _held_or_published(
-            candidate_sha,
-            _consent._holds_until_authorized(gate, recorded, candidate_sha),
         )
     answered = (
         recorded.candidate_sha == candidate_sha

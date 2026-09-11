@@ -950,11 +950,14 @@ the decision is made again against the requirements as they now read.
 The same command ends one other park, which `implementing/late_authority.py` decides is owed and
 `implementing/late_consent.py` takes and answers. A live issue can carry an exemption with no `late_override_*` group
 beside it — an older build wrote one on a `single` verdict alone — and so can any issue whose authorization was
-hand-edited or half-written. The candidate there is measured like every other one: at or below the ceiling it
+hand-edited or half-written. The candidate there is measured like every other one, down the gate's own ordinary
+reading rather than a road of this park's: at or below the ceiling it
 publishes on its count, exactly `MAX_ADDED_LINES` included, and past it the issue parks
 `late_unauthorized_exemption` rather than going back to an adjudication that has already answered — routing it there
 would pay for a second adjudicator over a settled question and risk a `split` cutting children out of work somebody
-decided ships whole. The park deletes nothing, so the exemption an authorization would be checked against is still
+decided ships whole. That the reading is the ordinary one is what leaves every way it can *fail* answered where it
+always was — the measurement park, the typed failure on both sinks, the bounded quiet retry — rather than a second
+time inside the park. The park deletes nothing, so the exemption an authorization would be checked against is still
 there, and it is answered by the same whole-comment command under the same trust and staleness rules — read where
 the reading is, so whichever seam took the park can end it: on `workflow:implementing` the parked tick reaches it
 through the disposition's own recovery, and on the five stages that publish onto an open pull request through the

@@ -390,6 +390,32 @@ class _PublicationReading:
         )
 
     @classmethod
+    def is_over(cls, gh: GitHubClient, number: int) -> bool:
+        """Whether this pull request has already merged or been closed.
+
+        The terminal state an ISSUE's own flag cannot show: a merge leaves the
+        issue open until a stage terminal reads it and finalizes the work,
+        while everything a reconciliation does in between ends in a push onto
+        exactly this pull request -- which the freeze above refuses to enter a
+        call on, so such a tick would park a human over a publication that is
+        finished.
+
+        Read fail-OPEN, which is the other way round from everything else
+        here and is the point: a reading that did not come back says nothing
+        about whether the publication is over, and answering True on one would
+        strand every issue whose remote was briefly unreachable. So an
+        unreadable pull request, and a caller naming none at all, both leave
+        the tick to the road that takes its own reading and parks with the
+        reason it fails for.
+        """
+        if not number:
+            return False
+        reading = cls.taken(gh, number)
+        if reading.refusal is not None:
+            return False
+        return reading.state != _OPEN
+
+    @classmethod
     def taken(cls, gh: GitHubClient, number: int) -> _PublicationReading:
         """Ask the remote for a pull request's state and head, or refuse."""
         try:

@@ -1206,7 +1206,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
       outcomes.py           the pause, timeout, write, and response decisions one finished round is classified by, and
                             their routing
       publication.py        the re-runnable order a publishable commit earns: the durable marker that makes the
-                            attempt recognizable, the lease the push is held to, the push itself, and the hold that
+                            attempt recognizable, the lease the push is held to, a close a poll observed refused
+                            immediately before the push and nowhere else -- the gate's own barrier ends a CYCLE,
+                            which answers nothing on the roads that reach here with none, an approval whose push
+                            failed among them -- the push itself, and the hold that
                             stops where GitHub could not say whether the commit is already on a PR
       artifact.py           one reading of what the branch carries -- the tree, the base-relative diff, the plan in
                             HEAD, and whether HEAD is the branch -- taken from the checkout the round ran in and
@@ -1358,8 +1361,9 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             stage already pushed), the commit an open pull request this call froze already stands
                             on, a record already answering, and the count that answers a pair nothing has yet. A
                             commit an exemption names and no authorization stands behind takes none of those roads
-                            and is answered by `late_consent` past the switch instead: the exemption is an agent's
-                            verdict, so reading it here as "already decided" would publish half a bypass
+                            and falls through to the ordinary measurement like every other candidate: the
+                            exemption is an agent's verdict, so reading it here as "already decided" would publish
+                            half a bypass, and what an oversized answer earns is `late_verdict`'s to decide
       late_authority.py     whether the human behind an adjudicated commit is one this issue can show, which is
                             what every road past the measurement asks before it takes one. The exemption and the
                             `late_override_*` authorization are asked TOGETHER and both held to naming one commit,
@@ -1372,7 +1376,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             What a refusal costs is the measurement the gate would have taken anyway. Two things
                             are never held back by it: a commit the pull request this call froze is ALREADY
                             standing on, where the push moves nothing and only the bookkeeping behind a publication
-                            that has happened is left, and work that is over, since a merged or closed issue is
+                            that has happened is left -- read off the entry a caller past a publication froze, or,
+                            where none was (the implementing seam, whose push is what OPENS a pull request), off
+                            the remote for the number the record names and only for a commit this stage's own
+                            receipt says it pushed -- and work that is over, since a merged or closed issue is
                             finalized before any handler reaches the gate. The publication DEBT such a commit
                             leaves is the same question one field over, answered off the approval's own recorded
                             basis rather than inferred: the two bases an operator's gesture is behind defer to this
@@ -1380,26 +1387,23 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             wrote with no basis falls back to the exemption -- read conservatively, so a comment
                             that CLAIMS one and cannot say which commit it is about is the adjudication's debt
                             rather than this workflow's own
-      late_consent.py       the park an adjudicated candidate with no operator authorization behind it waits on,
-                            the one door into it -- an issue standing on it over an exemption naming the commit in
-                            hand, which is the whole of what keeps the policy off every other issue. All three are
-                            asked because the park collects HALF of a two-part bypass: opened on the park fields
-                            alone, a command would earn the override group and publish a candidate no adjudicator
-                            ruled on, so a missing exemption, one naming another commit, and one in a shape the
-                            domain's reader refuses each leave the tick to the ordinary road, where an oversized
-                            candidate is routed to the adjudication it is owed. Behind that door: the pair
-                            frozen and COUNTED afresh on the tick that acts, since the terms an authorization is
-                            recorded on are that pair, those additions and that ceiling, and a candidate the fresh
-                            count puts at or below the ceiling needs nobody's permission and goes to the ordinary
-                            settlement -- with the park taken off IN that settlement's own write, since the
-                            retirement beside it drops only a park a fresh reading answers, and a commit published
-                            over a record still saying a human holds the issue is one the source stage's parked
-                            road stops on every poll after. Two things are read ahead of the freeze because the
-                            freeze is a write: the sentence this owner may have said and lost the receipt for, and
-                            the commit the standing park is OVER -- read after, the pair just persisted answers,
-                            every park compares equal to the candidate being asked about, and the human waiting on
-                            one commit is never told about the one a resumed developer has since committed. Then
-                            everything a reply to it is worth: a hold rather than a route back to
+      late_consent.py       the park an oversized reading of an adjudicated candidate with no operator
+                            authorization behind it earns,
+                            reached from `late_verdict` down the gate's ORDINARY reading rather than a road of its
+                            own, which is the whole of what it rests on: the pair is frozen, the diff counted and
+                            the ceiling read where every other candidate's are, so the terms an authorization is
+                            recorded on are this tick's -- and every way a reading can FAIL is answered where it
+                            always was, by the measurement park, the typed failure on both sinks and the bounded
+                            quiet retry, rather than a second time here. A candidate the count puts at or below the
+                            ceiling needs nobody's permission and takes this park down on its way into the
+                            retirement's own durable write, since a commit published over a record still saying a
+                            human holds the issue is one the source stage's parked road stops on every poll after;
+                            one no exemption names is routed to the adjudication, which clears whatever park it
+                            supersedes. What the park itself is standing over is read off the record the freeze has
+                            already written the pair onto, and a park a resumed developer's commit moved past never
+                            reaches this owner at all. The sentence it may have said and lost the receipt for IS
+                            read ahead of the write that would replace it. Then everything a reply to it is worth:
+                            a hold rather than a route back to
                             the adjudication, since the change has been ruled one change already and what is
                             missing is the person, taken without deleting, migrating, or repairing a field,
                             announced once per pair, and taken without making the COUNT durable -- a generation
@@ -1838,9 +1842,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             where the label has left the stage the pair was frozen on, since neither a re-entry nor
                             the handler is this process's to pick -- and it retires its own measurement park on a
                             record whose split has settled, which is a group with no count that owes no reading.
-                            Both roads end in a PUSH, so a CLOSED issue is answered ahead of either: the object the
-                            tick opened with is read at the door and the tick handed back, since the stage terminal
-                            behind the handler is what drains such an issue. The process-wide latch is the other
+                            Both roads end in a PUSH, so work that is OVER is answered ahead of either and handed
+                            back to the stage terminal behind the handler, which is what drains it: a closed issue,
+                            read off the object the tick opened with, and a pull request that has merged or been
+                            closed, which the issue's own flag cannot show and which leaves the push nowhere to
+                            land -- read fail-OPEN, so a remote that would not answer falls through to the road
+                            that parks with the reason it fails for. The process-wide latch is the other
                             fact and is asked immediately before each push, because everything between that door
                             and the effect -- the stage check, the checkout probe, the whole gated reading -- is
                             time a poll on another worker can find the issue closed in; that one STOPS the tick,

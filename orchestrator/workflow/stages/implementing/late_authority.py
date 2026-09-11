@@ -62,11 +62,15 @@ import logging
 from orchestrator.git.measurement import fingerprint as _fingerprint
 from orchestrator.workflow.late_split import (
     exemption as _exemption,
+    formats as _formats,
     overrides as _overrides,
+    payloads as _payloads,
 )
 from orchestrator.workflow.stages.implementing import (
+    late_overflow as _overflow,
     late_parks as _parks,
     late_records as _records,
+    state as _state,
 )
 
 log = logging.getLogger("orchestrator.workflow")
@@ -192,19 +196,62 @@ def _already_on_its_pull_request(
     change was adjudicated -- so what this recognizes is adjudicated work
     already delivered rather than any head a remote happens to agree with.
 
-    Silent for every call taken before anything was published, which is the
-    whole implementing seam, and for an entry too damaged to name a
-    publication: a group that could not be frozen is not evidence a pull
-    request stands anywhere.
+    Two roads reach the same question, because the seams that ask it differ
+    in whether a publication was frozen on the way in. A call PAST one hands
+    its own frozen entry over and this reads it; the implementing seam freezes
+    none -- its push is what opens a pull request -- so the reading is taken
+    here, and only for a commit this stage's own receipt says it pushed. An
+    entry too damaged to name a publication is not evidence a pull request
+    stands anywhere and answers nothing, rather than falling back to a road
+    that would ask the remote instead.
     """
     if not _exemption.is_exempt(gate.state, candidate_sha):
         return ""
-    entry = gate.entry
-    if entry is None or not entry.is_frozen:
-        return ""
-    if entry.published_sha != candidate_sha:
+    if gate.entry is not None:
+        return (
+            _ON_ITS_PULL_REQUEST
+            if gate.entry.is_frozen
+            and gate.entry.published_sha == candidate_sha else ""
+        )
+    if not _delivered_before_the_relabel(gate, candidate_sha):
         return ""
     return _ON_ITS_PULL_REQUEST
+
+
+def _delivered_before_the_relabel(
+    gate: _records._Gate, candidate_sha: str,
+) -> bool:
+    """Whether the implementing seam's own push is still the pull request tip.
+
+    The window between a push that opened a pull request and a relabel that
+    never landed, read from the far end. Nothing froze a publication here, so
+    the two halves of the proof are taken together: the RECEIPT says this
+    stage pushed the commit, which is what tells adjudicated work this issue
+    delivered from a tip somebody else moved the branch to, and the REMOTE
+    says the pull request is standing on it still.
+
+    Both are required and neither is widened. Without the receipt a legacy
+    exemption would publish unmeasured on any head a remote happened to agree
+    with; without the remote reading it would publish on a local note that is
+    never cleared, over a pull request the branch has since moved off.
+
+    Refused for a pull request this host could not read, one that has merged
+    or been closed, and one standing anywhere else -- each of which is a
+    publication nothing here can show, so the candidate goes to the ordinary
+    cumulative reading and an oversized one waits for the authorization it is
+    missing.
+    """
+    if _parks._published_commit(gate.state) != candidate_sha:
+        return False
+    number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
+    if not number:
+        return False
+    reading = _overflow._PublicationReading.taken(gate.gh, number)
+    if reading.refusal is not None or reading.state != _overflow._OPEN:
+        return False
+    return _payloads.as_hex(
+        reading.head, _formats.COMMIT_LENGTHS,
+    ) == candidate_sha
 
 
 def _receipt_answers_alone(

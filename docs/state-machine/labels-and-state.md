@@ -672,21 +672,27 @@ The keys that matter for the state machine fall into a few groups:
 
   `late_exempt_sha` on its own is exactly what this park doubts, so the size gate never reads it as *already
   decided*: it is asked as a pair with the `late_override_*` group beside it, and a commit only the exemption names
-  goes to the ordinary cumulative reading. `implementing/late_authority.py` is where the two are asked together,
-  and a candidate it calls exempt-but-unauthorized is handed to `implementing/late_consent.py`, which measures it
-  **afresh** — the pair frozen, the diff counted, the ceiling read on the tick that acts — and publishes only what
-  the count or an operator allows.
+  falls through to the **ordinary cumulative reading** like any other candidate.
+  `implementing/late_authority.py` is where the two are asked together.
 
-  The door into that owner is `late_exempt_sha` naming **this very commit** and no authorization this build can
+  That the reading is the ordinary one is the whole of what this park rests on. The pair is frozen, the diff
+  counted and the ceiling read exactly where every other candidate's are, so the terms an authorization is recorded
+  on are this tick's — and every way a reading can FAIL is answered where it always was, by the measurement park,
+  the typed failure on both sinks and the bounded quiet retry, rather than a second time here. What an oversized
+  answer then earns is decided by `implementing/late_verdict.py`: a candidate no exemption names is routed to
+  `workflow:decomposing` for the adjudication it is owed, and one an unauthorized exemption names is handed to
+  `implementing/late_consent.py` for this park instead — the change has been ruled one change already, so sending
+  it back would pay for a second adjudicator over an answered question.
+
+  What reaches that owner is `late_exempt_sha` naming **this very commit** with no authorization this build can
   read back whole standing behind it, which is the whole of what keeps the policy off every other issue. What this
   park collects is one half of the two-part bypass above, so entered without the other half a command alone would
   earn the `late_override_*` group and publish a candidate carrying only the operator's half of the record — the
   one outcome the ceiling exists to catch. The exemption is read through the domain's own object-id
   reader, so an abbreviation, prose, or a shape an older binary wrote is no exemption rather than one nothing can
   compare; and one naming another commit is a ruling a resumed developer's work has moved past, which says nothing
-  about the change in hand. Where the door refuses, the tick takes the ordinary road below: the candidate is
-  measured like any other and an oversized one is routed to `workflow:decomposing` for
-  the adjudication a change with nobody's verdict behind it is owed.
+  about the change in hand — and such a candidate is routed to the adjudication, which takes whatever park it
+  supersedes down on the way.
 
   A candidate the fresh count puts at or below the ceiling is not this
   park's to hold at all — it is not the change anybody was asked about — and goes to the ordinary settlement, which
@@ -1004,9 +1010,11 @@ The keys that matter for the state machine fall into a few groups:
 
   What CREATES the park is the reading itself, on both sides of publication: a candidate `late_authority` calls
   exempt-but-unauthorized and the count then puts strictly past `MAX_ADDED_LINES`. A change at or below the ceiling
-  — exactly `MAX_ADDED_LINES` included — publishes on its own count and never reaches it, and a commit the pull
-  request this call froze is already standing on is never held that way either: the push would move nothing, and
-  what would be held back is the bookkeeping behind a publication that has already happened.
+  — exactly `MAX_ADDED_LINES` included — publishes on its own count and never reaches it, and neither does a commit
+  the pull request is already standing on: the push would move nothing, and what would be held back is the
+  bookkeeping behind a publication that has already happened. Which pull request that is differs by seam — a call
+  taken past one hands over the head it froze, while the implementing seam freezes none and reads the remote for
+  the number its record names, against a commit `implementing_published_sha` says this stage pushed.
 
   `late_evidence_missing` is the adjudication's counterpart, taken
   under `workflow:decomposing` before the hold or any spawn: the checkout is there and one of the two recorded

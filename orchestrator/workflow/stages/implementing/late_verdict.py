@@ -32,6 +32,8 @@ from orchestrator.workflow.late_split import (
 )
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
 from orchestrator.workflow.stages.implementing import (
+    late_authority as _authority,
+    late_consent as _consent,
     late_parks as _parks,
     late_records as _records,
 )
@@ -69,7 +71,27 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
 
     Strictly past the ceiling, which is the record's own comparison: a
     candidate exactly at the configured value publishes, so the trigger cannot
-    move by one line when the threshold is retuned.
+    move by one line when the threshold is retuned. That boundary is the same
+    one for every candidate here, an adjudicated one included: a commit an
+    exemption names and no operator authorization stands behind is measured
+    like any other, and one that comes back at or below the ceiling publishes
+    on the count exactly as it always did.
+
+    An oversized one is held, and only WHERE differs. A candidate nothing has
+    ruled on goes to the adjudication. One an exemption already names has been
+    ruled on -- what it is missing is the human, not the verdict -- so sending
+    it back would pay for a second adjudicator over an answered question and
+    risk a `split` cutting children out of work somebody decided ships whole.
+    It waits for the authorization instead, which `late_consent` owns: the
+    park, the command that ends one, and the answer a command naming another
+    commit earns. A count the ceiling lets through takes that park down on its
+    way into the retirement's own durable write, because what the park waits
+    for is a person and this reading says no person was ever needed: published
+    under a record still saying a human holds the issue, the commit would have
+    the source stage stop on its parked road every poll after. A candidate that command DID name publishes down the
+    accepted road rather than one of its own, so the generation is retired
+    ahead of the effects it licenses exactly as it is for every other
+    publication.
 
     A count in hand is what a measurement park was waiting for, so this is
     where one is retired -- here and at the unmeasured verdict beside it, and
@@ -89,9 +111,14 @@ def _settled(gate: _records._Gate, generation: LateGeneration) -> bool:
     """
     _parks._retire_spent_park(gate.state)
     settled = _parks._measured(generation)
-    if settled.is_oversized:
+    if not settled.is_oversized:
+        _parks._retire_authorized_park(gate.state)
+        return _accepted(gate, settled)
+    if not _authority._unauthorized_exemption(gate, settled.candidate_sha):
         return _routed(gate, settled)
-    return _accepted(gate, settled)
+    if not _consent._authorizes_the_park(gate, settled):
+        return True
+    return _authorized(gate, settled)
 
 
 def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
@@ -103,6 +130,7 @@ def _accepted(gate: _records._Gate, generation: LateGeneration) -> bool:
     comes back after a crash owes nobody a question before it pushes. The
     owner granting an approval is the only one that can say that, which is why
     the basis is written here rather than inferred by whoever reads it.
+
 
     The record is dropped rather than left standing, and it has to be: a
     frozen candidate freezes this branch out of the ordinary base refresh, and

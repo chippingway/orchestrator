@@ -52,6 +52,9 @@ from tests.workflow.stages.fixing.test_late_dispatch import (
 
 _REPO_SLUG = _TEST_SPEC.slug
 
+# What a pull request reads as once it is over, whichever way it ended.
+_CLOSED = "closed"
+
 # The debt a tick that died between the retirement and the push leaves: one
 # commit owed a publication, and the head the pull request was standing on
 # when it was approved. No generation beside it, which is what makes this the
@@ -96,6 +99,30 @@ _RECOVERABLE = MappingProxyType({
 })
 
 
+def _merged(github) -> None:
+    """Land this issue's pull request, which leaves the issue itself open."""
+    pull_request = github.get_pr(PR_NUMBER)
+    pull_request.merged = True
+    pull_request.state = _CLOSED
+
+
+def _closed(github) -> None:
+    """Close it without merging, which leaves the issue open the same way."""
+    github.get_pr(PR_NUMBER).state = _CLOSED
+
+
+# The two endings a pull request has, each against both records this owner
+# goes back for: four polls that have nowhere to push and one answer.
+_TERMINAL_ROADS = MappingProxyType({
+    f"{ending} over {described}": (over, owed)
+    for ending, over in (("merged", _merged), ("closed", _closed))
+    for described, owed in (
+        ("a frozen pair", _RECOVERABLE["a frozen pair"]),
+        ("a debt a crash left", _owing),
+    )
+})
+
+
 class ClosedIssueReconciliationTest(
     ObservedCloseCase, unittest.TestCase, _FrozenPairMixin,
 ):
@@ -136,6 +163,51 @@ class ClosedIssueReconciliationTest(
         github = owed(self)[0]
         github.add_issue(make_issue(ISSUE, label=fixing.FIXING, closed=True))
         return github
+
+
+class TerminalPullRequestTest(
+    ObservedCloseCase, unittest.TestCase, _FrozenPairMixin,
+):
+    """A pull request that is over, on an issue nobody has closed yet.
+
+    The other terminal state, and the one the closed-issue guard cannot see.
+    A merge leaves the ISSUE open until the stage terminal behind this owner
+    reads it and finalizes the work, and everything this owner does in between
+    ends in a push onto exactly that pull request -- which the gate refuses to
+    freeze an entry against, so the road below would park the issue for a
+    human over a publication that is finished.
+    """
+
+    def setUp(self) -> None:
+        self._fresh_process()
+
+    def test_a_terminal_pull_request_is_handed_on(self) -> None:
+        # Both endings, and both roads out of this owner. Neither has anywhere
+        # for a push to land, and a `late_measurement_failed` park is the
+        # wrong answer to either: what such an issue is owed is the terminal.
+        for ending, record in _TERMINAL_ROADS.items():
+            with self.subTest(case=ending):
+                self.assertIsNone(self._reconciled(*record))
+
+    def test_an_open_one_is_still_reconciled(self) -> None:
+        # The other side, so the guard is about the ending rather than about
+        # pull requests: the same record over a pull request the work can
+        # still join is measured and published before the stage runs.
+        dispatched, mocks = self._route(*self._frozen())
+
+        mocks[PUSH_BRANCH].assert_called_once()
+        dispatched.assert_called_once()
+
+    def _reconciled(self, over, owed) -> None:
+        """Run one poll over that record, and assert what it left behind."""
+        github, issue = owed(self)
+        over(github)
+        dispatched, mocks = self._route(github, issue)
+        mocks[PUSH_BRANCH].assert_not_called()
+        dispatched.assert_called_once()
+        self.assertIsNone(
+            github.pinned_data(ISSUE).get(fixing.PARK_REASON),
+        )
 
 
 class LatchedCloseReconciliationTest(

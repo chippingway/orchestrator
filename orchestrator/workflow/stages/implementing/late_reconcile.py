@@ -28,11 +28,15 @@ from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import issue_is_closed
 from orchestrator.github.pinned_state import PinnedState
-from orchestrator.workflow.late_split import state as _late_state
+from orchestrator.workflow.late_split import (
+    payloads as _payloads,
+    state as _late_state,
+)
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
     late_claims as _claims,
     late_debt as _debt,
+    late_overflow as _overflow,
     late_parks as _parks,
     late_push as _push,
     late_records as _records,
@@ -171,12 +175,24 @@ def _reconciles_published_work(
     they are for it to drain. That is the one place handing back is safe, and
     it is why the barrier asked deeper in -- against the process-wide latch,
     where the object may still read open -- stops the tick instead.
+
+    A pull request that has MERGED or been closed is handed back beside it, on
+    the same grounds and for a state the issue's own flag cannot show. The
+    issue is open until a terminal reads that merge, and there is nowhere for
+    the push this owner would make to land: the gate refuses to freeze an
+    entry against a terminal pull request, so the road below would end in
+    `late_measurement_failed` -- a human parked over a publication that is
+    finished. The terminals behind this owner read the same pull request and
+    mark the issue `done` or `rejected` instead, with the record, the branch
+    and the debt left exactly as they stand.
     """
-    if issue_is_closed(issue):
+    if issue_is_closed(issue) or _overflow._PublicationReading.is_over(
+        gh, _payloads.as_identity(state.get(_state._PR_NUMBER)),
+    ):
         log.info(
-            "issue=#%d is closed; leaving whatever its record still owes to "
-            "the stage terminal rather than publishing onto an issue nobody "
-            "wants",
+            "issue=#%d is closed, or its pull request is; leaving whatever "
+            "its record still owes to the stage terminal rather than "
+            "publishing onto work nobody can merge",
             issue.number,
         )
         return False

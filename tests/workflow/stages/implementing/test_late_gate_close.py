@@ -133,6 +133,48 @@ class LatchedCloseHoldsThePublicationTest(_CloseCase, unittest.TestCase):
         self.assertIn(_VALIDATING, self.github.label_history)
 
 
+class ApprovedPushAfterACloseTest(_CloseCase, unittest.TestCase):
+    """The window the cycle barrier cannot cover: a debt with no cycle left.
+
+    The write that approves a candidate retires its generation in the same
+    breath and before the push, so a tick that dies or whose push fails in
+    that window leaves an approval and nothing for the retirement's own close
+    barrier to cancel. The poll after comes back down the recovery seam with
+    the reading already settled and no count to take, and the last thing
+    between it and a pull request nobody wants is the barrier on the push.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._seed(**{
+            **_authorized_exemption(),
+            _KEY_APPROVED_SHA: MEASURED_CANDIDATE_SHA,
+        })
+
+    def test_the_approved_push_refuses_after_a_close(self) -> None:
+        # Nothing above the push can answer this one: the approval is what
+        # carries the candidate past the reading, so no cycle is cancelled and
+        # no count is taken. Refused here, the debt stands exactly as it is
+        # for the cleanup a latched close is owed.
+        self._latch_close(_REPO_SLUG, support.GATE_ISSUE_NUMBER)
+
+        with self.assertLogs(_WORKFLOW_LOG):
+            mocks = self._run_gate()
+
+        self._assert_nothing_shipped(mocks)
+        self.assertEqual(
+            self._pinned()[_KEY_APPROVED_SHA], MEASURED_CANDIDATE_SHA,
+        )
+
+    def test_it_publishes_while_the_issue_stands(self) -> None:
+        # The other side of that barrier, so it is not merely "never publish":
+        # with no close latched the same poll pays the debt it came back for.
+        mocks = self._run_gate()
+
+        self._assert_published(mocks)
+        self.assertIn(_VALIDATING, self.github.label_history)
+
+
 class CloseInsideTheRetirementTest(_CloseCase, unittest.TestCase):
     """The window the retirement write itself opens, and what closes it.
 

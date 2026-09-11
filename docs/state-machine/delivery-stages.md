@@ -2194,18 +2194,26 @@ to join it, so a handler run behind any of those works from a publication the ap
 votes on a head nobody adjudicated, the merge gate offers a human that head, and the docs pass commits on top of it.
 Announced once, since an operator has to put the checkout back before anything changes.
 
-**Both of those roads end in a push, so a close is asked twice.** The terminal that drains a closed issue runs inside
-the stage handler, which is *behind* this owner — so without a barrier the crash window the whole reconciliation
-exists for becomes the way work reaches a pull request on an issue somebody closed. The issue OBJECT is asked at the
-door: closed, the tick is handed straight back, and the handler's own terminal flips it to `rejected` with the
-record, the branch and the debt left exactly as they are to drain. Everything spent past that door — the stage check,
+**Both of those roads end in a push, so what is over is asked twice.** The terminal that drains a closed issue runs
+inside the stage handler, which is *behind* this owner — so without a barrier the crash window the whole
+reconciliation exists for becomes the way work reaches a pull request on an issue somebody closed. Two facts are read
+at the door and both hand the tick straight back: the issue OBJECT, and the PULL REQUEST the record names, which the
+issue's own flag cannot show — a merge leaves the issue open until a terminal reads it, and a merged or closed pull
+request is nowhere for this owner's push to land, so without this the road ends in `late_measurement_failed` and
+parks a human over a publication that is finished. The pull request is read fail-*open*, so a remote that would not
+answer falls through to the road that takes its own reading and parks with the reason it fails for. Behind either,
+the handler's own terminal marks the issue `done` or `rejected` with the record, the branch and the debt left exactly
+as they are to drain. Everything spent past that door — the stage check,
 the checkout probe, the remote read, the diff — is time a poll on another worker can find the issue closed in, and
 only the process-wide close latch can say so; that one is asked immediately before each of the two pushes and
 **stops** the tick instead of handing it back, since the object this tick holds still reads open and a terminal
 behind it would find nothing to finalize while the handler spawned an agent. What advances the issue there is the
 cleanup pass every latched close is owed. The gated publication carries the same barrier of its own, immediately
 before the push and nowhere else in it: every guard above that line spends a reading, a diff or a request after it,
-so a close landing in one of those windows would be answered one push too late.
+so a close landing in one of those windows would be answered one push too late. So does the *initial* publication on
+`workflow:implementing`, for the window the gate's own barrier cannot cover — that one ends a cycle, and the write
+that approves a candidate retires the cycle before the push, so an approval whose push failed comes back with
+nothing left to cancel and nothing between the settled reading and a pull request nobody wants.
 
 A branch some owner deliberately moved OFF the approved commit never reaches that refusal, because an approval whose
 commit was abandoned is superseded and the owner doing the abandoning drops it: the auto rebase's reset — which puts

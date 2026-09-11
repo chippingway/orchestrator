@@ -13,13 +13,14 @@ adjudicator over an answered question and risk a `split` cutting children out
 of work somebody decided ships whole. What is missing is a person, so the park
 asks for one.
 
-The gate reaches this owner with nothing measured, which is the CONTRACT it
-meets in return: the generation handed in is the one the calling tick froze,
-and the reading is taken here. The terms an authorization is recorded on are
-that pair, those additions, and that ceiling, so a road that read a count off
-the pinned comment instead would have a human authorizing a change nobody
-measured. An issue already standing behind the park comes back the same way,
-which `late_recovery` drives on every poll.
+The ordinary cumulative reading is what reaches this owner, and that is the
+whole of the contract: the generation handed in is the pair the gate froze and
+the count it took, so the terms an authorization is recorded on are this
+tick's rather than a number read back off the pinned comment. It also means
+every way a reading can fail is answered where it always was -- the
+measurement park, the typed failure on both sinks, the bounded quiet retry --
+rather than a second time here. An issue already standing behind the park
+comes back down the same road, which `late_recovery` drives on every poll.
 
 The COUNT is deliberately not made durable. A generation carrying a reading
 past its ceiling is exactly what this workflow means by an adjudication in
@@ -56,14 +57,10 @@ somebody writing into a thread nothing reads.
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
 from types import MappingProxyType
 
 from orchestrator import config
-from orchestrator.git.measurement import (
-    additions as _additions,
-    fingerprint as _fingerprint,
-)
+from orchestrator.git.measurement import fingerprint as _fingerprint
 from orchestrator.workflow.engine import (
     comments as _comments,
     guards as _guards,
@@ -76,9 +73,7 @@ from orchestrator.workflow.late_split import (
 from orchestrator.workflow.late_split.models import LateGeneration
 from orchestrator.workflow.stages.implementing import (
     late_command as _command,
-    late_freeze as _freeze,
     late_records as _records,
-    late_verdict as _verdict_owner,
     state as _state,
 )
 
@@ -167,100 +162,8 @@ _PARK_NOTICE = (
 )
 
 
-def _holds_until_authorized(
-    gate: _records._Gate, recorded: LateGeneration, candidate_sha: str,
-) -> bool:
-    """Measure this candidate afresh, and hold it unless an operator says go.
-
-    The whole of what a commit an unauthorized exemption names earns, and the
-    one road into this owner. The exemption standing on it is exactly what is
-    doubted -- an adjudicator's ruling with nobody behind it -- so reading it
-    as "already decided" would publish half a bypass, and the commit would go
-    out on nobody's authority at all.
-
-    Measured rather than read back, because the terms an authorization is
-    recorded on have to be this tick's: the pair it froze, the count it took,
-    and the ceiling it counted against. A record read off the comment would
-    have a human authorizing a change nobody measured -- and a resumed
-    developer's fresh commit is a different change from the one the notice
-    named.
-
-    A reading that did not happen holds exactly as found and says nothing.
-    Nothing about a base this host cannot show is the operator's doing, and
-    the park, the command and the record are all still there for the poll that
-    can take it.
-
-    An authorized one goes to a settlement of its own, and for the half of
-    what that settlement does that has nothing to do with the ceiling: the
-    generation this gate froze has to be RETIRED before the push, or the
-    branch is frozen out of the ordinary base refresh for as long as the issue
-    lives and a later close is read as a live cycle to end. Only what the debt
-    rests on differs from the small candidate's, and it differs because a
-    person let this one through rather than a count.
-
-    A candidate the ceiling lets through is not this park's to hold at all: it
-    goes to the ordinary settlement, which publishes it and retires the record
-    behind it -- with the park taken off in that same write, since an issue
-    whose commit is being published is not one anybody is still waiting on.
-    That is the whole of what "measured afresh" buys where a developer has
-    since been resumed: the change somebody was asked about is not the change
-    in hand, and the small one needs no authorization.
-
-    The commit the park is standing OVER is read BEFORE the freeze, because
-    the freeze is a write: it persists the pair in hand, so a park taken over
-    one candidate and re-entered on a resumed developer's next one would
-    compare the new commit against itself and hold in silence, leaving the
-    human who is waiting on this issue never told about the candidate now in
-    hand.
-    """
-    parked_over = _late_state.read_late_generation(gate.state).candidate_sha
-    frozen = _freeze._frozen_pair(gate, recorded, candidate_sha)
-    if frozen is None:
-        return True
-    counted = _additions._count_added_lines(
-        gate.worktree, frozen.base_sha, frozen.candidate_sha,
-    )
-    if not counted.is_measured:
-        log.warning(
-            "issue=#%d still cannot measure the candidate %s an operator is "
-            "being asked about (%s); holding the park exactly as it stands",
-            gate.issue.number, candidate_sha, counted.failure,
-        )
-        return True
-    measured = replace(frozen, additions=counted.additions)
-    if not measured.is_oversized:
-        return _released(gate, measured)
-    if not _authorizes_the_park(gate, measured, parked_over):
-        return True
-    return _verdict_owner._authorized(gate, measured)
-
-
-def _released(gate: _records._Gate, generation: LateGeneration) -> bool:
-    """Settle a candidate no operator has to authorize, park and all.
-
-    The park comes off in the settlement's OWN durable write rather than in
-    one of this owner's, because the two say one thing and have to land
-    together: a record retired for a commit that is about to publish, over an
-    issue that says a human is still holding it, is a publication the source
-    stage's parked road stops on every poll after -- waiting for a reply to a
-    question this very tick answered, while the approved commit sits unpushed.
-
-    Only this park is taken off, and only from here. The retirement beside it
-    is written to drop a park a fresh READING answers, which this is not: what
-    it answers is the ceiling, and the answer is that nobody's permission was
-    ever needed for a change this size.
-
-    The receipt goes with the flag. A sentence still owed is owed on a park
-    that stands, and nothing on an unparked issue would ever say it.
-    """
-    gate.state.set(_state._AWAITING_HUMAN, False)
-    gate.state.set(_state._PARK_REASON, None)
-    gate.state.set(_state._HELD_RECEIPT, None)
-    return _verdict_owner._settled(gate, generation)
-
-
 def _authorizes_the_park(
-    gate: _records._Gate, generation: LateGeneration, parked_over: str,
+    gate: _records._Gate, generation: LateGeneration,
 ) -> bool:
     """Whether a human has told this oversized candidate to publish as it is.
 
@@ -270,26 +173,21 @@ def _authorizes_the_park(
     candidate the caller publishes exactly as it publishes one the reading let
     through.
 
-    Asked here rather than at the gate's door because this is the only owner
-    holding a reading: an operator authorizes a change of THIS size against
-    THAT ceiling, and the terms of the record are the pair this call froze,
-    the additions it counted, and the ceiling it counted them against.
-
-    `parked_over` is the commit the record named before this call froze
-    anything, which is the only thing that can say whether a standing park is
-    about the candidate in hand. It is the caller's because the freeze has
-    written over it by the time anything here could ask.
+    Reached from the verdict the ordinary reading settles, which is what makes
+    the terms this owner records the gate's own: an operator authorizes a
+    change of THIS size against THAT ceiling, and the pair, the additions and
+    the ceiling on the generation handed in are the ones that reading took.
     """
     answer = _command._read_the_park(gate.gh, gate.issue, gate.state)
     if answer is None:
-        return not _parked_for_authorization(gate, generation, parked_over)
+        return not _parked_for_authorization(gate, generation)
     if answer.named != generation.candidate_sha:
         return not _refused(gate, generation, answer)
     return _recorded_authorization(gate, generation, answer)
 
 
 def _parked_for_authorization(
-    gate: _records._Gate, generation: LateGeneration, parked_over: str,
+    gate: _records._Gate, generation: LateGeneration,
 ) -> bool:
     """Hold an adjudicated candidate nobody has authorized, and say so once.
 
@@ -336,7 +234,7 @@ def _parked_for_authorization(
     would destroy the evidence it exists to ask about.
     """
     receipt = _receipt(gate, "parked", generation.candidate_sha)
-    standing = _stands_over(gate, generation, parked_over)
+    standing = _stands_over(gate, generation)
     if standing and not _owes_the_notice(gate, receipt):
         _recorded_as_said(gate)
         return True
@@ -469,27 +367,29 @@ def _decided_by(gate: _records._Gate, candidate_sha: str) -> str:
 
 
 def _stands_over(
-    gate: _records._Gate, generation: LateGeneration, parked_over: str,
+    gate: _records._Gate, generation: LateGeneration,
 ) -> bool:
     """Whether this park is already up, over this very candidate.
 
     Both halves of the park are required. The flag and the reason say somebody
     is waiting behind this question rather than behind a timeout, a dirty
-    tree, or a reading nobody could take; the commit says they are waiting
-    behind THIS one. A park standing over another is one a resumed developer's
-    fresh commit has moved past, and the human holding the issue has never
-    been told about the candidate now in hand.
+    tree, or a reading nobody could take; the recorded candidate says they are
+    waiting behind THIS one.
 
-    The commit is the caller's rather than a read taken here, and that is the
-    whole of what makes the comparison mean anything: the freeze between the
-    two persists the pair in hand, so a record read at this point answers with
-    the candidate being asked about and every park compares equal to itself.
+    Read off the durable record, which the freeze ahead of this call has
+    already written the pair onto -- so what is compared is the commit the
+    park is about rather than a count nothing persists. A park a resumed
+    developer's fresh commit has moved past never reaches this owner at all:
+    the road in is an exemption naming the candidate in hand, and a hold
+    routes the issue to the adjudication, which clears whatever park it
+    supersedes on the way.
     """
     if gate.state.get(_state._PARK_REASON) != _command.PARK_UNAUTHORIZED_EXEMPTION:
         return False
     if not gate.state.get(_state._AWAITING_HUMAN):
         return False
-    return parked_over == generation.candidate_sha
+    recorded = _late_state.read_late_generation(gate.state)
+    return recorded.candidate_sha == generation.candidate_sha
 
 
 def _recorded_authorization(

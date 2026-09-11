@@ -46,7 +46,10 @@ from orchestrator.git import branch_transport as _branch_transport
 from orchestrator.git.measurement import commits as _measurement_commits
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.github import client as _client, pinned_state as _pinned_state
-from orchestrator.workflow.engine import guards as _guards
+from orchestrator.workflow.engine import (
+    guards as _guards,
+    observations as _observations,
+)
 from orchestrator.workflow.stages.implementing import (
     checkout_guards as _checkout,
     dev_pr as _dev_pr,
@@ -68,6 +71,26 @@ _UNPROVABLE_HEAD_PARK = (
     "what is stopping the read, then reply and the orchestrator will resume "
     "the session."
 )
+
+
+def _close_beat_the_push(spec: config.RepoSpec, issue: Issue) -> bool:
+    """Whether a poll read this issue closed while the tick was working.
+
+    Asked of the process-wide latch rather than of the issue object, which is
+    the snapshot the tick opened with: everything spent since that fetch --
+    the run itself, the reading, the proofs around it -- is time a poll on
+    another worker can find the issue closed in, and the latch is what that
+    poll leaves behind. It costs no request, which is why it can be asked as
+    late as the step it guards rather than once at the door.
+    """
+    if not _observations.close_observed(spec.slug, issue.number):
+        return False
+    log.warning(
+        "repo=%s issue=#%d was observed closed before its branch was pushed; "
+        "refusing the push rather than putting work on an issue nobody wants",
+        spec.slug, issue.number,
+    )
+    return True
 
 
 def _publication_intent(
@@ -201,13 +224,26 @@ def _on_commits(
     the docs pass, which commit it or destroy it. Cleanliness proved at the
     top of the disposition is a fact about a moment that has passed by the
     time either effect runs.
+
+    A close a poll observed is refused immediately before the push, on the
+    same terms every gated publication onto an open pull request refuses one.
+    The gate's own barrier ends the CYCLE, which answers every candidate a
+    record is still live for -- and the roads this seam reaches it by are
+    exactly the ones where none is: an approval whose push failed retires its
+    generation before that push, so the retry comes back with nothing left to
+    cancel and nothing else between the reading and the effect. What a closed
+    issue may never earn is this effect, so the refusal is held: nothing
+    pushed, no pull request opened, no handoff, and the debt left exactly as
+    it stands for the cleanup a latched close is owed.
     """
     agent_result = approved.agent_result
     wt = _worktree_paths._worktree_path(spec, issue.number)
     published = _publication_intent(gh, issue, state, approved, wt)
     if published is None:
         return
-    if _checkout._dirtied_before_the_push(gh, issue, state, published, wt):
+    if _checkout._dirtied_before_the_push(
+        gh, issue, state, published, wt,
+    ) or _close_beat_the_push(spec, issue):
         return
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     if not _branch_transport._push_branch(
