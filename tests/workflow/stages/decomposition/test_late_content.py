@@ -26,11 +26,13 @@ from tests.workflow.stages.decomposition.late_content_support import (
     OTHER_GUIDANCE,
     OUTSIDER,
     SECOND_ID,
+    authorization,
     baselined,
     guidance_comment,
     human_comment,
 )
 from tests.workflow.stages.decomposition.late_test_support import (
+    CANDIDATE_SHA,
     LATE_ISSUE_NUMBER,
     late_generation,
 )
@@ -235,16 +237,22 @@ class DriftReadingTest(unittest.TestCase):
         self.assertEqual(signal.guidance, ())
 
 
-class ContinueClassificationTest(unittest.TestCase):
-    """A content-free nudge is not an answer, and a nudge with one is."""
+class ReportedClassificationTest(unittest.TestCase):
+    """What a reply this reading counted as fresh arrives on the signal as.
 
-    def test_a_fresh_comment_classifies_by_content(self) -> None:
-        # A bare command carries no answer, the same command alongside real
-        # guidance does, and a body with nothing in it is neither.
+    Which comment is which is the `late_content_replies` owner's question and
+    is asserted against it. What is pinned here is that all of its answers
+    reach the signal off one walk of the thread, so an operator control is
+    never handed to a developer as work and the one a park is waiting for
+    arrives beside the guidance rather than instead of it.
+    """
+
+    def test_a_fresh_comment_arrives_under_what_it_is(self) -> None:
         for body, classified in (
-            (BARE_CONTINUE, (0, True)),
-            (CONTINUE_WITH_GUIDANCE, (1, False)),
-            (EMPTY_BODY, (0, False)),
+            (BARE_CONTINUE, (0, True, None)),
+            (CONTINUE_WITH_GUIDANCE, (1, False, None)),
+            (EMPTY_BODY, (0, False, None)),
+            (authorization(), (0, False, CANDIDATE_SHA)),
         ):
             with self.subTest(comment=body):
                 issue, generation = _frozen()
@@ -253,7 +261,12 @@ class ContinueClassificationTest(unittest.TestCase):
                 signal = _signal(issue, generation)
 
                 self.assertEqual(
-                    (len(signal.guidance), signal.bare_continue), classified,
+                    (
+                        len(signal.guidance),
+                        signal.bare_continue,
+                        getattr(signal.authorization, "candidate_sha", None),
+                    ),
+                    classified,
                 )
 
 
