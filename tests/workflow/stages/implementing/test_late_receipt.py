@@ -47,6 +47,15 @@ from tests.workflow.stages.implementing import late_gate_test_support as support
 
 _KEY_PUBLISHED_SHA = "implementing_published_sha"
 _KEY_PR_NUMBER = "pr_number"
+# What a proven-delivery attempt makes durable BEFORE it pushes, and what a
+# tick dying in that window leaves behind: the commit named as owed a push,
+# with no lease beside it -- the head it would have been pinned to was the
+# pull request the proof named, and that proof is what the retry can no
+# longer take.
+_KEY_APPROVED_SHA = "late_approved_sha"
+# The other record that names a commit and says nothing about where it went:
+# an adjudication's verdict that the change ships as one change.
+_KEY_EXEMPT_SHA = "late_exempt_sha"
 
 # The pull request that note was written about, and the branch it is on.
 _PR_NUMBER = 812
@@ -432,6 +441,72 @@ class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
         self._assert_measured(mocks)
         self._assert_held(mocks)
 
+
+
+class CollidingRecordTest(_ReceiptCase, unittest.TestCase):
+    """A decision naming the same commit does not answer for where it went.
+
+    An exemption says a human ruled the change one change; an approval says
+    this gate already counted it and owes it a push. Both are about whether
+    the candidate needs a fresh READING, and neither says a word about which
+    pull request carries it -- which is the question the proof just failed.
+
+    Waved past on either, the retry publishes with nothing to lease against
+    and reuses whatever pull request a branch lookup finds. That window is
+    reachable rather than theoretical: the road that admits a delivered
+    candidate records the commit as a debt before it pushes, so a tick dying
+    there leaves exactly this approval with exactly this empty lease.
+    """
+
+    def test_a_crashed_delivery_debt_is_held(self) -> None:
+        # The approval the crash left, over a pull request that moved while
+        # the tick was down. Read as licence to publish, the push goes out
+        # unleased -- the lease it would have used was the proof -- and the
+        # branch lookup behind it hands the work to whatever it finds.
+        for described, standing, branch in (
+            ("moved off the commit", _MOVED_HEAD, _BRANCH),
+            ("open somewhere else", MEASURED_CANDIDATE_SHA, _ANOTHER_BRANCH),
+        ):
+            with self.subTest(pull_request=described):
+                self._collided(_KEY_APPROVED_SHA, standing, branch)
+
+                mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+                self._assert_held(mocks)
+                self._assert_record_stands(_KEY_APPROVED_SHA)
+
+    def test_a_colliding_exemption_is_held(self) -> None:
+        # The same hole one field over, and the commonest on the road this
+        # proof exists for: an adjudicated commit whose publication cannot be
+        # shown is one nothing may republish blind either.
+        for described, standing, branch in (
+            ("moved off the commit", _MOVED_HEAD, _BRANCH),
+            ("open somewhere else", MEASURED_CANDIDATE_SHA, _ANOTHER_BRANCH),
+        ):
+            with self.subTest(pull_request=described):
+                self._collided(_KEY_EXEMPT_SHA, standing, branch)
+
+                mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+                self._assert_held(mocks)
+                self._assert_record_stands(_KEY_EXEMPT_SHA)
+
+    def _collided(self, key: str, standing: str, branch: str) -> None:
+        """A receipt and one of those records, over a publication that moved."""
+        self.setUp()
+        self._stand_the_pull_request_on(standing, branch=branch)
+        self._seed(**{
+            **_PUBLISHED_BY_THIS_STAGE,
+            key: MEASURED_CANDIDATE_SHA,
+        })
+
+    def _assert_record_stands(self, key: str) -> None:
+        """The park spent nothing: every record is there for the repair."""
+        pinned = self._pinned()
+        self.assertEqual(pinned[key], MEASURED_CANDIDATE_SHA)
+        self.assertEqual(pinned[_KEY_PUBLISHED_SHA], MEASURED_CANDIDATE_SHA)
+        self.assertEqual(pinned[_KEY_PR_NUMBER], _PR_NUMBER)
+        self.assertNotIn(_VALIDATING, self.github.label_history)
 
 
 class DamagedReceiptTest(_ReceiptCase, unittest.TestCase):

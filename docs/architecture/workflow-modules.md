@@ -1421,9 +1421,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             writes its own receipt across the damaged field and destroys what an operator would
                             have repaired it from.
                             The park writes nothing else -- the receipt, the recorded number and any debt beside
-                            them stand for the terminal or the retry. Two candidates are outside it and neither
-                            falls through: a commit an adjudication's exemption names and one an approval owes a
-                            push for, each a durable decision with its own lease that holding would strand
+                            them stand for the terminal or the retry. Which pull request is asked of the record
+                            first and of the BRANCH after it, since the handoff is what records a number and a
+                            push that landed before a moved checkout or a crash stopped that write leaves a
+                            receipt with nothing beside it; what the lookup finds is proved on exactly the terms a
+                            recorded number is. NOTHING is outside the park, an exemption or an approval naming
+                            the same commit least of all: each answers whether the candidate needs a fresh READING
+                            and says nothing about where the work went, and the delivered road records the commit
+                            as a debt BEFORE it pushes -- so a tick dying there leaves an approval with no lease,
+                            and waving it past publishes unleased onto whatever a branch lookup finds
       late_consent.py       the park an adjudicated candidate with no operator authorization behind it waits on,
                             the one door into it -- an issue standing on it over an exemption naming the commit in
                             hand, which is the whole of what keeps the policy off every other issue. All three are

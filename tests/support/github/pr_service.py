@@ -57,6 +57,12 @@ class _PullCreationService:
             ),
         )
         self.opened_prs.append(pull_request)
+        # Held and findable from here on, as GitHub holds one: a pull request
+        # that has been opened IS the open pull request on its branch, and a
+        # double that answered a later lookup with nothing would report a
+        # second one being opened over the same work as working.
+        self.add_pr(pull_request)
+        self.existing_open_pr[branch] = pull_request
         return pull_request
 
     def pr_comment(self, pr_number: int, body: str) -> FakeComment:

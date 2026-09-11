@@ -61,11 +61,14 @@ tick parks with the receipt, the pull request number and whatever debt stands
 beside them left untouched -- there for the terminal that drains finished work,
 and there for the retry once a human has reconciled the record with the remote.
 
-Two candidates are outside that hold and neither is a fall-through: a commit an
-adjudication's exemption names, and one an approval already owes a push for.
-Each is a DURABLE decision of this workflow's own, carrying its own lease and
-its own debt, and holding either over a receipt that cannot be proved would
-strand exactly the work those records exist to finish.
+Nothing is outside that hold, and an exemption or an approval naming the same
+commit least of all. Each answers whether the candidate needs a fresh READING
+and says nothing about where the work went, which is the question that failed
+-- and the road that admits a delivered candidate records the commit as a debt
+BEFORE it pushes, so a tick dying there leaves an approval with no lease beside
+it. Waved past on one, the retry publishes with nothing to lease against and
+reuses whatever pull request a branch lookup finds, which is the pair of
+outcomes this proof exists to close.
 """
 from __future__ import annotations
 
@@ -75,7 +78,6 @@ from dataclasses import dataclass
 from orchestrator import config
 from orchestrator.git.worktrees import paths as _worktree_paths
 from orchestrator.workflow.late_split import (
-    exemption as _exemption,
     formats as _formats,
     payloads as _payloads,
     state as _late_state,
@@ -97,7 +99,10 @@ _UNREADABLE_RECEIPT = (
     "commit this stage published"
 )
 
-_NO_PULL_REQUEST = "this issue records no pull request for it to be on"
+_NO_PULL_REQUEST = (
+    "this issue records no pull request for it to be on, and none is open on "
+    "the branch this publication would push"
+)
 
 _UNREADABLE_PULL_REQUEST = (
     "pull request #{number} could not be read from this host"
@@ -224,11 +229,18 @@ def _delivered_before_the_relabel(
     -- neither is a question about the candidate in hand.
 
     A REFUSAL is the answer everywhere else the proof does not hold: a receipt
-    this build cannot read at all, no pull request recorded for it to be on,
-    one this host could not read, one that has merged or been closed, one
-    standing on another commit, and one open on another branch. Each names
-    itself, because what the caller does with one is park a human over it and
-    they are different things to reconcile.
+    this build cannot read at all, no pull request to be on at all, one this
+    host could not read, one that has merged or been closed, one in another
+    repository, one standing on another commit, and one open on another
+    branch. Each names itself, because what the caller does with one is park a
+    human over it and they are different things to reconcile.
+
+    Which pull request is asked of the record FIRST and of the branch after
+    it, because the record is not always written: the handoff is what records
+    a number, and a push that landed before a moved checkout or a crash
+    stopped that write leaves a receipt with nothing beside it. The branch
+    lookup is the same one the seam behind this would make, and what it finds
+    is proved on exactly the terms a recorded number is.
 
     The MALFORMED receipt is asked first and apart from the comparison below
     it, because that comparison cannot see it: every late commit field is read
@@ -242,7 +254,6 @@ def _delivered_before_the_relabel(
     so nothing here can tell whether the candidate in hand is that commit --
     which is the whole reason it refuses rather than comparing.
     """
-    number = _payloads.as_identity(gate.state.get(_state._PR_NUMBER))
     if gate.entry is not None:
         return _Delivered()
     if _parks._unreadable_receipt(gate.state):
@@ -251,9 +262,38 @@ def _delivered_before_the_relabel(
         )
     if _parks._published_commit(gate.state) != candidate_sha:
         return _Delivered()
+    number = _payloads.as_identity(
+        gate.state.get(_state._PR_NUMBER),
+    ) or _opened_on_the_branch(gate)
     if not number:
         return _Delivered(refusal=_NO_PULL_REQUEST)
     return _proved_against(gate, number, candidate_sha)
+
+
+def _opened_on_the_branch(gate: _records._Gate) -> int:
+    """The pull request open on the branch this seam pushes, or 0 for none.
+
+    The window where a receipt is real and the RECORD names nothing: the
+    push landed and opened a pull request, and the write that records its
+    number is the handoff -- which a moved checkout, a dirtied tree or a
+    crash can stop. So an issue can carry a receipt for the commit a pull
+    request is standing on while `pr_number` has never been written.
+
+    Looked up exactly as the seam behind this looks one up, because it is
+    the same question: which pull request this push would join. Nothing is
+    opened here and nothing is chosen -- what comes back goes through the
+    same proof a recorded number does, held to this repository, this branch
+    and this commit -- so what the lookup buys is a publication that can be
+    PROVED where it would otherwise only have been reused blind, with the
+    lease and the bound number that follow from proving it.
+    """
+    found = gate.gh.find_open_pr(
+        branch=_worktree_paths._resolve_branch_name(
+            gate.state, gate.spec, gate.issue.number,
+        ),
+        base=gate.spec.base_branch,
+    )
+    return getattr(found, "number", 0) or 0
 
 
 def _proved_against(
@@ -374,21 +414,34 @@ def _holds_an_unprovable_receipt(
     so the park says to repair the field rather than offering an escape that
     would loop.
 
-    Two candidates are outside this and neither is a fall-through. A commit an
-    adjudication's EXEMPTION names publishes on that verdict, and one an
-    APPROVAL owes a push for publishes on that debt and its own recorded
-    lease. Both are durable decisions of this workflow's own, taken before any
-    receipt was written, and holding either over a note that cannot be proved
-    would strand exactly the work those records exist to finish.
+    NOTHING is outside it, and an exemption or an approval naming the same
+    commit least of all. Each says the candidate needs no fresh READING --
+    that a human adjudicated the change, or that this gate already counted it
+    -- and neither says a word about where the work went. The publication
+    proof is the other question, and it is the one that has failed.
+
+    Carving those two out is what a proven-delivery attempt that CRASHES
+    turns into an unleased republication. The road that admits a delivered
+    candidate makes the commit durable as a debt before it pushes, so a tick
+    dying in that window leaves an approval naming it with no lease beside it
+    -- the head it would have been pinned to was the pull request the proof
+    named, and that proof is exactly what the retry can no longer take. Waved
+    past on the approval, the next poll publishes with nothing to lease
+    against and reuses whatever pull request a branch lookup finds: a blind
+    force-push over a tip somebody moved, and a second pull request opened
+    over work the first may already carry. An exemption is the same hole one
+    field over, and the commonest one on the road this proof exists for.
+
+    So the park holds every one of them, and holds exactly what each needs to
+    be paid once a human has reconciled the record: the exemption, the
+    approval, the receipt and the recorded number all stand untouched, and the
+    publication those decisions are owed happens on the poll after the repair
+    rather than blind on this one.
 
     Silent for every candidate no receipt names, which is every ordinary tick,
     and for a call that froze a publication of its own.
     """
     if not delivered.refusal:
-        return False
-    if _exemption.is_exempt(gate.state, candidate_sha):
-        return False
-    if _parks._approved_commit(gate.state) == candidate_sha:
         return False
     log.error(
         "issue=#%d records a receipt for %s and cannot show the publication "

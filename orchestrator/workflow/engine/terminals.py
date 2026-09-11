@@ -466,15 +466,15 @@ def _finalize_if_issue_closed(
 ) -> bool:
     """Flip a closed-but-not-merged issue to `rejected`.
 
-    Pairs with `_finalize_if_pr_merged`: that helper drains the merged-PR
-    arc, this one drains the closed-issue counterpart so closed issues
-    yielded by the `implementing` / `documenting` / `validating` sweep
-    entries do NOT spawn the dev / docs / reviewer agent, push to
-    the per-issue branch, or post on the now-closed issue thread.
-    `_handle_in_review` / `_handle_fixing` carry equivalent guards
-    inline via their PR-state arcs; callers in the sweep stages
-    invoke this helper right after `_finalize_if_pr_merged` so the
-    merged case is drained first and only the rejected case lands here.
+    Pairs with `_pr_terminal_stops_the_tick`: that helper drains both
+    pull-request endings off one reading, this one drains the closed-issue
+    counterpart so closed issues yielded by the `implementing` /
+    `documenting` / `validating` sweep entries do NOT spawn the dev / docs /
+    reviewer agent, push to the per-issue branch, or post on the now-closed
+    issue thread. `_handle_in_review` / `_handle_fixing` carry equivalent
+    guards inline via their PR-state arcs; callers in the sweep stages
+    invoke this helper right after that one, so a merged or closed PULL
+    REQUEST is drained first and only a closed ISSUE lands here.
 
     Branch cleanup follows the in_review / fixing convention: only when
     the linked PR itself is also closed (a closed PR without merge is

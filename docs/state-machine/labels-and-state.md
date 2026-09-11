@@ -2441,8 +2441,12 @@ rather than preserving.
   simply be published, which force-pushes a branch nothing could confirm and opens a second pull request over work
   the first one already carries. The park writes
   nothing else — the receipt, the recorded number and any debt beside them stand for the terminal that drains
-  finished work or for the retry behind a repair. A commit an exemption names and one an approval owes a push for
-  are outside it: each is a durable decision carrying its own lease, and holding either would strand it.
+  finished work or for the retry behind a repair. Nothing is outside it — a commit an exemption names or an approval
+  owes a push for least of all: each answers whether a fresh *reading* is needed and says nothing about where the
+  work went, and the delivered road records the commit as a debt before it pushes, so a crash there leaves an
+  approval with no lease to publish under. Which pull request is asked of the record first and of the *branch* after
+  it, since the handoff is what records a number and a push that landed before a crash leaves a receipt with nothing
+  beside it.
 
   What the answer then carries is the pull request *number*, because a reading is a
   moment: the push behind it is leased against that exact commit, so a branch moved in the window rejects it rather

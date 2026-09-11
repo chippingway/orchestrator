@@ -481,9 +481,17 @@ A proof that fails **parks** rather than handing the commit back to the ordinary
 not a neutral answer: a count under the ceiling publishes, which force-pushes a branch nothing could confirm and
 opens the second pull request by another road. The park writes nothing else — the receipt, the recorded number and
 whatever push is still owed stand exactly as they were, for the terminal that drains finished work or for the retry
-behind a repair. Only two candidates are outside it: one an adjudication's exemption names, and one an approval
-already owes a push for. Each is a durable decision of this workflow's own, carrying its own lease, and holding
-either over a note that cannot be proved would strand the work those records exist to finish.
+behind a repair. Nothing is outside it — an exemption or an approval naming the same commit least of all. Each
+answers whether the candidate needs a fresh *reading* and says nothing about where the work went, which is the
+question that failed; and the road that admits a delivered candidate records the commit as a debt *before* it
+pushes, so a tick dying there leaves an approval with no lease beside it. Waved past on one, the retry publishes
+with nothing to lease against and reuses whatever pull request a branch lookup finds.
+
+Which pull request is asked of the record first and of the **branch** after it, because the record is not always
+written: the handoff is what records a number, so a push that landed before a moved checkout or a crash stopped that
+write leaves a receipt with nothing beside it. The lookup is the same one the seam would make, and what it finds is
+proved on exactly the terms a recorded number is — so that window is finished with a leased no-op and a bound pull
+request rather than a blind reuse.
 
 And because a reading is a moment rather than a guarantee, the answer carries the pull request *number* rather than
 a bare permission. The push behind it is leased against that exact commit, so a branch somebody moved in the window
