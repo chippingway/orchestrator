@@ -15,9 +15,9 @@ them where to read it. One they have already DECIDED -- merged, or closed
 without merging, which only the recovery ever adopts -- is not: telling
 somebody to go and review what they have just settled would answer a verdict
 with instructions, so there the records are persisted on their own and nothing
-is said on the thread. `terminal` reads them on the next tick and finishes the
-issue `done` or `rejected`, with the usage receipt and the teardown, which is
-the whole of what is left to say.
+is said on the thread. `terminal` reads them on the next tick and
+`plan_terminal` finishes the issue `done` or `rejected`, with the usage receipt
+and the teardown, which is the whole of what is left to say.
 
 Two of those records are not bookkeeping. `pr_number` and `branch` are what a
 later checkout is restored from, and the round anchor is moved onto the
@@ -68,8 +68,9 @@ def _record_landed_plan(
     is not: they merged or closed it already, and telling them to go and review
     it would be answering a verdict they have given with instructions they have
     no use for. So the records are written on their own there, and what speaks
-    instead is `terminal` on the very next tick, which reads them and finishes
-    the issue `done` or `rejected` with the usage receipt and the teardown.
+    instead is the very next tick's terminal: `terminal` reads them, and
+    `plan_terminal` finishes the issue `done` or `rejected` with the usage
+    receipt and the teardown.
     The open-round flag is retired by hand on that path, because the park
     funnel is what retires it everywhere else: a round whose plan is on a pull
     request has reported, and a flag left standing would have a later tick

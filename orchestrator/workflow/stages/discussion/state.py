@@ -314,8 +314,9 @@ def _plan_published(state: PinnedState) -> bool:
 
     What it gates is the whole tick: the design is with the humans on a PR
     now, so no round is opened and no agent is spawned. What happens instead
-    is that `terminal` asks GitHub what they did with that PR -- which is the
-    only thing that ends this conversation, and the only thing that moves the
-    label off `discussion` without a human's hand.
+    is that `terminal` hands the tick to `plan_terminal`, which asks GitHub
+    what they did with that PR -- the only thing that ends this conversation,
+    and the only thing that moves the label off `discussion` without a human's
+    hand.
     """
     return bool(state.get(_PLAN_PATH)) and state.get(_PR_NUMBER) is not None

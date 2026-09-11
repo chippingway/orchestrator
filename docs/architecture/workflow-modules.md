@@ -1180,8 +1180,15 @@ workflow/                   publishes the two label vocabularies, `guard_transit
     discussion/             `discussion`
       handler.py            the order one round asks its questions in: whether the conversation is over, whose turn it
                             is, what the checkout holds, and what the round left behind
-      terminal.py           what the plan PR has become: the merged and closed-unmerged finalizes, the open-PR hold,
-                            the marker lookup that finds a PR a crash left unrecorded, and the pre-PR close
+      terminal.py           the order the endings are asked in: the recorded plan PR handed to `plan_terminal` before
+                            the issue's own close is read, then the marker lookup that finds a PR a crash left
+                            unrecorded -- whose branch is resolved once, ahead of the number it records, so the ref a
+                            reap names is the one this stage pushed, and which holds here on a recovered PR still open
+                            and on a lookup GitHub declined, handing on only a decided one -- and the pre-PR close,
+                            which reaps nothing
+      plan_terminal.py      what the humans did with the plan PR: the fetch by recorded number, held where GitHub
+                            would not serve it, and the verdict both callers finalize through -- merged to `done`,
+                            closed unmerged to `rejected`, an open one writing and reaping nothing
       session.py            the pinned agent and session a conversation is locked to, the filter its replies are drawn
                             through, and the prompt paired with the replies it read
       run.py                one round in the issue's own worktree, the restorer that checkout is rebuilt by, and the
