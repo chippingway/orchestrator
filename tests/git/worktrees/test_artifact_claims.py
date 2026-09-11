@@ -23,21 +23,9 @@ from orchestrator.github.pinned_state import (
     PinnedState,
     pinned_state_from_comment,
 )
+from tests.git.worktrees import eligibility_test_support as _support
 from tests.git.worktrees.artifact_test_support import WIDGET_SLUG, _spec
-from tests.git.worktrees.eligibility_test_support import (
-    BACKLOG_LABEL,
-    DONE_LABEL,
-    IMPLEMENTING_LABEL,
-    ISSUE_NUMBER,
-    OPEN_PR_STATE,
-    OTHER_BASE_BRANCH,
-    REJECTED_LABEL,
-    _github,
-    _pull_request,
-    _RaisingIssue,
-    _reasons,
-    _terminal_issue,
-)
+from tests.git.worktrees.eligibility_test_support import _RaisingIssue
 from tests.support.fakes import FakeComment, FakeUser
 
 BRANCH = "orchestrator/acme__widget/issue-314"
@@ -57,22 +45,22 @@ CORRUPT_COMMENT_ID = 900
 # reached is not called ambiguous. The control label beside a terminal one is
 # the other direction -- it coexists with a state and is not one.
 _ENDINGS = (
-    ((DONE_LABEL,), False, (RetentionReason.ISSUE_OPEN,)),
+    ((_support.DONE_LABEL,), False, (RetentionReason.ISSUE_OPEN,)),
     ((), True, (RetentionReason.NO_WORKFLOW_LABEL,)),
     (
-        (DONE_LABEL, IMPLEMENTING_LABEL),
+        (_support.DONE_LABEL, _support.IMPLEMENTING_LABEL),
         True,
         (RetentionReason.AMBIGUOUS_WORKFLOW_LABEL,),
     ),
-    ((IMPLEMENTING_LABEL,), True, (RetentionReason.NON_TERMINAL_LABEL,)),
+    ((_support.IMPLEMENTING_LABEL,), True, (RetentionReason.NON_TERMINAL_LABEL,)),
     (
-        (IMPLEMENTING_LABEL, LEGACY_IMPLEMENTING_LABEL),
+        (_support.IMPLEMENTING_LABEL, LEGACY_IMPLEMENTING_LABEL),
         True,
         (RetentionReason.NON_TERMINAL_LABEL,),
     ),
-    ((DONE_LABEL,), True, ()),
-    ((REJECTED_LABEL,), True, ()),
-    ((DONE_LABEL, BACKLOG_LABEL), True, ()),
+    ((_support.DONE_LABEL,), True, ()),
+    ((_support.REJECTED_LABEL,), True, ()),
+    ((_support.DONE_LABEL, _support.BACKLOG_LABEL), True, ()),
 )
 
 # What a bot-authored pinned comment can carry that no state can be read out
@@ -89,7 +77,7 @@ _FOREIGN_PAYLOADS = ([], "orchestrator/issue-314", 7, None)
 def _claims(gh, spec, branches=(BRANCH,), **pinned) -> tuple:
     """Every open pull request claiming this issue's artifacts."""
     return claims._open_pull_request_retentions(
-        gh, spec, ISSUE_NUMBER, branches, PinnedState(data=dict(pinned)),
+        gh, spec, _support.ISSUE_NUMBER, branches, PinnedState(data=dict(pinned)),
     )
 
 
@@ -104,46 +92,46 @@ class TerminalValidationTest(unittest.TestCase):
     def test_each_ending_earns_its_own_answer(self) -> None:
         for label_names, closed, expected in _ENDINGS:
             with self.subTest(labels=label_names, closed=closed):
-                issue = _terminal_issue(
+                issue = _support._terminal_issue(
                     closed=closed, label_names=label_names,
                 )
 
                 self.assertEqual(
-                    _reasons(claims._terminal_retentions(issue, ISSUE_NUMBER)),
+                    _support._reasons(claims._terminal_retentions(issue, _support.ISSUE_NUMBER)),
                     expected,
                 )
 
     def test_an_ambiguity_names_both_states(self) -> None:
         # What an operator has to settle is which of the two labels the issue
         # is meant to be on, so the reason carries them rather than the issue.
-        issue = _terminal_issue(label_names=(DONE_LABEL, IMPLEMENTING_LABEL))
+        issue = _support._terminal_issue(label_names=(_support.DONE_LABEL, _support.IMPLEMENTING_LABEL))
 
-        kept = claims._terminal_retentions(issue, ISSUE_NUMBER)
+        kept = claims._terminal_retentions(issue, _support.ISSUE_NUMBER)
 
-        self.assertEqual(kept[0].subject, f"{DONE_LABEL}, {IMPLEMENTING_LABEL}")
+        self.assertEqual(kept[0].subject, f"{_support.DONE_LABEL}, {_support.IMPLEMENTING_LABEL}")
 
     def test_a_field_that_raises_is_unreadable(self) -> None:
         # Every field the ending is read from is a request of its own, so a
         # failure in one is a question that could not be put -- and it must
         # not escape and take the whole classification down with it. The
         # subject comes from the candidate, since the number raises too.
-        kept = claims._terminal_retentions(_RaisingIssue(), ISSUE_NUMBER)
+        kept = claims._terminal_retentions(_RaisingIssue(), _support.ISSUE_NUMBER)
 
         self.assertEqual(
-            _reasons(kept), (RetentionReason.ISSUE_UNREADABLE,),
+            _support._reasons(kept), (RetentionReason.ISSUE_UNREADABLE,),
         )
-        self.assertEqual(kept[0].subject, f"#{ISSUE_NUMBER}")
+        self.assertEqual(kept[0].subject, f"#{_support.ISSUE_NUMBER}")
 
 
 class PinnedStateTest(unittest.TestCase):
     """What comes back from the pinned comment, and what is not a state."""
 
     def setUp(self) -> None:
-        self.issue = _terminal_issue()
-        self.gh = _github(self.issue, branch=BRANCH)
+        self.issue = _support._terminal_issue()
+        self.gh = _support._github(self.issue, branch=BRANCH)
 
     def test_a_recorded_state_comes_back(self) -> None:
-        state = claims._read_state(self.gh, self.issue, ISSUE_NUMBER)
+        state = claims._read_state(self.gh, self.issue, _support.ISSUE_NUMBER)
 
         self.assertEqual(state.get(PINNED_BRANCH_KEY), BRANCH)
 
@@ -151,11 +139,11 @@ class PinnedStateTest(unittest.TestCase):
         with patch.object(
             self.gh, "read_pinned_state", side_effect=RuntimeError("no"),
         ):
-            unread = claims._read_state(self.gh, self.issue, ISSUE_NUMBER)
+            unread = claims._read_state(self.gh, self.issue, _support.ISSUE_NUMBER)
 
         self.assertEqual(
             unread, Retention(
-                RetentionReason.STATE_UNREADABLE, f"#{ISSUE_NUMBER}",
+                RetentionReason.STATE_UNREADABLE, f"#{_support.ISSUE_NUMBER}",
             ),
         )
 
@@ -172,7 +160,7 @@ class PinnedStateTest(unittest.TestCase):
                     return_value=PinnedState(data=payload),
                 ):
                     malformed = claims._read_state(
-                        self.gh, self.issue, ISSUE_NUMBER,
+                        self.gh, self.issue, _support.ISSUE_NUMBER,
                     )
 
                 self.assertEqual(
@@ -194,7 +182,7 @@ class PinnedStateTest(unittest.TestCase):
                         user=FakeUser(BOT_LOGIN),
                     ),
                     trusted_login=BOT_LOGIN,
-                    issue_number=ISSUE_NUMBER,
+                    issue_number=_support.ISSUE_NUMBER,
                 )
                 self.assertEqual(corrupted.data, {})
 
@@ -202,12 +190,12 @@ class PinnedStateTest(unittest.TestCase):
                     self.gh, "read_pinned_state", return_value=corrupted,
                 ):
                     malformed = claims._read_state(
-                        self.gh, self.issue, ISSUE_NUMBER,
+                        self.gh, self.issue, _support.ISSUE_NUMBER,
                     )
 
                 self.assertEqual(
                     malformed, Retention(
-                        RetentionReason.STATE_MALFORMED, f"#{ISSUE_NUMBER}",
+                        RetentionReason.STATE_MALFORMED, f"#{_support.ISSUE_NUMBER}",
                     ),
                 )
 
@@ -217,17 +205,17 @@ class OpenPullRequestClaimTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.spec = _spec(WIDGET_SLUG, NO_CLONE)
-        self.gh = _github()
+        self.gh = _support._github()
 
     def test_a_request_open_on_a_branch_keeps_it(self) -> None:
-        self.gh.existing_open_pr[BRANCH] = _pull_request(
-            UNRECORDED_PR_NUMBER, BRANCH, TIP_SHA, state=OPEN_PR_STATE,
+        self.gh.existing_open_pr[BRANCH] = _support._pull_request(
+            UNRECORDED_PR_NUMBER, BRANCH, TIP_SHA, state=_support.OPEN_PR_STATE,
         )
 
         kept = _claims(self.gh, self.spec)
 
         self.assertEqual(
-            _reasons(kept), (RetentionReason.OPEN_PULL_REQUEST,),
+            _support._reasons(kept), (RetentionReason.OPEN_PULL_REQUEST,),
         )
         self.assertEqual(kept[0].subject, BRANCH)
 
@@ -235,16 +223,16 @@ class OpenPullRequestClaimTest(unittest.TestCase):
         # A human retargeting the pull request onto a release line is still
         # standing on this branch, and a lookup pinned to the configured base
         # would report the branch as free for deletion.
-        self.gh.existing_open_pr[BRANCH] = _pull_request(
+        self.gh.existing_open_pr[BRANCH] = _support._pull_request(
             UNRECORDED_PR_NUMBER,
             BRANCH,
             TIP_SHA,
-            state=OPEN_PR_STATE,
-            base=OTHER_BASE_BRANCH,
+            state=_support.OPEN_PR_STATE,
+            base=_support.OTHER_BASE_BRANCH,
         )
 
         self.assertEqual(
-            _reasons(_claims(self.gh, self.spec)),
+            _support._reasons(_claims(self.gh, self.spec)),
             (RetentionReason.OPEN_PULL_REQUEST,),
         )
 
@@ -252,14 +240,14 @@ class OpenPullRequestClaimTest(unittest.TestCase):
         # A branch deleted locally after its pull request was opened is not in
         # the scan's report, and the pull request on it is still open -- so
         # the checkout beside it is exactly what somebody would come back to.
-        self.gh.existing_open_pr[OTHER_BRANCH] = _pull_request(
-            UNRECORDED_PR_NUMBER, OTHER_BRANCH, TIP_SHA, state=OPEN_PR_STATE,
+        self.gh.existing_open_pr[OTHER_BRANCH] = _support._pull_request(
+            UNRECORDED_PR_NUMBER, OTHER_BRANCH, TIP_SHA, state=_support.OPEN_PR_STATE,
         )
 
         kept = _claims(self.gh, self.spec, branches=(), branch=OTHER_BRANCH)
 
         self.assertEqual(
-            _reasons(kept), (RetentionReason.OPEN_PULL_REQUEST,),
+            _support._reasons(kept), (RetentionReason.OPEN_PULL_REQUEST,),
         )
 
     def test_a_failed_lookup_names_each_branch(self) -> None:
@@ -272,7 +260,7 @@ class OpenPullRequestClaimTest(unittest.TestCase):
             kept = _claims(self.gh, self.spec)
 
         self.assertEqual(
-            _reasons(kept),
+            _support._reasons(kept),
             (RetentionReason.PULL_REQUEST_UNREADABLE,) * 2,
         )
         self.assertEqual(
@@ -286,14 +274,14 @@ class OpenPullRequestClaimTest(unittest.TestCase):
         # `orchestrator/issue-<n>` this issue was published under before
         # namespacing -- and the pull request open on it is what a reclaim
         # would delete the checkout out from under.
-        self.gh.existing_open_pr[OTHER_BRANCH] = _pull_request(
-            UNRECORDED_PR_NUMBER, OTHER_BRANCH, TIP_SHA, state=OPEN_PR_STATE,
+        self.gh.existing_open_pr[OTHER_BRANCH] = _support._pull_request(
+            UNRECORDED_PR_NUMBER, OTHER_BRANCH, TIP_SHA, state=_support.OPEN_PR_STATE,
         )
 
         kept = _claims(self.gh, self.spec)
 
         self.assertEqual(
-            _reasons(kept), (RetentionReason.OPEN_PULL_REQUEST,),
+            _support._reasons(kept), (RetentionReason.OPEN_PULL_REQUEST,),
         )
         self.assertEqual(kept[0].subject, OTHER_BRANCH)
 
@@ -303,24 +291,24 @@ class RecordedPullRequestTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.spec = _spec(WIDGET_SLUG, NO_CLONE)
-        self.gh = _github()
+        self.gh = _support._github()
 
     def test_the_recorded_number_is_read_too(self) -> None:
         # The claim a branch lookup can miss entirely: the issue's own pull
         # request, whatever branch it went out on.
-        self.gh.add_pr(_pull_request(
-            RECORDED_PR_NUMBER, OTHER_BRANCH, TIP_SHA, state=OPEN_PR_STATE,
+        self.gh.add_pr(_support._pull_request(
+            RECORDED_PR_NUMBER, OTHER_BRANCH, TIP_SHA, state=_support.OPEN_PR_STATE,
         ))
 
         kept = _claims(self.gh, self.spec, pr_number=RECORDED_PR_NUMBER)
 
         self.assertEqual(
-            _reasons(kept), (RetentionReason.OPEN_PULL_REQUEST,),
+            _support._reasons(kept), (RetentionReason.OPEN_PULL_REQUEST,),
         )
         self.assertEqual(kept[0].subject, f"#{RECORDED_PR_NUMBER}")
 
     def test_a_recorded_ending_claims_nothing(self) -> None:
-        self.gh.add_pr(_pull_request(RECORDED_PR_NUMBER, BRANCH, TIP_SHA))
+        self.gh.add_pr(_support._pull_request(RECORDED_PR_NUMBER, BRANCH, TIP_SHA))
 
         self.assertEqual(
             _claims(self.gh, self.spec, pr_number=RECORDED_PR_NUMBER), (),
@@ -332,7 +320,7 @@ class RecordedPullRequestTest(unittest.TestCase):
         kept = _claims(self.gh, self.spec, pr_number=RECORDED_PR_NUMBER)
 
         self.assertEqual(
-            _reasons(kept), (RetentionReason.PULL_REQUEST_UNREADABLE,),
+            _support._reasons(kept), (RetentionReason.PULL_REQUEST_UNREADABLE,),
         )
         self.assertEqual(kept[0].subject, f"#{RECORDED_PR_NUMBER}")
 
@@ -341,27 +329,27 @@ class CommitAccountingTest(unittest.TestCase):
     """Whether a terminal pull request exactly accounts for one branch tip."""
 
     def setUp(self) -> None:
-        self.gh = _github()
+        self.gh = _support._github()
 
     def test_a_terminal_request_carrying_it_accounts(self) -> None:
         # Rejected work is still published work: the commit exists in a pull
         # request that outlives the branch, so the local copy is a copy.
-        self.gh.add_pr(_pull_request(RECORDED_PR_NUMBER, BRANCH, TIP_SHA))
+        self.gh.add_pr(_support._pull_request(RECORDED_PR_NUMBER, BRANCH, TIP_SHA))
 
         self.assertEqual(_accounting(self.gh), ())
 
     def test_a_request_onto_another_base_accounts(self) -> None:
         # What makes the commit safe to delete here is that GitHub holds it,
         # which a pull request retargeted onto another base does just as well.
-        self.gh.add_pr(_pull_request(
-            RECORDED_PR_NUMBER, BRANCH, TIP_SHA, base=OTHER_BASE_BRANCH,
+        self.gh.add_pr(_support._pull_request(
+            RECORDED_PR_NUMBER, BRANCH, TIP_SHA, base=_support.OTHER_BASE_BRANCH,
         ))
 
         self.assertEqual(_accounting(self.gh), ())
 
     def test_a_tip_nothing_carries_is_unaccounted(self) -> None:
         self.assertEqual(
-            _reasons(_accounting(self.gh)),
+            _support._reasons(_accounting(self.gh)),
             (RetentionReason.UNACCOUNTED_COMMITS,),
         )
 
@@ -371,7 +359,7 @@ class CommitAccountingTest(unittest.TestCase):
         self.gh.unreadable_pr_lookups.add(BRANCH)
 
         self.assertEqual(
-            _reasons(_accounting(self.gh)),
+            _support._reasons(_accounting(self.gh)),
             (RetentionReason.PULL_REQUEST_UNREADABLE,),
         )
 
@@ -380,19 +368,19 @@ class CommitAccountingTest(unittest.TestCase):
             self.gh, "find_pr_for_commit", side_effect=RuntimeError("no"),
         ):
             self.assertEqual(
-                _reasons(_accounting(self.gh)),
+                _support._reasons(_accounting(self.gh)),
                 (RetentionReason.PULL_REQUEST_UNREADABLE,),
             )
 
     def test_a_request_still_open_accounts_for_none(self) -> None:
         # A disagreement between two readings of the same remote is not one
         # to settle in favour of deleting.
-        self.gh.add_pr(_pull_request(
-            RECORDED_PR_NUMBER, BRANCH, TIP_SHA, state=OPEN_PR_STATE,
+        self.gh.add_pr(_support._pull_request(
+            RECORDED_PR_NUMBER, BRANCH, TIP_SHA, state=_support.OPEN_PR_STATE,
         ))
 
         self.assertEqual(
-            _reasons(_accounting(self.gh)),
+            _support._reasons(_accounting(self.gh)),
             (RetentionReason.OPEN_PULL_REQUEST,),
         )
 
