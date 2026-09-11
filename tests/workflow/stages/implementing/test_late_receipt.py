@@ -86,6 +86,11 @@ _MALFORMED_RECEIPT = "not-a-sha"
 # the only fact that tells its pull request from one of this issue's own.
 _FORK_REPO = "somebody-else/orchestrator"
 
+# This very repository, spelled the way an operator types a setting rather
+# than the way GitHub answers: the same repository, and the one shape an
+# exact comparison reads as a stranger's.
+_SHOUTED_REPO = "ChippingWay/Orchestrator"
+
 # What a branch this stage has pushed before carries: the note naming the
 # commit it sent, the pull request that push opened, and the branch both are
 # about. All three, because the remote reading behind them is what tells work
@@ -379,6 +384,23 @@ class UnprovableReceiptTest(_ReceiptCase, unittest.TestCase):
 
 
 
+    def test_a_case_shifted_repo_still_publishes(self) -> None:
+        # Owner and repository names are case-insensitive on GitHub, so the
+        # same repository is one spelling in a hand-typed setting and another
+        # in every answer the API gives. Compared exactly, this repository's
+        # OWN publication reads as somebody's fork and the bookkeeping behind
+        # a landed push is held for a human who has nothing to reconcile.
+        self._stand_the_pull_request_on(
+            MEASURED_CANDIDATE_SHA, repo=_SHOUTED_REPO,
+        )
+        self._seed(**_PUBLISHED_BY_THIS_STAGE)
+
+        mocks = self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        self._assert_unmeasured(mocks)
+        self.assertIn(_VALIDATING, self.github.label_history)
+        self.assertEqual(self.github.opened_prs, [])
+
     def test_a_fork_at_the_same_head_is_held(self) -> None:
         # The shape every other term agrees on: a fork carries this
         # repository's ref names over its commits, so the branch and the head
@@ -439,6 +461,20 @@ class DamagedReceiptTest(_ReceiptCase, unittest.TestCase):
         self.assertEqual(
             self._pinned()[_KEY_PUBLISHED_SHA], _MALFORMED_RECEIPT,
         )
+
+    def test_the_park_says_how_to_repair_it(self) -> None:
+        # The advice every other refusal here gives is wrong for this one: the
+        # receipt is read before any candidate is compared against it, so a
+        # fresh commit earns the same hold and an operator told to commit
+        # again would loop. What ends it is the field.
+        self._receipt_reading(_MALFORMED_RECEIPT)
+
+        self._run_gate(added_lines=support.SMALL_ADDITIONS)
+
+        said = self.github.posted_comments[-1][1]
+        self.assertIn(_KEY_PUBLISHED_SHA, said)
+        self.assertNotIn("commit again so the candidate is measured", said)
+
 
     def test_a_falsy_receipt_is_held_too(self) -> None:
         # The payload is JSON, so a damaged field can hold anything -- and

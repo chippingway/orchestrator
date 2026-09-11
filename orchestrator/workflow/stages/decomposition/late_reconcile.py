@@ -277,7 +277,7 @@ def _reconciled_ref(
     other is wrong -- and the record is left exactly as it stands for the
     human who reconciles it.
     """
-    if reading.head_repo != context.gh.repo_slug:
+    if not context.gh.is_own_repository(reading.head_repo):
         log.error(
             "issue=#%d was adjudicated against PR #%d, whose head is in %r "
             "rather than in %r; refusing to publish the accepted candidate "

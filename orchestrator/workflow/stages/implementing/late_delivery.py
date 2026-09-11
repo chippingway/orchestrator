@@ -135,8 +135,31 @@ _UNPROVABLE_RECEIPT_PARK = (
     "here could confirm and open a second pull request over work the first "
     "may already carry. Nothing was pushed and nothing was discarded, and the "
     "receipt, the recorded pull request and whatever push is still owed are "
-    "all left exactly as they stand. Reconcile the pinned comment with what "
-    "is on the remote, or commit again so the candidate is measured afresh."
+    "all left exactly as they stand. {remedy}"
+)
+
+
+# What an operator does about it, which is not the same sentence for every
+# refusal above. A publication nothing could SHOW is a disagreement between
+# the record and the remote, and a fresh commit is a fresh question that this
+# hold has nothing to say about -- the receipt names some other object id by
+# then, so the road is not taken at all.
+_MEASURED_AFRESH = (
+    "Reconcile the pinned comment with what is on the remote, or commit again "
+    "so the candidate is measured afresh."
+)
+
+
+# A receipt this build cannot READ is the opposite, and telling an operator to
+# commit again would be advice that cannot work: the field is refused before
+# any candidate is compared to it, so every later commit earns this same hold.
+# The field itself is the only thing that ends it.
+_REPAIR_THE_RECEIPT = (
+    "Committing again will not clear this one: the receipt is read before any "
+    "candidate is compared against it, so a fresh commit earns the same hold. "
+    "Repair `implementing_published_sha` in the pinned comment to the commit "
+    "this stage last pushed -- or remove the field, if nothing was ever "
+    "published from this branch -- and the next tick reads the record again."
 )
 
 
@@ -157,6 +180,12 @@ class _Delivered:
 
     number: int = 0
     refusal: str = ""
+    # What the park tells an operator to DO about this refusal, where the
+    # ordinary sentence would be wrong. Carried beside the reason rather than
+    # derived from it at the park, because only the answer that refused knows
+    # whether committing again is a road out: for every publication nothing
+    # could show it is, and for a receipt nothing could read it is not.
+    remedy: str = _MEASURED_AFRESH
 
     @property
     def is_proved(self) -> bool:
@@ -217,7 +246,9 @@ def _delivered_before_the_relabel(
     if gate.entry is not None:
         return _Delivered()
     if _parks._unreadable_receipt(gate.state):
-        return _Delivered(refusal=_UNREADABLE_RECEIPT)
+        return _Delivered(
+            refusal=_UNREADABLE_RECEIPT, remedy=_REPAIR_THE_RECEIPT,
+        )
     if _parks._published_commit(gate.state) != candidate_sha:
         return _Delivered()
     if not number:
@@ -252,7 +283,7 @@ def _proved_against(
         return _Delivered(refusal=_SETTLED_PULL_REQUEST.format(
             number=number, state=reading.state,
         ))
-    if reading.head_repo != gate.gh.repo_slug:
+    if not gate.gh.is_own_repository(reading.head_repo):
         return _Delivered(refusal=_FOREIGN_REPOSITORY.format(
             number=number, read=reading.head_repo, expected=gate.gh.repo_slug,
         ))
@@ -325,13 +356,23 @@ def _holds_an_unprovable_receipt(
     over work the first may already carry. There is no reading of an
     unprovable publication that makes republishing onto it safe.
 
-    Parked rather than held silently, because none of the four refusals clears
+    Parked rather than held silently, because none of the refusals clears
     itself: a number the record never had, one this host cannot read, a pull
-    request somebody settled, and one open somewhere else are each a
-    disagreement between the pinned comment and the remote that a person
-    resolves. The park writes nothing else -- the receipt, the recorded pull
-    request, and any debt beside them stand exactly as they were, for the
-    terminal that drains finished work or for the retry behind a repair.
+    request somebody settled, one in another repository, and one open
+    somewhere else are each a disagreement between the pinned comment and the
+    remote that a person resolves. The park writes nothing else -- the
+    receipt, the recorded pull request, and any debt beside them stand exactly
+    as they were, for the terminal that drains finished work or for the retry
+    behind a repair.
+
+    What it TELLS that person differs by which refusal it was, and the answer
+    travels with the refusal for that reason. Every publication nothing could
+    show is one a fresh commit moves past: the receipt names some other object
+    id by then, so this road is not taken at all and the candidate is measured
+    like any other. A receipt nothing could READ is the one that does not
+    move, since it is refused before any candidate is compared against it --
+    so the park says to repair the field rather than offering an escape that
+    would loop.
 
     Two candidates are outside this and neither is a fall-through. A commit an
     adjudication's EXEMPTION names publishes on that verdict, and one an
@@ -365,5 +406,6 @@ def _holds_an_unprovable_receipt(
             mentions=config.HITL_MENTIONS,
             candidate=candidate_sha,
             refusal=delivered.refusal,
+            remedy=delivered.remedy,
         ),
     )

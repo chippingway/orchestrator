@@ -2429,7 +2429,9 @@ rather than preserving.
   the ordinary reading rather than being waved past as already published. On the implementing seam no head was frozen
   to check it against, so the same question is put to the *remote*: the pull request the record names, open, on the
   branch that seam would push, with its head in this repository, standing on this exact commit — the repository
-  because a fork carries these ref names over these commits and would otherwise agree on everything else. A receipt
+  because a fork carries these ref names over these commits and would otherwise agree on everything else, asked
+  through `github/identity.py` against the name GitHub uses and matched case-insensitively, so a setting typed in
+  another casing is not read as a stranger's. A receipt
   this build cannot READ at all is asked
   apart from that comparison and refused first, since every late commit field is read fail-closed and a hand-edited
   one comes back as no receipt: published over, the push writes its own receipt across the damaged field. Only

@@ -122,9 +122,12 @@ file is the durable record.
   publication emits the same event with `stage="discussion"` when it opens (never when it reuses) a plan PR; it
   carries no `retry_count`, having no retry budget of its own.
 - `pr_merged` — External merge terminal arcs in `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict`;
-  plus `_finalize_if_pr_merged` (in `workflow/engine/terminals.py`, which also owns those arcs) from
-  `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks
-  and from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; plus the `discussion` stage's
+  plus `_pr_terminal_stops_the_tick` (in `workflow/engine/terminals.py`, which also owns those arcs) from
+  `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry checks — those three hold no PR at
+  handler entry and decide *both* pull-request endings off one fetch of its own, since two fetches are two moments
+  and a merge landing between them would be read by neither — and `_finalize_if_pr_merged`, the single-ending form
+  of the same arc, from the `_handle_blocked` / `_handle_umbrella` manually-closed child recovery; plus the
+  `discussion` stage's
   plan-PR terminal (`workflow/stages/discussion/plan_terminal.py`), which polls the recorded plan PR at handler entry
   and drains the same `_finalize_merged_pr` arc when the humans merged it; extras: `pr_number`, `sha`,
   `merge_method="external"`, `review_round`, `conflict_round`, `retry_count` — a plan PR carries none of those three
@@ -132,11 +135,15 @@ file is the durable record.
   `stage` names the stage the issue was in at finalize entry — spelled literally as `discussion` on that path, since
   the stage attributes its own runs rather than re-reading the label.
 - `pr_closed_without_merge` — `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict` when the PR is
-  closed without merge; plus `_finalize_if_issue_closed` from `_handle_implementing` / `_handle_documenting` /
-  `_handle_validating` entry checks (only when the linked PR is also closed; an open PR with a manually-closed issue is
-  left alone); plus the same `discussion` plan-PR terminal with `stage="discussion"` when the humans closed the plan PR
-  unmerged. Two discussion endings deliberately emit NOTHING: a manually closed issue whose plan PR is still open (the
-  stage holds its terminal and keeps the label so the closed-issue sweep goes on yielding it), and a close before any
+  closed without merge; plus, from `_handle_implementing` / `_handle_documenting` / `_handle_validating` entry
+  checks, *two* arcs on the same reading: `_pr_terminal_stops_the_tick` when the PR itself is closed without merge
+  while the ISSUE is still open — which nothing else on those three stages sees, and which they would otherwise
+  answer by measuring the committed candidate onto a pull request that is gone, or by spawning over work a human
+  turned down — and `_finalize_if_issue_closed` behind it for a closed issue (only when the linked PR is also
+  closed; an open PR with a manually-closed issue is left alone); plus the same `discussion` plan-PR terminal with
+  `stage="discussion"` when the humans closed the plan PR unmerged. Two discussion endings deliberately emit
+  NOTHING: a manually closed issue whose plan PR is still open (the stage holds its terminal and keeps the label so
+  the closed-issue sweep goes on yielding it), and a close before any
   plan PR exists (finalized `rejected`, with no pull request for the payload to name); extras: `pr_number`, `sha`,
   `review_round`, `conflict_round`, `retry_count`; `stage` names the stage the issue was in at finalize entry.
 - `merge_attempt` — Every `git rebase origin/<base>` inside `_handle_resolving_conflict`; extras:

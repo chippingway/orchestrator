@@ -350,7 +350,7 @@ def _entered_on(
                 number=number, state=reading.state,
             ),
         )
-    if reading.head_repo != gate.gh.repo_slug:
+    if not gate.gh.is_own_repository(reading.head_repo):
         return _records._PublicationEntry(
             refusal=_FOREIGN_REPOSITORY.format(
                 number=number,

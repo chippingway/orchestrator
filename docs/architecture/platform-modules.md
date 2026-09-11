@@ -195,6 +195,17 @@ orchestrator/
                         comment is authenticated under, so a name a collaborator applied by hand is not a
                         write of this orchestrator's; control labels are excluded, and no account, no
                         evidence, and an unreadable walk all answer alike
+    identity.py         which repository a client speaks for, and whether a pull-request head belongs to it --
+                        one question with three callers, all of them refusing a publication on it: the size
+                        gate's entry freeze, the delivery proof behind a publication receipt, and the
+                        settlement's reconciliation. None can answer from the pull request alone, since a fork
+                        carries this repository's ref names over its commits and agrees on the branch and the
+                        head together. Answered from the repository OBJECT rather than the configured slug, so
+                        the name is the one GitHub uses and the one a park quotes back, and compared
+                        case-INSENSITIVELY on top of that: owner and repository names are case-insensitive
+                        there, so a setting an operator typed in another casing cannot make this repository's
+                        own publication read as a stranger's. A head naming no repository -- a deleted fork --
+                        answers no
     labels.py           the label vocabulary and bootstrap specs, and the in-place rename of a pre-namespace label
     pinned_state.py     the pinned durable-state model, the comment body it is written as -- with the wrapper's own
                         terminator escaped in the SERIALIZED payload and never in the value, since a recorded
