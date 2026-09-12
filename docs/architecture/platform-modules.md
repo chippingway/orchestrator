@@ -48,11 +48,13 @@ last is held by the loader itself rather than by a check.
   module the two transports were split out of, so no facade settles back at that spelling. The rule also holds one
   name at a time where a second binding would be invisible: each transport and the namespace listing reach the token
   lookup, the askpass session, and the session record through `credentials`; the branch transport reaches the
-  `ls-remote` read a lease is taken from through `ref_transport`; and the artifact discovery reaches the pattern
-  listing nothing is leased to through `ref_discovery`, rather than importing any of them by name.
+  `ls-remote` read a lease is taken from through `ref_transport`; the artifact discovery reaches the pattern
+  listing nothing is leased to through `ref_discovery`; and the streamed runner reaches the hardened argv prefix and
+  the environment assembler through `commands`, rather than importing any of them by name.
   `tests/git/test_imports.py` asserts each is bound on the owner that defines it and nowhere in the module that
   spends it — a copy beside the caller would read as the patch target a test aims at while the session, the read,
-  or the listing a call actually takes stayed the owner's.
+  or the listing a call actually takes stayed the owner's, and a copy of the hardening beside the streamed runner
+  would be free to lose a protection the two runners it was taken from still have.
 - **One road to a process.** The `agents/` chain is reached at one point from above and one per hop below it: only
   `workflow/engine/usage.py` calls `run_agent`, and the initializer republishing it as the package API is the one
   other module that names it at all; only `runner.py` names `codex.run_codex` / `claude.run_claude`; and only the two
@@ -747,9 +749,9 @@ off a facade:
   probes for the two object reads, and `commands` once more for the one line it keeps off a fetch that brought
   nothing back; `additions` calls `commands` and `commits`; `fingerprint` calls `commands`, `streaming` for the
   object content it hashes without holding, and those same probes and nothing else in the package, since it is handed
-  two ends already proven rather than establishing them. Nothing here
-  reaches the workflow layer, so the ceiling a count is compared against, the verdict that comparison earns, and what
-  two equal digests license all stay with the caller.
+  two ends already proven rather than establishing them. Nothing here reaches the workflow layer, so the ceiling a
+  count is compared against, the verdict that comparison earns, and what two equal digests license all stay with the
+  caller.
 - `snapshots/` — `namespace` is string policy and reaches nothing, which is what lets the late domain's lineage
   record consult it on every pinned read without paying for the transport; `refs` calls `ref_transport` for the
   remote read and the lease-pinned write and delete, `branch_transport` for the fetch, and `commands` for the
