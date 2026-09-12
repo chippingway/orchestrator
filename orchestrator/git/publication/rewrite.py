@@ -314,7 +314,7 @@ def _published_squash(
         )
     if not published.landed:
         if entry.published_sha == new_sha or gated._already_published(
-            gate.state, collapsed.head, new_sha,
+            gate.state, collapsed.head, new_sha, entry.pr_number,
         ):
             return _squash_failure(_UNCONFIRMED_PUBLICATION.format(
                 squashed=new_sha,

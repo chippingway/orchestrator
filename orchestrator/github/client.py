@@ -18,6 +18,7 @@ from github.Repository import Repository
 
 from orchestrator import config
 from orchestrator.github.checks import GitHubChecksMixin
+from orchestrator.github.identity import GitHubRepositoryIdentityMixin
 from orchestrator.github.labels import GitHubLabelMixin
 from orchestrator.github.reviews import GitHubReviewMixin
 from orchestrator.observability.analytics import recording
@@ -43,13 +44,18 @@ _ABSENT_LABEL_RETRY_SWEEPS = 20
 class GitHubClient(
     GitHubReviewMixin,
     GitHubLabelMixin,
+    GitHubRepositoryIdentityMixin,
     GitHubChecksMixin,
 ):
     """Authenticated repository client with a worker-safe clone seam.
 
-    The review and label collaborators stand beside the check / pull-request
-    chain rather than inside it: neither needs a check or PR method, and keeping
-    them independent lets each own its surface without a leaf-to-leaf import.
+    The review, label and repository-identity collaborators stand beside the
+    check / pull-request chain rather than inside it: none needs a check or PR
+    method, and keeping them independent lets each own its surface without a
+    leaf-to-leaf import. That independence is what the base count is -- four
+    subjects, one client -- and it is the reason this module carries the
+    `WPS215` entry rather than folding a collaborator into a neighbour it has
+    no call into.
     """
 
     def __init__(

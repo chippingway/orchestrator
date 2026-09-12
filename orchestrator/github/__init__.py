@@ -7,8 +7,9 @@ vocabulary in ``labels``, audit records in ``events``, issue writes and the
 issue-state vocabulary in ``issues``, the repository-wide poll over them in
 ``issue_polling``, the durable pinned state in ``pinned_state``, pull requests
 in ``pull_requests``, review verdicts and feedback watermarks in ``reviews``,
-and check surfaces in ``checks``; ``client`` composes them into the concrete
-``GitHubClient``. This initializer re-exports the narrow public surface
+which repository a client speaks for and whether a head belongs to it in
+``identity``, and check surfaces in ``checks``; ``client`` composes them into
+the concrete ``GitHubClient``. This initializer re-exports the narrow public surface
 (``__all__``): that client and the pinned durable-state model. Code that needs a
 single domain surface imports its owner directly, so nothing private is
 published here.

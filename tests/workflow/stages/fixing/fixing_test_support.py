@@ -35,6 +35,7 @@ FakeGitHubClient = fakes.FakeGitHubClient
 FakeLabel = fakes.FakeLabel
 FakePR = fakes.FakePR
 FakePRRef = fakes.FakePRRef
+FakePRRepo = fakes.FakePRRepo
 FakePRReview = fakes.FakePRReview
 FakeUser = fakes.FakeUser
 make_issue = fakes.make_issue

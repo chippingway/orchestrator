@@ -418,8 +418,7 @@ def _routed(gate: _records._Gate, generation: LateGeneration) -> bool:
 def _unmeasured_verdict(
     gate: _records._Gate,
     recorded: LateGeneration,
-    candidate_sha: str = "",
-    permitted_sha: str = "",
+    admitted: _records._GateVerdict = _records._HELD,
 ) -> _records._GateVerdict:
     """Publish a candidate this gate did not measure -- unless a close beat it.
 
@@ -457,24 +456,34 @@ def _unmeasured_verdict(
     publication is superseded by, has to leave the operator waiting exactly as
     it found them rather than unparking an issue nobody replied to.
 
-    `permitted_sha` is handed straight back rather than derived, because only
-    the caller knows which of the roads past the measurement this is. A
+    `admitted` is the answer its caller reached, handed in whole rather than
+    as loose terms: every field on it is something only that caller knows, and
+    what comes back is the same answer with the hold taken off. The default is
+    the empty one, which is the road that proved no commit at all.
+
+    `permitted_sha` on it is handed straight back rather than derived, because
+    only the caller knows which of the roads past the measurement this is. A
     transfer's is the one road whose publication may MOVE a human's verdict,
     and the write past the push has to be able to tell it from every other
     road that publishes the very same commit -- an exemption already naming
     it, an approval owed a push for it, a receipt that already went out.
+
+    `delivered_pr` is carried for the same reason and pins two things the seam
+    behind this would otherwise resolve for itself: the lease its push is held
+    to, which is that very commit, and the pull request its bookkeeping
+    belongs to. Both are what the proof that admitted the candidate was ABOUT,
+    and a seam that looked either up again could push over a tip that moved
+    since or open a second pull request where this one closed since.
     """
     _parks._retire_spent_park(gate.state)
-    _supersedes_approval(gate, candidate_sha)
+    _supersedes_approval(gate, admitted.candidate_sha)
     if _superseded(gate, recorded):
         return _records._HELD
     _parks._retire_authorized_park(gate.state)
-    _owed_by_an_unmeasured_push(gate, candidate_sha, _frozen_lease(gate))
-    return _records._GateVerdict(
-        held=False,
-        candidate_sha=candidate_sha,
-        permitted_sha=permitted_sha,
+    _owed_by_an_unmeasured_push(
+        gate, admitted.candidate_sha, _frozen_lease(gate),
     )
+    return replace(admitted, held=False)
 
 
 def _owed_by_an_unmeasured_push(

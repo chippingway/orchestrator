@@ -86,10 +86,13 @@ REVIEW_ROUND = "review_round"
 KEY_APPROVED_SHA = "late_approved_sha"
 KEY_APPROVED_LEASE = "late_approved_lease"
 
-# The receipt a landed gated push writes, and the head that push replaced.
-# Together they date the receipt to one publication attempt.
+# The receipt a landed gated push writes: the commit that reached the remote,
+# the head that push replaced, and the pull request it went onto. The three
+# are written together and read together -- the head dates the receipt to one
+# publication attempt, and the number says which publication received it.
 KEY_RECEIPT_SHA = "implementing_published_sha"
 KEY_RECEIPT_LEASE = "implementing_published_lease"
+KEY_RECEIPT_PR = "implementing_published_pr"
 
 # The pinned fields a held candidate is handed to the adjudication under.
 KEY_CANDIDATE_SHA = "late_candidate_sha"
@@ -126,6 +129,14 @@ class _RecoveredPublicationAssertions:
         pushed = mocks[PUSH_BRANCH]
         pushed.assert_called_once()
         return pushed.call_args
+
+    def _assert_measured(self, mocks) -> None:
+        """The candidate went through the reading rather than past it."""
+        mocks[COUNT_ADDED_LINES].assert_called_once()
+
+    def _assert_unmeasured(self, mocks) -> None:
+        """No reading was taken -- the candidate was decided about already."""
+        mocks[COUNT_ADDED_LINES].assert_not_called()
 
     def _assert_park_stands(self, scenario, reason: str) -> None:
         """The park is where the tick found it, and nothing was announced."""

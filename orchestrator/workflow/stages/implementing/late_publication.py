@@ -99,6 +99,16 @@ class _PublishedCandidate:
     empty where the switch kept the candidate out, since nothing read that
     pull request to say where it stands.
 
+    `pull_request` is the fifth and is the only one the receipt behind the push
+    can be bound by. The entry this call froze names it, and nothing past here
+    can re-derive it: the gate's own subject is replaced locally to carry that
+    entry, so the caller's copy never sees one, and `pr_number` is the relabel's
+    write -- which is exactly the write the window a receipt exists for is
+    missing. Carried out with the answer, the receipt records the publication
+    this push actually went onto; left behind, a recovery has nothing to prove
+    against but a lookup by branch. Zero where the switch kept the candidate
+    out of the gate and the record names none either.
+
     `permitted_sha` is the fourth and is about the write PAST the push rather
     than the push itself: it is the commit a rewrite permit proved out for on
     this tick, and it is what licenses the receipt to carry a human's verdict
@@ -115,6 +125,7 @@ class _PublishedCandidate:
     lease: str = ""
     standing: str = ""
     permitted_sha: str = ""
+    pull_request: int = 0
 
 
 # What every held answer is, since a hold publishes nothing and so names
@@ -232,6 +243,11 @@ def _unentered(
         revision=revision,
         lease=entered.head,
         permitted_sha=verdict.permitted_sha,
+        # Nothing was frozen, so the publication this push goes onto is the one
+        # the RECORD names. Unproven here and proved before it licenses
+        # anything: what it buys is a receipt the next recovery can hold to a
+        # number rather than one it would have to search a branch for.
+        pull_request=_parks._recorded_pull_request(gate.state),
     )
 
 
@@ -366,6 +382,7 @@ def _measured(
             lease=standing,
             standing=standing,
             permitted_sha=verdict.permitted_sha,
+            pull_request=entry.pr_number,
         )
     lease = _parks._approved_lease(gate.state)
     if not lease and standing != verdict.candidate_sha:
@@ -376,6 +393,7 @@ def _measured(
         lease=lease or standing,
         standing=standing,
         permitted_sha=verdict.permitted_sha,
+        pull_request=entry.pr_number,
     )
 
 

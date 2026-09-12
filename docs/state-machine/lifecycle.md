@@ -217,6 +217,26 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      would have been taken beside
      PR unreadable, closed, merged ► the same park: nothing to measure
                                      against, and nowhere for the push to land
+     PR open on another branch,   ─► the same park. The number and the branch
+     or with its head in a fork      are two fields on one pinned comment: an
+                                     entry frozen on the head alone would
+                                     settle against a publication the push
+                                     never touches, and a fork carries these
+                                     ref names over these commits, so nothing
+                                     else tells one from this issue's own
+     a receipt naming this        ─► published without a reading only where
+     candidate                       the remote agrees: the PR the receipt
+                                     itself names, open here, on the branch
+                                     this seam would push, standing on that
+                                     exact commit. Anything short of it parks
+                                     with the receipt, the recorded number and
+                                     any debt left as they stand -- an
+                                     exemption or an approval naming the same
+                                     commit included, since neither says where
+                                     the work went. Proved, the number is
+                                     carried: the push is leased to that
+                                     commit and the bookkeeping resolves that
+                                     PR again rather than searching the branch
      work that ENDED before the   ─► handed back to the stage terminal, which
      reconciliation opened           marks the issue done or rejected with the
                                      record, the branch and the debt left as

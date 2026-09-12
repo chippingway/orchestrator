@@ -12,6 +12,8 @@ from tests.support.github.models import (
     FakeComment,
     FakeLabel,
     FakePR,
+    FakePRRef,
+    FakePRRepo,
     FakePRReview,
     FakeUser,
 )
@@ -45,8 +47,22 @@ class _PullCreationService:
             base_branch=base,
             title=title,
             body=body,
+            # GitHub always answers with the ref the pull request is open on
+            # and the repository that ref lives in, and readers that ask which
+            # publication a recorded number names read both here: a head left
+            # at its default says the pull request is on no branch and in no
+            # repository, which no real one ever is.
+            head=FakePRRef(
+                ref=branch, repo=FakePRRepo(full_name=self._repo_slug),
+            ),
         )
         self.opened_prs.append(pull_request)
+        # Held and findable from here on, as GitHub holds one: a pull request
+        # that has been opened IS the open pull request on its branch, and a
+        # double that answered a later lookup with nothing would report a
+        # second one being opened over the same work as working.
+        self.add_pr(pull_request)
+        self.existing_open_pr[branch] = pull_request
         return pull_request
 
     def pr_comment(self, pr_number: int, body: str) -> FakeComment:
@@ -88,6 +104,22 @@ class _PullCreationService:
             pr.labels.append(FakeLabel(label_name))
 
     def add_pr(self, pr: FakePR) -> None:
+        """Hold one pull request, and say which repository its head is in.
+
+        Stamped here rather than on the model because only a client knows the
+        answer: on GitHub a same-repo branch's head repo IS the repository the
+        pull request lives in, and a fixture building the object has no client
+        yet. A case that named one is writing a FORK, which is the whole
+        reason anything reads this field, so it is left exactly as it stands.
+
+        Only a plain model is stamped. A pull request wrapped to refuse one of
+        its lazy reads is held exactly as handed over: reaching through it here
+        would raise the very failure the wrapper exists to deliver to the
+        reader under test, and the model inside it was stamped when it was
+        added.
+        """
+        if isinstance(pr, FakePR) and not pr.head.repo.full_name:
+            pr.head.repo.full_name = self._repo_slug
         self.pulls[pr.number] = pr
 
     def get_pr(self, pr_number: int) -> FakePR:

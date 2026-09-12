@@ -114,12 +114,20 @@ def _this_settlements_own_push(context: _LateContext) -> str:
     is the one this settlement's push was pinned to, so a receipt recording
     any other head belongs to some earlier publication and answers for
     nothing.
+
+    The pull request the receipt names is read with them, because the head
+    cannot supply it: a branch pushed from that head before, onto a publication
+    since closed and REPLACED by another on the same ref, dates a receipt to
+    this settlement while the push it records went somewhere else. Held to the
+    number the verdict was frozen on, the three together name one publication.
     """
     candidate = context.generation.candidate_sha
     vouched = (
         _gate_parks._approved_commit(context.state),
         _gate_parks._publication_from(
-            context.state, context.generation.published_sha,
+            context.state,
+            context.generation.published_sha,
+            context.generation.published_pr_number,
         ),
     )
     return candidate if candidate and candidate in vouched else ""

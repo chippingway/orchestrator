@@ -84,9 +84,12 @@ def _publishes(
 
     `entered` is what the caller already established and this owner may not
     re-read: a stage a same-tick relabel wrote, and the head the caller pinned
-    its own decision to. Both are frozen onto the record, so the push this
-    tick makes and the one a settled adjudication makes later are pinned to
-    the same fact.
+    its own decision to. The BRANCH is added to it here, because this is where
+    the two facts meet -- the entry the gate freezes has to be about the pull
+    request this push will actually land on, and nothing else in the call has
+    both the branch and the reading in hand. All of it is frozen onto the
+    record, so the push this tick makes and the one a settled adjudication
+    makes later are pinned to the same fact.
 
     `entered.reconciling` says no developer ran on this tick, which is what
     tells a checkout that moved from a resumed developer's fresh commit -- the
@@ -127,7 +130,9 @@ def _publishes(
         spends=entered.spends,
         rewrite=entered.rewrite,
     )
-    published = _publication_gate._holds_published_work(gate, entered)
+    published = _publication_gate._holds_published_work(
+        gate, _replace(entered, branch=branch),
+    )
     if published.held:
         return _PushedCandidate(held=True)
     published = _repinned(published)
@@ -375,7 +380,9 @@ A process that died in that window would leave a paid debt standing,
         )
         _records._spend(gate.state, gate.spends)
         _parks._forget_approval(gate.state)
-        _parks._record_publication(gate.state, landed, superseded)
+        _parks._record_publication(
+            gate.state, landed, superseded, published.pull_request,
+        )
     if unproven:
         _parks._approve(gate.state, landed, landed, standing)
     gate.gh.write_pinned_state(gate.issue, gate.state)

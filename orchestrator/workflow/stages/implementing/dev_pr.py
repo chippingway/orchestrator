@@ -36,6 +36,7 @@ from orchestrator.git.publication import titles as _titles
 from orchestrator.github import client as _client, pinned_state as _pinned_state
 from orchestrator.workflow.engine import comments as _comments
 from orchestrator.workflow.stages.implementing import (
+    late_overflow as _overflow,
     models as _models,
     session_read as _session_read,
     state as _state,
@@ -131,7 +132,18 @@ def _reuse_or_open_pr(
     relabel: an existing open PR is reused instead of 422-ing on a duplicate.
     Opening a new PR posts the ":sparkles: PR opened" comment and emits the
     `pr_opened` event; reuse only logs.
+
+    `work.delivered_pr` is the other road, and on it nothing may be opened at
+    all: the gate let this candidate past BECAUSE that pull request is already
+    standing on it, so the push moved nothing and all that is left is the
+    bookkeeping behind a publication that has happened. Looked up by branch
+    like any other, a pull request somebody closed between the gate's proof
+    and here answers None and a second one is opened over the same work.
+    Pinned, the same window answers None to the CALLER, which holds the tick
+    and leaves the record exactly as it stands.
     """
+    if work.delivered_pr:
+        return _delivered_pull_request(gh, issue, work)
     pr = gh.find_open_pr(branch=work.branch, base=spec.base_branch)
     if pr is not None:
         log.info(
@@ -156,6 +168,67 @@ def _reuse_or_open_pr(
         retry_count=state.get(_state._RETRY_COUNT),
     )
     return pr
+
+
+def _delivered_pull_request(
+    gh: _client.GitHubClient,
+    issue: Issue,
+    work: _models._PRWork,
+):
+    """The pull request this publication is finishing up, or None if it moved.
+
+    Read by NUMBER, which is the one thing a lookup by branch cannot promise:
+    the proof that admitted the candidate was about a particular pull request
+    standing on a particular commit, and a branch lookup a moment later is a
+    different question with a different answer.
+
+    Re-read rather than trusted, and re-read WHOLE: the proof and this
+    bookkeeping are two moments, and between them lie the barrier, the push
+    and whatever else the tick spent. What is written past this line is a
+    receipt naming this commit and a relabel handing a reviewer this pull
+    request, so every term the proof established has to still hold together --
+    open, in this repository, on the branch the push named, and standing on
+    the commit it sent. A pull request somebody closed has nothing left for a
+    relabel to hand on; one somebody MOVED leaves the receipt naming work the
+    branch no longer carries and sends a reviewer to a head this issue never
+    published.
+
+    A pull request this host could not read answers None on the same footing,
+    since what the caller does with None is hold -- the commit stays where it
+    is, the record stays as it stands, and the next poll asks again. Asked
+    through the size gate's own publication reader, which is where the
+    fail-closed shape of that read lives: a fetched pull request is LAZY, so
+    the lookup itself asks GitHub nothing and the request that can fail is the
+    attribute access that reader already wraps.
+
+    ONE reading, and the object it came back with is the object handed on. A
+    check followed by a fetch of the same number is two moments: a pull
+    request proved open by the first can be closed by the time the second
+    answers, and what the relabel would then hand a reviewer is a publication
+    nothing here checked.
+
+    Opening one is never the answer here, whatever the disagreement: the gate
+    let this candidate past BECAUSE that pull request already carries it, so a
+    second one would be opened over work the first may still have.
+    """
+    delivered = _overflow._PublicationReading.standing_exactly_on(
+        gh, work.delivered_pr, work.branch, work.delivered_sha,
+    )
+    if delivered is None:
+        log.warning(
+            "issue=#%s cannot read pull request #%d as open on %s and "
+            "standing on %s for the bookkeeping its own push already "
+            "delivered; holding rather than recording a publication nothing "
+            "re-read",
+            issue.number, work.delivered_pr, work.branch, work.delivered_sha,
+        )
+        return None
+    log.info(
+        "issue=#%s finishing the bookkeeping for PR #%d, which already "
+        "carries %s",
+        issue.number, work.delivered_pr, work.branch,
+    )
+    return delivered
 
 
 def _attribute_reused_pr(

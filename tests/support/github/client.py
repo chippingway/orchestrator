@@ -85,3 +85,23 @@ class FakeGitHubClient(_IssueClient, _PullClient, _CommentIdAllocator):
         self._event_history = _FakeEventHistory()
         self._pull_history = _FakePullHistory()
         self._pull_state = _FakePullState()
+
+    @property
+    def repo_slug(self) -> str:
+        """The repository this client stands in for, as `owner/name`."""
+        return self._repo_slug
+
+    def is_own_repository(self, full_name: str | None) -> bool:
+        """Whether `full_name` names the repository this client is for.
+
+        The same surface the real client publishes, and readers deciding
+        whether a pull request's head is one of THIS repository's ask it here
+        -- so a fork's pull request, which carries the same ref names over the
+        same commits, is told apart by the one fact that differs. Matched
+        case-insensitively for the reason the real one is: owner and repository
+        names are case-insensitive on GitHub, so the same repository can be
+        spelled two ways across a configuration and an answer.
+        """
+        if not full_name:
+            return False
+        return full_name.casefold() == self._repo_slug.casefold()

@@ -94,7 +94,8 @@ orchestrator/
                         state model over one owner per GitHub surface: issue
                         operations and the one walk over them a tick is served
                         from, labels, comments, pull requests, reviews,
-                        checks, and audit events
+                        checks, audit events, and which repository the client
+                        speaks for
   agents/               the agent-CLI subprocess layer: shared dispatch and its
                         result models, credential filtering, the
                         backend-agnostic session-id walk and the Claude

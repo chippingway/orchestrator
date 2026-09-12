@@ -2424,15 +2424,62 @@ rather than preserving.
   alone: `late_approved_basis` goes down, is carried, and is dropped with it by every write named above, and says
   which owner granted the debt — spelled out beside the accepted candidate it shares its window with, under
   [late generation state](#late-generation-state).
+- **Published pull request.** `implementing_published_pr` is the pull request the recorded publication went onto,
+  written with the receipt below and never on its own. The receipt says a commit reached a remote and the head it
+  replaced dates that to one attempt; neither says which pull request now carries the work, which is what the
+  bookkeeping behind a landed push is bound by. `pr_number` cannot stand in: that is the relabel's write, so it is
+  missing for exactly the window the receipt exists for — a push that landed and a process that died before it —
+  and the only other way to name one is a lookup by branch, which answers with whatever is open on that ref. A
+  replacement somebody opened after closing the original satisfies such a lookup, so recovery would bind the
+  relabel, the debt and the receipt to a publication this stage never made. Read fail-closed like every other late
+  identity, and absent or unreadable the delivery proof refuses rather than searching. It is also the third term the
+  own-push carve-out is held to: every owner that freezes or proves a publication refuses a head somebody else moved,
+  and the one exception is a receipt saying this issue's own push put it there. The commit and the head it replaced
+  cannot establish that between them — a branch pushed from that head onto a pull request since closed and *replaced*
+  by another on the same ref satisfies both — so the number the receipt names has to be the publication the caller is
+  proving against. The size gate's entry freeze, the settlement's proof and the squash resume all ask it that way.
 - **Published commit.** `implementing_published_sha` is the commit the last gated push carried — the one that passed
   the gate, or the checkout's own head on a push the switch named none for, since `DECOMPOSE` keeps candidates out of
   the gate rather than off the remote and is an operator's to turn back on. It keeps the implementing spelling it was
   minted under, but it is written by every seam the gate stands in front of, the pushes onto an already-open pull
-  request included: each of those has the same window behind it, and a receipt naming what reached the remote is
-  what tells a candidate a later tick still owes a push from one it has already made. On that side it is read
-  together with the head the gate froze, because it is a local note about a remote fact: a receipt naming a commit
-  the pull request has since moved off is a record of a publication that is over, and the candidate goes back through
-  the ordinary reading rather than being waved past as already published. For the same reason it is not evidence that
+  request included: each of those has the same window behind it, and a receipt naming what reached the remote is what
+  tells a candidate a later tick still owes a push from one it has already made. On that side it is read together with
+  the head the gate froze, because it is a local note about a remote fact: a receipt naming a commit the pull request
+  has since moved off is a record of a publication that is over, and the candidate goes back through the ordinary
+  reading rather than being waved past as already published. The frozen pull request is compared with it on the same
+  terms, because a head says the work is *there* and nothing about how it got there: a receipt naming some other
+  publication — an earlier one of this issue's, a replacement opened after the original closed — vouches for nothing.
+  On the implementing seam neither was frozen, so the same question is put to the *remote*: the pull request the
+  record names, open, on the branch that seam would push, with its head in this repository, standing on this exact
+  commit, and with the receipt recording no LEASE — a lease names the head a push replaced and is written only by a
+  call that froze one, so a receipt carrying one was left by some other call entirely and its commit matching the
+  candidate is a coincidence the proof may not spend, since the fresh receipt behind the push clears the very field
+  that said which attempt the record was about. The repository is asked because a fork carries these ref names over
+  these commits and would otherwise agree on
+  everything else, asked through `github/identity.py` against the name GitHub uses and matched case-insensitively, so
+  a setting typed in another casing is not read as a stranger's. A receipt GROUP this build cannot read whole is asked
+  apart from that comparison and refused first — from either seam, since the three are one record — because every late
+  field is read fail-closed and a hand-edited one comes back as no receipt: published over, the push writes a fresh
+  group across the damaged field. Three shapes are damage. A member whose KEY has gone while its siblings are there is
+  the first, and it is why presence is asked of every member rather than of the commit alone: the write puts all three
+  keys down, `null` included, so one that is missing is a hand edit and not the empty lease an initial publication
+  records. A member carrying a value nothing can read is the second. An ORPHAN lease or number with no readable commit
+  beside it is the third, and it is the one a commit-only check walks straight past. Only `null` and `""` read as an
+  empty member — the payload is JSON, so `false`, `0`, `[]` and `{}` are all present damage that an "empty means
+  absent" reading would wave straight through. An empty LEASE is the one member that is not damage where its key is
+  there: an initial publication froze no head and records `null`. Anything short of the
+  proof PARKS rather than falling through to the reading: measured and found small the commit would simply be
+  published, which force-pushes a branch nothing could confirm and opens a second pull request over work the first one
+  already carries. The park writes nothing else — the receipt, the recorded number and any debt beside them stand for
+  the terminal that drains finished work or for the retry behind a repair. Nothing is outside it — a commit an
+  exemption names or an approval owes a push for least of all: each answers whether a fresh *reading* is needed and
+  says nothing about where the work went, and the delivered road records the commit as a debt before it pushes, so a
+  crash there leaves an approval with no lease to publish under.
+
+  What the answer then carries is the pull request *number*, because a reading is a moment: the push behind it is
+  leased against that exact commit, so a branch moved in the window rejects it rather than being force-overwritten,
+  and the bookkeeping is bound to that pull request, so one closed in the window holds the tick rather than earning a
+  second one over the same work. For the same reason it is not evidence that
   a pull request found somewhere OTHER than where a caller entered it got there by this issue's own push: it is never
   cleared, so a branch a revert or a rewrite rewound onto a commit published rounds ago would be measured and
   force-pushed over. Only the three readings a live window drops — the candidate a caller names, `late_approved_sha`,
@@ -2464,8 +2511,9 @@ rather than preserving.
   the receipt cannot date itself. Read alone the receipt goes on naming a commit this stage pushed rounds ago and so
   vouches for any pull request somebody rewound onto it; read with the head it replaced it answers for one window and
   no other — a push made from the head a caller froze, on a tick that died before the relabel behind it. Both the
-  size gate's entry and the `single` settlement's own reconciliation ask for the pair, and a receipt whose head is
-  absent or names some other commit forgives no moved head at all. Cleared with every receipt that is written rather
+  size gate's entry and the `single` settlement's own reconciliation ask for the whole group — this head and
+  `implementing_published_pr` beside it — and a receipt whose head is absent or names some other commit forgives no
+  moved head at all. Cleared with every receipt that is written rather
   than left for the next one to inherit, since a receipt wearing an earlier attempt's head is the one that vouches
   for a publication somebody else moved.
 - **Retired cycle.** `late_retired_cycle_id` is the one fact about a dropped generation that outlives the drop: the

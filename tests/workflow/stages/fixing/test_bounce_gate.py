@@ -233,8 +233,11 @@ class RefusedBounceTest(unittest.TestCase, support._GatedBounceMixin):
         # spent again -- the bounce itself still lands.
         scenario = self._seed_gated_bounce(**{
             REVIEW_ROUND: SPENT_ROUND,
-            KEY_RECEIPT_SHA: STRANDED_CANDIDATE,
-            KEY_RECEIPT_LEASE: PUBLICATION_HEAD,
+            **support.receipt_group(
+                STRANDED_CANDIDATE,
+                lease=PUBLICATION_HEAD,
+                pull_request=PR_NUMBER,
+            ),
         })
         scenario.github.get_pr(PR_NUMBER).head.sha = STRANDED_CANDIDATE
 
