@@ -634,13 +634,10 @@ def _plan_provenance(
     plan commit is compared against the pull request's head.
 
     Asked about the snapshot the hold is holding, which is what removes the
-    window between deciding and acting. It also removes the third answer that
-    question can have: "could not ask" belongs to a fetch, and the fetch has
-    already happened and already failed closed if it was going to.
+    window between deciding and acting: that owner takes no reading of its
+    own, so the head it answers about is the head this hold is holding.
     """
-    is_plan = _implementing._recorded_pr_is_the_plan(
-        gh, issue, state, held_pr.head_sha,
-    )
+    is_plan = _implementing._recorded_pr_is_the_plan(state, held_pr.head_sha)
     if not is_plan:
         log.info(
             "issue=#%d PR #%d is not this issue's plan; leaving its "

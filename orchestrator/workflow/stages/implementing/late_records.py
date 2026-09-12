@@ -28,11 +28,13 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.pinned_state import PinnedState
+from orchestrator.workflow.engine import observations as _observations
 from orchestrator.workflow.late_split import (
     endings as _endings,
     formats as _formats,
     identity as _identity,
     lineage as _lineage,
+    payloads as _payloads,
     rewrites as _rewrites,
     validation as _late_validation,
 )
@@ -49,6 +51,45 @@ _UNRECORDABLE_IDENTITY = (
 _FOREIGN_RECORD = (
     "it was recorded against issue #{recorded} rather than this one"
 )
+
+@dataclass(frozen=True)
+class _RecordedPublication:
+    """The pull request this issue's record names, or why it names none.
+
+    Three answers rather than two, because a field that is NOT THERE and one
+    that is there and will not type are different facts about an issue.
+    Absent is one that has published nothing: the first push of all is what
+    OPENS a pull request, so there is none for a barrier before it to hold it
+    to, and the pre-relabel window leaves the same shape.
+
+    DAMAGED is the record disagreeing with itself -- a hand edit, an older
+    write, a value this build cannot read back -- and reading it as an absence
+    is exactly how a barrier fails open. Every identity here is read
+    fail-closed, so an unusable one comes back as no identity at all: waved
+    through for that, a push onto a pull request a human has just merged goes
+    out as though the issue never had one, force-moving a terminal branch or
+    opening a second pull request over work the first already carries.
+    Neither is undoable, and what refusing instead costs is the poll that
+    asks again once somebody repairs the comment.
+    """
+
+    number: int = 0
+    damaged: bool = False
+
+    @classmethod
+    def named_by(cls, raw: object) -> _RecordedPublication:
+        """What a recorded field says, told apart from what it fails to say.
+
+        The RAW value is what this is handed, because the typed read is what
+        loses the difference: `null` and a missing key are the absence this
+        domain writes, and anything else the comment carries is a value it
+        MEANT to name a publication with.
+        """
+        if raw is None:
+            return cls()
+        number = _payloads.as_identity(raw)
+        return cls(number=number) if number else cls(damaged=True)
+
 
 @dataclass(frozen=True)
 class _Spends:
@@ -174,6 +215,23 @@ class _Gate:
     # human ever saw. It is the caller's because everything in it is gone
     # from the checkout and the remote by the time this owner could ask.
     rewrite: _rewrites.LateRewrite | None = None
+
+    @property
+    def close_was_observed(self) -> bool:
+        """Whether a poll has read this issue closed since the tick opened.
+
+        The process-wide latch rather than the issue object, and the two are
+        different facts. The object is a snapshot the tick opened with, and
+        everything a publication spends between that fetch and its push -- a
+        remote read, a diff, a worktree probe -- is time a poll on another
+        worker can find the issue closed in. The latch is what that poll
+        leaves behind, so this is the only reading that can answer for the
+        window rather than for the moment the fetch happened.
+
+        Costs no request, which is why it can be asked as late as the step it
+        guards rather than once at the door.
+        """
+        return _observations.close_observed(self.spec.slug, self.issue.number)
 
 
 @dataclass(frozen=True)

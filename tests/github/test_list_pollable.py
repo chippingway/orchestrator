@@ -100,8 +100,8 @@ class ListPollableIssuesTest(unittest.TestCase):
 
 
 class ListPollableIssuesClosedSweepTest(unittest.TestCase):
-    """A closed issue parked mid-flight must still be yielded: the per-handler
-    `_finalize_if_pr_merged` check cannot fire unless the sweep hands the
+    """A closed issue parked mid-flight must still be yielded: the terminals
+    each handler asks at entry cannot fire unless the sweep hands the
     dispatcher the issue.
 
     Either label spelling counts. A closed issue is the one case no other pass

@@ -4,12 +4,22 @@
 
 `DECOMPOSE=off` decides what ENTERS the gate, and a squash is new work by that
 definition: the commit it publishes is one it makes itself, out of commits a
-reviewer approved. So the whole of what such an install does to make one is
-squash and push: no pull request is read, none of the entry's refusals can be
-taken, no reading is taken over the commit it made, and the force-push is
-pinned to the head this stage read for itself -- which is the second answer
-that makes the skipped reading safe, since a remote somebody moved rejects the
-lease.
+reviewer approved. So the whole of what such an install MEASURES is nothing:
+none of the entry's refusals can be taken, no reading is taken over the commit
+it made, and the force-push is pinned to the head this stage read for itself --
+which is the second answer that makes the skipped reading safe, since a remote
+somebody moved rejects the lease.
+
+What the switch does not turn off is the barrier immediately before the push.
+A pull request somebody merged or closed still has its branch where this
+squash read it, so the lease would SUCCEED and the force-push would move a
+merged pull request's branch back onto the commits it merged -- an effect no
+setting about measurement licenses, and one nothing can undo.
+
+Nor does the switch turn off the RECORD that barrier reads its pull request
+by. A `pr_number` the comment carries and this build cannot read back is not
+an issue with nothing to check: read as one, the barrier spends no request and
+the force-push lands on whatever the branch's pull request has become.
 
 The road with no push behind it has no second answer, and the switch does not
 reach that one: a recovery that drops a record and hands the branch back reads
@@ -50,6 +60,11 @@ LEASE = "force_with_lease"
 # What the fixture's topic branch is made of.
 SQUASHED_COMMITS = 3
 
+# A `pr_number` the pinned comment carries and no reader here will type. Truthy
+# so the fixture records it rather than falling back to the real one, and not a
+# whole positive integer, so every identity reader answers absent for it.
+_A_DAMAGED_IDENTITY = True
+
 
 class SquashSwitchedOffRealGitTest(
     squash_support.SquashGitFixtureMixin,
@@ -57,17 +72,47 @@ class SquashSwitchedOffRealGitTest(
 ):
     """Every reading the switch keeps a squash out of, and the one it does not."""
 
-    def test_it_reads_no_pull_request(self) -> None:
-        # A closed pull request is the sharpest of the entry's refusals and
-        # the one that cannot come from anywhere else: with the gate off
-        # there is no reading to take it, so a pull request nobody could
-        # publish onto costs this squash nothing and it goes out regardless.
-        original_head = self._head_sha()
-
+    def test_a_finished_pull_request_still_refuses(self) -> None:
+        # What the switch does NOT turn off, and the reason it may not: the
+        # branch is still where this squash read it, so the lease would
+        # succeed and the force-push would move a merged pull request's branch
+        # back onto the commits it merged. A setting about what enters the
+        # MEASUREMENT does not license that, so the barrier immediately before
+        # the push reads the pull request on every install.
         squash_run = self._squash(
             publication=PublicationSeed(state=CLOSED),
             **{DECOMPOSE: False},
         )
+
+        self.assertFalse(squash_run.success)
+        squash_run.push_mock.assert_not_called()
+
+    def test_an_unreadable_record_refuses_too(self) -> None:
+        # The same refusal one field out, over a pull request that is also
+        # closed -- which is what makes the damage cost the effect rather than
+        # merely a request. Every reader in this domain answers absent for a
+        # value it cannot use, so a barrier reading that as "no publication to
+        # hold this to" spends no request at all and force-pushes onto a pull
+        # request somebody has already ended.
+        squash_run = self._squash(
+            publication=PublicationSeed(
+                pinned_number=_A_DAMAGED_IDENTITY, state=CLOSED,
+            ),
+            **{DECOMPOSE: False},
+        )
+
+        self.assertFalse(squash_run.success)
+        squash_run.push_mock.assert_not_called()
+
+    def test_an_open_one_goes_out_untouched(self) -> None:
+        # And the ordinary road, so the refusal above is about the ending
+        # rather than about the switch having started to measure: the push is
+        # named against the commit the squash made and pinned to the head this
+        # stage read for itself, with none of the entry's refusals available
+        # to have stopped it.
+        original_head = self._head_sha()
+
+        squash_run = self._squash(**{DECOMPOSE: False})
 
         self.assertTrue(squash_run.success)
         self.assertEqual(squash_run.count, SQUASHED_COMMITS)

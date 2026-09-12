@@ -109,6 +109,17 @@ def _publishes(
     records the debt for it beforehand, so a crash there leaves an approval
     the reconciliation ahead of the next handler pays as a leased no-op and
     then re-proves here.
+
+    Work that ENDED -- an issue a poll saw closed, a pull request somebody
+    merged or closed -- is refused immediately before the push and nowhere
+    else in this owner, because that is the only point at which the answer is
+    still true: every guard above spends a reading, a diff or a request after
+    it, and an ending landing in one of those windows would be answered one
+    push too late. What work nobody wants may never earn is exactly this
+    effect, so the refusal is HELD -- nothing pushed, nothing relabelled,
+    nothing announced -- and the record is left exactly as it stands for the
+    cleanup it is owed. `late_publication` beside this owns the question,
+    since a publication that has ended is the far end of the one it froze.
     """
     gate = _replace(
         gate,
@@ -120,6 +131,8 @@ def _publishes(
     if published.held:
         return _PushedCandidate(held=True)
     published = _repinned(published)
+    if _publication_gate._publication_ended(gate):
+        return _PushedCandidate(held=True)
     if not _pushed(gate, branch, published):
         return _PushedCandidate()
     # The proof comes first and its answer rides the settlement's own write,

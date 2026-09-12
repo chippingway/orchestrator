@@ -35,6 +35,7 @@ from orchestrator.workflow.stages.implementing import (
     late_parks as _parks,
     late_push as _push,
     late_records as _records,
+    late_terminal as _terminal,
     state as _state,
 )
 from orchestrator.workflow.state import WorkflowLabel
@@ -154,6 +155,17 @@ def _reconciles_published_work(
     of. The recorded pair keeps the branch and the record exactly as they are
     until a host that has the checkout comes back, which is what the recorded
     pair is for.
+
+    Work that is already OVER is handed back ahead of every road below,
+    because all of them publish: the reading ends in a push, and the debt road
+    exists to make one. The terminal that drains such an issue runs inside the
+    stage handler, which is BEHIND this owner -- so without the guard the crash
+    window this whole owner exists for becomes the way work reaches a pull
+    request nobody can merge. `late_terminal` owns both halves of that
+    question and the failure direction each is read in; what is HERE is only
+    where it is asked, which is behind the three record questions: its
+    pull-request half is a request, and the only ticks its answer can change
+    are the ones that have something left to reconcile.
     """
     recorded = _late_state.read_late_generation(state)
     damage = _claims._unreadable_record(label, state)
@@ -169,6 +181,8 @@ def _reconciles_published_work(
                 issue.number,
             )
             gh.write_pinned_state(issue, state)
+        return False
+    if _terminal._work_has_ended(gh, issue, state):
         return False
     gate = _records._gate(
         gh, spec, issue, state,

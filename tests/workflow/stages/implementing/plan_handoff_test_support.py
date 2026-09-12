@@ -24,6 +24,7 @@ from __future__ import annotations
 from tests.support.fakes import FakePR, FakePRRef
 from tests.workflow.fixtures import (
     LABEL_DONE,
+    LABEL_VALIDATING,
     STATE_CLOSED,
     _agent,
     _issue_branch,
@@ -179,8 +180,16 @@ class _HandoffTickMixin(_PatchedWorkflowMixin, _ReadOnlyRelabelMixin):
 
         self._assert_dev_ran(mocks)
         self.assertNotIn((issue_number, LABEL_DONE), gh.label_history)
+        # And the work the developer wrote actually reaches a reviewer. The
+        # plan PR the record arrived naming is a document the humans decided
+        # on, never the pull request this push joins -- so the push goes out,
+        # an implementation PR is opened for it, and the issue is handed on.
+        mocks[PUSH_BRANCH].assert_called_once()
+        self.assertEqual(len(gh.opened_prs), 1)
+        self.assertIn((issue_number, LABEL_VALIDATING), gh.label_history)
         # Its own PR is what the records name from here, so a merge of THAT one
         # finalizes normally.
+        self.assertNotEqual(pinned.get(KEY_PR_NUMBER), HANDOFF_PR_NUMBER)
         self.assertIsNone(pinned.get(KEY_PLAN_PATH))
 
     def _run_published_handoff(

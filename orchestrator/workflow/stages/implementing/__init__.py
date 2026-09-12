@@ -41,7 +41,12 @@ the thing that was measured, asked of the commit AND of the tree on both sides
 of the push and parked under the one reason a moved checkout earns, and
 `checkout_recovery` owns the answer to that park -- the same two questions
 asked silently on every ordinary tick, since what lifts it is the worktree
-coming back rather than anything a human could reply; `dev_pr` owns what that
+coming back rather than anything a human could reply; `push_barrier` owns
+what may have ENDED between the tick's own readings and the push it is about,
+asked immediately before the transport and nowhere else -- a close a poll
+latched, and the pull request this push would join, with a `discussion` plan
+the humans settled carved out of it, since merging a design is an agreement
+rather than a delivery; `dev_pr` owns what that
 pull request says and whose work it says it carries, including the reuse that
 reads the attribution back off one somebody else opened; and
 `handoff` owns the last write and the relabel it goes out ahead of.
@@ -85,7 +90,11 @@ really landed leaves on both sinks, asked past that write so nothing is
 reported for a settlement GitHub refused, is `late_transfer_telemetry`; the
 reading the dispatcher takes ahead of every handler for a pair this issue
 froze and never counted is
-`late_reconcile`; the approval that same dispatcher pays ahead of it,
+`late_reconcile`; whether the work either of its roads would publish onto has
+already ENDED -- the issue closed, or its pull request merged or closed, which
+the issue's own flag cannot show -- is `late_terminal`, read fail-OPEN there
+because what a wrong answer costs is a stranded issue rather than a branch
+nothing can put back; the approval that same dispatcher pays ahead of it,
 where a crash past the write that granted one left no record to reconcile
 from, is `late_debt`; and what a pinned record CLAIMS about either -- and the
 claims nothing may act on, since every field here is read fail-closed and a

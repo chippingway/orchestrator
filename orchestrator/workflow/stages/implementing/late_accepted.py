@@ -7,7 +7,9 @@ exact diff and said it ships as one change. What the push still owes is the
 two things every gated one owes -- it publishes the commit that was DECIDED
 rather than whatever the checkout became, and it is pinned to the head the
 reading was taken over -- plus the proof the settlement cannot skip, which is
-that the checkout is still the one the verdict was reached about.
+that the checkout is still the one the verdict was reached about, and the
+barrier every publication owes whatever else it skips: nothing is pushed onto
+work that ENDED while this settlement was being written down.
 """
 from __future__ import annotations
 
@@ -58,15 +60,29 @@ def _publishes_approved(gate: _records._Gate, branch: str) -> bool:
     rather than here, because the same reading is owed by the retry that
     finds the push already landed and makes none of its own.
 
+    Work that ENDED is refused immediately before the push, on the same terms
+    and through the same owner every gated publication refuses one. This road
+    reaches the transport directly rather than through the gated call, so the
+    barrier that call makes has to be made here too -- and the window it
+    covers is the widest on any road: the pull request was last read by the
+    reconciliation several steps back, and between that reading and this push
+    lie the exemption, the identity, the debt, the park persist and both
+    checkout probes. A pull request somebody merged or closed in it still has
+    its branch where the adjudication left it, so the lease SUCCEEDS and the
+    force-push moves terminal work; a close a poll latched is the same answer
+    one field over. Neither is anything a verdict licensed.
+
     The lease is required rather than defaulted, for the same reason: nothing
     measures this candidate again, so the head the record names is the whole
     of what stops the push landing on a pull request somebody moved while the
     adjudication was open.
 
     False is a refusal or a push that did not land, and the caller parks for
-    both: the approval and its lease are still on the record, so the retry
-    asks for the same commit against the same head once the checkout is back
-    where the verdict left it.
+    all of them: the approval and its lease are still on the record, so the
+    retry asks for the same commit against the same head once the checkout is
+    back where the verdict left it -- or, where what ended was the publication
+    itself, once a human has said what an accepted commit with no pull request
+    to join should do.
 
     The settlement rides the same call the gated tail makes, so a permission
     a rewrite left standing is answered here too -- and it is answered with no
@@ -84,6 +100,8 @@ def _publishes_approved(gate: _records._Gate, branch: str) -> bool:
     published = _publication_gate._PublishedCandidate(
         held=False, revision=approved, lease=lease,
     )
+    if _publication_gate._publication_ended(gate):
+        return False
     if not _push._pushed(gate, branch, published):
         return False
     # No post-push proof is owed HERE: the settlement takes `_standing_on`

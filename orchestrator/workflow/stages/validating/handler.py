@@ -2,10 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """One validating tick, in the order its questions have to be asked.
 
-The terminals come first because a PR a human already merged, or an issue
+The terminals come first because a PR a human already settled, or an issue
 closed without one, makes the whole round pointless -- and running the
-reviewer against a branch that landed would pull a finished issue back into
-the loop.
+reviewer against a branch that landed, or against work somebody turned down,
+would pull a finished issue back into the loop. Both pull-request endings are
+decided off ONE guarded reading: a merge finalizes `done`, and a close nobody
+merged finalizes `rejected`, which leaves the ISSUE open and so is invisible
+to the closed-issue terminal behind it. One reading rather than a fetch each,
+since a merge landing between two would be answered open to the first and
+merged to the second, and the reviewer would spawn behind both.
 
 A squash this issue began and did not finish is answered next, ahead of every
 route that can point an agent at the branch, because a branch mid-rewrite is
@@ -54,14 +59,19 @@ def _finalize_validating_terminal(
 
     External merge: a human merged the PR while the reviewer was queued.
     Finalize to `done` rather than running the reviewer against a branch that
-    already landed. Closed-issue counterpart: the closed-`validating` sweep
-    yields issues a human closed without a merged PR (the change was rejected
-    mid-review, or the PR was closed-without-merge); flip to `rejected` so the
-    reviewer does not spawn against a closed issue and the PR is not relabeled
-    back to `in_review`. The in_review / fixing handlers carry equivalent
-    terminal checks.
+    already landed. Closed PR: one somebody closed without merging, which
+    leaves the ISSUE open and so is invisible to the counterpart below --
+    flip to `rejected` rather than spawning a reviewer against work a human
+    has already rejected. Both come off ONE reading, since two fetches are
+    two moments and a merge landing between them reads open to the first and
+    merged to the second -- which the closed arc is right to ignore, while
+    the reviewer spawns behind it. Closed-issue counterpart: the closed-`validating`
+    sweep yields issues a human closed without a merged PR; flip to `rejected`
+    so the reviewer does not spawn against a closed issue and the PR is not
+    relabeled back to `in_review`. The in_review / fixing handlers carry
+    equivalent terminal checks.
     """
-    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
+    if _terminals._pr_terminal_stops_the_tick(gh, spec, issue, state):
         return True
     return _terminals._finalize_if_issue_closed(gh, spec, issue, state)
 

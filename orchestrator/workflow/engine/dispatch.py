@@ -79,9 +79,16 @@ that is right about some other park. An `awaiting_human` flag routes one stage
 to a resume on the next reply and another to a hold waiting on words, and
 neither is an answer to an issue that has run out of the agent runs it may
 ever spend. So the park is held once, ahead of the table, rather than taught
-to thirteen handlers -- and it is the one question here that steps aside for a
-CLOSED issue, since what a close reaches below is a terminal that ends the
-issue rather than a road that spends anything on it.
+to thirteen handlers -- and it is the one question here that steps aside for
+work that has ENDED, since what an ending reaches below is a terminal that
+ends the issue rather than a road that spends anything on it. A closed ISSUE
+is the half the object in hand shows; a recorded PULL REQUEST that has merged
+or been closed is the half it cannot, and is read here for that reason. What
+that second reading means depends on the LABEL the tick was routed on: on
+`workflow:implementing` a settled `discussion` plan is the agreement that
+licensed the build rather than the build ending, so it is carved out there and
+nowhere else -- `discussion` itself drains the same pull request through its
+own terminal.
 
 Only issue NUMBERS cross the thread boundary. PyGithub's `Issue` and the
 `GitHubClient` / `Repository` / `Requester` chain behind it hold mutable
@@ -122,6 +129,7 @@ from github.Issue import Issue
 from orchestrator import config
 from orchestrator.github.client import GitHubClient
 from orchestrator.github.issues import (
+    _ISSUE_STATE_CLOSED,
     CLEANUP_ROUTE_LABELS,
     CLEANUP_SWEEP_LABELS,
     issue_is_closed,
@@ -134,6 +142,7 @@ from orchestrator.workflow.engine import (
     observations,
     run_grant as _run_grant,
     run_limit as _run_limit,
+    terminals as _terminals,
 )
 from orchestrator.workflow.state import WorkflowLabel, stage_name
 
@@ -152,6 +161,11 @@ _PROCESSING_FAILED_LOG = "repo=%s issue=#%s processing failed"
 _HELD_BY_A_WORKER = "a worker is already running it"
 _PASS_FAILED = "the pass that took it failed before marking anything"
 _ENDING_UNFINISHED = "the ending it ran is owed under no label the sweep asks for"
+
+# What a pull request reads as once it is over, whichever way it ended. The
+# run-limit hold asks for both together, because what it is deciding is
+# whether the work is finished rather than which ending finished it.
+_ENDED_PR_STATES = frozenset((_terminals._MERGED, _ISSUE_STATE_CLOSED))
 
 _FAMILY_AWARE_LABELS = frozenset((
     WorkflowLabel.DECOMPOSING, WorkflowLabel.BLOCKED, WorkflowLabel.UMBRELLA,
@@ -189,6 +203,10 @@ _DOCUMENTING_PACKAGE = "orchestrator.workflow.stages.documenting"
 _FIXING_PACKAGE = "orchestrator.workflow.stages.fixing"
 _IMPLEMENTING_PACKAGE = "orchestrator.workflow.stages.implementing"
 _LATE_RECONCILE_OWNER = f"{_IMPLEMENTING_PACKAGE}.late_reconcile"
+
+# The owner that tells the `discussion` stage's plan from a delivery, read
+# through rather than re-derived so what counts as a plan is decided once.
+_IMPLEMENTING_HANDLER_OWNER = f"{_IMPLEMENTING_PACKAGE}.handler"
 _IN_REVIEW_PACKAGE = "orchestrator.workflow.stages.in_review"
 _QUESTION_PACKAGE = "orchestrator.workflow.stages.question"
 _VALIDATING_PACKAGE = "orchestrator.workflow.stages.validating"
@@ -366,7 +384,8 @@ def _pinned_state_refuses(
     if _cycle_stops_the_tick(gh, spec, issue, label, state):
         return True
     if _run_limit_holds_the_tick(
-        gh, spec, issue, state, observed_closed=observed_closed,
+        gh, spec, issue, state,
+        _spent_work_has_ended(gh, issue, state, label, observed_closed),
     ):
         return True
     if label == WorkflowLabel.DECOMPOSING and late_relabel._adjudicating(state):
@@ -388,8 +407,7 @@ def _run_limit_holds_the_tick(
     spec: config.RepoSpec,
     issue: Issue,
     state: PinnedState,
-    *,
-    observed_closed: bool,
+    ended: bool,
 ) -> bool:
     """Whether this issue has spent every agent run it is allowed to.
 
@@ -409,15 +427,23 @@ def _run_limit_holds_the_tick(
     holds wait on a command that buys another attempt. Each is right about the
     park it was written against; none of them buys back a run.
 
-    A CLOSED issue is let past, and that exemption is the reason this is a
-    question rather than a filter above the partition. What a close reaches
-    below is a terminal -- the merged, rejected, and human-closed finalizers,
-    and the cleanup sweep that settles a generation ledger -- and every one of
-    those ENDS the issue rather than spending anything on it. Refusing them
-    would leave a spent issue permanently mid-ending: a pull request nothing
-    finalizes, a receipt nobody posts, a ledger no sweep settles. The poll's
-    own reading counts as closed beside the object's, since an issue closed
-    when it was enumerated is one this tick was routed on the strength of.
+    Work that has ENDED is let past, and that exemption is the reason this is
+    a question rather than a filter above the partition. What an ending
+    reaches below is a terminal -- the merged, rejected, and human-closed
+    finalizers, and the cleanup sweep that settles a generation ledger -- and
+    every one of those ENDS the issue rather than spending anything on it.
+    Refusing them would leave a spent issue permanently mid-ending: a pull
+    request nothing finalizes, a receipt nobody posts, a ledger no sweep
+    settles. And "permanently" is meant: a lifetime total buys no clock, so
+    an issue held here is held until a human arrives, and an ending it never
+    reaches is one nothing else will.
+
+    `ended` is that question already answered, handed in rather than asked
+    here: `_spent_work_has_ended` beside this owns the two facts it is read
+    off and the order they cost anything in. What the answer buys is the tick
+    reaching the stage its label names, whose own terminal does the ending --
+    and nothing it lets through can spend a run, since the circuit every
+    launch goes through reads the same ledger and refuses on it.
 
     The one thing that lifts it is asked here too, and asked nowhere else:
     a trusted `/orchestrator add-agent-runs N` widening what this issue may
@@ -427,6 +453,14 @@ def _run_limit_holds_the_tick(
     command that lifts the park lets the tick go on to the stage its label
     names, which is the run the human just paid for.
 
+    It is asked BEHIND the ending, and the order is the point: reading that
+    command MUTATES -- it widens the allowance, clears this park, consumes
+    the batch it read, posts an acknowledgement and records a phase. None of
+    that is anything work a human has already merged or closed should earn.
+    Asked first, a terminal issue would buy runs it will never spend, and a
+    malformed request over one would collect a refusal receipt on a thread
+    about to be finalized.
+
     The sentence the park owes the thread is replayed before the hold
     returns, because this is the road that strands it: nothing below runs, so
     a notice a refused post or an unreadable thread left owed would be owed
@@ -434,9 +468,7 @@ def _run_limit_holds_the_tick(
     a park nobody can see going on refusing is one an operator reads as a
     workflow that stopped for no reason.
     """
-    if not _run_limit._park_stands(state):
-        return False
-    if observed_closed or issue_is_closed(issue):
+    if not _run_limit._park_stands(state) or ended:
         return False
     if _run_grant._lifts_the_park(gh, issue, state):
         return False
@@ -447,6 +479,90 @@ def _run_limit_holds_the_tick(
     )
     _run_limit._replay_owed_notice(gh, issue, state)
     _run_limit._emit_phase(gh, issue, _run_limit.RunLimitPhase.STANDING)
+    return True
+
+
+def _spent_work_has_ended(
+    gh: GitHubClient,
+    issue: Issue,
+    state: PinnedState,
+    label: str | None,
+    observed_closed: bool,
+) -> bool:
+    """Whether the work a spent ledger would hold is already over.
+
+    Asked BEHIND the park, and that is what keeps it cheap: the pull-request
+    half below is a request, and an issue with runs left to spend has no hold
+    for an ending to lift. So a tick that is not parked costs nothing here.
+
+    The free fact comes first. A closed ISSUE is the object already in hand,
+    and the poll's own reading counts beside it, since an issue closed when it
+    was enumerated is one this tick was routed on the strength of. The PULL
+    REQUEST behind it is the half the object cannot show.
+    """
+    if not _run_limit._park_stands(state):
+        return False
+    if observed_closed or issue_is_closed(issue):
+        return True
+    return _recorded_pr_has_ended(gh, issue, state, label)
+
+
+def _recorded_pr_has_ended(
+    gh: GitHubClient, issue: Issue, state: PinnedState, label: str | None,
+) -> bool:
+    """Whether the pull request this issue records has merged or been closed.
+
+    The half of "is this work over" the issue's own flag cannot answer, and
+    the reason the hold above asks a request at all: a merge leaves the issue
+    open until a stage terminal reads it, and a close nobody merged leaves it
+    open for good, so a spent issue behind either would sit on the park
+    forever with the ending it is owed unreachable.
+
+    Read fail-OPEN through the terminals' own guarded reading, which is where
+    the shape of that read lives: a fetched pull request is lazy, so the
+    lookup asks GitHub nothing and the request that can fail is the attribute
+    access behind it. A reading that did not come back says nothing about
+    whether the work is over, and answering True on one would lift a park on
+    a request that failed -- so it leaves the hold exactly where it was and
+    the next poll asks again.
+
+    The `discussion` stage's PLAN is not an ending ON ONE STAGE, and that is
+    why the LABEL decides it rather than the record alone. An issue relabelled
+    out of `discussion` arrives on `workflow:implementing` still recording the
+    plan's number, and merging that plan is an agreement -- the humans read a
+    design and said build it -- so the stage that would receive this tick
+    carries on rather than finalizing. Answered as an ending there, the hold
+    would step aside every poll for an issue no terminal is going to finalize,
+    and say in the log that it was letting one through.
+
+    Everywhere else the same pull request is exactly the ending it looks like.
+    `discussion` itself drains a settled plan through its own terminal, so a
+    carve-out applied to that label stops the one stage the plan belongs to
+    from ever ending -- and behind a permanent park there is no later tick to
+    do it instead.
+
+    Told apart off the SAME reading the state came from, through the owner
+    that decides what a plan is, so the classification and the ending are
+    about one snapshot rather than two.
+
+    What a True buys is the tick reaching the stage the label names, whose
+    own terminal does the ending. Nothing here finalizes anything itself.
+    """
+    linked = _terminals._linked_pull_request(
+        gh, issue, state, "checking whether its work has already ended",
+    )
+    if not linked.was_read or linked.state not in _ENDED_PR_STATES:
+        return False
+    if label == WorkflowLabel.IMPLEMENTING:
+        implementing = importlib.import_module(_IMPLEMENTING_HANDLER_OWNER)
+        if implementing._recorded_pr_is_the_plan(state, linked.head):
+            return False
+    log.info(
+        "issue=#%s has spent every agent run it is allowed and records a pull "
+        "request that has merged or been closed; letting the tick reach the "
+        "terminal that ends it",
+        issue.number,
+    )
     return True
 
 
@@ -824,7 +940,15 @@ def _process_issue(
     start = time.monotonic()
     evaluation_result = "ok"
     try:
-        _route_issue_to_handler(gh, spec, issue, label, reading=reading)
+        # Advertised for the whole dispatch, so a close another thread
+        # observes while this one is acting is not dropped again out from
+        # under the barriers that read it. Those barriers stand immediately
+        # before a push and the publications they guard carry no late cycle,
+        # which is the one thing a poll drops a reading on. The drop is
+        # postponed rather than refused: `observations` takes it again as the
+        # window closes.
+        with observations.publishing(spec.slug, issue.number):
+            _route_issue_to_handler(gh, spec, issue, label, reading=reading)
     except Exception:
         evaluation_result = "error"
         raise
@@ -1331,12 +1455,21 @@ def _submit_scheduler_fanout_issues(
 ) -> None:
     for issue_number in partition.fanout_numbers:
         cleanup_only = issue_number in partition.cleanup_numbers
+        # Held from here rather than from wherever the worker first reads
+        # something: the claim exists the moment this submit is admitted, and
+        # a poll meeting the issue between that and the handler is refused
+        # because a worker has it -- which is exactly when its own reading
+        # must not be dropped. Given back by the task, or below if the submit
+        # was refused and no task will run.
+        observations.claim_publication(spec.slug, issue_number)
         submitted = scheduler.submit(
             spec.slug,
             issue_number,
-            _fanout_task(gh, spec, issue_number, reading=_PollReading(
-                cleanup_only=cleanup_only,
-                closed=issue_number in partition.fanout_closed,
+            _released_after(spec, issue_number, _fanout_task(
+                gh, spec, issue_number, reading=_PollReading(
+                    cleanup_only=cleanup_only,
+                    closed=issue_number in partition.fanout_closed,
+                ),
             )),
             family=False,
             # A closed issue's handler is a cheap terminal finalization with
@@ -1350,11 +1483,41 @@ def _submit_scheduler_fanout_issues(
         )
         if submitted:
             continue
+        observations.release_publication(spec.slug, issue_number)
         _refused_submit(
             gh, spec, issue_number,
             cleanup_only=cleanup_only,
             closed=issue_number in partition.fanout_closed,
         )
+
+
+def _released_after(
+    spec: config.RepoSpec, issue_number: int, task: Callable[[], None],
+) -> Callable[[], None]:
+    """The submitted task with the claim's own hold given back behind it.
+
+    The hold starts at the submit and has to outlive the queue, so the worker
+    is what ends it -- and it ends whichever way the task goes, since a pass
+    that raised is one that stopped holding the issue just as surely as one
+    that returned.
+    """
+    return functools.partial(_releases_the_claim, spec.slug, issue_number, task)
+
+
+def _releases_the_claim(
+    repo_slug: str, issue_number: int, task: Callable[[], None],
+) -> None:
+    """Run one submitted task, and give the claim's hold back after it.
+
+    Registered before the task runs rather than called after it, so a pass
+    that raises gives the hold back too: one that stopped holding the issue
+    did so whichever way it ended.
+    """
+    with contextlib.ExitStack() as given_back:
+        given_back.callback(
+            observations.release_publication, repo_slug, issue_number,
+        )
+        task()
 
 
 def _refused_submit(

@@ -461,8 +461,43 @@ in that window brings back here with its generation already retired: re-deciding
 question against a base that has moved since, and route work a human may already have adjudicated back into
 adjudication. `implementing_published_sha` is that same window one step further on and the one that matters most,
 because the effects are already out: past the push a pull request carries the work and only the relabel is owed, so a
-reading that came back oversized there would hold nothing back and route a *published* branch to adjudication. And
-`DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
+reading that came back oversized there would hold nothing back and route a *published* branch to adjudication.
+
+The publication that window is about is re-read immediately before the push, on every road that makes one. The
+*ordinary* implementing push proves no publication — it reuses whatever open pull request is on the branch, which is
+how a `discussion` plan PR on that ref, or this stage's own from a round that crashed before its relabel, gets
+carried forward — so the pull request it would join is the one the record names. One that merged, closed, or stopped
+being readable between the tick's first reading and there answers nothing to the branch lookup behind the push: a
+second pull request is opened over the work and `pr_number` overwritten with it, losing the pointer to whatever a
+human just decided. A caller that PROVED which publication its push is joining hands the number in instead, and that
+one is read.
+
+What that record *fails* to say is read three ways rather than two, and the third is what keeps the barrier closed.
+An **absent** `pr_number` is an issue that has published nothing: the implementing seam's own push is what opens a
+pull request, so there is none to hold it to, and the window before the relabel that records one leaves the same
+shape. A field the comment **carries** and no reader here will type — the payload is JSON, so a hand edit or an older
+write can leave a zero, a flag, a string, a list — is the record disagreeing with itself. Every identity in this
+domain is read fail-closed, so an unusable one comes back as *no* identity: taken for an absence, the barrier spends
+no request and the push goes out as though the issue never had a pull request, opening a second one over work a human
+may have just closed. So it refuses, and on the published-side roads an absence refuses with it, since every one of
+them publishes onto a pull request the remote already carries.
+
+One ending is deliberately *not* one here. A `discussion` plan PR the humans have settled — merged or closed — is an
+agreement rather than a delivery, and it is the same carve-out the stage's own terminals make: finalizing on a
+merged plan would close the issue `done` with no developer ever having run, so the tick carries on and what it
+licenses is an implementation with a pull request of its own. That plan is therefore not a pull request this push
+joins, and never one it may be held back by. It is told from an implementation by the two records those terminals
+use — a live `discussion_plan_path`, or a `discussion_plan_sha` the PR's head is still standing on — read off the
+reading already in hand, so a plan this stage has since pushed over reads as the implementation it has become and is
+held like any other.
+
+Two things bound that. It has to be **settled**, which only a reading establishes: a pull request this host could not
+read is refused ahead of the carve-out, because the record says which one is the design and never what anybody did
+with it — carved out on the record alone, the push would go out onto whatever the failed request was hiding. And it
+has to be a number the *record* named: one that came from a proof is never offered the carve-out at all, since what a
+proof establishes is that the branch is standing on the candidate, which no plan publication produces.
+
+And `DECOMPOSE=off` keeps every new candidate out of the gate — but not one this issue already has a
 recorded generation for, nor one it owes a push for, because the switch decides what ENTERS the gate and nothing
 about what is already in it or already through it. Bypassing an approved commit would be the sharpest of those: the
 publication is handed a candidate the gate never looked at while the record beside it names a different commit as the

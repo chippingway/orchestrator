@@ -105,8 +105,9 @@ def _candidate_commit(
     out, because the switch keeps candidates out of the MEASUREMENT and not
     out of a push that knows which commit it is sending. That proof is local
     -- a revision peeled in this checkout -- so an install with the gate off
-    still reads no pull request and parks over none; what it buys is the one
-    comparison the naming exists for, and without it a commit landing between
+    freezes no entry here, reads no pull request for the measurement, and
+    parks over none; what it buys is the one comparison the naming exists
+    for, and without it a commit landing between
     the caller's read and this one is published in its place.
     """
     if _outside_the_gate(gate, recorded) and not gate.candidate:

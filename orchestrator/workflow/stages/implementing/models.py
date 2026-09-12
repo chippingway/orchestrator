@@ -81,6 +81,14 @@ class _ApprovedWork(_AgentWork):
     """
 
     candidate_sha: str = ""
+    # The pull request a caller PROVED this push is joining, where it holds
+    # one. The barrier before the push re-reads whichever pull request the
+    # push would land on, and where the number was proved rather than read off
+    # the record there is nothing for the `discussion` plan carve-out to be
+    # about: a proof is that the branch stands on the candidate, which no plan
+    # publication can produce. Zero is every caller that proved none, and
+    # there the record's own `pr_number` is what gets re-read.
+    delivered_pr: int = 0
 
 
 @dataclass(frozen=True)

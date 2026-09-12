@@ -217,13 +217,63 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      would have been taken beside
      PR unreadable, closed, merged ► the same park: nothing to measure
                                      against, and nowhere for the push to land
+     work that ENDED before the   ─► handed back to the stage terminal, which
+     reconciliation opened           marks the issue done or rejected with the
+                                     record, the branch and the debt left as
+                                     they are. Two facts: the issue object,
+                                     and the PR the record names -- a merge
+                                     leaves the issue open until a terminal
+                                     reads it, and there is nowhere for this
+                                     push to land. The PR reading falls
+                                     through where the remote will not answer,
+                                     so a blink costs a poll rather than
+                                     stranding the issue
+     work that ENDS after it      ─► refused immediately before the push and
+                                     nowhere else: everything above that line
+                                     spends a reading, a diff or a request. A
+                                     merged or closed PR still has its branch
+                                     at the frozen head, so the lease would
+                                     SUCCEED and the force-push would walk
+                                     terminal work backwards -- so this
+                                     reading fails CLOSED, is taken whatever
+                                     DECOMPOSE says, and a latched close is
+                                     asked after it, since the reading itself
+                                     is a window. Nothing pushed, nothing
+                                     relabelled, nothing announced. The
+                                     initial publication and the settled
+                                     adjudication's own push each carry the
+                                     same barrier
+     a pr_number nothing can read ─► the same refusal, with no reading spent.
+                                     A field the comment CARRIES and no reader
+                                     here will type is not an issue with
+                                     nothing to check: read as one, no request
+                                     is made and the push lands on whatever
+                                     the branch's pull request has become. On
+                                     these roads an ABSENT one refuses too --
+                                     each publishes onto a pull request the
+                                     remote already carries -- while at the
+                                     implementing seam absent is the first
+                                     publication and goes out as ever
+     a settled `discussion` plan   ► not an ending for the push that follows:
+     PR the record still names        a merged plan is an agreement, and what
+                                      it licenses is an implementation with a
+                                      pull request of its own. The stage's own
+                                      terminals make the same carve-out, and
+                                      for the same reason -- finalizing there
+                                      would close the issue `done` with no
+                                      developer having run
      PR head moved off the frozen  ► the same park, the record left naming the
      one                             head it froze -- somebody pushed in
                                      between, so the frozen pair no longer
                                      says what the PR would come to
-     DECOMPOSE=off, no generation ─► push unmeasured, and the pull request is
-                                     never read: the switch is asked ahead of
-                                     everything the entry would cost
+     DECOMPOSE=off, no generation ─► push unmeasured, and no pull request is
+                                     read for the MEASUREMENT: the switch is
+                                     asked ahead of everything the entry would
+                                     cost. The terminal-safety barrier above
+                                     still reads one, since what the switch
+                                     decides is what enters the reading and
+                                     not whether a merged pull request may be
+                                     force-moved
 
    Validating fix loop:
      workflow:validating --(CHANGES_REQUESTED)──► label=workflow:fixing
@@ -241,6 +291,27 @@ than a second source of truth: where the two disagree, the handler pages are aut
        label=workflow:documenting (final-docs) ──► in_review
      MAX_REVIEW_ROUNDS exhausted ─► park HITL
      squash failure ─► park HITL on workflow:validating, no relabel
+
+   implementing / validating / documenting (no PR-state arc of their own, so
+   the three terminals are asked at entry, ahead of every gate, push and
+   spawn; implementing asks its two behind the plan-PR question):
+     pr merged externally               ─► done (external merge)
+     pr closed unmerged                 ─► rejected. The ISSUE stays open, so
+                                            the closed-issue terminal beside
+                                            it never sees one -- and the size
+                                            gate below would measure the
+                                            committed candidate again and push
+                                            it, opening a SECOND pull request
+                                            over work a human turned down,
+                                            while validating and documenting
+                                            would spawn over it
+     issue closed, PR also closed       ─► rejected (+ branch cleanup)
+     a PR fetch that failed             ─► nothing written, and the tick
+                                            carries ON to the stage: nothing
+                                            about a failed read says which
+                                            ending it was hiding, and answered
+                                            as one every issue whose remote
+                                            blinked would stop advancing
 
    in_review (orchestrator never merges; merged arc always external):
      pr merged externally               ─► done (close + cleanup)
@@ -431,11 +502,24 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                    road below (a resume on the next reply, a
                                    hold waiting on words, a continue
                                    classifier) would answer a park it was not
-                                   written for. A CLOSED issue is let past
-                                   instead: what it reaches below is a
-                                   terminal that ENDS it rather than a road
-                                   that spends anything, and the poll's own
-                                   closed reading counts beside the object's
+                                   written for. Work that has ENDED is let
+                                   past instead: what it reaches below is a
+                                   terminal that ENDS the issue rather than a
+                                   road that spends anything on it. A CLOSED
+                                   issue is the free half, and the poll's own
+                                   closed reading counts beside the object's;
+                                   the recorded PULL REQUEST having merged or
+                                   closed is the half the flag cannot show,
+                                   costs a request per parked poll, and fails
+                                   OPEN -- a remote that would not answer
+                                   lifts nothing. What that second one MEANS
+                                   turns on the label: a settled `discussion`
+                                   plan is the agreement that licensed the
+                                   build, so it is carved out on
+                                   workflow:implementing and nowhere else --
+                                   `discussion` drains the same PR itself. Nothing let past can spend a
+                                   run: the circuit every launch goes through
+                                   reads the same ledger and refuses on it
        + a trusted, bounded    ─► allowance = used + N, this park alone
        /orchestrator               cleared, the command consumed with the
        add-agent-runs N on         receipt that acknowledges it, a granted

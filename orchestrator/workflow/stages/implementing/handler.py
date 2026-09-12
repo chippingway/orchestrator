@@ -7,8 +7,12 @@ make it unanswerable. A `discussion` this stage's own terminals cannot answer
 for comes first of all: an unfinished round or publication is a record written
 before the thing it describes, so an issue carrying one has a plan on its
 branch and possibly a pull request open for it, and neither is anything a
-terminal here may finalize on. A merged PR or a closed issue ends the issue, so
-both are read next, before anything spends tokens. A stale read-only park
+terminal here may finalize on. A pull request that ENDED, either way, or a
+closed issue ends the issue, so all three are read next, before anything
+spends tokens. The two pull-request endings come off ONE guarded reading with
+the head that tells the `discussion` plan from a delivery: a merge finalizes
+`done`, a close nobody merged finalizes `rejected`, and reading the head and
+the state apart would classify one snapshot and finalize another. A stale read-only park
 (`question_*` or `discussion_*`) has to be cleared or refused before the
 fresh-spawn path's recovered-worktree shortcut can publish that agent's commits
 as a dev implementation. A spent spawn budget has to answer for itself before
@@ -58,11 +62,8 @@ log = logging.getLogger("orchestrator.workflow")
 
 
 def _recorded_pr_is_the_plan(
-    gh: GitHubClient,
-    issue: Issue,
-    state: PinnedState,
-    head_sha: str | None = None,
-) -> bool | None:
+    state: PinnedState, head_sha: str | None,
+) -> bool:
     """True while the PR this issue records still carries only the plan.
 
     The `discussion` stage publishes the agreed design as a PR and records its
@@ -88,41 +89,20 @@ def _recorded_pr_is_the_plan(
     before persisting anything still leaves a PR that reads as an
     implementation here.
 
-    A PR that cannot be fetched answers None rather than False. False is a
-    claim -- "this is not the plan" -- and the caller acts on it by asking
-    GitHub the same question again through the merged-PR terminal. A request
-    that failed and then succeeded would answer the first question "not the
-    plan" and the second "merged", and close the issue as `done` on the
-    strength of a design document. What a failed fetch actually establishes is
-    nothing, which is what the third answer says.
-
-    `head_sha` is for the caller that already holds the snapshot it is about
-    to ACT on, and it is the only thing that snapshot is asked for. The head
-    is a mutable thing -- a human can push to a plan PR at any moment -- so a
-    caller that classified one read and then mutated another has classified
-    something it did not touch. Given the head it read, the answer is about
-    that read, and there is no fetch left to fail: the third answer cannot
-    arise.
+    `head_sha` is the caller's, always, and this owner takes no reading of its
+    own. The head is a mutable thing -- a human can push to a plan PR at any
+    moment -- so a caller that classified one read and then ACTED on another
+    has classified something it did not touch. Fetching here would be exactly
+    that: every caller goes on to do something to the pull request it just
+    asked about, and a second read is a second moment. Given the head it
+    holds, the answer is about that read and there is nothing left to fail.
     """
-    pr_number = state.get(_state._PR_NUMBER)
-    if pr_number is None:
+    if state.get(_state._PR_NUMBER) is None:
         return False
     if state.get(_DISCUSSION_PLAN_PATH):
         return True
     plan_sha = state.get(_DISCUSSION_PLAN_SHA)
-    if not plan_sha:
-        return False
-    if head_sha is None:
-        try:
-            head_sha = getattr(gh.get_pr(int(pr_number)).head, "sha", None)
-        except Exception:
-            log.exception(
-                "issue=#%s could not fetch PR #%s while telling a plan from "
-                "an implementation; deferring the tick",
-                issue.number, pr_number,
-            )
-            return None
-    return head_sha == plan_sha
+    return bool(plan_sha) and head_sha == plan_sha
 
 
 def _recorded_pr_holds_the_tick(
@@ -130,25 +110,55 @@ def _recorded_pr_holds_the_tick(
 ) -> bool:
     """True when the PR this issue records is why nothing else may run.
 
-    Three answers, because the question ahead of the merged-PR terminal has
-    three. A PR that is still the `discussion` stage's plan -- by its live
-    record, or by the commit that record names -- lets the tick continue but
-    must not finalize: closing the issue as `done` on a merged plan would end
-    it without a developer ever running, on the strength of a document whose
+    Three answers, because the question ahead of the PR terminals has three. A
+    PR that is still the `discussion` stage's plan -- by its live record, or
+    by the commit that record names -- lets the tick continue but must not
+    finalize: closing the issue as `done` on a merged plan would end it
+    without a developer ever running, on the strength of a document whose
     content is work still to do. A PR that is something else is
-    handed to the terminal, which decides on the merge as it always has. And a
+    handed to the terminals, which decide on it as they always have. And a
     PR that could not be read at all ends the tick here, unfinalized and
-    unspawned: the terminal would fetch it a second time, and a request that
-    failed once and succeeded next would finalize exactly the plan the first
-    answer existed to protect. Nothing is written, so the next tick asks again
-    from the same durable state.
+    unspawned, where the record makes the HEAD the answer: with
+    `discussion_plan_sha` standing, a reading that established no head cannot
+    tell the plan from a delivery, and neither answer is one to guess at.
+    Where no such record stands there is nothing for a head to settle, so a
+    failed reading falls through exactly as it does for the stages behind
+    this one. Nothing is written either way, so the next tick asks again from
+    the same durable state.
+
+    All three answers come off ONE reading, and that is the whole shape of
+    this owner. What tells a plan from a delivery is the HEAD, what the
+    terminals decide on is the STATE, and both are facts about a pull request
+    somebody can move at any moment: read twice, this stage classifies one
+    snapshot and ends another -- a plan whose head a human corrected reads as
+    an implementation to the first read and merged to the second, and the
+    issue is closed `done` on the strength of a design document. So the
+    reading is taken here and handed on.
+
+    The live plan record is asked AHEAD of it and costs nothing: while
+    `discussion_plan_path` stands nothing here has pushed, so the pull request
+    is the plan whatever its head says, and there is no reading worth taking.
+
+    TWO terminals off that one reading, because a pull request ends in two
+    ways and this stage carries no arc of its own for either. A merge
+    finalizes to `done`. One somebody CLOSED without merging finalizes to
+    `rejected`, and both have to be answered here rather than further down:
+    everything below reaches the size gate, which would measure the committed
+    candidate again and push it -- and with the pull request gone, the push
+    would open a second one over work a human has already rejected.
     """
-    plan_verdict = _recorded_pr_is_the_plan(gh, issue, state)
-    if plan_verdict is None:
-        return True
-    if plan_verdict:
+    if _recorded_pr_is_the_plan(state, None):
         return False
-    return _terminals._finalize_if_pr_merged(gh, spec, issue, state)
+    linked = _terminals._linked_pull_request(
+        gh, issue, state, "telling a plan from work that has ended",
+    )
+    if linked.unreadable:
+        return bool(state.get(_DISCUSSION_PLAN_SHA))
+    if _recorded_pr_is_the_plan(state, linked.head):
+        return False
+    return _terminals._pr_terminal_stops_the_tick(
+        gh, spec, issue, state, linked,
+    )
 
 
 def _unfinished_discussion_holds_the_tick(
