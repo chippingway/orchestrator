@@ -280,9 +280,10 @@ orchestrator/
                         has proved the commit it stands on; the single-ref read the branch transport spends for
                         its own lease too
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
-      refresh.py        the authenticated base fetch, the scheduler-active guard that keeps a worktree out
-                        from under a live worker, the dirty-tree refusal a pre-PR rebase owes, the base-lag
-                        probe, and the pre-PR versus PR-aware route
+      refresh.py        the authenticated base fetch, the walk of the repository's worktrees root that hands
+                        each entry to the selection owner below, the scheduler-active guard that keeps a
+                        worktree out from under a live worker, the dirty-tree refusal a pre-PR rebase owes,
+                        the base-lag probe, and the pre-PR versus PR-aware route
       refresh_selection.py
                         which discovered directories name an issue, whether that issue reads at all, and the
                         order the refusals that end a sync before any rewrite are asked in: the hard-skip, the
