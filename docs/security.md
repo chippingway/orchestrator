@@ -542,9 +542,14 @@ The security posture:
   afterwards. The counters that *do* reset — `review_round` after a base rebase or a recovered conflict,
   `dev_resume_count` behind session rotation, the retry window — are deliberately not this one, so an issue cannot
   loop its way to unbounded spend through any of them.
-- **The one thing that lifts it is trusted and bounded.** A spent ledger parks the issue on `agent_run_limit`, held by
-  the dispatcher ahead of every stage handler. The only answer is `/orchestrator add-agent-runs N` from an author the
-  `ALLOWED_ISSUE_AUTHORS` boundary trusts, on a line of its own, with `N` a whole number no larger than
+- **Work that has ENDED steps past it, and buys nothing doing so.** A closed issue, or a recorded pull request that
+  has merged or been closed, reaches a terminal below rather than a road that spends anything — and a park nothing
+  lifts would otherwise stand over work a human already decided, since a lifetime total buys no clock. That reading
+  is taken BEFORE the command below is read, so an issue whose work is over never consumes a grant, never widens an
+  allowance, and never collects a receipt for one. It fails *open*: a remote that would not answer lifts nothing.
+- **The one thing that BUYS past it is trusted and bounded.** A spent ledger parks the issue on `agent_run_limit`,
+  held by the dispatcher ahead of every stage handler. The only answer is `/orchestrator add-agent-runs N` from an
+  author the `ALLOWED_ISSUE_AUTHORS` boundary trusts, on a line of its own, with `N` a whole number no larger than
   `MAX_RUNS_PER_COMMAND` (50) — so a typo costs at most one bounded grant and a human who wants more says so again, on
   the record. The grant writes an absolute ceiling (`agent_run_allowance` = `used + N`), never an increment, so a
   command read twice buys the same runs once. An untrusted request is not even answered.

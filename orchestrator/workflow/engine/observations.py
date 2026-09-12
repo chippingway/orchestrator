@@ -72,6 +72,17 @@ Keyed by repository and issue, and process-wide rather than per-scheduler: the
 readers are stage handlers deep inside a worker, and the alternative is
 threading a scheduler through thirteen handler signatures that have nothing to
 do with it.
+
+That key is also what earns this module its `.flake8` entry. Every registry
+here is one more fact about the SAME subject -- one owner's outstanding
+observation -- so each reader opens by naming the owner it is about, and each
+registry is another column of the one record rather than another module's
+worth of state. Split by registry, a settlement would be spread across files
+with no lock able to span them, which is the one thing the record cannot
+survive; split by caller, the poll and the worker would keep separate answers
+to a question that has to have one. So the module member count and the repeated
+owner key are what one subject with several columns costs, and both are waived
+for this exact path rather than for anything beside it.
 """
 from __future__ import annotations
 

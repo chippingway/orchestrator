@@ -237,8 +237,10 @@ examples.
   [`workflow/engine/run_limit.py`](../orchestrator/workflow/engine/run_limit.py): `awaiting_human` with a stable
   `agent_run_limit` reason, a notice recorded before it is posted and said once per park, and a hold in the
   dispatcher that keeps such an issue off every stage handler — behind only an authorized restart and a cancelled
-  cycle's own cleanup, and stepping aside for a closed issue so a terminal arc still finishes. Unlike the daily
-  budget nothing here reopens on a clock: what lifts that park is one trusted
+  cycle's own cleanup, and stepping aside for work that has ENDED so a terminal arc still finishes: a closed issue,
+  and a recorded pull request that has merged or been closed, which the issue's own flag cannot show (a settled
+  `discussion` plan on `workflow:implementing` excepted, since merging a design licenses the build rather than
+  ending it). Unlike the daily budget nothing here reopens on a clock: what lifts that park is one trusted
   [`/orchestrator add-agent-runs N`](../README.md#holding-and-unsticking-an-issue) on the thread, bounded per
   command by `MAX_RUNS_PER_COMMAND` (50) in
   [`workflow/engine/run_grant_request.py`](../orchestrator/workflow/engine/run_grant_request.py) and answered by
