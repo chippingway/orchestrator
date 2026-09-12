@@ -25,6 +25,7 @@ _MODULES = (
     "orchestrator.agents.session_ids",
     "orchestrator.agents.sessions",
     "orchestrator.agents.provider_failures",
+    "orchestrator.agents.process_groups",
     "orchestrator.agents.processes",
     "orchestrator.agents.runner",
     "orchestrator.agents.backends",
@@ -120,9 +121,10 @@ class PublicSurfaceTest(unittest.TestCase):
 
     def test_facade_hides_owner_only_names(self) -> None:
         # The facade's surface is `__all__` alone. Backend dispatch entries,
-        # the credential / session / backend-command helpers, and the
-        # transient-provider verdict belong to their owner modules, so reaching
-        # one through the facade must fail loudly rather than resolve.
+        # the credential / session / backend-command helpers, the
+        # transient-provider verdict, and the process-group operations under
+        # the one published shutdown hook belong to their owner modules, so
+        # reaching one through the facade must fail loudly rather than resolve.
         for owner_only_name in (
             "_run_codex",
             "_run_claude",
@@ -134,6 +136,8 @@ class PublicSurfaceTest(unittest.TestCase):
             "_claude_command",
             "_codex_command",
             "_AgentRunOptionFields",
+            "communicate_bounded",
+            "terminate_process_group",
         ):
             with self.subTest(name=owner_only_name), self.assertRaises(AttributeError):
                 getattr(_agents, owner_only_name)

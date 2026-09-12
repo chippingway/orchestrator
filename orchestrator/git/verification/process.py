@@ -6,9 +6,9 @@ Spawning, group teardown, and bounded draining live beside the classification
 that reads their outcome because the verdict depends on how the shell was torn
 down: a timeout keeps only what the bounded drain rescued, while a completed
 command is judged on its exit code plus the worktree probes. The shell is
-started into its own process group and drained through the agent process owner,
-so the shutdown sweep reaches an in-flight verify child exactly as it reaches an
-agent run.
+started into its own process group and drained through the agent package's
+process-group owner, so the shutdown sweep reaches an in-flight verify child
+exactly as it reaches an agent run.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ import subprocess
 from contextlib import suppress
 from pathlib import Path
 
-from orchestrator.agents import processes as _processes
+from orchestrator.agents import process_groups as _process_groups
 from orchestrator.git.verification import models as _models, output as _output, probes as _probes
 
 _DRAIN_BUDGET_SECONDS = 5
@@ -63,10 +63,10 @@ def _drain_verify_output(proc: subprocess.Popen) -> tuple[str, str]:
     the pipe fd open -- `proc.kill()` reaps the leader and a second bounded
     drain runs. Returns `("", "")` if both drains time out.
     """
-    drained = _processes.communicate_bounded(proc, _DRAIN_BUDGET_SECONDS)
+    drained = _process_groups.communicate_bounded(proc, _DRAIN_BUDGET_SECONDS)
     if drained is None:
         proc.kill()
-        drained = _processes.communicate_bounded(proc, _DRAIN_BUDGET_SECONDS)
+        drained = _process_groups.communicate_bounded(proc, _DRAIN_BUDGET_SECONDS)
     return ("", "") if drained is None else drained
 
 

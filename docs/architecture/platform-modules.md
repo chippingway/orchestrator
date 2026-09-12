@@ -236,7 +236,14 @@ orchestrator/
                         the transient-provider verdict every stage that reads a final message as the agent's
                         own asks first: the backend's `is_error` flag where the run gave one, and the
                         server-refusal message prefix beside a non-zero exit where it did not
-    processes.py        the shared process registry and the subprocess-group lifecycle
+    process_groups.py   what a child started into its own process group costs to tear down, apart from any
+                        record of which ones are in flight: the bounded drain that reports a pipe a descendant
+                        still holds open rather than blocking on it, the `killpg(_, 0)` probe that answers
+                        whether the group kept anybody after its leader is gone, the wait-then-SIGKILL
+                        escalation that reads it, and the per-timeout SIGTERM over that escalation
+    processes.py        the shared process registry, the agent runs spawned into it, and the shutdown sweep
+                        that SIGTERMs every registered group before spending the escalation beside it under
+                        one deadline
     runner.py           `run_agent`: backend dispatch, result assembly, and spawn logging
     backends/
       codex.py          Codex command construction, scratch output, and execution
@@ -745,6 +752,10 @@ off a facade:
   `standing` calls `resume` for the ancestry read and reaches the gate through that same hop; `squash` calls
   `planning`, `resume`, `rewrite`, and `standing`.
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
+  Both subprocess owners reach the agent package for what a spawned child costs rather than keeping a second copy:
+  `process` takes the bounded drain from `agents/process_groups.py`, and `runner` takes that same drain, the
+  registry the shutdown sweep reads from `agents/processes.py`, and the stripped child environment a verify shell
+  is spawned under from `agents/environment.py`.
 - `measurement/` — `models` carries only data. `commits` calls `commands`, `branch_transport`, and the verification
   probes for the two object reads, and `commands` once more for the one line it keeps off a fetch that brought
   nothing back; `additions` calls `commands` and `commits`; `fingerprint` calls `commands`, `streaming` for the

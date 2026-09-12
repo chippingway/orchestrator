@@ -48,13 +48,14 @@ _SUBPROCESS_OWNERS = (
     "orchestrator.git.verification.runner",
 )
 
-# The process and runner owners additionally borrow the agent package's process
-# registry and credential filter, which drag the agent models' usage parser in
-# with them, so an allowlist would not describe their graph. What they still owe
-# is the direction of the dependency, checked as a prefix so every owner under
-# the workflow and base-sync packages is covered too. Base sync is the sharpest
-# of those: its snapshot and publication owners call these very probes, so one
-# read back the other way would close the loop.
+# The process and runner owners additionally borrow the agent package's
+# process-group operations, its registry, and its credential filter, which drag
+# the agent models' usage parser in with them, so an allowlist would not
+# describe their graph. What they still owe is the direction of the dependency,
+# checked as a prefix so every owner under the workflow and base-sync packages
+# is covered too. Base sync is the sharpest of those: its snapshot and
+# publication owners call these very probes, so one read back the other way
+# would close the loop.
 _FORBIDDEN_PREFIXES = (
     "orchestrator.cli",
     "orchestrator.git.base_sync",
