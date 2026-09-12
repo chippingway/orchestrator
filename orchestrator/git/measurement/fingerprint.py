@@ -130,7 +130,7 @@ from collections import deque
 from pathlib import Path
 from types import MappingProxyType
 
-from orchestrator.git import commands
+from orchestrator.git import commands, streaming
 from orchestrator.git.measurement.models import (
     FINGERPRINT_FORMAT,
     ContributionFingerprint,
@@ -568,7 +568,7 @@ def _digest_over(
     if not asked:
         return digest.hexdigest()
     reading = _BatchReading(asked, digest)
-    streamed = commands._git_hardened_streamed(
+    streamed = streaming._git_hardened_streamed(
         "cat-file", _BATCH,
         cwd=worktree,
         stdin_bytes=_LINE_SEPARATOR.join(asked) + _LINE_SEPARATOR,

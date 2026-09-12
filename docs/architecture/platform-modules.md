@@ -257,11 +257,11 @@ orchestrator/
                         established nothing -- and the lease-pinned branch push, each spending one credential
                         session
     commands.py         plain / hardened git execution in a decoded and an undecoded form over one shared
-                        environment, the argv hardening and no-prompt environment, the per-call environment pin
-                        every hardened form takes over that envelope, the chunk-at-a-time streaming form that
-                        takes its request on stdin and assembles no answer, the absolute `--work-tree` argument a
-                        working-tree operation names its tree with, the unsafe local-transport probe, and the one
-                        line of a failed call's output a caller carries away from it
+                        environment, the argv hardening and no-prompt environment every hardened call is spawned
+                        under -- the streaming owner's included -- the per-call environment pin every hardened
+                        form takes over that envelope, the absolute `--work-tree` argument a working-tree
+                        operation names its tree with, the unsafe local-transport probe, and the one line of a
+                        failed call's output a caller carries away from it
     credentials.py      the per-repo token lookup, the owner-only askpass script that outlives no operation, the
                         session record a token-bearing call is spawned from -- the detached environment, the URL
                         naming only the `x-access-token` username, and the token itself -- and the redaction every
@@ -279,6 +279,11 @@ orchestrator/
                         through, the delete spent as well on a terminal issue's branch once the artifact pass
                         has proved the commit it stands on; the single-ref read the branch transport spends for
                         its own lease too
+    streaming.py        the hardened form for an answer this process may not hold whole: the request handed
+                        in on stdin, stdout passed to a consumer a chunk at a time and assembled nowhere, and
+                        stderr captured to a file rather than a pipe nobody drains, so the peak is one chunk
+                        however large an agent made the content behind it. Reads the argv prefix and the
+                        environment off `commands` rather than restating either
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
       refresh.py        the authenticated base fetch, the walk of the repository's worktrees root that hands
                         each entry to the selection owner below, the scheduler-active guard that keeps a
@@ -740,8 +745,9 @@ off a facade:
 - `verification/` — `output` calls `models`, `process` calls `output` and `probes`, and `runner` calls `process`.
 - `measurement/` — `models` carries only data. `commits` calls `commands`, `branch_transport`, and the verification
   probes for the two object reads, and `commands` once more for the one line it keeps off a fetch that brought
-  nothing back; `additions` calls `commands` and `commits`; `fingerprint` calls `commands` and those same probes and
-  nothing else in the package, since it is handed two ends already proven rather than establishing them. Nothing here
+  nothing back; `additions` calls `commands` and `commits`; `fingerprint` calls `commands`, `streaming` for the
+  object content it hashes without holding, and those same probes and nothing else in the package, since it is handed
+  two ends already proven rather than establishing them. Nothing here
   reaches the workflow layer, so the ceiling a count is compared against, the verdict that comparison earns, and what
   two equal digests license all stay with the caller.
 - `snapshots/` — `namespace` is string policy and reaches nothing, which is what lets the late domain's lineage

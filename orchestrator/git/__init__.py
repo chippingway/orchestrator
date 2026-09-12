@@ -3,8 +3,12 @@
 """Git execution domain owners.
 
 Plain and hardened `git` invocation together with the local
-transport-config probe live in ``commands``; the per-repository token and
-the askpass session built from it live in ``credentials``; the
+transport-config probe live in ``commands``; the hardened form for an
+answer this process may not hold whole -- the request handed in on stdin,
+the answer passed to a consumer a chunk at a time and assembled nowhere --
+lives in ``streaming``, spawned on the argv prefix and the environment
+``commands`` assembles rather than on copies of them; the per-repository
+token and the askpass session built from it live in ``credentials``; the
 authenticated fetches and the lease-pinned branch push that spend one of
 those sessions live in ``branch_transport``; the exact-ref read and the
 lease-pinned writes it leases, each named by a whole refname, live in
@@ -18,8 +22,9 @@ owner itself needs -- ``branch_transport`` builds on ``ref_transport`` for
 the one remote read a branch shares with a refname, those two build on
 ``commands``, ``credentials``, and ``locks``, ``ref_discovery`` on the
 first two of those alone since it takes no lock, ``credentials`` on
-``commands``, while ``commands`` and ``locks`` depend on nothing else in
-the package.
+``commands``, ``streaming`` on ``commands`` alone for the hardening policy
+it is spawned under, while ``commands`` and ``locks`` depend on nothing
+else in the package.
 
 No facade of this domain's own sits beside the package, and nothing above it
 republishes these names either, so each answers on the owner that defines it
@@ -29,11 +34,13 @@ in the tree names: the ``git/worktrees/``, ``git/publication/``, and
 validating stages for the fetches and the push; ``git/snapshots/`` for the
 leased ref read and writes, with ``git/worktrees/`` naming the same delete
 once a teardown has proved what it stands on and the pattern listing on the
-namespace it discovers those branches in; and the conflicts, documenting,
-and fixing stages for the two runners. The two transports and the discovery
-listing are the only callers ``credentials`` has and each names that owner
-rather than importing a session helper of its own, so a test intercepting
-the session targets the module that defines it. All four name their logger
-``orchestrator.git_plumbing`` rather than after this package, because that
-is the name operator log filters select on.
+namespace it discovers those branches in; ``git/measurement/`` for the
+streamed runner a contribution's fingerprint is folded through, since the
+content it hashes is as large as an agent committed it; and the conflicts,
+documenting, and fixing stages for the two runners. The two transports and
+the discovery listing are the only callers ``credentials`` has and each
+names that owner rather than importing a session helper of its own, so a test
+intercepting the session targets the module that defines it. All four name
+their logger ``orchestrator.git_plumbing`` rather than after this package,
+because that is the name operator log filters select on.
 """
