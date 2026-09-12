@@ -381,8 +381,8 @@ once. The closed-issue sweep makes external manual merges and operator closes fi
 - Closed `in_review` / `workflow:fixing` / `workflow:resolving_conflict` — a human-merged PR with a `Resolves #N`
   footer auto-closes the issue before the orchestrator can flip the label.
 - Closed `workflow:implementing` / `workflow:documenting` / `workflow:validating` — the same external-merge race when
-  the human merges before reaching `in_review`. Each handler's entry-time `_finalize_if_pr_merged` flips to `done`
-  instead of stranding the issue.
+  the human merges before reaching `in_review`. Each handler's entry-time `_pr_terminal_stops_the_tick` flips to
+  `done` instead of stranding the issue, and decides the closed-without-merge ending off the same reading.
 - Closed `question` — a human closing the issue is the terminal signal
   [`_handle_question`](conversation-stages.md#_handle_question-label-question) consumes to finalize to
   `done`.
@@ -1303,8 +1303,14 @@ The keys that matter for the state machine fall into a few groups:
   `awaiting_human` with the park it was written against: a resume on the next trusted reply, a hold waiting on
   guidance, a classifier that refuses a command carrying none. None of those buys back a run. The hold replays the
   sentence the park still owes before it returns, since nothing below it runs to say one, and it is the one guard
-  there that steps aside for a CLOSED issue — what a close reaches below is a terminal that ends the issue rather
-  than a road that spends anything on it, and refusing it would leave the issue permanently mid-ending. A later tick
+  there that steps aside for work that has ENDED — what an ending reaches below is a terminal that ends the issue
+  rather than a road that spends anything on it, and refusing it would leave the issue permanently mid-ending. Two
+  facts say so: a closed ISSUE, which the object in hand shows, and the recorded PULL REQUEST having merged or been
+  closed, which it cannot. What the second means depends on the **label** the tick was routed on: on
+  `workflow:implementing` a settled `discussion` plan is the agreement that licensed the build rather than the build
+  ending, so it is carved out there and nowhere else — `discussion` itself drains that same pull request through its
+  own terminal, and behind a permanent park nothing comes back for it. That reading costs a request per parked poll,
+  fails *open*, and is taken **before** the command below, which mutates. A later tick
   that meets the same explained park says nothing and records `standing`. Both fields are additive and default safe:
   an issue recorded before them, or hand-edited into a shape neither fits, reads back as unparked and owing nothing
   rather than as a tick that raises.
@@ -1344,7 +1350,8 @@ The keys that matter for the state machine fall into a few groups:
   (`:receipt: this issue: N agent runs · T tokens · $X.XX`, `(est.)` appended when any `estimated` contributed,
   `unknown` in place of the figure when an `unknown-price` run leaves the total incomplete). It returns nothing when
   no run was counted, so a terminal with an empty meter posts no receipt. Every terminal surface renders it before its
-  single `write_pinned_state`: the PR merged / rejected finalizers (`_finalize_if_pr_merged`,
+  single `write_pinned_state`: the PR merged / rejected finalizers (`_finalize_if_pr_merged` and the
+  `_pr_terminal_stops_the_tick` that decides both endings off one reading,
   `_drain_review_pr_terminals` — all three arcs, including the open-PR/manually-closed-issue rejection — and
   `_finalize_if_issue_closed`, all on the `workflow/engine/terminals.py` owner the stage leaves import
   directly) post it as a standalone `_post_issue_usage_verdict` comment, the `umbrella`

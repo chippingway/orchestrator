@@ -43,6 +43,14 @@ MOVED off what a live record froze is somebody else's push landing between the
 freeze and this tick: the frozen pair no longer describes what this branch
 would add to that pull request, so the reading is refused and the record is
 left standing rather than re-entered over a publication it was never taken on.
+
+Two readings here answer no entry at all. A pull request that has merged or
+been closed is a terminal state the ISSUE's own flag cannot show, and both
+sides of an effect need it: the reconciliation that hands a tick back reads it
+fail-OPEN, so a remote that would not answer costs a poll rather than
+stranding an issue, and the barrier immediately before a push reads the same
+fact fail-CLOSED, since what falling through costs there is a branch nothing
+can put back.
 """
 from __future__ import annotations
 
@@ -390,6 +398,50 @@ class _PublicationReading:
         )
 
     @classmethod
+    def is_over(cls, gh: GitHubClient, number: int) -> bool:
+        """Whether this pull request has already merged or been closed.
+
+        The terminal state an ISSUE's own flag cannot show: a merge leaves the
+        issue open until a stage terminal reads it and finalizes the work,
+        while everything a reconciliation does in between ends in a push onto
+        exactly this pull request -- which the freeze above refuses to enter a
+        call on, so such a tick would park a human over a publication that is
+        finished.
+
+        Read fail-OPEN, which is the other way round from everything else
+        here and is the point: a reading that did not come back says nothing
+        about whether the publication is over, and answering True on one would
+        strand every issue whose remote was briefly unreachable. So an
+        unreadable pull request, and a caller naming none at all, both leave
+        the tick to the road that takes its own reading and parks with the
+        reason it fails for.
+        """
+        reading = cls._of(gh, number)
+        return reading is not None and reading.state != _OPEN
+
+    @classmethod
+    def still_open(cls, gh: GitHubClient, number: int) -> bool:
+        """Whether this pull request is one a push may still land on.
+
+        The same reading as `is_over` beside it and the opposite failure
+        direction, because the two answer for opposite sides of an effect.
+        That one guards a tick handing itself back, where a remote that would
+        not answer has to fall through or every briefly unreachable issue
+        would strand. This one stands immediately before a PUSH, where the
+        alternative to refusing is rewriting a branch whose pull request
+        somebody merged -- so a reading that did not come back answers False,
+        and what that costs is the poll that takes it again.
+
+        A caller naming no pull request answers False too, which is not a
+        refusal of the ordinary road: the only callers here are the ones that
+        already hold a number, so one that has gone missing between the
+        reading that produced it and the push is the record disagreeing with
+        itself.
+        """
+        reading = cls._of(gh, number)
+        return reading is not None and reading.state == _OPEN
+
+    @classmethod
     def taken(cls, gh: GitHubClient, number: int) -> _PublicationReading:
         """Ask the remote for a pull request's state and head, or refuse."""
         try:
@@ -404,6 +456,20 @@ class _PublicationReading:
                 refusal=_UNREADABLE_PULL_REQUEST.format(number=number),
             ),
         )
+
+    @classmethod
+    def _of(cls, gh: GitHubClient, number: int) -> _PublicationReading | None:
+        """One numbered pull request as it reads now, or None for no reading.
+
+        The shared half of the two answers above, so each of them spells only
+        the direction it fails in. None is "this host cannot say", which
+        covers a caller naming no pull request at all and a request that did
+        not come back.
+        """
+        if not number:
+            return None
+        reading = cls.taken(gh, number)
+        return reading if reading.refusal is None else None
 
     @classmethod
     def _facts(cls, gh: GitHubClient, number: int) -> _PublicationReading:

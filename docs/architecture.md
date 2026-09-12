@@ -347,7 +347,8 @@ which projects a fresh cycle onto the same pinned comment and puts the issue bac
 an issue standing on `agent_run_limit` because it has spent every agent run its lifetime ceiling allows — held
 behind that pair and ahead of everything else, since each stage below reads `awaiting_human` as the park it was
 written against and none of those buys back a run, lifted only by the bounded operator command the same hold reads
-off the thread, and stepping aside only for a CLOSED issue so a terminal arc can still finish
+off the thread, and stepping aside for work that has ENDED — a closed issue, and a recorded pull request that has
+merged or been closed, which the issue's own flag cannot show — so a terminal arc can still finish
 ([`state-machine/delivery-stages.md`](state-machine/delivery-stages.md#the-agent-run-limit-hold-every-dispatch-ahead-of-every-handler))
 — and, last, an unlabeled issue that already carries a pinned comment, which is one this orchestrator has met
 before: the pickup handler behind it *greets* an issue and mints its pinned comment, so a second greeting writes a

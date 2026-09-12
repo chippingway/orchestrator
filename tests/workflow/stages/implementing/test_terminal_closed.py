@@ -139,15 +139,15 @@ class HandleImplementingClosedIssueTest(unittest.TestCase, _PatchedWorkflowMixin
         self.assertIn(EVENT_PR_CLOSED_WITHOUT_MERGE, kinds)
 
     def test_pr_fetch_error_defers(self) -> None:
-        # Both `_finalize_if_pr_merged` and `_finalize_if_issue_closed`
+        # Both `_pr_terminal_stops_the_tick` and `_finalize_if_issue_closed`
         # need a successful `gh.get_pr` call to act safely on a closed
         # issue with a pinned `pr_number`. If the PR fetch raises, the
-        # merge helper returns False on "could not fetch" (same return
-        # value as "not merged"); flipping the issue to `rejected`
-        # from the closed-issue helper anyway would permanently
-        # terminal-label a merged-PR issue whose merged-path finalize
-        # is just retrying through a transient network blip. The fix:
-        # the closed-issue helper must defer when its own fetch
+        # PR terminal falls through on "could not read" -- nothing about a
+        # failed read says which ending, if any, it was hiding; flipping the
+        # issue to `rejected` from the closed-issue helper anyway would
+        # permanently terminal-label a merged-PR issue whose finalize is
+        # just retrying through a transient network blip. So the
+        # closed-issue helper defers when its own fetch
         # raises, leaving the issue alone for the next tick.
         gh = FakeGitHubClient()
         issue = make_issue(FETCH_FAILURE_ISSUE, label=LABEL_IMPLEMENTING)
@@ -181,12 +181,12 @@ class HandleImplementingClosedIssueTest(unittest.TestCase, _PatchedWorkflowMixin
         mocks[CLEANUP_TERMINAL_BRANCH].assert_not_called()
 
     def test_merged_pr_defers(self) -> None:
-        # Models the race where `_finalize_if_pr_merged` had a fetch
-        # failure (returned False) but the PR is actually merged. The
-        # closed-issue helper then runs its own fetch successfully,
-        # sees the PR merged, and must NOT flip to `rejected` -- the
-        # next tick will re-enter the merged-PR path. Otherwise a
-        # merged PR's issue would be permanently mis-labeled.
+        # Models the race where the PR terminal's own reading failed (so it
+        # fell through, saying nothing about either ending) but the PR is
+        # actually merged. The closed-issue helper then runs its own fetch
+        # successfully, sees the PR merged, and must NOT flip to `rejected`
+        # -- the next tick re-enters the merged arc. Otherwise a merged PR's
+        # issue would be permanently mis-labeled.
         gh = FakeGitHubClient()
         issue = make_issue(MERGED_DEFER_ISSUE, label=LABEL_IMPLEMENTING)
         issue.closed = True
@@ -206,11 +206,11 @@ class HandleImplementingClosedIssueTest(unittest.TestCase, _PatchedWorkflowMixin
             dev_agent=DEV_AGENT,
             dev_session_id=DEV_SESSION,
         )
-        # Force `_finalize_if_pr_merged` to bail on the merged-path
+        # Force the PR terminal off the merged-path
         # `set_workflow_label("done")` write by intercepting
-        # `gh.get_pr`: raise on the FIRST call (the merge helper) so
-        # it returns False, succeed on the SECOND call (the closed
-        # helper's own fetch).
+        # `gh.get_pr`: raise on the FIRST call -- the one guarded reading
+        # that terminal takes -- so it falls through, and succeed on the
+        # SECOND, which is the closed-issue helper's own fetch.
         gh.get_pr = MagicMock(  # type: ignore[assignment]
             side_effect=[
                 RuntimeError("simulated transient GitHub failure"),
@@ -224,9 +224,9 @@ class HandleImplementingClosedIssueTest(unittest.TestCase, _PatchedWorkflowMixin
             run_agent=_agent(),
         )
 
-        # No terminal label flip this tick: both finalize helpers
-        # deferred. The next tick's `_finalize_if_pr_merged` will
-        # succeed and run the proper merged-path cleanup.
+        # No terminal label flip this tick: the PR terminal fell through
+        # and the closed-issue helper deferred. The next tick's reading
+        # succeeds and runs the proper merged-path cleanup.
         self.assertNotIn((MERGED_DEFER_ISSUE, LABEL_REJECTED), gh.label_history)
         self.assertNotIn((MERGED_DEFER_ISSUE, LABEL_DONE), gh.label_history)
         self.assertNotIn(

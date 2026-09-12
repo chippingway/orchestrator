@@ -53,6 +53,7 @@ from orchestrator.workflow.stages.implementing import (
     handoff as _handoff,
     late_parks as _late_parks,
     models as _models,
+    push_barrier as _barrier,
 )
 
 log = logging.getLogger("orchestrator.workflow")
@@ -201,13 +202,32 @@ def _on_commits(
     the docs pass, which commit it or destroy it. Cleanliness proved at the
     top of the disposition is a fact about a moment that has passed by the
     time either effect runs.
+
+    Work that ENDED is refused immediately before the push, on the same terms
+    every gated publication onto an open pull request refuses one. A close a
+    poll observed is one half: the gate's own barrier ends the CYCLE, which
+    answers every candidate a record is still live for -- and the roads this
+    seam reaches it by are exactly the ones where none is, since an approval
+    whose push failed retires its generation before that push. The pull
+    request this push would JOIN is the other, whichever of the two the tick
+    has -- one a caller proved, or one the record names and the reuse below
+    would find by branch. Either ending in the window between the tick's first
+    reading and here leaves that lookup answering nothing, so a second pull
+    request is opened over the work and `pr_number` overwritten with it. What
+    work nobody wants may never earn is this effect, so the refusal is held:
+    nothing pushed, no pull request opened, no handoff, and the receipt and
+    debt left exactly as they stand for the cleanup or the retry they are
+    owed. `push_barrier` owns both readings and the one ending that is not an
+    ending for this push.
     """
     agent_result = approved.agent_result
     wt = _worktree_paths._worktree_path(spec, issue.number)
     published = _publication_intent(gh, issue, state, approved, wt)
     if published is None:
         return
-    if _checkout._dirtied_before_the_push(gh, issue, state, published, wt):
+    if _checkout._dirtied_before_the_push(
+        gh, issue, state, published, wt,
+    ) or _barrier._ended_before_the_push(gh, spec, issue, state, approved):
         return
     branch = _worktree_paths._resolve_branch_name(state, spec, issue.number)
     if not _branch_transport._push_branch(

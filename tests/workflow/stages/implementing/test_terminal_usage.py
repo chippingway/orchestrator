@@ -23,8 +23,8 @@ make_issue = support.make_issue
 
 
 class FinalizeIfIssueClosedUsageVerdictTest(unittest.TestCase, _PatchedWorkflowMixin):
-    """The closed-issue counterpart to `_finalize_if_pr_merged` posts the
-    terminal usage receipt as a tracked comment BEFORE its single
+    """The closed-issue counterpart to `_pr_terminal_stops_the_tick` posts
+    the terminal usage receipt as a tracked comment BEFORE its single
     `write_pinned_state`, and skips it when no run was ever counted.
     Exercised directly so the receipt is pinned independently of any
     caller (the closed-issue sweep seeds no counters, so an integration

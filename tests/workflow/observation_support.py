@@ -9,9 +9,10 @@ receipt is what the process after a restart has instead of it.
 
 All of it is process state -- the latch, the memo saying the receipt landed,
 the generation that memo is counted against, the claim a poll posts one under,
-the claim on the one thread walk a process owes each owner, and the cycle a
-worker is retiring off a record right now -- so every case that touches any of
-them replaces all six first. That is also how a RESTART
+the claim on the one thread walk a process owes each owner, the cycle a
+worker is retiring off a record right now, the issues a worker is acting on,
+and the settlements one of those windows has postponed -- so every case that
+touches any of them replaces all eight first. That is also how a RESTART
 is written: fresh registries beside a thread that still carries the receipt are
 exactly what a new process wakes up to.
 
@@ -39,6 +40,8 @@ _REGISTRIES = (
     ("_settlements", dict),
     ("_scanned", set),
     ("_retiring", dict),
+    ("_publishing", dict),
+    ("_deferred", set),
 )
 
 

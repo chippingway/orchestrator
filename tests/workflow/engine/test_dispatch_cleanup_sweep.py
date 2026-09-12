@@ -206,7 +206,9 @@ class CleanupRouteSurvivesRefetchTest(ObservedCloseCase, unittest.TestCase):
     def test_the_submit_carries_the_route(self) -> None:
         # The route reaches the worker as the callable the submit was built
         # from rather than being re-derived there, so it is the
-        # classification that decides.
+        # classification that decides. It travels UNDER the hold the claim
+        # takes, since the submit is where a worker starts holding the issue
+        # and a poll refused in that window may not drop what it observed.
         partition = _partition_of((_OWNER_NUMBER, LABEL_UMBRELLA, True))
         scheduler = _RecordingScheduler()
 
@@ -214,10 +216,15 @@ class CleanupRouteSurvivesRefetchTest(ObservedCloseCase, unittest.TestCase):
             FakeGitHubClient(), _SPEC, scheduler, partition, 1,
         )
 
-        self.assertIs(
-            scheduler.routes[_OWNER_NUMBER].func, dispatch._swept_for_cleanup,
-        )
-        self.assertIs(scheduler.routes[1].func, dispatch._refetch_and_process)
+        for number, route in (
+            (_OWNER_NUMBER, dispatch._swept_for_cleanup),
+            (1, dispatch._refetch_and_process),
+        ):
+            with self.subTest(issue=number):
+                submitted = scheduler.routes[number]
+
+                self.assertIs(submitted.func, dispatch._releases_the_claim)
+                self.assertIs(submitted.args[-1].func, route)
 
     def test_a_reopened_owner_is_marked_and_left(self) -> None:
         # What the sweep does with the issue it was handed. Being routed here

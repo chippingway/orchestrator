@@ -88,7 +88,12 @@ agent run it is allowed, and every stage below reads `awaiting_human` as the par
 a resume on the next trusted reply, a hold waiting on guidance, a classifier that refuses a command carrying none —
 none of which buys back a run. So it is held once, ahead of the handler table and behind only the two guards that
 have to RUN (an authorized restart and a cancelled cycle's cleanup); the hold says the sentence the park still owes,
-since nothing below it would, and it steps aside for a CLOSED issue so a terminal arc can finish. The one reading of
+since nothing below it would, and it steps aside for work that has ENDED so a terminal arc can finish — a closed
+issue, which the object in hand already shows, and a recorded pull request that has merged or been closed, which it
+cannot: a merge leaves the issue open until a stage terminal reads it, and a close nobody merged leaves it open for
+good, so a spent issue behind either would sit on a park nothing lifts over work a human already decided. That second
+reading is a request per parked poll and fails OPEN, since a remote that would not answer says nothing about whether
+the work is over. The one reading of
 a thread that lifts it is answered in the same place: a trusted `/orchestrator add-agent-runs N`, bounded per
 command, which persists an allowance of exactly `used + N` and lets that tick go on to the stage its label names —
 what it widens is what the issue may still spend, since nothing returns a run already taken.
@@ -284,7 +289,14 @@ head it stands on are frozen into the record before any effect; the push it allo
 commit and leased against that frozen head; a tree that is not provably clean, an unreadable or closed pull request,
 and a head that moved off the frozen one each park rather than push. A pair frozen and never counted is measured
 ahead of the handler on the next tick, by the dispatcher, on the stage the record names — and one whose checkout is
-not on this host stops the tick instead of letting the stage run over a candidate nobody read. That same reading is
+not on this host stops the tick instead of letting the stage run over a candidate nobody read. Both roads that
+reconciliation takes end in a push, so an issue that is closed and a pull request that has merged or been closed are
+each handed back to the stage terminal ahead of it, with the generation, the receipt and the debt left exactly as
+they stand. Work that ends *after* the gate has read it — a close a poll latched, or a pull request somebody merged
+or closed in the window behind the entry freeze, whose branch is still at the head this tick froze so the lease
+would succeed — is refused immediately before the push itself; the initial publication and the push a settled
+adjudication makes from `workflow:decomposing` each carry the same barrier, and the second needs it most, since it
+reaches the transport directly and its pull request was last read several steps back. That same reading is
 what a measurement park here is retried by: it retakes the parked pair once a poll and asks nobody first, so a
 transport that comes back settles the park without the human it mentioned ever replying, and each of those readings
 is held silently while it goes on stopping at the step the standing notice named. Full flow:

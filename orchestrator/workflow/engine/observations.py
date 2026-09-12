@@ -9,8 +9,8 @@ costs a turn -- the work is still there next tick -- and this one costs an
 OBSERVATION, because a human who reopens the issue before the next pass takes
 the reading away for good.
 
-So the reading is kept here rather than dropped, and it is kept for TWO readers
-that could not otherwise have it.
+So the reading is kept here rather than dropped, and it is kept for THREE
+readers that could not otherwise have it.
 
 **The run already holding the issue.** It re-reads the owner before every step
 the remote keeps, and that read answers from GitHub -- which cannot show it a
@@ -26,6 +26,23 @@ pinned state is written whole, so a second writer racing the worker that owns
 it would drop whatever that worker recorded in between. A post GitHub refuses
 leaves the receipt OWED, and every later poll retries it, because an
 observation with no durable half is one a restart takes away entirely.
+
+**The worker that is mid-publication.** Every barrier standing immediately
+before a push asks this record, because the issue object the tick opened with
+is a snapshot and a close landing since is one only a latch knows. But the
+publications those barriers guard -- a first push, one an adjudication
+approved, one a recovery owes -- carry no live late cycle, and the poll drops
+a reading the record says there is nothing to end. So a hold is taken for as
+long as a worker has the issue, and under it the drop is DEFERRED rather than
+taken: the decision is the same one made a moment later, and made then it
+cannot be made out from under the barrier it was for.
+
+The hold starts where the CLAIM does, which is the scheduler admitting the
+submit -- not where the worker gets around to reading anything. Between those
+two lie the queue, the worker's own refetch and its label checks, and a poll
+meeting the issue in that gap is refused for the very reason the hold exists:
+a worker already has it. Holds nest, because the worker takes one of its own
+over the whole dispatch and the sequential path has no claim to inherit.
 
 **Which reading a receipt belongs to is counted, not assumed.** The memo saying
 one landed is a fact about ONE observation, and observations come one after
@@ -76,6 +93,8 @@ _posting: set[tuple[str, int]] = set()
 _settlements: dict[tuple[str, int], int] = {}
 _scanned: set[tuple[str, int]] = set()
 _retiring: dict[tuple[str, int], int] = {}
+_publishing: dict[tuple[str, int], int] = {}
+_deferred: set[tuple[str, int]] = set()
 _lock = threading.Lock()
 
 
@@ -142,12 +161,36 @@ def settle_close(repo_slug: str, issue_number: int) -> None:
     posted as this runs: the claim it was taken under is stale from here on,
     and the memo behind it is refused rather than written over the reading
     this settlement just ended.
+
+    DEFERRED while a worker is acting on the issue, because the barriers
+    standing immediately before that worker's push read the same latch and the
+    publications they guard carry no late cycle for a poll to recognise. The
+    drop itself is not refused -- it is taken again on the way out of that
+    window, where it is the same decision one moment later -- so nothing is
+    kept for good and nothing is dropped out from under the reader it was for.
     """
     key = _owner_key(repo_slug, issue_number)
     with _lock:
-        _observed.discard(key)
-        _receipted.pop(key, None)
-        _settlements[key] = _settlements.get(key, 0) + 1
+        if key in _publishing:
+            _deferred.add(key)
+            return
+        _settled(key)
+
+
+def _settled(key: tuple[str, int]) -> None:
+    """Drop one latched reading, its memo and the generation it was counted at.
+
+    The three go together or the record contradicts itself, so this is the one
+    spelling of a settlement and every caller holds the lock across it. The
+    caller that postpones one holds it across the release that discharges it
+    too: released and settled apart, a poll latching in between would have its
+    fresh reading erased by a drop taken for the one before it, and the
+    generation would move twice for a single settlement -- which is exactly
+    how a receipt already on the thread stops suppressing the next post.
+    """
+    _observed.discard(key)
+    _receipted.pop(key, None)
+    _settlements[key] = _settlements.get(key, 0) + 1
 
 
 def claim_receipt_post(
@@ -296,6 +339,70 @@ def cycle_being_retired(
     """The cycle a worker is retiring off this record right now, if any."""
     with _lock:
         return _retiring.get(_owner_key(repo_slug, issue_number))
+
+
+def claim_publication(repo_slug: str, issue_number: int) -> None:
+    """Hold this issue's readings for a worker that has been given it.
+
+    Taken where the CLAIM is -- the scheduler admitting a submit -- rather
+    than where the worker first reads anything. Between those two lie the
+    queue, the refetch and the label checks, and a poll meeting the issue in
+    that gap has its own submit refused for the very reason this exists: a
+    worker already has it. Dropping the reading there would take it out from
+    under a barrier that has not run yet.
+
+    Counted rather than flagged, because the holds nest: the dispatch takes
+    one of its own over the whole handler, and the sequential path -- which
+    has no claim to inherit -- takes that one alone.
+    """
+    key = _owner_key(repo_slug, issue_number)
+    with _lock:
+        _publishing[key] = _publishing.get(key, 0) + 1
+
+
+def release_publication(repo_slug: str, issue_number: int) -> None:
+    """Give one hold back, and settle what the last of them postponed.
+
+    What a hold changes is WHEN a drop lands, not whether. Under it a settle
+    is recorded rather than taken, and the recorded one is applied as the last
+    hold goes -- the same drop, one moment later, where it can no longer be
+    taken out from under the barrier it was for. Nothing is kept for good, so
+    an issue somebody reopens inherits no latch a later poll would never
+    clear.
+
+    The release and the drop it discharges are ONE critical section, because
+    between them this owner would be holding neither: a poll latching a fresh
+    close there would have it erased by a settlement taken for the reading
+    before it, and its receipt memo with it, while the generation moved twice
+    for one settlement. So a settle arriving as the last hold goes is either
+    under this lock -- deferred, and taken here -- or past it and taken for
+    itself, and there is no third moment for it to arrive in.
+    """
+    key = _owner_key(repo_slug, issue_number)
+    with _lock:
+        held = _publishing.get(key, 0) - 1
+        if held > 0:
+            _publishing[key] = held
+            return
+        _publishing.pop(key, None)
+        if key in _deferred:
+            _deferred.discard(key)
+            _settled(key)
+
+
+@contextlib.contextmanager
+def publishing(repo_slug: str, issue_number: int):
+    """One hold, for a caller whose whole use of it is one block.
+
+    The dispatch takes this over the handler it runs, which is the hold the
+    sequential path has and the only one it has. A worker reached through the
+    scheduler takes it under the claim that admitted it, and the two nest.
+    """
+    claim_publication(repo_slug, issue_number)
+    try:
+        yield
+    finally:
+        release_publication(repo_slug, issue_number)
 
 
 @contextlib.contextmanager

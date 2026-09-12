@@ -2,9 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """What has to be settled before a docs agent may spawn.
 
-Three of these end the tick outright. A PR merged or an issue closed out of
-band means the docs pass would run against work that has already landed or
-been abandoned, so both are read before anything spends tokens. A
+Three of these end the tick outright. A PR merged, one closed without a
+merge, or an issue closed out of band means the docs pass would run against
+work that has already landed or been turned down, so all three are read before
+anything spends tokens. The two pull-request endings come off ONE guarded
+reading -- `done` for the merge, `rejected` for the close -- because two
+fetches are two moments, and because a closed PR leaves the ISSUE open, so
+nothing else here would see it. A
 `documenting` label with no pinned `pr_number` has nothing to anchor on. And a
 content-free `/orchestrator continue` has to be classified here, ahead of the
 drift and resume paths, because documenting keeps no preserved feedback batch
@@ -41,17 +45,22 @@ def _finalize_documenting_terminal(
 ) -> bool:
     """Terminal issue/PR short-circuits before the docs pass runs.
 
-    External merge: if the PR was merged before the docs pass ran,
-    finalize to `done` rather than fetching the branch and running the
-    documenting agent against an already-landed PR. Closed-issue
-    counterpart: the closed-`documenting` sweep yields issues a human
-    closed without a merged PR -- flip to `rejected` so the docs agent
-    does not run against a closed issue.
+    Both PR endings come off ONE reading. External merge: if the PR was
+    merged before the docs pass ran, finalize to `done` rather than
+    fetching the branch and running the documenting agent against an
+    already-landed PR. Closed PR: one somebody closed without merging
+    leaves the ISSUE open, so the counterpart below never sees it -- flip
+    to `rejected` rather than running the docs agent against rejected
+    work and pushing onto a pull request that is gone. Closed-issue
+    counterpart: the
+    closed-`documenting` sweep yields issues a human closed without a
+    merged PR -- flip to `rejected` so the docs agent does not run
+    against a closed issue.
 
     Returns True when the issue was routed to a terminal state and the
     caller must return.
     """
-    if _terminals._finalize_if_pr_merged(gh, spec, issue, state):
+    if _terminals._pr_terminal_stops_the_tick(gh, spec, issue, state):
         return True
     return _terminals._finalize_if_issue_closed(gh, spec, issue, state)
 

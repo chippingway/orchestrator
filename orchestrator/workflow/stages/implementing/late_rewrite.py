@@ -142,7 +142,11 @@ def _switched_off(gate: _records._Gate) -> bool:
 
     A squash is NEW work by the switch's own definition: the commit it
     publishes is one it makes itself, out of commits a reviewer approved. So
-    an install with `DECOMPOSE=off` reads no pull request and parks over none.
+    an install with `DECOMPOSE=off` freezes no entry: no pull request is read
+    for the measurement and nothing parks over one. The barrier immediately
+    before the push reads the recorded pull request on every install, and this
+    question does not reach it -- what a setting about measurement may not buy
+    is a force-push onto work somebody merged.
 
     It is the gate's own question, asked HERE rather than left to the reading
     inside the call, because this seam reaches that reading twice and the

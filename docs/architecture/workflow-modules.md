@@ -140,8 +140,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             sentence the park still owes, since nothing below it runs to say one, it reads the
                             thread for the one trusted command that widens the ceiling -- which lets the tick go on
                             to the stage its label names, since the run a human just paid for is the one the issue
-                            was stopped for -- and it is the one question here that steps aside for a CLOSED issue,
-                            whose handler is a terminal that ends it rather than a road that spends anything)
+                            was stopped for -- and it is the one question here that steps aside for work that has
+                            ENDED, whose handler is a terminal that ends the issue rather than a road that spends
+                            anything on it: a closed ISSUE, which the object in hand already shows, and a recorded
+                            PULL REQUEST that has merged or been closed, which it cannot -- a merge leaves the
+                            issue open until a stage terminal reads it, and the three stages that drain both
+                            endings at handler entry are behind this hold. That second reading is a request per
+                            parked poll, fails OPEN so a remote that would not answer lifts nothing, and is read
+                            against the LABEL the tick was routed on: a settled `discussion` plan is the agreement
+                            that licensed the build, so it is carved out on `workflow:implementing` and nowhere
+                            else -- `discussion` itself drains the same pull request through its own terminal)
                             -- and the timed dispatch
     observations.py         the closes a poll saw and could hand to no worker: the process-wide latch the run
                             holding the issue asks before every step the remote keeps (a close and a reopen inside
@@ -156,7 +164,16 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             keeps a poll from calling a reading spent against a record whose cycle identity has
                             just come off, is the only place that cycle can still be read, and decides what it
                             observed as it CLOSES, under the lock that closes it, so no interval is left between
-                            the answer and the exit for a poll to latch a close in; and the
+                            the answer and the exit for a poll to latch a close in; the HOLD a worker has on an
+                            issue, under which a settle is postponed rather than taken -- the drop rule reads
+                            "nothing to end" off the late cycle, and every publication the push barriers guard
+                            carries none, so without it a poll would drop the very reading a worker is about to ask
+                            for -- taken where the CLAIM is, which is the scheduler admitting the submit rather
+                            than wherever the worker first reads something, since the queue, the refetch and the
+                            label checks all sit in between and a poll refused in there is refused precisely
+                            because a worker has the issue; counted, so the dispatch's own hold over its handler
+                            nests inside the claim's and the sequential path has that one alone; and the drop taken
+                            again as the last hold goes, so nothing is held over an issue somebody reopens; and the
                             once-per-owner-per-process claim that bounds the thread scan recovering an observation
                             a DEAD process was holding, held for the length of the walk and handed back where it
                             raised
@@ -263,7 +280,14 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             Nothing here decides an issue is out: the ledger reading is handed in, so the park
                             quotes the numbers the refusal was made on
     terminals.py            the merged, rejected, and human-closed arcs, the stamp / receipt / label / write tail they
-                            share, and the two entry-time finalizers
+                            share, and the entry-time finalizers. The stages carrying no PR-state arc of their own
+                            ask for both pull-request endings off ONE guarded reading -- a merge, and a close
+                            nobody merged, which leaves the ISSUE open so the closed-issue arc behind it sees
+                            nothing while the stage measures and pushes onto a pull request that is gone or spawns
+                            over work a human rejected. One reading rather than a fetch each, because two fetches
+                            are two moments: a merge landing between them answers open to the first and merged to
+                            the second, which the close arc is right to ignore, and the stage runs anyway. A fetch
+                            that FAILED falls through, since nothing about it says which ending it was hiding
     tick.py                 one repo's polling pass and the order it drives: the base refresh, the
                             community-contribution sweep above, the skill-catalog emission, and the scheduler
                             handoff or in-tick execution behind them -- with the sequential mode of that execution
@@ -1634,22 +1658,45 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             this tick's own push arriving -- and a checkout rewound with it agrees on every local
                             fact there is. Dated by the head it was PINNED to it names the one window it is evidence
                             for, a push made from the head this call was entered on under a process that died
-                            before the relabel
+                            before the relabel. Two readings here answer no entry at all and are asked for opposite
+                            sides of an effect: whether a pull request is OVER, read fail-open for a tick that hands
+                            itself back, and whether one is still OPEN, read fail-closed immediately before a push
       late_publication.py   the answer half, between that entry and the push: the switch, the record, and the count
                             asked in one place, so the seam that reached the gate makes no difference to what it is
-                            told -- an install with `DECOMPOSE=off` never reads a pull request, a record already in
-                            the gate goes through the ordinary questions, and a commit an approval owes a push is one
+                            told -- an install with `DECOMPOSE=off` reads no pull request for the MEASUREMENT,
+                            which is the one reading it saves rather than every reading there is, a record already
+                            in the gate goes through the ordinary questions, and a commit an approval owes a push is one
                             this gate has already ruled on; a hold is the whole of what the tick did, parked or
                             handed to the adjudication, rather than a bare permission, and anything else carries the
                             commit the push is named against, the head it is leased against, and the head the pull
-                            request stands on now, which is what says whether the push has anything left to do
+                            request stands on now, which is what says whether the push has anything left to do.
+                            Whether that publication has ENDED is this owner's too, asked immediately before the
+                            push it answered for: a pull request merged or closed in the window behind everything
+                            that read it -- whose branch is still at the head this tick froze, so the lease SUCCEEDS
+                            and the force-push moves a merged pull request's branch back onto the commits it merged
+                            -- and then, LAST, a close a poll latched. Read fail-CLOSED, the opposite of the same
+                            reading at the reconciliation's door, since there falling through costs a poll and here
+                            a branch nothing can put back; asked of every push onto a pull request the record names,
+                            whatever the switch says, since `DECOMPOSE=off` decides what enters the MEASUREMENT and
+                            not whether a merged pull request may be force-moved; and the latch last because the
+                            reading above it is a request, so a close landing while it is in flight is one only an
+                            answer taken after it can still give. A record that cannot NAME a pull request refuses
+                            ahead of the reading and with no absence carved out, since every road here publishes
+                            onto one the remote already carries: a field that is gone and one that will not type
+                            are the same refusal, and reading the second as "nothing to check" is how the barrier
+                            would skip its request altogether and force-push onto a publication somebody ended
       late_push.py          the one call every gated push onto a pull request the remote already carries goes
                             through -- measure, push named against the measured candidate and leased against the
                             frozen head, spend the debt it paid, close what the route owed for it (in that same
                             write, since past it neither the approval nor the generation is left to say a round was
                             owed, while the caller still has a relabel and a write to make), record what reached the
                             remote so a tick that dies
-                            past the push neither re-reads nor re-pushes it, and prove the checkout again on the far
+                            past the push neither re-reads nor re-pushes it, refuse work that ENDED -- a pull
+                            request somebody merged or closed, and then a close a poll saw -- immediately before
+                            the push and nowhere else here, since every guard above spends a reading, a diff or a
+                            request after it and an ending landing in one of those windows would be answered one
+                            push too late (the question itself is `late_publication`'s, beside the entry it is the
+                            far end of), and prove the checkout again on the far
                             side of the effect -- AHEAD of that write, so what the proof answers rides it: a
                             checkout that moved or was dirtied holds the handoff rather than the publication, and
                             the claim it owes lands with the receipt rather than one write behind it, where a crash
@@ -1672,14 +1719,22 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             only one reported
       late_accepted.py      the push an adjudication already accepted, taken with no measurement -- a verdict read
                             this exact diff and said it ships as one change -- but still named against the commit
-                            that was DECIDED, still pinned to the head the reading was taken over, and made only
-                            over a checkout re-proved to be the one that verdict was reached about
+                            that was DECIDED, still pinned to the head the reading was taken over, made only
+                            over a checkout re-proved to be the one that verdict was reached about, and refused
+                            outright where the publication ENDED in the meantime. This road reaches the transport
+                            directly rather than through the gated call, so it makes that call's own barrier for
+                            itself -- and the window is the widest any publication has, since the pull request was
+                            last read by the reconciliation and the exemption, the identity, the debt, the park
+                            persist and both checkout probes all run between that reading and the push
       late_rewrite.py       the publication a squash-on-approval may rewrite and the push it then makes, and the
                             switch asked ahead of both: a squash is NEW work by the switch's own definition -- the
-                            commit it publishes is one it makes itself -- so `DECOMPOSE=off` reads no pull request
-                            and parks over none, and what such an install does is squash and push under the lease
-                            this stage read for itself, which is the second answer that makes the skipped reading
-                            safe: a remote somebody moved rejects it. The road with NO push behind it is given its
+                            commit it publishes is one it makes itself -- so `DECOMPOSE=off` freezes no entry:
+                            no pull request is read for the MEASUREMENT and nothing parks over one, and what such
+                            an install does is squash and push under the lease this stage read for itself, which is
+                            the second answer that makes the skipped reading safe: a remote somebody moved rejects
+                            it. What the switch does not reach is the terminal-safety barrier immediately before
+                            that push, which reads the recorded pull request on every install -- a setting about
+                            what enters the measurement does not license force-moving one somebody merged. The road with NO push behind it is given its
                             own entry point here for exactly that reason, and the switch does not reach that one --
                             a recovery that drops a record and hands the branch back has no lease to answer with,
                             so the reading it skipped would be the last thing before `documenting` had the issue.
@@ -1829,6 +1884,18 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             permission left standing, one the publication went past -- says nothing either.
                             Deliberately no second `late_verdict` beside it, which would read as a second
                             adjudication of work nobody was asked about twice
+      late_terminal.py      whether the work a late record still owes a push for has already ended, asked ahead of
+                            every road the reconciliation takes because all of them publish while the terminal that
+                            drains such work runs inside the stage handler behind it. Two facts, since an issue's
+                            own flag shows one of them: the OBJECT the tick opened with, and the PULL REQUEST the
+                            record names -- a merge leaves the issue open until a stage terminal reads it, and the
+                            gate below refuses to freeze an entry against either ending, so the road would
+                            otherwise park a human over a publication that is finished. Read fail-OPEN, so a remote
+                            that would not answer falls through to the road that parks with the reason it fails
+                            for; the same fact immediately before a PUSH is `late_publication`'s and is read the
+                            other way round, since what falling through costs there is a branch nothing can put
+                            back. Asked behind the caller's record questions rather than at its door, because the
+                            pull-request half is a request and this runs ahead of every stage on every poll
       late_reconcile.py     the reading the dispatcher takes for a pair frozen and never counted, scoped to the
                             stage the record names and taken with no run behind it: measured at or under the ceiling
                             the candidate is PUBLISHED before the stage runs -- nothing goes back for a push a
@@ -1837,6 +1904,10 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the adjudication, and a refusal parks. So does a push that was allowed and did not land.
                             An approval with no generation left behind it is the same window one step on, and
                             `late_debt` beside this answers it.
+                            Both roads end in a PUSH, so work that is already OVER is handed back ahead of either,
+                            which `late_terminal` answers and this owner only places: behind the three record
+                            questions, since the pull-request half is a request and the only ticks its answer can
+                            change are the ones with something left to reconcile.
                             It stops the tick outright where the checkout that pair names is not on this host and
                             where the label has left the stage the pair was frozen on, since neither a re-entry nor
                             the handler is this process's to pick -- and it retires its own measurement park on a
@@ -1893,7 +1964,13 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             with the generation counter, since a base the remote would not name records no base and
                             freezes the same commit afresh next tick -- and the validated-or-minted identity every
                             refusal is reported
-                            under so a damaged record cannot take its own refusal down with it
+                            under so a damaged record cannot take its own refusal down with it -- and, for the
+                            pull request a record names, the THREE-way answer a barrier standing in front of a
+                            push needs: a number, an absence, or a field the comment carries and no reader here
+                            will type. Told apart because reading the third as the second is how every one of
+                            those barriers fails open: each identity is read fail-closed, so an unusable one
+                            comes back as no identity, and a push held to nothing goes out onto whatever the
+                            branch's pull request has become
       late_freeze.py        the pair a count is taken over -- the candidate proved, the base frozen or re-proved,
                             and a base neither of those could reach counted as one of the readings this pair may
                             lose rather than parked outright -- and whether a recorded one may be acted on at all,
@@ -1985,14 +2062,37 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             the write that moves the label out of this stage consumes it, and this is the one
                             owner both of those can reach
       publication.py        the push -- named against the commit the gate decided and pinned to the head a
-                            published approval was frozen against, where there is one -- the pull request opened
-                            or reused for it, and the commit the push carried (decided once ahead of the push --
-                            the one that passed the gate, or the checkout's own head where the switch named none
-                            -- and made durable there, with a checkout that can name none at all publishing
+                            published approval was frozen against, where there is one -- work that ENDED refused
+                            immediately before that push, which `push_barrier` beside this owns -- the pull request
+                            opened or reused for it, and the commit the push carried (decided once ahead of the
+                            push -- the one that passed the gate, or the checkout's own head where the switch named
+                            none -- and made durable there, with a checkout that can name none at all publishing
                             nothing), with the handoff below reached last -- held back until the checkout has
                             been proved on both sides of the push, since the worktree is writable while those
                             requests run -- and spending the record of that commit once the handoff it was owed
                             lands
+      push_barrier.py       what may have ended between this tick's readings and the push it is about, asked
+                            immediately before the transport and nowhere else: everything above spends a run, a
+                            reading or a proof, and each is time a poll on another worker can find the world
+                            changing under. Two endings -- a close a poll LATCHED, which the issue object cannot
+                            give since it is the snapshot the tick opened with, and the pull request this push
+                            would JOIN, which is the one a caller PROVED where it proved one and otherwise the one
+                            the RECORD names: reuse is a lookup by branch, so one that ended in the window answers
+                            nothing to it, a second pull request is opened over the work, and `pr_number` is
+                            overwritten with it. The pull request is read first and the latch last, since the
+                            reading is a request and a close landing while it is in flight is one only an answer
+                            taken after it can still give. One ending is not an ending for this push and is the
+                            reason this is an owner rather than an open-state check: a `discussion` plan the humans
+                            SETTLED is an agreement rather than a delivery -- the stage ahead lets such a tick
+                            carry on for the same reason, since finalizing on it would close the issue `done` with
+                            no developer having run -- and what it licenses is an implementation with a pull
+                            request of its own. Told apart by the two records the stage's own terminals use, read
+                            off the same reading rather than a second fetch, and never offered to a number that
+                            came from a proof, which no plan publication can produce. A record that NAMES a pull
+                            request and cannot produce one is the third answer and refuses outright: absent is an
+                            issue that has published nothing, which this seam's own first push is for, while a
+                            field that will not type is the record disagreeing with itself and read as an absence
+                            would buy exactly the push this owner withholds. Refusing writes nothing
       checkout_guards.py    the proof that the worktree is still the thing that was measured, asked of the
                             commit AND of the tree because work can appear beside a commit without moving it:
                             a head that has left the approved commit, and a tree that cannot be proved to carry

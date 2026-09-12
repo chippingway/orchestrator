@@ -54,8 +54,9 @@ No road here is taken over a tree this host cannot PROVE clean, the one that
 hands the branch back to the ordinary squash included. The probes that ran
 before this call refuse on what git NAMED, so a status that established
 nothing reads to them as a clean tree -- and an install with `DECOMPOSE=off`
-reads no pull request either, so nothing behind this would prove one before
-the rewrite and the push.
+freezes no entry either, so nothing behind this would prove a tree before the
+rewrite and the push. The barrier that does read the recorded pull request on
+every install reads only whether it has ended, which proves no tree.
 
 Nothing is resumed on a record's SHAPE alone. A whole-looking record is one
 somebody could have written, not one this repository ever produced, so the
@@ -208,8 +209,9 @@ def _resumed_squash(
     call cannot cover: they refuse on what git NAMED, so a status that
     established nothing reads to them as a clean tree -- and handing on from
     there is what puts an unreadable worktree into a rewrite, since
-    `DECOMPOSE=off` reads no pull request and the entry behind it proves no
-    tree either.
+    `DECOMPOSE=off` freezes no entry and so nothing behind it proves a tree
+    either. The barrier that reads the recorded pull request on every install
+    reads only whether it has ended, which is no tree proof.
     """
     gated = rewrite._gated_rewrite()
     recorded = gated._recorded_collapse(gate.state)

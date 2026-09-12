@@ -507,11 +507,21 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   post or an unreadable thread left owed would otherwise stay owed for good), logs the hold once a tick, records a
   `standing` phase on the `agent_run_limit` event stream, and returns before the label's handler is reached. A park
   already explained says nothing more, however many ticks meet it.
+- **Work that has ENDED steps past it**, on the grounds the hold is a question rather than a filter: what an ending
+  reaches below is a terminal that finishes the issue rather than a road that spends anything on it, and the park is
+  permanent — a lifetime total buys no clock — so an ending this hold refuses is one nothing else reaches. Two facts
+  say so and the free one is asked first. A closed ISSUE the object in hand already shows (the poll's own reading
+  counts beside it). The PULL REQUEST the record names is the half it cannot: a merge leaves the issue open until a
+  stage terminal reads it, and a close nobody merged leaves it open for good, so `implementing`, `validating` and
+  `documenting` — which drain both endings at handler entry — would never get to. That reading costs a request per
+  parked issue per poll and fails *open*: a remote that would not answer leaves the hold where it was.
+  Nothing it lets through can spend a run either: the circuit every launch goes through reads the same ledger and
+  refuses on it, so what a lifted hold buys is the terminal and nothing else.
 - **The one thing that lifts it** is a trusted `/orchestrator add-agent-runs N` (`workflow/engine/run_grant.py`, over
   the request `workflow/engine/run_grant_request.py` reads out of the thread for it), read off the unread thread of an
-  OPEN issue once the park's own sentence has been said, and nowhere else — the closed-issue exemption below is asked
-  first, since what a close reaches is a terminal rather than a road that spends anything. A thread this tick could not
-  read is a park held one more poll: silence buys nothing.
+  OPEN issue once the park's own sentence has been said, and nowhere else — the ended-work exemption above is asked
+  first, since what an ending reaches is a terminal rather than a road that spends anything. A thread this tick
+  could not read is a park held one more poll: silence buys nothing.
   Valid — an exact positive whole number no larger than `MAX_RUNS_PER_COMMAND` — it persists an allowance of exactly
   `used + N`, clears this park alone, consumes the batch it read plus the acknowledgement it posts (and nothing that
   arrived in between — the boundary is derived from ids this tick observed, never re-read off the thread), records
@@ -520,11 +530,17 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   request earns one marker-scoped receipt and a `refused` phase under a park that still stands, and an untrusted one
   is answered with nothing at all. The fields, the markers, and the ordering are in
   [`labels-and-state.md`](labels-and-state.md#pinned-state).
-- **The one exemption is a CLOSED issue.** What a close reaches below is a terminal — the merged, rejected, and
-  human-closed finalizers, and the cleanup sweep that settles a generation ledger — and each of those ENDS the issue
-  rather than spending anything on it, so refusing them would leave a spent issue permanently mid-ending: a pull
-  request nothing finalizes, a receipt nobody posts, a ledger no sweep settles. The poll's own closed reading counts
-  beside the object's, since an issue closed when it was enumerated is one the tick was routed on the strength of.
+- **The one exemption is work that has ENDED**, and it covers two facts rather than one. What an ending reaches
+  below is a terminal — the merged, rejected, and human-closed finalizers, and the cleanup sweep that settles a
+  generation ledger — and each of those ENDS the issue rather than spending anything on it, so refusing them would
+  leave a spent issue permanently mid-ending: a pull request nothing finalizes, a receipt nobody posts, a ledger no
+  sweep settles. A closed ISSUE is the free half, and the poll's own closed reading counts beside the object's, since
+  an issue closed when it was enumerated is one the tick was routed on the strength of. The recorded PULL REQUEST
+  having merged or closed is the half the issue's flag cannot show — described above, read fail-*open*, and asked
+  **ahead of** the command below, since reading that command mutates and nothing a human has already decided should
+  buy runs it will never spend. What it means turns on the **label** the tick was routed on: a settled `discussion`
+  plan is carved out on `workflow:implementing`, where merging one is the agreement that licensed the build, and
+  nowhere else — `discussion` itself drains that same pull request through its own terminal.
 
 ## The reuse guard (every dispatch, ahead of every handler)
 - **Trigger**: `_route_issue_to_handler` on any issue whose pinned ancestry still names a snapshot ref. It shares its
@@ -794,6 +810,19 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
   answers whether the reading is owed at all — an issue whose record says there is nothing to end has its latch
   dropped again right there, so the machinery is carried only by the owners that need it (and the admitted pass
   skips its own end-of-pass probe, since the poll already asked that record).
+- **That drop is POSTPONED while a worker holds the issue.** "Nothing to end" is read off the late cycle, which is
+  the right answer for the protocol this record was built for and the wrong one for the barriers standing
+  immediately before a push: those ask the same latch, and every publication they guard carries no cycle — a first
+  push has none yet, and an approved or recovered one retires its own before pushing. So a hold is taken per issue,
+  and a settle arriving under it is recorded rather than taken. Nothing is refused and nothing is held for good: the
+  same decision is made again as the last hold goes, one moment later, where it can no longer be made out from under
+  the reader it was for — so an issue somebody reopens inherits no latch a later poll would never clear. Both
+  production drops are covered, the enumeration's and the one a refused fan-out submit takes.
+- **The hold starts at the CLAIM**, which is the scheduler admitting the submit — not where the worker first reads
+  anything. The queue, the worker's own refetch and its label checks all sit between the two, and the refused submit
+  is refused *because* a worker has the issue, so a reading dropped in that gap is one no barrier ever sees. Holds
+  are counted rather than flagged: the dispatch takes one of its own over the handler it runs, which nests inside
+  the claim's and is the only one the sequential path has.
 - **It is process-wide rather than per-scheduler** because the readers are stage handlers deep inside a worker, and
   the alternative is threading a scheduler through thirteen handler signatures that have nothing to do with it. It
   is dropped by the pass that RAN (`settle_close` from the worker, once its pass returned), never by the submit that
@@ -1054,19 +1083,31 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
 - **Internal flow**: a `retry_cap` park whose sentence was never said is replayed at entry, ahead of every step below
   (`_replay_owed_notice` — see [the retry budget](labels-and-state.md#the-retry-budget)); it says what the park is
   for and writes, and the tick carries on.
-  0. **External-merge / closed-issue short-circuit.** `_finalize_if_pr_merged` flips a merged PR to `done`
-     (`merge_method="external"`); `_finalize_if_issue_closed` flips a closed issue to `rejected` and emits
-     `pr_closed_without_merge` + cleans up the branch only when the linked PR is also closed (an open PR with a
-     manually-closed issue is left alone for operator salvage). Both helpers defer without writing state when the PR
-     fetch fails so a transient failure cannot mis-label a merged-PR issue. The merge terminal is reached only past
-     the plan question, which two records answer. A live `discussion_plan_path` says the recorded PR is the
-     `discussion` stage's plan whatever its head is now — the handoff below retires that record durably before anything
-     spawns, so nothing here has pushed yet and a head that moved is the humans editing the design they are agreeing to
-     (a corrected plan, a base merged into the branch), not work having landed. Past the handoff `discussion_plan_sha`
-     answers, and it is the head that PR was on when the handoff took it — snapshotted there in the path record's
-     place, so an amendment the humans made is not read as an implementation by the tick after. A recorded PR still on
-     that commit is the plan, and one whose head has moved is this stage's
-     own push. Neither may finalize as work having landed while it is still the plan. That read has three
+  0. **External-merge / closed-PR / closed-issue short-circuit.** `_pr_terminal_stops_the_tick` decides both
+     pull-request endings off ONE guarded reading: a merged PR flips to `done` (`merge_method="external"`), and one
+     somebody closed *without* merging flips to `rejected`, emitting `pr_closed_without_merge` and cleaning up the
+     branch. `_finalize_if_issue_closed` behind it flips a closed issue to `rejected` and emits the same event +
+     cleans up the branch only when the linked PR is also closed (an open PR with a manually-closed issue is left
+     alone for operator salvage). The closed-PR ending is the arc `in_review` and `fixing` have always had inline,
+     lifted out for the stages that carry none — `implementing`, `validating` and `documenting`: a closed PR leaves
+     the ISSUE open, so nothing else here sees it, and the size gate below would measure the committed candidate
+     again and push it, opening a second pull request since the first is gone, while the other two would spawn a
+     reviewer or a docs agent over work a human has rejected. Both come off one fetch rather than a helper each
+     because two fetches are two moments: a merge landing between them reads open to the first and merged to the
+     second — which a close arc is right to ignore, while the stage runs anyway. `_finalize_if_pr_merged` keeps its
+     own single-ending form for the umbrella / blocked aggregation, which may not be held on a child whose remote
+     blinked. A fetch that FAILS writes nothing and falls *through* — the tick carries on to the stage — because
+     nothing about a failed read says which ending, if any, it was hiding, and answered as one every issue whose
+     remote blinked would stop advancing; the closed-issue terminal behind it is the one that defers the whole tick
+     on its own failed read, so a transient failure cannot label a merged-PR issue `rejected`. The PR terminals are
+     reached only past the plan question, which two records answer. A live `discussion_plan_path` says the recorded
+     PR is the `discussion` stage's plan whatever its head is now — the handoff below retires that record durably
+     before anything spawns, so nothing here has pushed yet and a head that moved is the humans editing the design
+     they are agreeing to (a corrected plan, a base merged into the branch), not work having landed. Past the
+     handoff `discussion_plan_sha` answers, and it is the head that PR was on when the handoff took it —
+     snapshotted there in the path record's place, so an amendment the humans made is not read as an implementation
+     by the tick after. A recorded PR still on that commit is the plan, and one whose head has moved is this
+     stage's own push. Neither may finalize as work having landed while it is still the plan. That read has three
      answers, not two — a PR that could not be fetched ends the tick where it happened, unfinalized and unspawned,
      because falling through would ask GitHub the same question a second time and a request that failed once and
      succeeded next would finalize the plan the first answer existed to protect.
@@ -1795,10 +1836,11 @@ same state one step on, finished with the notice and the relabel it was owed.
 
 No road above is taken over a tree this host cannot **prove** clean, the one that hands the branch back to the
 ordinary squash included. The planning probes refuse on what git *named*, so a status that established nothing reads
-to them as a clean tree; an install with `DECOMPOSE=off` reads no pull request, so the entry behind the rewrite
-proves no tree either. Between those two there is nothing else standing between an unreadable worktree and a
-force-push, which is why the proof is owed before anything is classified rather than only before the road that
-publishes.
+to them as a clean tree; an install with `DECOMPOSE=off` freezes no entry, so nothing behind the rewrite proves
+a tree either — and the terminal-safety barrier that *does* read the recorded pull request on every install reads
+only whether it has ended, which is no tree proof. Between those two there is nothing else standing between an
+unreadable worktree and a force-push, which is why the proof is owed before anything is classified rather than only
+before the road that publishes.
 
 None of it runs on the record's **shape** either, and neither does any road above it. A whole-looking record is one
 somebody could have written, not one this repository ever produced, so four things it claims are proved against the
@@ -2148,8 +2190,10 @@ publication context at all.
   later. So a moved publication settles whenever a pair the route owes is not already the value on the comment, and
   a push that had nothing to send does not: the routes that read their owed value off the counter would compute a
   higher one here and count the same round twice.
-- **`DECOMPOSE=off`** is asked ahead of all of it, so an install running that way neither reads the pull request nor
-  parks over one. As at the implementing seam the switch decides only what ENTERS the gate: a record naming the commit
+- **`DECOMPOSE=off`** is asked ahead of all of it, so an install running that way neither reads the pull request for
+  the *measurement* nor parks over one. The terminal-safety barrier immediately before the push reads it regardless,
+  on every install: what the switch decides is what enters the reading, not whether a pull request somebody merged may
+  be force-moved. As at the implementing seam the switch decides only what ENTERS the gate: a record naming the commit
   in hand, or a commit an approval owes a push for, is measured either way — while a record naming some other
   candidate is one this commit supersedes, so it is retired and the fresh commit publishes unmeasured. The squash asks
   it for itself, because `reconciling` cannot answer it there — that seam sets the flag to say no developer ran, and
@@ -2210,6 +2254,56 @@ of them, because its approval carries no pull-request head by design — its pus
 request — so a crash between the two leaves exactly the shape this would otherwise call damaged and park instead of
 finishing. `workflow:decomposing` is excluded because the settlement there holds evidence this would be reading half
 of.
+
+**Both of those roads end in a push, so what is over is asked ahead of either.** The terminal that drains finished
+work runs inside the stage handler, which is *behind* this owner — so without a barrier the crash window the whole
+reconciliation exists for becomes the way work reaches a pull request nobody can merge. Two facts are read and both
+hand the tick straight back: the issue OBJECT, and the PULL REQUEST the record names, which the issue's own flag
+cannot show — a merge leaves the issue open until a terminal reads it, and a merged or closed pull request is nowhere
+for this push to land, so without this the road ends in `late_measurement_failed` and parks a human over a
+publication that is finished. The pull request is read fail-*open*, so a remote that would not answer falls through
+to the road that takes its own reading and parks with the reason it fails for — and it is read *behind* the three
+record questions rather than at the owner's door, since it is a request and the only ticks its answer can change are
+the ones with something left to reconcile. Behind either, the handler's own terminal marks the issue `done` or
+`rejected` with the generation, the receipt, the branch and the debt left exactly as they are.
+
+Everything spent past that point — the stage check, the checkout probe, the remote read, the diff — is time a poll on
+another worker can find the world changing in, so the gated publication carries a barrier of its own immediately
+before the push and nowhere else in it. Two things can have ended there. The *pull request* is asked first and is the
+one nothing above catches: the gate refuses to **enter** a call on one that is already over, so the only way one
+reaches the push is by merging or closing in the window behind that reading — and its branch is still at the head
+this tick froze, so the lease succeeds and the force-push moves a merged pull request's branch back onto the commits
+it merged. That reading is fail-*closed*, the opposite of the same one at the door, since there falling through costs
+a poll and here a branch nothing can put back; and it is taken for every push onto a pull request the record names,
+`DECOMPOSE=off` included — that switch decides what enters the *measurement*, not whether a merged pull request may
+be force-moved. A record that cannot **name** one refuses ahead of that reading, with no absence carved out: every
+road reaching this barrier publishes onto a pull request the remote already carries, so a field that is gone and one
+the comment carries and no reader will type are the same refusal. Reading the second as "nothing to check" is how the
+barrier fails open — every identity here is read fail-closed, so an unusable one comes back as no identity, no
+request is spent, and the force-push lands on whatever the branch's pull request has become. The process-wide close
+latch is asked **last**, because the reading above it is a request and a close
+landing while that request is in flight is one only an answer taken after it can still give. Refused, nothing is
+pushed, relabelled or announced, and the record is left for the cleanup it is owed.
+
+The *initial* publication on `workflow:implementing` carries a barrier of its own, which
+`implementing/push_barrier.py` owns. Its two endings are the latch and the pull request its push would **join** — the
+one a caller proved, or else the one the record names — since the reuse behind that push is a lookup by branch, so one
+that ended in the window answers nothing to it and a second pull request is opened with `pr_number` overwritten. There
+the two are told apart rather than refused together: an **absent** `pr_number` is an issue that has published nothing
+— the first push of all is what opens a pull request, and the window before the relabel leaves the same shape — while
+a field that is there and will not type is the record disagreeing with itself and refuses. A `discussion` plan the
+humans have **settled** is exempt, on the same grounds the stage's own terminals exempt one: a merged plan is an
+agreement rather than a delivery, so the implementation it licenses gets a pull request of its own rather than being
+held back for it. *Settled* is the load-bearing word: it is a thing only a reading establishes, so a request that
+failed is refused ahead of the exemption and the record does not save it — what the comment says is which pull request
+is the design, never what anybody has done with it. Refusing costs the poll that asks again, where a readable plan
+gets the exemption it is owed. The latch half covers the window the gate's own cancellation cannot — that one ends a
+cycle, and the write that approves a candidate retires the cycle before the push, so an approval whose push failed
+comes back with nothing left to cancel. And so does the push a settled adjudication makes from `workflow:decomposing`,
+which reaches the transport directly rather than through the gated call: its window is the widest of any, since the
+pull request was last read by the settlement's own reconciliation and the exemption, the identity, the debt, the park
+persist and both checkout proofs all run between that reading and the push. A refusal there leaves the verdict and its
+approval durable for the retry.
 
 **A record read off its own stage stops the tick.** The reading was taken under one publication and one stage, and
 both are terms of it, so a pair frozen on `fixing` and read while the issue wears `workflow:validating` may not
