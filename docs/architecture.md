@@ -482,12 +482,13 @@ parked the artifact it invalidates.
 One caller cannot afford to decode at all, so the same envelope has an undecoded form
 (`_git_hardened_bytes`). Text capture folds a CR LF pair and a lone CR into a single LF, and a carriage return is a
 byte a committed path may contain: a listing read as text names two different paths identically, which is harmless
-for a probe comparing against a permitted set and fatal for a digest. A third form, `_git_hardened_streamed`, takes
-the request on stdin and hands stdout to a caller-supplied consumer a chunk at a time, assembling none of it, for
-output whose size an agent decides; its other two streams are files rather than pipes, so reading stdout to
-exhaustion cannot deadlock against a stderr nobody is draining, and what git wrote there still comes back on the
-record. All three take the same `env_extra` and build their environment through the one `_hardened_env`, so none can
-drift into keeping a protection the others have lost, and a caller pinning a reading pins every call of it.
+for a probe comparing against a permitted set and fatal for a digest. A third form lives in `git.streaming`:
+`_git_hardened_streamed` takes the request on stdin and hands stdout to a caller-supplied consumer a chunk at a time,
+assembling none of it, for output whose size an agent decides. Its other two streams are files rather than pipes, so
+reading stdout to exhaustion cannot deadlock against a stderr nobody is draining, and what git wrote there still comes
+back on the record. That owner is spawned on the prefix and the environment `commands` assembles rather than on copies
+of them, so all three forms take the same `env_extra` and build their environment through the one `_hardened_env`:
+none can drift into keeping a protection the others have lost, and a caller pinning a reading pins every call of it.
 
 It also turns object replacement off — `GIT_NO_REPLACE_OBJECTS=1` for `refs/replace/<oid>` and
 `GIT_GRAFT_FILE=/dev/null` for the graft file. Neither of those is config, so nothing above reaches them, and each is
