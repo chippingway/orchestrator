@@ -99,6 +99,14 @@ def _publishes_approved(gate: _records._Gate, branch: str) -> bool:
         return False
     published = _publication_gate._PublishedCandidate(
         held=False, revision=approved, lease=lease,
+        # The publication this road's own reconciliation proved on the way in
+        # -- the number it recorded once it had held that pull request to its
+        # state, its repository, its branch and the frozen head. Carried so
+        # the receipt the push behind this writes names the publication it went
+        # onto: this road freezes no entry, so there is nothing else for the
+        # write to read one off, and a receipt without it leaves the next
+        # recovery with a branch to search rather than a number to prove.
+        pull_request=_parks._recorded_pull_request(gate.state),
     )
     if _publication_gate._publication_ended(gate):
         return False

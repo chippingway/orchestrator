@@ -81,12 +81,15 @@ class _ApprovedWork(_AgentWork):
     """
 
     candidate_sha: str = ""
-    # The pull request a caller PROVED this push is joining, where it holds
-    # one. The barrier before the push re-reads whichever pull request the
-    # push would land on, and where the number was proved rather than read off
-    # the record there is nothing for the `discussion` plan carve-out to be
-    # about: a proof is that the branch stands on the candidate, which no plan
-    # publication can produce. Zero is every caller that proved none, and
+    # The pull request the gate PROVED is already standing on that commit,
+    # where it proved one. The barrier before the push re-reads whichever pull
+    # request the push would land on, and where the number was proved rather
+    # than read off the record there is nothing for the `discussion` plan
+    # carve-out to be about: a proof is that the branch stands on the
+    # candidate, which no plan publication can produce. The push it licenses
+    # moves nothing, so the number also pins both halves of the bookkeeping
+    # behind it -- the lease, which is the candidate itself, and the pull
+    # request the relabel hands on. Zero is every caller that proved none, and
     # there the record's own `pr_number` is what gets re-read.
     delivered_pr: int = 0
 
@@ -94,6 +97,18 @@ class _ApprovedWork(_AgentWork):
 @dataclass(frozen=True)
 class _PRWork(_AgentWork):
     branch: str
+    # The pull request this publication is finishing the bookkeeping for,
+    # where a reading proved the branch is already standing on the commit.
+    # Named rather than looked up again, because the answer that admitted the
+    # candidate proved THAT pull request: a second lookup a moment later can
+    # find it closed and open another over the same work.
+    delivered_pr: int = 0
+    # The commit that pull request was proved standing on, which is what the
+    # number is only half of: the bookkeeping writes a receipt naming this
+    # commit and hands a reviewer that publication, so both have to still be
+    # true together. A head somebody moved in the window leaves the receipt
+    # naming work the branch no longer carries.
+    delivered_sha: str = ""
 
 
 @dataclass(frozen=True)

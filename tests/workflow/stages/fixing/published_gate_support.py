@@ -83,6 +83,27 @@ KEY_RECEIPT_SHA = "implementing_published_sha"
 # never cleared and goes on naming a commit pushed rounds ago.
 KEY_RECEIPT_LEASE = "implementing_published_lease"
 
+# The pull request that receipt went onto, written with it by the push that
+# landed. Neither the commit nor the head it replaced says WHICH publication
+# received the work, so a branch pushed from that head onto a pull request
+# since closed and replaced answers for both.
+KEY_RECEIPT_PR = "implementing_published_pr"
+
+
+def receipt_group(sha: str, lease=None, pull_request=None) -> dict:
+    """One whole publication receipt, ready to seed.
+
+    The three fields a landed gated push writes, spelled together because the
+    write is: every member goes down on every receipt, `null` included, so a
+    fixture seeding one member alone would be a record no tick can produce --
+    and a reader asked whether the group is sound is right to refuse it.
+    """
+    return {
+        KEY_RECEIPT_SHA: sha,
+        KEY_RECEIPT_LEASE: lease,
+        KEY_RECEIPT_PR: pull_request,
+    }
+
 # The validating route's single replay anchor, cleared with its round.
 KEY_REVIEWER_COMMENT_ID = "pending_fix_reviewer_comment_id"
 

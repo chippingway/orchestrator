@@ -128,6 +128,10 @@ class UnmeasuredDebtTest(unittest.TestCase, _SizeGateFixtureMixin):
         self.assertEqual(
             pinned[support.KEY_RECEIPT_SHA], MEASURED_CANDIDATE_SHA,
         )
+        # And the publication it went onto, which neither the commit nor the
+        # head it replaced says: without it the recovery behind this has no
+        # identity to prove and a branch to search instead.
+        self.assertEqual(pinned[support.KEY_RECEIPT_PR], PR_NUMBER)
         self.assertIsNone(pinned[support.KEY_APPROVED_SHA])
         self.assertEqual(pinned[REVIEW_ROUND], SPENT_ROUND)
         self.assertIsNone(pinned[PENDING_FIX_AT])
@@ -170,7 +174,11 @@ class UnmeasuredDebtTest(unittest.TestCase, _SizeGateFixtureMixin):
         """
         return self._seed_fix_round(**{
             KEY_EXEMPT_SHA: MEASURED_CANDIDATE_SHA,
-            support.KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA,
+            **support.receipt_group(
+                MEASURED_CANDIDATE_SHA,
+                lease=PR_HEAD_SHA,
+                pull_request=PR_NUMBER,
+            ),
             REVIEW_ROUND: UNSPENT_ROUND,
         })
 

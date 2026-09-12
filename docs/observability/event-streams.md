@@ -118,7 +118,11 @@ file is the durable record.
   it, are on the `agent_run_budget` stream below, which is where an operator counts a refusal against the runs that
   spent it.
 - `pr_opened` — `_reuse_or_open_pr` (in `workflow/stages/implementing/dev_pr.py`, reached from `_on_commits`) after
-  `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. The `discussion` stage's plan
+  `gh.open_pr` succeeds; extras: `pr_number`, `branch`, `sha`, `retry_count`. One road never reaches it at all: a
+  publication the size gate admitted BECAUSE its pull request is already standing on the commit resolves that pull
+  request by number and opens none, so a crash-recovery tick that finishes the bookkeeping emits nothing here — and
+  one whose pull request was closed between the gate's proof and the bookkeeping holds instead of opening a second
+  one, which is what would otherwise show up on this stream as a duplicate publication. The `discussion` stage's plan
   publication emits the same event with `stage="discussion"` when it opens (never when it reuses) a plan PR; it
   carries no `retry_count`, having no retry budget of its own.
 - `pr_merged` — External merge terminal arcs in `_handle_in_review`, `_handle_fixing`, `_handle_resolving_conflict`;
@@ -886,7 +890,8 @@ this page.
 A refusal that *was* a reading therefore carries the step — the git layer's own vocabulary (`base_unreadable`,
 `base_absent`, `candidate_unreadable`, `candidate_absent`, `diff_unpinnable`, `diff_failed`, `diff_unreadable`) — and,
 where that step wrote one, the `detail` line beside it. One that reached no reading carries neither: the size gate
-also parks on a pinned record too damaged to act on and on a debt no push can pay, and what those hold instead is the
+also parks on a pinned record too damaged to act on, on a debt no push can pay, and on a publication receipt whose
+own pull request it could not show, and what those hold instead is the
 sentence they were about to tell a human, which is prose and has no field here. Every one of them is still
 `event: late_failure` with `failure: measurement_failed`, so a filter written against that pair matches all of them
 and the two fields only ever *narrow* what an analysis can group by. `events.measurement_failure_event` is the single

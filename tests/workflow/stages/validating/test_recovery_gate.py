@@ -32,6 +32,7 @@ KEY_BASE_SHA = support.KEY_BASE_SHA
 KEY_CANDIDATE_SHA = support.KEY_CANDIDATE_SHA
 KEY_PUBLISHED_SHA = support.KEY_PUBLISHED_SHA
 KEY_RECEIPT_LEASE = support.KEY_RECEIPT_LEASE
+KEY_RECEIPT_PR = support.KEY_RECEIPT_PR
 KEY_RECEIPT_SHA = support.KEY_RECEIPT_SHA
 KEY_SOURCE_STAGE = support.KEY_SOURCE_STAGE
 LABEL_DECOMPOSING = support.LABEL_DECOMPOSING
@@ -88,7 +89,7 @@ class DeferredPushRecoveryTest(
         mocks = self._recover(scenario)
 
         mocks[RUN_AGENT].assert_not_called()
-        mocks[COUNT_ADDED_LINES].assert_not_called()
+        self._assert_unmeasured(mocks)
         pushed = self._assert_pushed_once(mocks)
         self.assertEqual(pushed.kwargs[REVISION], STRANDED_CANDIDATE)
         self.assertEqual(pushed.kwargs[LEASE], PUBLICATION_HEAD)
@@ -107,6 +108,7 @@ class DeferredPushRecoveryTest(
         self.assertIsNone(pinned[KEY_APPROVED_LEASE])
         self.assertEqual(pinned[KEY_RECEIPT_SHA], STRANDED_CANDIDATE)
         self.assertEqual(pinned[KEY_RECEIPT_LEASE], PUBLICATION_HEAD)
+        self.assertEqual(pinned[KEY_RECEIPT_PR], RECOVERY_PR)
 
     def test_a_healed_park_counts_one_round(self) -> None:
         # The head the reviewer rejected is superseded, so the round is spent
@@ -155,29 +157,95 @@ class DeferredPushRecoveryTest(
             (RECOVERY_ISSUE, LABEL_REJECTED), scenario.github.label_history,
         )
 
+class CrashedPublicationRecoveryTest(
+    unittest.TestCase, support._RecoveredPublicationMixin,
+):
+    """The window a push that landed and a lost write leave behind.
+
+    The branch is on the remote, the pull request carries the commit, and the
+    write that would have cleared the park went down with the tick. What the
+    receipt buys the retry is the round it does not count again -- but only
+    while the group behind it says this issue's own push put the work there,
+    onto the publication this call froze.
+    """
+
     def test_a_crashed_tick_counts_no_round(self) -> None:
         # The push landed and the write carrying its receipt went down with
         # it; what died was the clear behind them, so the park is still up.
         # The retry finds the pull request standing on the commit, so its
         # push is the leased no-op that proves as much -- and the round the
         # tick that really published it counted is not counted again.
-        scenario = self._seed_deferred_push(**{
-            KEY_APPROVED_SHA: None,
-            KEY_APPROVED_LEASE: None,
-            KEY_RECEIPT_SHA: STRANDED_CANDIDATE,
-            KEY_RECEIPT_LEASE: PUBLICATION_HEAD,
-            REVIEW_ROUND: SPENT_ROUND,
-        })
-        scenario.github.get_pr(RECOVERY_PR).head.sha = STRANDED_CANDIDATE
+        # The publication that push went onto rides the receipt: without it
+        # the record names none this call can hold the note to, and the
+        # candidate goes back through the reading instead.
+        scenario = self._crashed_tick(RECOVERY_PR)
 
         mocks = self._recover(scenario)
 
-        mocks[COUNT_ADDED_LINES].assert_not_called()
+        self._assert_unmeasured(mocks)
         pushed = self._assert_pushed_once(mocks)
         self.assertEqual(pushed.kwargs[REVISION], STRANDED_CANDIDATE)
         self.assertEqual(pushed.kwargs[LEASE], STRANDED_CANDIDATE)
         self.assertEqual(self._pinned(scenario)[REVIEW_ROUND], SPENT_ROUND)
         self._assert_park_cleared(scenario)
+
+    def test_a_foreign_receipt_is_measured(self) -> None:
+        # The half the frozen head cannot supply. A pull request standing on
+        # the commit says the work is THERE and nothing about how it got
+        # there, so the number the receipt names has to be the one this call
+        # froze: an earlier publication of this issue's, or a replacement
+        # somebody opened after closing the original, would have the round,
+        # the receipt and the relabel spent against a push this stage never
+        # made.
+        scenario = self._crashed_tick(RECOVERY_PR + 1)
+
+        mocks = self._recover(scenario, added_lines=UNDER_THE_CEILING)
+
+        # Measured rather than waved past, which is the safe road: the
+        # reading decides the candidate and the push behind it is leased to
+        # the head this call froze.
+        self._assert_measured(mocks)
+
+    def test_a_receipt_naming_no_publication_is_kept(self) -> None:
+        # A number nothing can read and no number at all are the same record
+        # from the published end, and neither is a question the reading can
+        # answer: a group that claims a publication and cannot say which one
+        # is damage, so measuring and publishing would put a fresh group down
+        # over it and destroy what an operator would have repaired it from.
+        for described, identity in (
+            ("one nothing can read", "not-a-number"),
+            ("none at all", None),
+        ):
+            with self.subTest(receipt=described):
+                scenario = self._crashed_tick(identity)
+
+                mocks = self._recover(
+                    scenario,
+                    added_lines=UNDER_THE_CEILING,
+                    push_branch=False,
+                )
+
+                self._assert_unmeasured(mocks)
+                mocks[PUSH_BRANCH].assert_not_called()
+                pinned = self._pinned(scenario)
+                self.assertEqual(pinned[KEY_RECEIPT_PR], identity)
+                self.assertEqual(pinned[KEY_RECEIPT_SHA], STRANDED_CANDIDATE)
+                self.assertEqual(
+                    pinned[KEY_RECEIPT_LEASE], PUBLICATION_HEAD,
+                )
+
+    def _crashed_tick(self, identity):
+        """The window a push that landed and a lost write leave, receipt and all."""
+        scenario = self._seed_deferred_push(**{
+            KEY_APPROVED_SHA: None,
+            KEY_APPROVED_LEASE: None,
+            KEY_RECEIPT_SHA: STRANDED_CANDIDATE,
+            KEY_RECEIPT_LEASE: PUBLICATION_HEAD,
+            KEY_RECEIPT_PR: identity,
+            REVIEW_ROUND: SPENT_ROUND,
+        })
+        scenario.github.get_pr(RECOVERY_PR).head.sha = STRANDED_CANDIDATE
+        return scenario
 
 
 class TimedOutFixRecoveryTest(
@@ -196,7 +264,7 @@ class TimedOutFixRecoveryTest(
         mocks = self._recover(scenario, added_lines=UNDER_THE_CEILING)
 
         mocks[RUN_AGENT].assert_not_called()
-        mocks[COUNT_ADDED_LINES].assert_called_once()
+        self._assert_measured(mocks)
         self.assertEqual(
             mocks[COUNT_ADDED_LINES].call_args.args[1:],
             (MEASURED_BASE_SHA, STRANDED_CANDIDATE),
@@ -232,7 +300,7 @@ class TimedOutFixRecoveryTest(
 
         mocks = self._recover(scenario)
 
-        mocks[COUNT_ADDED_LINES].assert_not_called()
+        self._assert_unmeasured(mocks)
         mocks[PUSH_BRANCH].assert_not_called()
         pinned = self._pinned(scenario)
         self.assertIsNone(pinned[PRE_DEV_FIX_SHA])
@@ -250,7 +318,7 @@ class TimedOutFixRecoveryTest(
 
         mocks = self._recover(scenario, added_lines=UNDER_THE_CEILING)
 
-        mocks[COUNT_ADDED_LINES].assert_not_called()
+        self._assert_unmeasured(mocks)
         mocks[PUSH_BRANCH].assert_not_called()
         pinned = self._pinned(scenario)
         self.assertEqual(pinned[PRE_DEV_FIX_SHA], PUBLICATION_HEAD)
@@ -270,7 +338,7 @@ class TimedOutFixRecoveryTest(
             candidate_commit=(FrozenCommit(sha=MOVED_MID_TICK),) * 4,
         )
 
-        mocks[COUNT_ADDED_LINES].assert_not_called()
+        self._assert_unmeasured(mocks)
         mocks[PUSH_BRANCH].assert_not_called()
         pinned = self._pinned(scenario)
         self.assertEqual(pinned[PRE_DEV_FIX_SHA], PUBLICATION_HEAD)

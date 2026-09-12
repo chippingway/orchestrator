@@ -31,6 +31,7 @@ from tests.support.fakes import (
     FakePR,
     make_issue,
 )
+from tests.workflow import value_helpers as _value_helpers
 from tests.workflow.fixtures import LABEL_DECOMPOSING
 
 SHA_LENGTH = 40
@@ -61,7 +62,19 @@ PLAN_PR_NUMBER = 77
 PUBLISHED_PR_NUMBER = 78
 PUBLISHED_HEAD_SHA = "d" * SHA_LENGTH
 PUBLISHED_SOURCE_STAGE = "workflow:fixing"
-PUBLISHED_BRANCH = "orchestrator/chippingway__orchestrator/issue-4242"
+# The branch that pull request is open on, which is the branch this issue's
+# own publication pushes. A real record can only name the two together: the
+# settlement resolves the branch for itself and pushes THAT, so a pull request
+# open anywhere else is one its push would never touch.
+PUBLISHED_BRANCH = _value_helpers._issue_branch(LATE_ISSUE_NUMBER)
+
+# A branch this issue never publishes to, for the case where the pinned
+# comment's own number and branch disagree.
+FOREIGN_BRANCH = f"{PUBLISHED_BRANCH}-elsewhere"
+
+# Somebody else's copy of this repository: where a fork's head lives, which is
+# the only fact that tells its pull request from one this issue published.
+FORK_REPO = "somebody-else/orchestrator"
 PLAN_PR_BODY = "the design this plan PR was opened with"
 PLAN_BRANCH = "orchestrator/plan"
 
@@ -150,6 +163,11 @@ class _StateKeys:
     # The head that receipt replaced, written with it: what dates it to one
     # publication attempt, since the receipt itself is never cleared.
     receipt_lease: str = "implementing_published_lease"
+    # The pull request that receipt went onto, written with it by the push
+    # that landed. Neither of the two above says WHICH publication received
+    # the commit, so a branch pushed from that head onto a pull request since
+    # closed and replaced answers for both.
+    receipt_pr: str = "implementing_published_pr"
     retry_count: str = "retry_count"
     retry_window: str = "retry_window_start"
     retry_grant: str = "retry_cap_continued"

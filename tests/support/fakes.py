@@ -16,6 +16,7 @@ FakeLabel = _models.FakeLabel
 FakePR = _models.FakePR
 DEFAULT_PR_HEAD_SHA = _models.DEFAULT_PR_HEAD_SHA
 FakePRRef = _models.FakePRRef
+FakePRRepo = _models.FakePRRepo
 FakePRReview = _models.FakePRReview
 FakeUser = _models.FakeUser
 LazyPullRequest = _lazy.LazyPullRequest

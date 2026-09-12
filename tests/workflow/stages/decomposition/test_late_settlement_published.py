@@ -13,6 +13,7 @@ evidence. The pre-publication side of the same verdict is in
 from __future__ import annotations
 
 import unittest
+from types import MappingProxyType
 from unittest.mock import patch
 
 from orchestrator.workflow.stages.decomposition.late_models import (
@@ -33,8 +34,11 @@ from tests.workflow.stages.decomposition.late_settlement_support import (
 )
 from tests.workflow.stages.decomposition.late_test_support import (
     CANDIDATE_SHA,
+    FOREIGN_BRANCH,
+    FORK_REPO,
     KEYS,
     OTHER_SHA,
+    PUBLISHED_BRANCH,
     PUBLISHED_HEAD_SHA,
     PUBLISHED_PR_NUMBER,
     PUBLISHED_SOURCE_STAGE,
@@ -110,14 +114,24 @@ class _PublishedVerdictMixin:
         ))
 
     def _seed_published(self, *, stage=None, **pr_fields) -> None:
-        """Re-seed this issue as one whose verdict was taken past publication."""
+        """Re-seed this issue as one whose verdict was taken past publication.
+
+        The branch is pinned beside the generation because that is what the
+        handoff which opened this pull request wrote: a record carrying a
+        number and no branch is the legacy shape, where the resolver answers
+        with a pre-slug ref -- so a fixture seeding one while putting the pull
+        request on a namespaced branch would be a record no tick produces, and
+        every reader asked to reconcile the two would be right to refuse.
+        """
         seed_published_pr(self.github, **pr_fields)
         entered = (
             published_generation(stage=stage) if stage
             else published_generation()
         )
         self.github.seed_state(
-            self.issue.number, **generation_state(entered),
+            self.issue.number,
+            branch=PUBLISHED_BRANCH,
+            **generation_state(entered),
         )
 
     def _assert_unpublished(self, outcome) -> None:
@@ -201,6 +215,19 @@ class PublishedSingleReconciliationTest(
         # out of the base refresh for the rest of the issue's life.
         self.assertIsNone(pinned.get(KEYS.approved_sha))
         self.assertIsNone(pinned.get(KEYS.approved_lease))
+
+    def test_the_receipt_names_the_publication(self) -> None:
+        # The accepted-settlement write. This road freezes no entry, so the
+        # number has to be carried in from the reconciliation that proved it
+        # -- and without it the recovery behind this push has no identity to
+        # prove and a branch to search for one instead.
+        self._seed_published()
+
+        self._settle()
+
+        pinned = self._pinned()
+        self.assertEqual(pinned[KEYS.receipt_sha], CANDIDATE_SHA)
+        self.assertEqual(pinned[KEYS.receipt_pr], PUBLISHED_PR_NUMBER)
 
     def test_a_push_that_missed_keeps_the_verdict(self) -> None:
         # A refused push here is usually the lease doing its job. The verdict
@@ -306,6 +333,37 @@ class PublishedCheckoutProofTest(
         self.github.get_pr(PUBLISHED_PR_NUMBER).head.sha = CANDIDATE_SHA
 
 
+# One whole receipt group, and the three ways it stops being one. A member
+# carrying a value nothing can read is the plain shape. A group naming no
+# publication at all is the second: the commit says what was published and
+# the number says where it went, and neither is derivable from the other. A
+# member whose KEY has gone is the third, and only presence tells it from the
+# `null` an initial publication writes for the head it froze none of.
+_WHOLE_RECEIPT = MappingProxyType({
+    KEYS.receipt_sha: CANDIDATE_SHA,
+    KEYS.receipt_lease: PUBLISHED_HEAD_SHA,
+    KEYS.receipt_pr: PUBLISHED_PR_NUMBER,
+})
+
+_DAMAGED_GROUPS = (
+    (
+        "a member nothing can read",
+        {**_WHOLE_RECEIPT, KEYS.receipt_pr: "not-a-number"},
+    ),
+    (
+        "no publication named at all",
+        {**_WHOLE_RECEIPT, KEYS.receipt_pr: None},
+    ),
+    (
+        "a member whose key is gone",
+        {
+            member: held for member, held in _WHOLE_RECEIPT.items()
+            if member != KEYS.receipt_lease
+        },
+    ),
+)
+
+
 class PublishedVerdictRefusalTest(
     GuardedLateCase, _PublishedVerdictMixin, unittest.TestCase,
 ):
@@ -352,6 +410,31 @@ class PublishedVerdictRefusalTest(
 
         self._assert_unpublished(outcome)
 
+    def test_a_fork_at_the_frozen_head_is_refused(self) -> None:
+        # The shape every other term agrees on: a fork carries this
+        # repository's ref names over its commits, so the branch and the
+        # frozen head both match while the pull request is one this issue
+        # never made. Accepted, the settlement would push this repository's
+        # branch and hand the reviewer somebody else's change.
+        self._seed_published(head_repo=FORK_REPO)
+
+        outcome = self._settle()
+
+        self._assert_unpublished(outcome)
+
+    def test_a_publication_elsewhere_is_refused(self) -> None:
+        # The number and the branch are separate fields on one pinned comment
+        # and this road pushes the branch it resolves for itself. A pull
+        # request standing at the frozen head on some other ref passes every
+        # other check here -- so waved through, the push would grow a branch
+        # that pull request never carried while the handoff named it as the
+        # change the accepted candidate is in.
+        self._seed_published(head_branch=FOREIGN_BRANCH)
+
+        outcome = self._settle()
+
+        self._assert_unpublished(outcome)
+
     def test_a_pre_publication_verdict_pins_nothing(self) -> None:
         # A verdict taken before anything was published names no pull
         # request to have been measured against, so its push reads the remote
@@ -368,6 +451,48 @@ class PublishedVerdictRefusalTest(
         self.assertEqual(pinned.get(KEYS.park_reason), PARK_HOLD_FAILED)
         self.assertEqual(pinned.get(KEYS.candidate_sha), CANDIDATE_SHA)
 
+
+class DamagedReceiptGroupTest(
+    GuardedLateCase, _PublishedVerdictMixin, unittest.TestCase,
+):
+    """The refusal that is about the RECORD rather than about the remote.
+
+    This road reaches the transport without the size gate's own door, and the
+    push it makes writes a fresh receipt group over whatever the comment
+    carries. A group that does not read back whole is the one record that
+    write destroys rather than corrects, so the reconciliation refuses it
+    before it asks the remote anything.
+    """
+
+    def test_a_damaged_receipt_group_is_refused(self) -> None:
+        # The road that reaches the transport without the size gate's own
+        # door: nothing else here reads the receipt group, and the push this
+        # settlement makes writes a fresh one over whatever is on the comment.
+        # So a group that does not read back whole is refused before the
+        # remote is even asked -- a member carrying a value nothing can use,
+        # and a member whose key has gone, which is the one an "is the commit
+        # readable" check walks straight past -- and the damaged record is
+        # left exactly as it stands for the human who repairs it.
+        for described, group in _DAMAGED_GROUPS:
+            with self.subTest(group=described):
+                self.setUp()
+                self._seed_published(head=CANDIDATE_SHA)
+                self.github.seed_state(
+                    self.issue.number, **{**self._pinned(), **group},
+                )
+
+                outcome = self._settle()
+
+                self._assert_unpublished(outcome)
+                self.assertEqual(self._receipt_group(), group)
+
+    def _receipt_group(self) -> dict:
+        """Whatever of the receipt group the comment carries now."""
+        members = (KEYS.receipt_sha, KEYS.receipt_lease, KEYS.receipt_pr)
+        return {
+            member: held for member, held in self._pinned().items()
+            if member in members
+        }
 
 class PublishedOwnPushTest(
     GuardedLateCase, _PublishedVerdictMixin, unittest.TestCase,
@@ -410,8 +535,36 @@ class PublishedOwnPushTest(
                 self._seed_published(head=CANDIDATE_SHA)
                 self.github.seed_state(self.issue.number, **{
                     **self._pinned(),
-                    KEYS.receipt_sha: CANDIDATE_SHA,
+                    **_WHOLE_RECEIPT,
                     KEYS.receipt_lease: lease,
+                })
+
+                outcome = self._settle()
+
+                self._assert_unpublished(outcome)
+
+    def test_a_receipt_for_another_pr_is_refused(self) -> None:
+        # The move neither the commit nor the head it replaced catches. A
+        # branch pushed from that head before, onto a publication since closed
+        # and REPLACED by another on the same ref, dates a receipt to this
+        # settlement while the push it records went somewhere else -- so the
+        # number it names has to be the one the verdict was frozen on. Absent,
+        # and unreadable, are the same answer: a record this build cannot tie
+        # to any publication may not license a carve-out from the refusal that
+        # catches somebody else's branch move.
+        for described, identity in (
+            ("another pull request", PUBLISHED_PR_NUMBER + 1),
+            ("none at all", None),
+            ("one nothing can read", "not-a-number"),
+        ):
+            with self.subTest(receipt=described):
+                self.setUp()
+                self._seed_published(head=CANDIDATE_SHA)
+                self.github.seed_state(self.issue.number, **{
+                    **self._pinned(),
+                    KEYS.receipt_sha: CANDIDATE_SHA,
+                    KEYS.receipt_lease: PUBLISHED_HEAD_SHA,
+                    KEYS.receipt_pr: identity,
                 })
 
                 outcome = self._settle()
@@ -428,6 +581,7 @@ class PublishedOwnPushTest(
             **self._pinned(),
             KEYS.receipt_sha: CANDIDATE_SHA,
             KEYS.receipt_lease: PUBLISHED_HEAD_SHA,
+            KEYS.receipt_pr: PUBLISHED_PR_NUMBER,
         })
 
         outcome = self._settle(worktree=WorktreeSeed(push=False))

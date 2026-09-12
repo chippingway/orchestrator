@@ -133,6 +133,10 @@ class ApprovedRetryTest(unittest.TestCase, _SizeGateFixtureMixin):
             # to the attempt this round is finishing rather than to one of the
             # rounds before it.
             support.KEY_RECEIPT_LEASE: PR_HEAD_SHA,
+            # And the publication it went onto, which neither of those says: a
+            # branch pushed from that head onto a pull request since closed
+            # and replaced would answer for both.
+            support.KEY_RECEIPT_PR: PR_NUMBER,
         })
         scenario.github.get_pr(PR_NUMBER).head.sha = MEASURED_CANDIDATE_SHA
 

@@ -52,10 +52,13 @@ reads the attribution back off one somebody else opened; and
 `handoff` owns the last write and the relabel it goes out ahead of.
 
 `late_gate` is the order its own questions are asked in and nothing else, so
-seven owners sit under it: what one gate call is ABOUT and the identity every
+eight owners sit under it: what one gate call is ABOUT and the identity every
 refusal is reported under is `late_records`, the pair a count is taken over is
 `late_freeze`, what a recovery proves before it acts on a recorded commit is
-`late_evidence`, what a measured candidate earns -- the push, the
+`late_evidence`, what a receipt naming this stage's own push has to PROVE
+before it excuses a candidate from being read -- its own numbered pull
+request, open here, on the branch the seam would push, standing on that exact
+commit -- is `late_delivery`, what a measured candidate earns -- the push, the
 `workflow:decomposing` hold, and the retirement each is durable behind -- is
 `late_verdict`, and the one park shape every unreadable reading takes, with
 the typed failure both sinks carry and the approval group whose basis says
@@ -69,7 +72,7 @@ act on at all -- the last fresh trusted reply, and how far reading it got.
 A candidate the remote already carries is the same gate one seam further on,
 and eleven more owners divide it the way the seam itself divides: what a call
 taken past publication has to freeze before it may measure at all -- the
-stage, the pull request, the head it stands on, and the five refusals that
+stage, the pull request, the head it stands on, and the seven refusals that
 make freezing them fail closed -- is `late_overflow`; the switch, the record,
 and the count asked in one place so the seam that reached the gate makes no
 difference to the answer is `late_publication`; the one call every push onto a

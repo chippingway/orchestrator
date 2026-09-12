@@ -1049,26 +1049,206 @@ def _published_lease(state: _pinned_state.PinnedState) -> str:
     ) or ""
 
 
-def _publication_from(state: _pinned_state.PinnedState, head: str) -> str:
-    """The commit recorded as pushed FROM this head, or "" where none is.
+def _recorded_pull_request(state: _pinned_state.PinnedState) -> int:
+    """The pull request this ISSUE records, or 0 where none is readable.
 
-    The receipt and its head asked as the one question every caller of them
+    The publication a stage is working on, as against the one a receipt is
+    about: the two agree on every ordinary tick and the receipt's own is what
+    a landed push is proved by. This is for the caller that has to say which
+    pull request it is PROVING against and holds no frozen entry to read one
+    off -- the squash resume, and the accepted settlement whose reconciliation
+    proved this very number on its way in.
+
+    Read fail-closed like every other late identity.
+    """
+    return _payloads.as_identity(state.get(_state._PR_NUMBER)) or 0
+
+
+def _published_pull_request(state: _pinned_state.PinnedState) -> int:
+    """The pull request the recorded publication went onto, or 0 for none.
+
+    The third member of the receipt group, and the one the bookkeeping behind
+    a landed push is bound by: the commit says what reached a remote, the head
+    it replaced dates that to one attempt, and this says which pull request
+    now carries it.
+
+    Read fail-closed like every other late identity, so a hand-edited or
+    truncated value is no pull request rather than one nothing checked. What a
+    reader does with 0 is refuse -- there is no second place to look that is
+    not a search, and a search by branch answers with whatever is open on the
+    ref rather than with the publication this receipt is about.
+    """
+    return _payloads.as_identity(state.get(_state._PUBLISHED_PR)) or 0
+
+
+def _claims_a_value(state: _pinned_state.PinnedState, key: str) -> bool:
+    """Whether the record CARRIES something at `key` rather than an absence.
+
+    `None` and `""` are the only two values read as an absence, and they are
+    named rather than tested for falsehood. The payload is JSON, so a field
+    can hold anything a hand edit or a half-written crash leaves -- `false`,
+    `0`, `[]`, `{}` -- and every one of those is falsy in Python while being
+    exactly the damage the reader below exists to catch. Written as "empty
+    means absent" that refusal is bypassed by the shapes nobody wrote on
+    purpose, which is the one set it most has to answer for.
+    """
+    if not state.carries(key):
+        return False
+    written = state.get(key)
+    return written is not None and written != ""
+
+
+# The publication receipt group, in the order a refusal names its members:
+# the commit that reached a remote, the head that push replaced, and the pull
+# request it went onto. Each is read fail-closed by the owner beside it, so a
+# member that CARRIES a value and reads back empty is one this build cannot
+# use -- which is the gap `_damaged_receipt` is the whole of.
+_RECEIPT_GROUP = (
+    (_state._PUBLISHED_SHA, _published_commit),
+    (_state._PUBLISHED_LEASE, _published_lease),
+    (_state._PUBLISHED_PR, _published_pull_request),
+)
+
+
+def _damaged_receipt(state: _pinned_state.PinnedState) -> str:
+    """Which member of the receipt group claims a publication it cannot name.
+
+    Asked of all three at once, because the three are ONE record: `_record_
+    publication` writes every member on every receipt and clears every member
+    on none, so a group that reads back partial is not a record with a gap in
+    it but one nothing here produced. Every other reader in this domain is
+    fail-CLOSED and so reads a partial group as an absence -- right for one
+    deciding "may this commit publish", and exactly wrong for one deciding
+    whether the record is SOUND. Told "no receipt", that second reader
+    measures the candidate and publishes: the branch is force-pushed, a second
+    pull request is opened over whatever the first may already carry, and the
+    write behind that push puts a fresh group down over the damaged one, which
+    destroys the evidence an operator would have repaired it from.
+
+    Three shapes are damage, and `_missing_member` and `_unusable_member`
+    below own them in that order. A KEY that is not there while its siblings
+    are is the first, and telling it from the `null` an initial publication
+    writes is the whole reason presence is asked of every member rather than
+    of the commit alone: the write puts all three keys down, so one that has
+    gone is a hand edit or a half-written record and the group can no longer
+    say what it is about. A member that carries a VALUE this build cannot read
+    is the second, and it is named so the park can tell a human which field to
+    repair. An ORPHAN is the third -- a lease or a pull request with no
+    readable commit beside it, which claims this stage published and cannot
+    say what.
+
+    An empty MEMBER is not damage where its key is there: `null` is what an
+    initial publication records for the head it froze none of, and what an
+    install writing no identity records for the number. The delivery proof
+    refuses the second on its own terms, with a remedy of its own.
+
+    Answers with the member to repair, and "" for a group that is whole and
+    for an issue that never published at all.
+    """
+    return _missing_member(state) or _unusable_member(state)
+
+
+def _missing_member(state: _pinned_state.PinnedState) -> str:
+    """The member whose KEY is gone while the rest of the group is there.
+
+    Presence alone, which is the one question the value readers cannot ask:
+    a member holding `null` and a member that is not on the comment read back
+    identically to every one of them, and only the first is something a write
+    of this build's ever produced.
+
+    "" for a record carrying no member at all, which is an issue that never
+    published and has nothing to be partial about.
+    """
+    present = [member for member, _ in _RECEIPT_GROUP if state.carries(member)]
+    if not present:
+        return ""
+    absent = [
+        member for member, _ in _RECEIPT_GROUP if member not in present
+    ]
+    return absent[0] if absent else ""
+
+
+# The two members a group that claims anything has to fill. A publication is
+# a commit that reached a remote and the pull request that now carries it, and
+# neither is derivable from the other: a receipt with no commit cannot say
+# what was published, and one with no number leaves the recovery behind it a
+# branch to search rather than an identity to prove. The LEASE is not among
+# them -- an initial publication froze no head, records `null`, and is the
+# commonest sound group there is.
+_REQUIRED_MEMBERS = (_state._PUBLISHED_SHA, _state._PUBLISHED_PR)
+
+
+def _unusable_member(state: _pinned_state.PinnedState) -> str:
+    """The member of a whole group that cannot say what it claims to.
+
+    Two shapes over the same gap between "carries a value" and "carries one
+    this build can use". A member holding something no reader here will type
+    answers for itself. And a group that claims ANYTHING while one of the two
+    members a publication is named by stands empty answers with the member it
+    is missing: a lease or a number with no commit beside it claims this stage
+    published and cannot say what, and a commit with no number cannot say
+    where it went -- which leaves every reader behind it a lookup by branch,
+    and that answers with whatever is open on the ref.
+
+    An empty LEASE is sound, and is why the two are named rather than the
+    whole group being required: the initial publication froze no head to be
+    pinned to and records none.
+    """
+    unreadable = [
+        member for member, read_member in _RECEIPT_GROUP
+        if _claims_a_value(state, member) and not read_member(state)
+    ]
+    if unreadable:
+        return unreadable[0]
+    claimed = [
+        member for member, _ in _RECEIPT_GROUP
+        if _claims_a_value(state, member)
+    ]
+    if not claimed:
+        return ""
+    missing = [
+        member for member in _REQUIRED_MEMBERS if member not in claimed
+    ]
+    return missing[0] if missing else ""
+
+
+def _publication_from(
+    state: _pinned_state.PinnedState, head: str, pull_request: int,
+) -> str:
+    """The commit recorded as pushed FROM this head onto this pull request.
+
+    The whole receipt group asked as the one question every caller of it
     actually has: is the publication this record names the one I am about to
-    act on? Neither half answers it. A receipt is never cleared, so on its own
-    it goes on naming a commit this stage pushed rounds ago and vouches for
-    any pull request somebody rewound onto it; a head with no receipt beside
-    it names no push at all. Together they date one push to one attempt, and
-    a caller that froze its own head is what the date is checked against.
+    act on? No member answers it alone. A receipt is never cleared, so by
+    itself it goes on naming a commit this stage pushed rounds ago and vouches
+    for any pull request somebody rewound onto it; a head with no receipt
+    beside it names no push at all; and the two together still say nothing
+    about WHICH publication received the commit -- so a branch that has been
+    pushed from this head before, onto a pull request since closed and
+    replaced, answers yes to both.
+
+    All three date one push to one attempt, and the caller supplies both of
+    the facts it is proving against: the head it froze, and the pull request
+    it froze that head on. A receipt naming another number is an earlier
+    publication of this issue's, and one naming none is a record this build
+    cannot tie to any publication at all -- both answer "" rather than being
+    taken at their word, since what the answer licenses is a carve-out from
+    the refusal that catches somebody else's branch move.
 
     A caller with no head of its own is claiming nothing here, and gets "".
     """
     if not head or _published_lease(state) != head:
         return ""
+    if not pull_request or _published_pull_request(state) != pull_request:
+        return ""
     return _published_commit(state)
 
 
 def _record_publication(
-    state: _pinned_state.PinnedState, published: str, superseded: str,
+    state: _pinned_state.PinnedState,
+    published: str,
+    superseded: str,
+    pull_request: int = 0,
 ) -> None:
     """Record the commit a push put on the remote, and the head it replaced.
 
@@ -1077,8 +1257,18 @@ def _record_publication(
     that vouches for a publication somebody else moved, so the second half is
     written on EVERY receipt -- cleared where there is no head to name rather
     than left for the next receipt to inherit from the last.
+
+    The pull request travels with them for the same reason and answers the
+    question neither of them does: which publication now carries the commit.
+    Left to the relabel that records `pr_number`, it is missing for exactly
+    the window the receipt exists for -- a push that landed and a process that
+    died before that write -- and a reader with no identity there falls back
+    to a lookup by branch, which a replacement somebody opened over the same
+    ref satisfies. Cleared with the rest where a caller names none, never
+    inherited from the receipt before.
     """
     state.set(_state._PUBLISHED_SHA, published)
+    state.set(_state._PUBLISHED_PR, pull_request or None)
     state.set(_state._PUBLISHED_LEASE, superseded or None)
 
 

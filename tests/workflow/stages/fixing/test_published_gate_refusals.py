@@ -36,6 +36,15 @@ FIXING = fixing.FIXING
 ISSUE = fixing.ISSUE
 PR_HEAD_SHA = fixing.PR_HEAD_SHA
 PR_NUMBER = fixing.PR_NUMBER
+
+# A branch this issue's record does not name: what a pull request left over
+# from a cycle that ran on another ref is open on, and the one shape where the
+# number and the branch on one pinned comment disagree.
+_ANOTHER_BRANCH = f"{fixing.BRANCH}-elsewhere"
+
+# Somebody else's copy of this repository: where a fork's head lives, which is
+# the only fact that tells its pull request from one of this issue's own.
+_FORK_REPO = "somebody-else/orchestrator"
 PUSH_BRANCH = fixing.PUSH_BRANCH
 SHA_BEFORE = fixing.SHA_BEFORE
 STAGE_FIXING = fixing.STAGE_FIXING
@@ -58,6 +67,14 @@ OTHER_PR_NUMBER = PR_NUMBER + 1
 ABSENT_WORKTREE = fixing.Path("/tmp/orchestrator-absent-checkout")
 REVIEW_ROUND = fixing.REVIEW_ROUND
 PENDING_FIX_AT = fixing.PENDING_FIX_AT
+
+def _pushing_fix_agent():
+    """The resumed run every rewind case here drives, spelled once."""
+    return fixing._agent(
+        session_id=fixing.DEV_SESSION,
+        last_message=fixing.PUSHED_FIX_MESSAGE,
+    )
+
 
 def _published_pr(scenario):
     """The pull request this fixture's round is publishing onto."""
@@ -254,10 +271,7 @@ class PublicationMovedMidRunTest(unittest.TestCase, _SizeGateFixtureMixin):
             run_agent=support._MovesThePullRequest(
                 published,
                 MEASURED_CANDIDATE_SHA,
-                fixing._agent(
-                    session_id=fixing.DEV_SESSION,
-                    last_message=fixing.PUSHED_FIX_MESSAGE,
-                ),
+                _pushing_fix_agent(),
             ),
         )
 
@@ -291,14 +305,66 @@ class PublicationMovedMidRunTest(unittest.TestCase, _SizeGateFixtureMixin):
                     run_agent=support._MovesThePullRequest(
                         published,
                         MEASURED_CANDIDATE_SHA,
-                        fixing._agent(
-                            session_id=fixing.DEV_SESSION,
-                            last_message=fixing.PUSHED_FIX_MESSAGE,
-                        ),
+                        _pushing_fix_agent(),
                     ),
                 )
 
                 self._assert_refused(scenario, mocks)
+
+    def test_a_receipt_for_another_pr_refuses(self) -> None:
+        # The move the commit and the head it replaced do not catch between
+        # them. A branch pushed from this head before, onto a publication since
+        # closed and REPLACED by another on the same ref, dates a receipt to
+        # this round while the push it records went somewhere else -- so the
+        # number the receipt names has to be the one this call is freezing.
+        # Absent and unreadable are the same answer: a record nothing can tie
+        # to a publication may not license the carve-out.
+        for described, identity in (
+            ("another pull request", PR_NUMBER + 1),
+            ("none at all", None),
+            ("one nothing can read", "not-a-number"),
+        ):
+            with self.subTest(receipt=described):
+                scenario = self._seed_fix_round(**{
+                    support.KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA,
+                    support.KEY_RECEIPT_LEASE: PR_HEAD_SHA,
+                    support.KEY_RECEIPT_PR: identity,
+                })
+                published = _published_pr(scenario)
+
+                mocks = self._run_fix_round(
+                    scenario,
+                    run_agent=support._MovesThePullRequest(
+                        published,
+                        MEASURED_CANDIDATE_SHA,
+                        _pushing_fix_agent(),
+                    ),
+                )
+
+                self._assert_refused(scenario, mocks)
+
+    def test_a_receipt_for_this_pr_is_forgiven(self) -> None:
+        # The other side, so the three terms together are the carve-out rather
+        # than a refusal of everything: the same rewind with the receipt naming
+        # the publication this call is freezing IS this issue's own push having
+        # landed, and the reading it interrupted is what finishes.
+        scenario = self._seed_fix_round(**{
+            support.KEY_RECEIPT_SHA: MEASURED_CANDIDATE_SHA,
+            support.KEY_RECEIPT_LEASE: PR_HEAD_SHA,
+            support.KEY_RECEIPT_PR: PR_NUMBER,
+        })
+        published = _published_pr(scenario)
+
+        mocks = self._run_fix_round(
+            scenario,
+            run_agent=support._MovesThePullRequest(
+                published,
+                MEASURED_CANDIDATE_SHA,
+                _pushing_fix_agent(),
+            ),
+        )
+
+        mocks[PUSH_BRANCH].assert_called_once()
 
     def test_a_move_onto_a_stale_receipt_refuses(self) -> None:
         # The one move the entry forgives is this issue's OWN push having
@@ -355,6 +421,39 @@ class FrozenPublicationIdentityTest(
             scenario.github.pinned_data(ISSUE)[support.KEY_PUBLISHED_PR],
             PR_NUMBER,
         )
+
+    def test_a_pull_request_on_another_branch_refuses(self) -> None:
+        # The number and the branch are two fields on one pinned comment and
+        # they can disagree -- a `branch` a hand edit moved, or a `pr_number`
+        # left over from a cycle that ran on another ref. Frozen on the head
+        # alone, the entry would describe a pull request the push never
+        # touches: the settlement, the receipt and the relabel would all be
+        # spent against somebody else's publication.
+        scenario = self._seed_fix_round()
+        _published_pr(scenario).head = fixing.FakePRRef(
+            sha=PR_HEAD_SHA, ref=_ANOTHER_BRANCH,
+        )
+
+        mocks = self._run_fix_round(scenario)
+
+        self._assert_refused(scenario, mocks)
+
+    def test_a_fork_at_the_same_head_refuses(self) -> None:
+        # The shape every other term agrees on. A fork carries this
+        # repository's ref names over its commits, so the branch and the head
+        # both match while the pull request is one this issue never made --
+        # and frozen on those two alone, the settlement, the receipt and the
+        # relabel would all be spent against somebody else's publication.
+        scenario = self._seed_fix_round()
+        _published_pr(scenario).head = fixing.FakePRRef(
+            sha=PR_HEAD_SHA,
+            ref=fixing.BRANCH,
+            repo=fixing.FakePRRepo(full_name=_FORK_REPO),
+        )
+
+        mocks = self._run_fix_round(scenario)
+
+        self._assert_refused(scenario, mocks)
 
     def test_a_damaged_publication_refuses(self) -> None:
         # The marker says the reading was taken on a publication and the

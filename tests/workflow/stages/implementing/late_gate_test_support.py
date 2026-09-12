@@ -20,7 +20,12 @@ from orchestrator.github.pinned_state import PinnedState
 from orchestrator.workflow.engine import run_ledger as _run_ledger
 from orchestrator.workflow.late_split import lineage as _lineage, state as _late_state
 from orchestrator.workflow.late_split.models import LateGeneration, LatePhase
-from tests.support.fakes import FakeComment, FakeGitHubClient, FakeUser, make_issue
+from tests.support.fakes import (
+    FakeComment,
+    FakeGitHubClient,
+    FakeUser,
+    make_issue,
+)
 from tests.workflow.fixtures import (
     LABEL_IMPLEMENTING,
     MEASURED_BASE_SHA,
@@ -304,12 +309,38 @@ class _GateCase(
         """
         run_options.setdefault("has_new_commits", True)
         run_options.setdefault("run_agent", _agent(last_message="implemented"))
+        opened_before = len(self.github.opened_prs)
         with patch.object(
             _worktree_paths, WORKTREE_PATH, return_value=worktree,
         ):
-            return self._run_implementing(
+            mocks = self._run_implementing(
                 self.github, self.issue, **run_options,
             )
+        self._stand_opened_prs_on_the_push(opened_before, mocks)
+        return mocks
+
+    def _stand_opened_prs_on_the_push(self, opened_before, mocks) -> None:
+        """Put a pull request this tick opened on the commit it was pushed.
+
+        What the double cannot derive: the push is mocked, so `open_pr` has no
+        way to know which commit the branch it is opened over now carries,
+        while GitHub answers with that commit from the moment the pull request
+        exists. A poll after this one reads the head to tell a publication
+        this issue made from a branch somebody else moved, so a fixture that
+        left it at its default would have every such reading disagree with a
+        remote no tick could have produced.
+        """
+        pushed = mocks[PUSH_BRANCH].call_args
+        if pushed is None:
+            return
+        revision = pushed.kwargs.get("revision")
+        if not revision:
+            return
+        for opened in self.github.opened_prs[opened_before:]:
+            # The sha alone: the ref and the repository are what `open_pr`
+            # already answered with, and replacing the whole head would drop
+            # the two facts every publication reading is identified by.
+            opened.head.sha = revision
 
     def _pinned(self) -> dict:
         return self.github.pinned_data(GATE_ISSUE_NUMBER)

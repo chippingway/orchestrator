@@ -662,20 +662,28 @@ def _leased_head(
     collapse is the head it was pinned to, which is the head the record says
     was rewritten.
     """
-    if _already_published(gate.state, recorded.head, squashed):
+    if _already_published(
+        gate.state, recorded.head, squashed,
+        _parks._recorded_pull_request(gate.state),
+    ):
         return squashed
     return recorded.head
 
 
-def _already_published(state, replaced: str, squashed: str) -> bool:
+def _already_published(
+    state, replaced: str, squashed: str, pull_request: int,
+) -> bool:
     """Whether a durable receipt says this issue's push put the squash out.
 
-    The receipt and the head it was pinned to, asked as one question, because
-    neither answers it alone: a receipt is never cleared, so on its own it
-    goes on naming a commit this stage pushed rounds ago, and a head with no
-    receipt beside it names no push at all. Together they date one push to one
-    collapse -- the commit that went out, from the head this record says was
-    rewritten.
+    The receipt, the head it was pinned to, and the pull request it went onto,
+    asked as one question, because none answers it alone: a receipt is never
+    cleared, so on its own it goes on naming a commit this stage pushed rounds
+    ago; a head with no receipt beside it names no push at all; and the two
+    together still say nothing about WHICH publication received the commit, so
+    a branch pushed from that head onto a pull request since closed and
+    REPLACED by another on the same ref answers for both. All three date one
+    push to one collapse -- the commit that went out, from the head this record
+    says was rewritten, onto the publication the caller is proving against.
 
     Two owners ask it and they are the two ends of the same window. The entry
     a resume freezes is taken over the rewritten commit where this answers
@@ -684,4 +692,6 @@ def _already_published(state, replaced: str, squashed: str) -> bool:
     the commit, so a reset would take the checkout off it and the count the
     handoff still owes a notice would go with the record.
     """
-    return _parks._publication_from(state, replaced) == squashed
+    return _parks._publication_from(
+        state, replaced, pull_request,
+    ) == squashed

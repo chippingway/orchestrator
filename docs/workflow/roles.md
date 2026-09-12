@@ -391,7 +391,10 @@ it, or the receipt the push itself leaves read with the head that receipt replac
 and nothing of this workflow's has reached the remote, so that same head is something ELSE having pushed — an agent
 that published its own commit is the plain case — and it refuses with every other moved head. The receipt needs its
 head because it is never cleared: an accepted candidate published in an earlier round is one it goes on naming, and a
-pull request rewound onto that commit would otherwise agree with every local fact there is. Vouched for, the retry
+pull request rewound onto that commit would otherwise agree with every local fact there is. It needs the pull request
+it went onto for the same reason one step further out: a branch pushed from that head onto a publication since closed
+and *replaced* by another on the same ref dates a receipt to this settlement while the push it records went somewhere
+else, so the number it names has to be the one the verdict was frozen on. Vouched for, the retry
 finishes what it never reached instead of refusing the publication this settlement made. A pre-publication one
 searches for the pull request its commit is on and drops a recorded pointer that turns out settled, because losing it
 costs nothing — the publication opens the pull request the work needs. This one already knows which pull request the
@@ -463,14 +466,74 @@ adjudication. `implementing_published_sha` is that same window one step further 
 because the effects are already out: past the push a pull request carries the work and only the relabel is owed, so a
 reading that came back oversized there would hold nothing back and route a *published* branch to adjudication.
 
+That window is real and nothing closes it, but the receipt does not prove the tick is still *in* it. The note says
+what this stage last **pushed** and nothing about where it went or whether it is still there, and it is never
+cleared, so a branch published rounds ago carries one for the rest of the issue's life. So the same proof stands
+behind it on every road, and which reading takes it differs by seam. A call taken past a publication hands over the
+pull request it froze and the head that pull request is standing on, and the receipt is held to BOTH: the head says
+the work is there, and the number says it is there because of the push this record is about. A receipt naming some
+other publication — an earlier one of this issue's, a replacement somebody opened after closing the original, a
+record a hand edit pointed elsewhere — vouches for nothing, and the candidate goes back through the ordinary
+reading, which is the safe road: measured, then pushed leased against the head that call froze. The implementing
+seam froze neither — its push is what *opens* a pull request
+— so there the remote is read for the number the record names, and it answers only for an open pull request whose
+head is in *this repository*, standing on this exact commit, *and* open on the branch that seam would push. Every
+half is required, the LEASE included: a lease names the head a push replaced and only a call that froze a publication
+writes one, so a receipt carrying one at this seam was left by some other call and its commit matching the candidate
+is a coincidence — waved through, the fresh receipt behind the push clears the field that said which attempt the
+record was about. Without the receipt, any head a remote happened to agree with would do; without the remote reading,
+a note over a pull request the branch has moved off would do; without the repository, a fork — which carries this
+repository's ref names over its commits — would agree on everything else while naming a publication this issue never
+made; and without the branch, which the seam resolves from the record for itself, a `pr_number` left over from a
+cycle on another ref would license a push where nothing has published and a second pull request opened over the same
+work.
+
+A proof that fails **parks** rather than handing the commit back to the ordinary reading, because that reading is
+not a neutral answer: a count under the ceiling publishes, which force-pushes a branch nothing could confirm and
+opens the second pull request by another road. The park writes nothing else — the receipt, the recorded number and
+whatever push is still owed stand exactly as they were, for the terminal that drains finished work or for the retry
+behind a repair. Nothing is outside it — an exemption or an approval naming the same commit least of all. Each
+answers whether the candidate needs a fresh *reading* and says nothing about where the work went, which is the
+question that failed; and the road that admits a delivered candidate records the commit as a debt *before* it
+pushes, so a tick dying there leaves an approval with no lease beside it. Waved past on one, the retry publishes
+with nothing to lease against and reuses whatever pull request a branch lookup finds.
+
+Which pull request is the **receipt's own**, written with it by the push that landed rather than by the relabel behind
+it, and it is never searched for. `pr_number` is the relabel's write, so it is missing for exactly the window this
+proof exists for — a push that landed and a process that died before it — and the only other way to name one is a
+lookup by branch, which answers with whatever is open on that ref: a replacement somebody opened after closing the
+original satisfies every other term, and the relabel, the debt and the receipt would all be spent against a
+publication this stage never made. Absent or unreadable, the proof refuses, and what that costs is a park a human
+repairs. A receipt GROUP this build cannot read whole is refused one step earlier and told apart from an absent one,
+since every late field reads fail-closed and published over, the push would write a fresh group across the damage. The
+three are one record — written in one call, cleared in one call — so the check is over all three, and it stands at the
+gate's own door rather than beside the candidate question: every road out of a gate call ends in the write that puts a
+fresh group down, and the one an install with `DECOMPOSE=off` takes answers before that question is reached. The
+accepted settlement, which reaches the transport by another door entirely, is refused by its own reconciliation on the
+same terms. It asks presence as well as value: a member whose *key* has gone while its siblings are there is a hand
+edit rather than the `null` an initial publication writes for the head it froze none of, a member carrying a value
+nothing can read is damage, and so is a group that names no publication at all — a commit with no readable number
+beside it, or a lease or number with no readable commit. That last pair is the one a commit-only check walks past,
+since a receipt naming some other object id is never compared against the candidate and the next push completes the
+partial group rather than leaving it for a human.
+
+And because a reading is a moment rather than a guarantee, the answer carries the pull request *number* rather than
+a bare permission. The push behind it is leased against that exact commit, so a branch somebody moved in the window
+rejects it instead of being force-overwritten, and the bookkeeping is bound to that pull request by number, so one
+somebody closed in the window holds the tick instead of earning a second pull request over work the first already
+carries — and that last reading re-takes the whole identity rather than the open state, off one fetch and against
+the object it hands on, because what it writes is a receipt naming this commit and a relabel handing a reviewer this
+pull request. One somebody merely MOVED in that window is open and is not the publication the proof was about. A
+call taken past a publication is held to the same repository and branch one step earlier: the entry freeze refuses a
+pull request whose head is in somebody else's copy, and one open anywhere but on the branch its push will name.
+
 The publication that window is about is re-read immediately before the push, on every road that makes one. The
 *ordinary* implementing push proves no publication — it reuses whatever open pull request is on the branch, which is
 how a `discussion` plan PR on that ref, or this stage's own from a round that crashed before its relabel, gets
 carried forward — so the pull request it would join is the one the record names. One that merged, closed, or stopped
 being readable between the tick's first reading and there answers nothing to the branch lookup behind the push: a
 second pull request is opened over the work and `pr_number` overwritten with it, losing the pointer to whatever a
-human just decided. A caller that PROVED which publication its push is joining hands the number in instead, and that
-one is read.
+human just decided. The road the gate PROVED a publication for hands that number in instead, and that one is read.
 
 What that record *fails* to say is read three ways rather than two, and the third is what keeps the barrier closed.
 An **absent** `pr_number` is an issue that has published nothing: the implementing seam's own push is what opens a

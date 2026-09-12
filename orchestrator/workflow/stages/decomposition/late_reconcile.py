@@ -44,6 +44,9 @@ from orchestrator.workflow.stages.decomposition import (
     late_publication as _late_publication,
 )
 from orchestrator.workflow.stages.decomposition.late_models import _LateContext
+from orchestrator.workflow.stages.implementing import (
+    late_parks as _gate_parks,
+)
 
 log = logging.getLogger("orchestrator.workflow")
 
@@ -79,6 +82,47 @@ _RECORDED_PR_UNREADABLE_PARK = (
     "The next tick asks again, against the same frozen commit, without "
     "re-running any agent."
 )
+
+_DAMAGED_RECEIPT_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change, "
+    "and the publication receipt group on the pinned comment does not read "
+    "back whole: `{field}` is missing or is not a value this build can read. "
+    "The three members are one write -- the commit that reached the remote, "
+    "the head it replaced, and the pull request it went onto -- so a group "
+    "missing one, or carrying a value nothing here can use, is a record no "
+    "tick produced. Publishing the accepted candidate would put a fresh group "
+    "down over it and destroy the only evidence of what this stage last "
+    "pushed, so nothing was pushed and nothing was handed on. Repair all "
+    "three members -- or remove all three, if nothing was ever published from "
+    "this branch -- and the next tick asks again against the same frozen "
+    "commit."
+)
+
+
+_FOREIGN_REPOSITORY_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change, "
+    "but pull request #{number} -- the one it was measured against -- has its "
+    "head in `{read}` rather than in `{expected}`. A fork carries this "
+    "repository's ref names over its commits, so nothing about the branch or "
+    "the head tells that pull request from a publication this issue made: "
+    "settling against it would push this repository's branch while handing "
+    "the reviewer somebody else's change. Repair the pinned comment, then the "
+    "next tick asks again against the same frozen commit."
+)
+
+
+_FOREIGN_BRANCH_PARK = (
+    "this issue's committed candidate was adjudicated as one coherent change, "
+    "but pull request #{number} -- the one it was measured against -- is open "
+    "on `{read}` rather than on `{expected}`, which is the branch this issue "
+    "would push. The number and the branch are separate fields on the pinned "
+    "comment and these two do not describe the same publication, so nothing "
+    "was handed on: publishing would grow a branch that pull request never "
+    "carried while recording its number as the change the candidate is in. "
+    "Repair the pinned comment, then the next tick asks again against the "
+    "same frozen commit."
+)
+
 
 _SETTLED_PUBLICATION_PARK = (
     "this issue's committed candidate was adjudicated as one coherent change, "
@@ -189,11 +233,22 @@ def _reconciled_publication(context: _LateContext) -> bool:
     A head that moved is the same refusal one field over, and the owner that
     tells it apart from this settlement's own landed push is asked for it.
 
+    The REF is checked beside it, because a head alone is not a publication:
+    a commit is the tip of a ref in a repository. The number and the branch
+    are separate fields on one pinned comment and this road pushes the branch
+    it resolves for itself, and a fork carries this repository's ref names
+    over its commits -- so a pull request standing at the frozen head in
+    somebody else's copy, or on a ref this issue never publishes to, would
+    pass every check above while the push grew a branch that pull request
+    never carried and the handoff named it as the change the candidate is in.
+
     The number is recorded on the way out for the reason the road above
     records one: the publication asks its recorded pull request first, and the
     one this issue entered the gate with may not be the one it was measured
     against.
     """
+    if not _reconciled_receipt(context):
+        return False
     generation = context.generation
     number = generation.published_pr_number
     reading = _late_publication._read_publication(
@@ -212,10 +267,112 @@ def _reconciled_publication(context: _LateContext) -> bool:
             context,
             _SETTLED_PUBLICATION_PARK.format(number=number, state=settled),
         )
-    if not _late_proof._reconciled_head(context, reading.head, number):
+    # Short-circuited, so a ref that already refused parks once: the head
+    # comparison is only about a publication this push would actually touch.
+    standing = (
+        _reconciled_ref(context, reading, number)
+        and _late_proof._reconciled_head(context, reading.head, number)
+    )
+    if not standing:
         return False
     context.state.set(_PR_NUMBER, number)
     return True
+
+
+def _reconciled_receipt(context: _LateContext) -> bool:
+    """Prove the record this settlement's own push will write over is sound.
+
+    Asked before the remote is read, because it costs nothing and because what
+    it protects is the write rather than the reading: this road reaches the
+    transport directly, and the receipt its push leaves puts a fresh group
+    down over whatever was there. A group this build cannot read whole is the
+    one record that write destroys rather than corrects -- so it is refused
+    here, where the size gate's own door refuses it for every road that goes
+    through the gate.
+
+    The park leaves everything: the verdict, the exemption, the approval and
+    the damaged group all stand for the retry once a human has repaired the
+    record.
+    """
+    damaged = _gate_parks._damaged_receipt(context.state)
+    if not damaged:
+        return True
+    log.error(
+        "issue=#%d carries a publication receipt group this build cannot "
+        "read whole (`%s`); refusing to publish the accepted candidate over "
+        "a record that claims a publication it cannot name",
+        context.issue.number, damaged,
+    )
+    return _late_proof._unreconciled(
+        context, _DAMAGED_RECEIPT_PARK.format(field=damaged),
+    )
+
+
+def _reconciled_ref(
+    context: _LateContext,
+    reading: _late_publication._PublicationReading,
+    number: int,
+) -> bool:
+    """Prove the publication is the ref this settlement will actually push.
+
+    Asked before the head, because it is what makes the head mean anything: a
+    commit is the tip of a ref in a repository, and a pull request standing at
+    the frozen SHA anywhere else is somebody else's publication that happens
+    to agree.
+
+    The REPOSITORY comes first. A fork carries this repository's ref names
+    over its commits, so one agrees on the branch and the head together while
+    naming a ref no push of this issue's has ever touched.
+
+    Refused rather than preferred either way -- neither field is evidence the
+    other is wrong -- and the record is left exactly as it stands for the
+    human who reconciles it.
+    """
+    if not context.gh.is_own_repository(reading.head_repo):
+        log.error(
+            "issue=#%d was adjudicated against PR #%d, whose head is in %r "
+            "rather than in %r; refusing to publish the accepted candidate "
+            "onto a publication this issue never made",
+            context.issue.number, number, reading.head_repo,
+            context.gh.repo_slug,
+        )
+        return _late_proof._unreconciled(
+            context,
+            _FOREIGN_REPOSITORY_PARK.format(
+                number=number,
+                read=reading.head_repo,
+                expected=context.gh.repo_slug,
+            ),
+        )
+    return _reconciled_branch(context, reading.head_branch, number)
+
+
+def _reconciled_branch(
+    context: _LateContext, observed: str | None, number: int,
+) -> bool:
+    """Prove the publication is open on the branch this settlement will push.
+
+    Compared against the branch the SEAM resolves rather than against anything
+    read back, since the question is where the push behind this verdict will
+    actually land.
+    """
+    branch = _worktree_paths._resolve_branch_name(
+        context.state, context.spec, context.issue.number,
+    )
+    if observed == branch:
+        return True
+    log.error(
+        "issue=#%d was adjudicated against PR #%d, which is open on %r rather "
+        "than on %r; refusing to publish the accepted candidate onto a "
+        "publication the push would not touch",
+        context.issue.number, number, observed, branch,
+    )
+    return _late_proof._unreconciled(
+        context,
+        _FOREIGN_BRANCH_PARK.format(
+            number=number, read=observed, expected=branch,
+        ),
+    )
 
 
 def _dropped_settled_pr(context: _LateContext) -> bool:

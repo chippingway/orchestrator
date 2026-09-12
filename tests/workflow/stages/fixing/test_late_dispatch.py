@@ -50,6 +50,7 @@ PARK_MEASUREMENT_FAILED = support.PARK_MEASUREMENT_FAILED
 PARK_REASON = fixing.PARK_REASON
 PUSH_BRANCH = fixing.PUSH_BRANCH
 KEY_RECEIPT_SHA = support.KEY_RECEIPT_SHA
+KEY_RECEIPT_PR = support.KEY_RECEIPT_PR
 # The two keywords a gated push names its commit and pins its ref by.
 REVISION = "revision"
 LEASE = "force_with_lease"
@@ -210,6 +211,9 @@ class FrozenPairReconciliationTest(unittest.TestCase, _FrozenPairMixin):
         self.assertNotIn(KEY_CANDIDATE_SHA, pinned)
         self.assertIsNone(pinned[KEY_APPROVED_SHA])
         self.assertEqual(pinned[KEY_RECEIPT_SHA], MEASURED_CANDIDATE_SHA)
+        # And the publication the push went onto, so the recovery behind this
+        # one proves an identity rather than searching a branch for one.
+        self.assertEqual(pinned[KEY_RECEIPT_PR], PR_NUMBER)
 
     def test_a_retried_pair_retires_its_park(self) -> None:
         # The park the failed reading left is durable, and no run of this tick

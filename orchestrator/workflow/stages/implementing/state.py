@@ -281,6 +281,25 @@ _PUBLISHED_SHA = "implementing_published_sha"
 # Empty for an initial publication, whose push froze no head to be pinned to.
 _PUBLISHED_LEASE = "implementing_published_lease"
 
+# The pull request the recorded publication went ONTO, written with the
+# receipt beside it and never on its own.
+#
+# The receipt says a commit reached a remote and the lease dates it to one
+# attempt; neither says WHICH pull request now carries the work, and that is
+# what the bookkeeping behind a landed push has to be bound to. Recorded only
+# by the relabel, it is missing for the whole window the receipt exists for --
+# a push that landed and a process that died before the handoff -- and a
+# reader with no identity there has nothing to fall back on but a lookup by
+# branch, which answers with whatever open pull request is on that ref: a
+# REPLACEMENT somebody opened after closing the original satisfies it, and the
+# bookkeeping is spent against a publication this stage never made.
+#
+# Written with the receipt, the identity covers exactly the window the receipt
+# does. Absent or unreadable it is refused rather than searched for: what a
+# refusal costs is a park a human repairs, and what a search costs is binding
+# a relabel, a debt and a receipt to somebody else's pull request.
+_PUBLISHED_PR = "implementing_published_pr"
+
 _PARK_REASON = "park_reason"
 
 _PRE_IMPLEMENT_SHA = "pre_implement_sha"

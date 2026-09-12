@@ -138,6 +138,7 @@ def _publish_committed_work(
         gh, spec, issue, state,
         _models._ApprovedWork(
             work.agent_result, work.worktree, verdict.candidate_sha,
+            verdict.delivered_pr,
         ),
     )
 

@@ -17,7 +17,10 @@ adjudication under, and the one window a closed pull request can arrive in.
 from __future__ import annotations
 
 from tests.workflow import fixtures
-from tests.workflow.stages.fixing import fixing_test_support as support
+from tests.workflow.stages.fixing import (
+    fixing_test_support as support,
+    published_gate_support as _published_gate,
+)
 
 MEASURED_BASE_SHA = fixtures.MEASURED_BASE_SHA
 LABEL_DECOMPOSING = fixtures.LABEL_DECOMPOSING
@@ -54,9 +57,14 @@ KEY_CANDIDATE_SHA = "late_candidate_sha"
 KEY_PUBLISHED_SHA = "late_published_sha"
 KEY_SOURCE_STAGE = "late_source_stage"
 
-# The receipt a landed gated push leaves, and the head it replaced.
+# The receipt a landed gated push leaves: the commit that reached the remote,
+# the head it replaced, and the pull request it went onto. All three go down
+# on every receipt, so `published_gate_support.receipt_group` beside this is
+# what a fixture seeds one with.
 KEY_RECEIPT_SHA = "implementing_published_sha"
 KEY_RECEIPT_LEASE = "implementing_published_lease"
+KEY_RECEIPT_PR = "implementing_published_pr"
+receipt_group = _published_gate.receipt_group
 
 # What a measured candidate whose push missed leaves instead: the commit still
 # owed a publication, the head that push is pinned to, and the bookkeeping the

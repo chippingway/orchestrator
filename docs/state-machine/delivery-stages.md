@@ -1355,7 +1355,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        issue's failure over there) — parks `late_measurement_failed`, and keeps the pair it froze for the retry.
        The record names the step as well as the family: a refusal that WAS a reading carries the
        `MeasurementFailure` it stopped at and the line that step wrote, while one that reached no reading — a pinned
-       record too damaged to act on, a debt no push can pay — carries the family alone, since those say what they
+       record too damaged to act on, a debt no push can pay, a receipt whose own publication could not be shown —
+       carries the family alone, since those say what they
        are in their own words rather than in the measurement vocabulary.
        The two steps that name the TRANSPORT rather than the work are the exception, and only for as long as the
        bound allows: a base the remote would not answer for (`base_unreadable`) and one a fetch did not bring back
@@ -1420,9 +1421,11 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        than an implementation parks that question instead of having the commit it was asked about published. And it
        is spent durably BEFORE the relabel to `validating`, because past that label implementing never sees the
        issue again and a stranded approval would freeze the branch for the rest of its life. That same write records
-       which commit the push carried (`implementing_published_sha`) and the head it replaced
-       (`implementing_published_lease`, empty for an initial publication, which froze none), for the one effect that
-       can fail on its own: a relabel GitHub would not take leaves the issue implementing with its branch pushed and
+       which commit the push carried (`implementing_published_sha`), the head it replaced
+       (`implementing_published_lease`, empty for an initial publication, which froze none) and the pull request it
+       went onto (`implementing_published_pr`, which is the only write that can name one here, since `pr_number` is
+       the relabel's), for the one effect that can fail on its own: a relabel GitHub would not take leaves the
+       issue implementing with its branch pushed and
        its pull request open, and the record is what has the next tick reuse that pull request and land the label
        rather than re-decide a published branch. The head rides along because the receipt is never cleared and so
        cannot date itself — read alone it vouches for any pull request somebody later rewound onto the commit it
@@ -2033,15 +2036,17 @@ for a push that already happened, and pushes nothing a second time.
 
 What qualifies that head is a **durable record of the push**, not the commit on its own: `late_approved_sha`, written
 with the exemption in the write immediately ahead of the push, or `implementing_published_sha` read with
-`implementing_published_lease`, the pair the push itself writes in the same write that drops the approval. One of the
-two is on the comment for every crash past that write.
+`implementing_published_lease` and `implementing_published_pr`, the group the push itself writes in the same write
+that drops the approval. One of the two is on the comment for every crash past that write.
 On a **fresh** pass neither is, and nothing of this workflow's has touched the remote yet — so a pull request that
 has left the frozen head for the accepted candidate got there because something else put it there, an agent that
 pushed its own commit being the plain case, and it refuses with every other moved head. Taking the commit alone as
 proof would hand a stage a publication nobody proved and release a candidate the adjudication never pushed. The
 receipt is read with its head for the same reason it is at the gate: it is never cleared, so an accepted candidate
 published in an earlier round is one it goes on naming, and a pull request rewound onto that commit would otherwise
-read as this settlement's push having landed. The head it replaced has to be the head this verdict was measured over.
+read as this settlement's push having landed. The head it replaced has to be the head this verdict was measured
+over, and the pull request it names has to be the one the verdict was frozen on: a branch pushed from that head onto
+a publication since closed and *replaced* by another on the same ref agrees with both of the others.
 
 **An authorized settlement proves its publication before it hands the candidate back.** A pre-publication verdict
 searches for the pull request its commit is on and drops a recorded pointer that turns out settled, because losing it
@@ -2102,14 +2107,17 @@ publication context at all.
   request would come to; the record is left naming the head it froze rather than re-entered over the one that
   landed). The disagreement has one carve-out and it takes a **durable record of a push**, never a matching commit: a
   tip named by `late_approved_sha`, by a live generation's candidate, or by `implementing_published_sha` read
-  *together with* `implementing_published_lease` — the head that receipt replaced — is this issue's own push having
-  landed and is finished rather than refused. The caller's candidate on its own is not evidence: on a fresh attempt
+  *together with* `implementing_published_lease` — the head that receipt replaced — and `implementing_published_pr`,
+  the publication it went onto, is this issue's own push having landed and is finished rather than refused. The
+  caller's candidate on its own is not evidence: on a fresh attempt
   no push of this workflow's has run, so a tip that merely happens to BE that commit says an agent pushed it, and
   forgiven there the gate would measure and route the very candidate it is holding back. Nor is the receipt on its
   own, which is never cleared and would read a pull request rewound onto a commit published rounds ago as this tick's
   push arriving — and where the checkout is standing on that same commit, every local fact agrees and none of them is
   about this round. The head the push was PINNED to is what dates the receipt, and a rewind cannot supply the one a
-  caller froze. Each parks `late_measurement_failed` with nothing
+  caller froze; the number it names is what says which publication received it, and a branch pushed from that head
+  onto a pull request since closed and replaced satisfies the other two without it. Each parks
+  `late_measurement_failed` with nothing
   pushed and no label moved, and the typed failure reaches both sinks under the stage the reading was taken in. The
   seventh is an approval whose **lease cannot be read** — absent, or not a whole object id. The lease is the whole of
   what keeps the push it licenses off a pull request somebody moved, and the one fallback available here is the head
@@ -2292,7 +2300,7 @@ pushed, relabelled or announced, and the record is left for the cleanup it is ow
 
 The *initial* publication on `workflow:implementing` carries a barrier of its own, which
 `implementing/push_barrier.py` owns. Its two endings are the latch and the pull request its push would **join** — the
-one a caller proved, or else the one the record names — since the reuse behind that push is a lookup by branch, so one
+one the gate proved, or else the one the record names — since the reuse behind that push is a lookup by branch, so one
 that ended in the window answers nothing to it and a second pull request is opened with `pr_number` overwritten. There
 the two are told apart rather than refused together: an **absent** `pr_number` is an issue that has published nothing
 — the first push of all is what opens a pull request, and the window before the relabel leaves the same shape — while
@@ -2340,15 +2348,65 @@ after it is a whole tick's worth of relabels and comments, any of which can fail
 finds a live branch, a pull request already carrying the work, and a label that still says the stage never finished.
 Without the receipt the candidate is measured again against a base that has moved, and an answer past the ceiling
 would route a pull request that ALREADY has the work to the adjudication, which is the one outcome this gate exists
-to prevent. Recognized, the commit is neither re-read nor re-pushed and the tick finishes what it was in the middle
-of.
+to prevent. Recognized, the commit is not re-*measured* and the tick finishes what it was in the middle of. It is
+still pushed, and deliberately: the push is a leased **no-op** — named against that commit and pinned to it — so git
+has nothing to send and rejects outright if somebody moved the branch between the proof and here. That request is the
+only atomic evidence there is that the publication the tick proved is still the one the pull request has; skipping it
+would settle the receipt against a remote nothing re-read.
 
-**But the receipt is a local note, and the REMOTE is what it is evidence about.** So it is only honoured while the
-publication it names is still standing: both the reading it skips and the push it skips ask that the head this tick
-froze is that same commit. A receipt naming `C` beside a pull request somebody has since moved to `F` records a
-publication that is over — read as one still standing, the tick would push nothing and hand a reviewer a head the
-pull request does not have. Refused, `C` goes back through the ordinary road, measured against the base as it is now
-and pushed leased against what was frozen.
+**But the receipt is a local note, and the REMOTE is what it is evidence about.** It records what this stage last
+pushed and nothing about where it went or whether it is still there, and it is never cleared — so a branch published
+rounds ago carries one for the rest of the issue's life. It is therefore only honoured while the publication it names
+is still standing, and what that proof costs differs by seam. A call taken PAST a publication froze the head the pull
+request is on, and the two are compared: a receipt naming `C` beside a pull request somebody has since moved to `F`
+records a publication that is over, so `C` goes back through the ordinary road, measured against the base as it is now
+and pushed leased against what was frozen. The pull request it froze is compared with that head and on the same terms:
+a head says the work is *there* and nothing about how it got there, so a receipt naming some other publication vouches
+for nothing and the candidate goes back through the reading too. The implementing seam froze neither — its push is
+what *opens* a pull request — so there the same question goes to the **remote**, and anything short of an open pull
+request of this repository's, on the branch that seam would push, standing on this exact commit, over a receipt
+recording no LEASE, **parks** rather than
+falling back to the reading: measured and found small the commit would simply be published, which force-pushes a
+branch nothing could confirm and opens a second pull request over work the first may already carry.
+
+**The lease scopes the receipt to the call that wrote it.** A lease names the head a push REPLACED, and it is written
+only where the call that made that push froze one. The implementing seam froze none, so the only receipt its window
+is about is the one an initial publication left — which records no lease at all. A receipt carrying one was written
+by some other call entirely, and its commit happening to match the candidate is a coincidence the proof may not
+spend: waved through, the candidate skips the reading and the fresh receipt behind the push *clears* the lease, which
+is the one field saying which attempt the record was really about.
+
+**Which pull request the receipt is about is the receipt's OWN, written with it.** `implementing_published_pr` goes
+down in the same write as the commit and the head it replaced, because `pr_number` is the relabel's write and the
+relabel is exactly what this window is missing. Absent or unreadable, the proof refuses rather than searching: a
+lookup by branch answers with whatever is open on that ref, so a REPLACEMENT somebody opened after closing the
+original would be taken for the publication this stage made, and the relabel, the debt and the receipt would all be
+spent against it. A receipt GROUP this build cannot read whole — a hand edit, a half-written crash — is refused one
+step earlier, at the size gate's own DOOR — of the record and of no candidate, since every road out of a gate call
+ends in the write that puts a fresh group down and the road an install with `DECOMPOSE=off` takes never reaches the
+candidate question at all — and told apart from an absent one, since every late field reads fail-closed and published
+over, the push would write a fresh group across the damage. The accepted settlement has no gate door of its own,
+reaching the transport directly, so its reconciliation refuses the same record on the same terms. Three shapes are
+damage: a member whose KEY is gone while its siblings are there — the write puts all three down, `null` included, so a
+missing one is a hand edit rather than the empty lease an initial publication records — a member carrying a value
+nothing can read, named so the park says which field to repair, and a group that names no PUBLICATION, which is a
+commit with no readable number beside it or a lease or number with no readable commit. That last pair is what a
+commit-only check walks straight past: where the receipt names some other object id, the road that compares it against
+the candidate is never taken and the next push completes the partial group instead of leaving it. Nothing is outside
+that hold: an exemption or an approval naming the same commit says the candidate needs no fresh *reading* and nothing
+about where the work went. The park writes nothing else — the receipt, the recorded number, the approval and any debt
+beside them stand exactly as they are, for the terminal that drains finished work or for the retry once a human has
+reconciled the record with the remote.
+
+**Proved, the number is carried rather than looked up again.** The push behind it is leased against the very commit
+the proof was about, so a branch somebody moved in the window rejects it instead of being force-overwritten; the
+terminal barrier immediately before that push is handed the same number; and the bookkeeping behind it resolves that
+number a second time rather than searching the branch — one somebody closed between the proof and here holds the
+tick instead of earning a second pull request over work the first already carries. That last reading re-takes the
+WHOLE identity rather than the open state, off one fetch and against the object it hands on: what it is about to
+write is a receipt naming this commit and a relabel handing a reviewer this pull request, so open, in this
+repository, on the branch the push named, and standing on the commit it sent all have to hold together still. A pull
+request somebody merely MOVED in that window is open and is not the publication the proof was about.
 
 **The head the pull request is standing on settles a debt no write got to.** The receipt and the approval it replaces
 are one write, and a process can die on it: the branch is on the remote and the pinned comment still says the commit
