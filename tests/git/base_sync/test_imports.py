@@ -17,6 +17,8 @@ _PRE_PR_OWNER = "orchestrator.git.base_sync.pre_pr"
 
 _REFRESH_OWNER = "orchestrator.git.base_sync.refresh"
 
+_REFRESH_SELECTION_OWNER = "orchestrator.git.base_sync.refresh_selection"
+
 _STATE_OWNER = "orchestrator.git.base_sync.state"
 
 _PERSISTENCE_OWNER = "orchestrator.git.base_sync.persistence"
@@ -42,10 +44,10 @@ _CONFLICTS_OWNER = "orchestrator.git.base_sync.conflicts"
 _FROZEN_OWNER = "orchestrator.git.base_sync.frozen"
 
 _OWNERS = (
-    _MODELS_OWNER, _PRE_PR_OWNER, _REFRESH_OWNER, _STATE_OWNER,
-    _PERSISTENCE_OWNER, _OUTCOMES_OWNER, _SNAPSHOT_OWNER, _RECOVERY_OWNER,
-    _STARTUP_OWNER, _ELIGIBILITY_OWNER, _PUBLICATION_OWNER, _GUARDS_OWNER,
-    _PR_OWNER, _CONFLICTS_OWNER, _FROZEN_OWNER,
+    _MODELS_OWNER, _PRE_PR_OWNER, _REFRESH_OWNER, _REFRESH_SELECTION_OWNER,
+    _STATE_OWNER, _PERSISTENCE_OWNER, _OUTCOMES_OWNER, _SNAPSHOT_OWNER,
+    _RECOVERY_OWNER, _STARTUP_OWNER, _ELIGIBILITY_OWNER, _PUBLICATION_OWNER,
+    _GUARDS_OWNER, _PR_OWNER, _CONFLICTS_OWNER, _FROZEN_OWNER,
 )
 
 _MODULES = ("orchestrator.git.base_sync", *_OWNERS)
@@ -106,6 +108,7 @@ _OWNER_ONLY_NAMES = (
     "_PENDING_PUSH_SHA",
     "_auto_rebase_retry_decision",
     "_fetch_recovery_snapshot",
+    "_issue_skips_base_sync",
     "_park_dirty_recovery",
     "_publish_auto_rebase",
     "_recover_pending_auto_base_rebase",

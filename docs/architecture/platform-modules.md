@@ -280,9 +280,16 @@ orchestrator/
                         has proved the commit it stands on; the single-ref read the branch transport spends for
                         its own lease too
     base_sync/          the per-tick base fetch and the auto-rebase of every worktree behind it
-      refresh.py        the authenticated base fetch, worktree discovery, the order the sync gates are asked
-                        in -- including the label scope on the two freezes no write ever ends -- and the
-                        per-worktree route
+      refresh.py        the authenticated base fetch, the scheduler-active guard that keeps a worktree out
+                        from under a live worker, the dirty-tree refusal a pre-PR rebase owes, the base-lag
+                        probe, and the pre-PR versus PR-aware route
+      refresh_selection.py
+                        which discovered directories name an issue, whether that issue reads at all, and the
+                        order the refusals that end a sync before any rewrite are asked in: the hard-skip, the
+                        records the `frozen` owner answers for, the read-only stages and the parks they leave
+                        behind, and last -- because it is the only one that costs a read of the checkout -- the
+                        commit a stage still owes a step, which is also where the label scope on the two
+                        freezes no write ever ends is applied
       frozen.py         which records hold a checkout still and what ends each freeze: the ones that freeze a
                         branch by their presence -- the late reading, the approval, and the terms of a squash
                         mid-rewrite among them, each read as the whole GROUP its write puts down rather than as
@@ -754,8 +761,8 @@ off a facade:
   injects rather than reaching up for either, and names nothing in the workflow layer. The caller that injects them
   is `runtime/artifacts.py`, which is where the pass is scheduled, where the scheduler hold it runs under is taken,
   and — through `runtime/exclusion.py` — where the host is claimed against the processes no hold can see.
-- `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `pre_pr` and `pr`, `pr` asks
-  `eligibility`, `startup`, and `publication` in that order, and `guards` ends in `persistence`. On the recovery
-  side `recovery` calls `snapshot`, `outcomes`, and `persistence`. The three keyword-call adapters — the PR sync,
-  the conflict route, and the crash recovery — still take the argument lists their callers spell and normalize each
-  into the typed context entry point beside it.
+- `base_sync/` — `models` and `state` carry only data. On the sync side `refresh` calls `refresh_selection` before
+  `pre_pr` and `pr`, `refresh_selection` asks `frozen` alone, `pr` asks `eligibility`, `startup`, and `publication` in
+  that order, and `guards` ends in `persistence`. On the recovery side `recovery` calls `snapshot`, `outcomes`, and
+  `persistence`. The three keyword-call adapters — the PR sync, the conflict route, and the crash recovery — still
+  take the argument lists their callers spell and normalize each into the typed context entry point beside it.

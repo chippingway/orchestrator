@@ -17,9 +17,9 @@ is an owner rather than a tuple. An
 exemption and a publication record are invalidated by the head moving off them
 rather than by any write, so what answers for those is the checkout itself --
 and, since neither is ever dropped, how long the STAGE that reads them keeps
-the issue, which the `refresh` owner asks beside this one. And two PARKS
-freeze a branch with no record the list can find: a size reading nobody could
-take, whenever the refusal came before a commit could be named, and an
+the issue, which the `refresh_selection` owner asks beside this one. And two
+PARKS freeze a branch with no record the list can find: a size reading nobody
+could take, whenever the refusal came before a commit could be named, and an
 implementer timeout, whose watermark is a commit that has not been made yet.
 Both are answered by the reason the park carries.
 """
@@ -177,8 +177,8 @@ _LATE_COLLAPSE_KEYS: tuple[str, ...] = (
 # earned a verdict, or ever published, would be out of the base refresh for
 # the rest of its life. They are read the way the GATE reads them instead:
 # this checkout is standing on the commit, or there is nothing here left to
-# protect. The `refresh` owner beside this one asks the other half, which is
-# whether the stage that has to act on the commit still has the issue.
+# protect. The `refresh_selection` owner beside this one asks the other half,
+# which is whether the stage that has to act on the commit still has the issue.
 _HEAD_HELD_KEYS: tuple[str, ...] = (
     "late_exempt_sha",
     "implementing_published_sha",
