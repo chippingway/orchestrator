@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from orchestrator.agents import environment as _environment, processes as _processes
+from orchestrator.agents import environment as _environment, process_groups as _process_groups, processes as _processes
 from orchestrator.git.verification import models as _models, probes as _probes, process as _process
 
 
@@ -27,7 +27,7 @@ def _run_verify_command(
     """Run and classify one command while registering its process group."""
     proc = _process._spawn_verify_command(worktree, command, child_env)
     with _processes.registered(proc):
-        drained = _processes.communicate_bounded(proc, timeout)
+        drained = _process_groups.communicate_bounded(proc, timeout)
         if drained is None:
             return _process._timeout_verify_result(proc, command)
         return _process._completed_verify_result(

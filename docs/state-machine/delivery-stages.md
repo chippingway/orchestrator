@@ -1256,8 +1256,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        already ahead of base (one a read-only relabel certified, one a size-gate park left a candidate on, one a
        human's guidance resumed a developer over) that difference publishes work the run never made.
        (`_on_commits` clears the spent watermark + stale reason on publish.) Pairs with the hardened
-       `processes.terminate_process_group` (SIGKILLs surviving descendants after the leader exits) so a build grandchild
-       cannot keep committing into the worktree after the timeout is recorded.
+       `process_groups.terminate_process_group` (SIGKILLs surviving descendants after the leader exits) so a build
+       grandchild cannot keep committing into the worktree after the timeout is recorded.
      - new commits + clean tree → the **late size gate** first (`implementing/late_gate.py` and the
        `late_records` / `late_freeze` / `late_evidence` / `late_verdict` / `late_parks` owners under it, plus
        `late_consent` / `late_command` for the `late_unauthorized_exemption` park no road in this build CREATES,

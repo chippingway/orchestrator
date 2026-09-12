@@ -1,10 +1,9 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Process registry and subprocess-group lifecycle owner tests."""
+"""Process registry, the runs spawned into it, and the shutdown sweep."""
 
 from __future__ import annotations
 
-import contextlib
 import os
 import signal
 import subprocess
@@ -34,38 +33,19 @@ class RunSubprocessRegistrationTest(unittest.TestCase):
             self.assertNotIn(proc, _processes._running_procs)
 
 
-class CommunicateBoundedTest(unittest.TestCase):
-    """`communicate_bounded` is the shared drain primitive both the agent
-    runner and the verify runner call. Its contract: return the captured
-    streams (coercing an absent stream to ``""``) on completion, and ``None``
-    when the drain itself blocks past the cap so the caller can escalate.
-    """
-
-    def test_returns_streams_coercing_absent_to_empty(self) -> None:
-        proc = MagicMock()
-        proc.communicate.return_value = (None, None)
-        self.assertEqual(_processes.communicate_bounded(proc, 5), ("", ""))
-
-    def test_returns_none_on_timeout(self) -> None:
-        proc = MagicMock()
-        proc.communicate.side_effect = subprocess.TimeoutExpired(
-            cmd=_agent_cases._AGENT_COMMAND,
-            timeout=5,
-        )
-        self.assertIsNone(_processes.communicate_bounded(proc, 5))
-
-
 class TerminateAllRunningTest(unittest.TestCase):
     """`terminate_all_running` is the shutdown hook that kills in-flight agent
     process groups so a restart does not hang for up to `AGENT_TIMEOUT`. It
     must SIGTERM every registered group, SIGKILL anything still alive at the
-    shared grace deadline, and be a clean no-op when nothing is in flight.
+    shared grace deadline, and be a clean no-op when nothing is in flight. The
+    SIGTERM is its own and the probe plus SIGKILL are the group owner's, so the
+    sweep is observed through the `killpg` both of them read off `os`.
     """
 
     def test_no_procs_is_noop(self) -> None:
         # Registry empty between tests (every spawn unregisters in a finally),
         # so this exercises the early return with no signals sent.
-        with patch.object(_processes.os, _agent_cases._KILLPG) as killpg:
+        with patch(_agent_cases._SHARED_KILLPG_TARGET) as killpg:
             self.assertEqual(_processes.terminate_all_running(), 0)
             killpg.assert_not_called()
 
@@ -77,9 +57,8 @@ class TerminateAllRunningTest(unittest.TestCase):
         proc2.pid = 222
         proc1.wait.return_value = 0
         proc2.wait.return_value = 0
-        with _support.registered_procs(proc1, proc2), patch.object(
-            _processes.os,
-            _agent_cases._KILLPG,
+        with _support.registered_procs(proc1, proc2), patch(
+            _agent_cases._SHARED_KILLPG_TARGET,
             side_effect=_support.killpg_group_empty,
         ) as signal_mock:
             terminated_count = _processes.terminate_all_running(grace=0.5)
@@ -98,9 +77,8 @@ class TerminateAllRunningTest(unittest.TestCase):
         proc = MagicMock()
         proc.pid = 555
         proc.wait.return_value = 0  # leader exits promptly on SIGTERM
-        with _support.registered_procs(proc), patch.object(
-            _processes.os,
-            _agent_cases._KILLPG,
+        with _support.registered_procs(proc), patch(
+            _agent_cases._SHARED_KILLPG_TARGET,
             side_effect=_support.killpg_group_alive,
         ) as signal_mock:
             _processes.terminate_all_running(grace=_agent_cases._TERMINATION_GRACE_SECONDS)
@@ -118,7 +96,7 @@ class TerminateAllRunningTest(unittest.TestCase):
             cmd=_agent_cases._AGENT_COMMAND,
             timeout=_agent_cases._TERMINATION_GRACE_SECONDS,
         )
-        with _support.registered_procs(proc), patch.object(_processes.os, _agent_cases._KILLPG) as killpg:
+        with _support.registered_procs(proc), patch(_agent_cases._SHARED_KILLPG_TARGET) as killpg:
             _processes.terminate_all_running(grace=_agent_cases._TERMINATION_GRACE_SECONDS)
             calls = [call.args for call in killpg.call_args_list]
         self.assertIn((333, signal.SIGTERM), calls)
@@ -130,9 +108,8 @@ class TerminateAllRunningTest(unittest.TestCase):
         proc = MagicMock()
         proc.pid = 444
         proc.wait.return_value = 0
-        with _support.registered_procs(proc), patch.object(
-            _processes.os,
-            _agent_cases._KILLPG,
+        with _support.registered_procs(proc), patch(
+            _agent_cases._SHARED_KILLPG_TARGET,
             side_effect=ProcessLookupError,
         ):
             self.assertEqual(
@@ -141,102 +118,6 @@ class TerminateAllRunningTest(unittest.TestCase):
                 ),
                 1,
             )
-
-    def test_process_group_alive_real_process(self) -> None:
-        # The mock tests can't exercise the actual `killpg(_, 0)` probe the
-        # SIGKILL decision now relies on, so drive a real process group:
-        # alive while the leader runs, empty once it is killed and reaped.
-        proc = subprocess.Popen(
-            [sys.executable, _agent_cases._PYTHON_COMMAND_FLAG, "import time; time.sleep(120)"],
-            start_new_session=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        with contextlib.ExitStack() as cleanup:
-            cleanup.callback(_support.stop_process_group, proc)
-            self.assertTrue(_processes.process_group_alive(proc.pid))
-        self.assertFalse(_processes.process_group_alive(proc.pid))
-
-
-class TerminateProcessGroupTest(unittest.TestCase):
-    """`terminate_process_group` is the per-timeout cleanup. It must mirror
-    `terminate_all_running`'s safety model: after the leader exits it probes
-    the group with `killpg(_, 0)` and SIGKILLs any surviving descendant, so a
-    build grandchild the agent forked cannot keep mutating the worktree after
-    the timeout has already been recorded.
-    """
-
-    def test_sigkill_if_child_outlives_leader(self) -> None:
-        # The leader exits on SIGTERM but a descendant in the same group
-        # ignored it. `proc.wait()` returns, yet the signal-0 probe shows the
-        # group still alive, so the group must be SIGKILLed.
-        proc = MagicMock()
-        proc.pid = 777
-        proc.wait.return_value = 0  # leader exits promptly on SIGTERM
-
-        with patch.object(
-            _processes.os,
-            _agent_cases._KILLPG,
-            side_effect=_support.killpg_group_alive,
-        ) as signal_mock:
-            _processes.terminate_process_group(proc)
-            sent = [call.args for call in signal_mock.call_args_list]
-        self.assertIn((777, signal.SIGTERM), sent)
-        self.assertIn((777, 0), sent)  # group liveness probed after leader exit
-        self.assertIn((777, signal.SIGKILL), sent)
-
-    def test_no_sigkill_when_group_fully_exited(self) -> None:
-        # Leader exits and the signal-0 probe reports the group empty, so no
-        # SIGKILL is sent -- the clean path.
-        proc = MagicMock()
-        proc.pid = 778
-        proc.wait.return_value = 0
-
-        with patch.object(
-            _processes.os,
-            _agent_cases._KILLPG,
-            side_effect=_support.killpg_group_empty,
-        ) as signal_mock:
-            _processes.terminate_process_group(proc)
-            sent = [call.args for call in signal_mock.call_args_list]
-        self.assertIn((778, signal.SIGTERM), sent)
-        self.assertIn((778, 0), sent)
-        self.assertNotIn((778, signal.SIGKILL), sent)
-
-    def test_sigkills_straggler_past_deadline(self) -> None:
-        # The leader never exits on SIGTERM; once the grace `wait` times out
-        # the group is SIGKILLed without a probe (a live leader means a live
-        # group).
-        proc = MagicMock()
-        proc.pid = 779
-        proc.wait.side_effect = subprocess.TimeoutExpired(
-            cmd=_agent_cases._AGENT_COMMAND,
-            timeout=5,
-        )
-        with patch.object(_processes.os, _agent_cases._KILLPG) as killpg:
-            _processes.terminate_process_group(proc)
-            calls = [call.args for call in killpg.call_args_list]
-        self.assertIn((779, signal.SIGTERM), calls)
-        self.assertIn((779, signal.SIGKILL), calls)
-        self.assertNotIn((779, 0), calls)  # no probe when the leader is alive
-
-    def test_first_sigterm_lookup_needs_no_kill(self) -> None:
-        # The group already exited between the timeout firing and the killpg;
-        # the ProcessLookupError race short-circuits before any wait/SIGKILL.
-        proc = MagicMock()
-        proc.pid = 780
-        with patch.object(
-            _processes.os,
-            _agent_cases._KILLPG,
-            side_effect=ProcessLookupError,
-        ) as signal_mock:
-            _processes.terminate_process_group(proc)
-            sent = [call.args for call in signal_mock.call_args_list]
-        self.assertEqual(
-            sent,
-            [(780, signal.SIGTERM)],
-        )
-        proc.wait.assert_not_called()
 
 
 class InterruptedSubprocessClassificationTest(unittest.TestCase):

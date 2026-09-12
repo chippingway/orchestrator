@@ -1,13 +1,15 @@
 # Copyright 2026 Geser Dugarov
 # SPDX-License-Identifier: Apache-2.0
-"""Shared process registry and hardened subprocess-group lifecycle.
+"""Shared process registry and the agent runs spawned into it.
 
 Agent runs and the verify runner both spawn children into their own process
 group (``start_new_session=True``) and register the group leader here so the
 shutdown sweep can reach an in-flight run. Process creation lives in this owner
 so the historical ``orchestrator.agents.processes.subprocess.Popen`` patch
-point and the shared shutdown registry keep their exact behavior; the
-``orchestrator.agents`` API re-exports only ``terminate_all_running``.
+point and the shared shutdown registry keep their exact behavior; the drain,
+the group-liveness probe, and the signal escalation each teardown here spends
+belong to the ``process_groups`` owner beside it. The ``orchestrator.agents``
+API re-exports only ``terminate_all_running``.
 """
 from __future__ import annotations
 
@@ -20,7 +22,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
 
-from orchestrator.agents import models as _agent_models
+from orchestrator.agents import models as _agent_models, process_groups as _process_groups
 
 _running_procs: set[subprocess.Popen] = set()
 _running_procs_lock = threading.Lock()
@@ -50,43 +52,6 @@ def registered(proc: subprocess.Popen) -> Iterator[subprocess.Popen]:
         unregister_proc(proc)
 
 
-def communicate_bounded(
-    proc: subprocess.Popen,
-    timeout: float,
-) -> tuple[str, str] | None:
-    """Communicate within a wall-clock cap, returning ``None`` on timeout."""
-    try:
-        stdout, stderr = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        return None
-    return stdout or "", stderr or ""
-
-
-def process_group_alive(process_group_id: int) -> bool:
-    """Probe whether a process group still contains a live member."""
-    try:
-        os.killpg(process_group_id, 0)
-    except ProcessLookupError:
-        return False
-    return True
-
-
-def sigkill_unless_group_gone(
-    proc: subprocess.Popen,
-    timeout: float,
-) -> None:
-    """Wait for the leader, then SIGKILL any surviving process group."""
-    leader_exited = True
-    try:
-        proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        leader_exited = False
-    if leader_exited and not process_group_alive(proc.pid):
-        return
-    with suppress(ProcessLookupError):
-        os.killpg(proc.pid, signal.SIGKILL)
-
-
 def terminate_all_running(grace: float = 5.0) -> int:
     """SIGTERM every registered group, then SIGKILL deadline stragglers."""
     with _running_procs_lock:
@@ -99,7 +64,7 @@ def terminate_all_running(grace: float = 5.0) -> int:
     deadline = time.monotonic() + grace
     for proc in running_procs:
         remaining = max(0, deadline - time.monotonic())
-        sigkill_unless_group_gone(proc, remaining)
+        _process_groups.sigkill_unless_group_gone(proc, remaining)
     return len(running_procs)
 
 
@@ -120,10 +85,10 @@ def run_subprocess(
         start_new_session=True,
     )
     with registered(proc):
-        drained = communicate_bounded(proc, timeout)
+        drained = _process_groups.communicate_bounded(proc, timeout)
         if drained is None:
-            terminate_process_group(proc)
-            drained = communicate_bounded(proc, 10)
+            _process_groups.terminate_process_group(proc)
+            drained = _process_groups.communicate_bounded(proc, 10)
             stdout, stderr = ("", "") if drained is None else drained
             return _agent_models.SubprocessResult(stdout, stderr, -1, True, False)
         stdout, stderr = drained
@@ -135,12 +100,3 @@ def run_subprocess(
             False,
             interrupted,
         )
-
-
-def terminate_process_group(proc: subprocess.Popen) -> None:
-    """SIGTERM one process group, then SIGKILL it if anything survives."""
-    try:
-        os.killpg(proc.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        return
-    sigkill_unless_group_gone(proc, timeout=5)

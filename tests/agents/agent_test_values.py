@@ -28,6 +28,10 @@ _ENV_KWARG = "env"
 _SUBPROCESS_TIMEOUT_SECONDS = 30
 _TERMINATION_GRACE_SECONDS = 0.05
 _KILLPG = "killpg"
+# The shutdown sweep sends its own SIGTERM while the group owner beside it
+# probes and SIGKILLs, and both read `killpg` off the one `os` module, so a
+# test spanning the two patches it there rather than on either owner.
+_SHARED_KILLPG_TARGET = "os.killpg"
 _AGENT_COMMAND = "agent"
 _TYPE_FIELD = "type"
 _ASSISTANT_EVENT = "assistant"

@@ -99,8 +99,9 @@ orchestrator/
                         result models, credential filtering, the
                         backend-agnostic session-id walk and the Claude
                         final-message parsing beside it, the transient-provider
-                        verdict read off that output, the process registry, and
-                        one module per backend
+                        verdict read off that output, the process registry and
+                        the group operations every teardown spends, and one
+                        module per backend
   scheduler/            the `IssueScheduler` every tick shares and the typed
                         submissions it takes
   workflow/             the state machine: the label vocabularies and the
@@ -433,12 +434,12 @@ lock, and the resume mechanic are documented in
 - **Input**: prompt string; optional resume session id; timeout (`AGENT_TIMEOUT` / `REVIEW_TIMEOUT`).
 - **Output**: `AgentResult(...)`. `session_id` is harvested by `agents/session_ids.py` walking the JSONL events for
   any UUID-shaped value at `session_id` / `conversation_id` / etc. (shared between both backends).
-- **Timeout cleanup** (`processes.terminate_process_group`): on timeout expiry the runner SIGTERMs the agent's whole
-  process group (every spawn uses `start_new_session=True`), waits for the leader, then — mirroring the shutdown sweep
-  (`terminate_all_running`) — probes the group with `killpg(_, 0)` and SIGKILLs any surviving descendant. Without the
-  probe a build grandchild the agent forked (Maven, gradle, a JVM test runner) could keep mutating the worktree after
-  the timeout was recorded — the failure mode that stranded a late clean commit behind the implementing-stage
-  `agent_timeout` park.
+- **Timeout cleanup** (`process_groups.terminate_process_group`): on timeout expiry the runner SIGTERMs the agent's
+  whole process group (every spawn uses `start_new_session=True`), waits for the leader, then — mirroring the
+  shutdown sweep (`terminate_all_running`, which spends the same escalation over every registered group) — probes
+  the group with `killpg(_, 0)` and SIGKILLs any surviving descendant. Without the probe a build grandchild the
+  agent forked (Maven, gradle, a JVM test runner) could keep mutating the worktree after the timeout was recorded —
+  the failure mode that stranded a late clean commit behind the implementing-stage `agent_timeout` park.
 
 ### Environment filtering (`agents.environment.filter_agent_env`)
 
