@@ -1099,18 +1099,23 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
      blinked. A fetch that FAILS writes nothing and falls *through* — the tick carries on to the stage — because
      nothing about a failed read says which ending, if any, it was hiding, and answered as one every issue whose
      remote blinked would stop advancing; the closed-issue terminal behind it is the one that defers the whole tick
-     on its own failed read, so a transient failure cannot label a merged-PR issue `rejected`. The PR terminals are
-     reached only past the plan question, which two records answer. A live `discussion_plan_path` says the recorded
-     PR is the `discussion` stage's plan whatever its head is now — the handoff below retires that record durably
-     before anything spawns, so nothing here has pushed yet and a head that moved is the humans editing the design
-     they are agreeing to (a corrected plan, a base merged into the branch), not work having landed. Past the
-     handoff `discussion_plan_sha` answers, and it is the head that PR was on when the handoff took it —
-     snapshotted there in the path record's place, so an amendment the humans made is not read as an implementation
-     by the tick after. A recorded PR still on that commit is the plan, and one whose head has moved is this
-     stage's own push. Neither may finalize as work having landed while it is still the plan. That read has three
-     answers, not two — a PR that could not be fetched ends the tick where it happened, unfinalized and unspawned,
-     because falling through would ask GitHub the same question a second time and a request that failed once and
-     succeeded next would finalize the plan the first answer existed to protect.
+     on its own failed read, so a transient failure cannot label a merged-PR issue `rejected`. On `implementing` the
+     PR terminals are reached only past the plan question, which two records answer — and on that stage the one
+     reading serves both, because what tells a plan from a delivery is the PR's **head** while what the terminals
+     decide on is its **state**. Taken from two fetches those are two moments, and a head a human moved in between
+     has one snapshot classified and another ended. A live `discussion_plan_path` says the recorded PR is the
+     `discussion` stage's plan whatever its head is now, and it is asked *ahead* of the reading and costs nothing —
+     the handoff below retires that record durably before anything spawns, so nothing here has pushed yet and a head
+     that moved is the humans editing the design they are agreeing to (a corrected plan, a base merged into the
+     branch), not work having landed. Past the handoff `discussion_plan_sha` answers, off the same reading the
+     terminals use: it is the head that PR was on when the handoff took it — snapshotted there in the path record's
+     place, so an amendment the humans made is not read as an implementation by the tick after. A recorded PR still
+     on that commit is the plan, and one whose head has moved is this stage's own push. Neither may finalize as work
+     having landed while it is still the plan. That read has three answers, not two — a PR that could not be read
+     ends the tick where it happened, unfinalized and unspawned, *where the record makes the head the answer*: with
+     `discussion_plan_sha` standing there is no telling the plan from a delivery, and neither answer is one to
+     guess at. Where no such record stands there is nothing for a head to settle, so a failed reading falls through
+     exactly as it does on `validating` and `documenting`.
   1. Awaiting-human resume: on a new human comment past `last_action_comment_id`, resume the dev session via
      `run_agent(dev_agent, ...)`. A `retry_cap` park is the one awaiting-human state this road never sees: the
      spent-budget bullet below owns the tick before it, because a resume is not a fresh spawn and the daily spawn

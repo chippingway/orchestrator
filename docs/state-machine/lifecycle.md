@@ -311,7 +311,14 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                             about a failed read says which
                                             ending it was hiding, and answered
                                             as one every issue whose remote
-                                            blinked would stop advancing
+                                            blinked would stop advancing. The
+                                            one exception is implementing with
+                                            discussion_plan_sha recorded,
+                                            where the HEAD is what tells the
+                                            plan from a delivery: a reading
+                                            that established none cannot say
+                                            which, so that tick is held
+                                            unfinalized and unspawned instead
 
    in_review (orchestrator never merges; merged arc always external):
      pr merged externally               ─► done (close + cleanup)

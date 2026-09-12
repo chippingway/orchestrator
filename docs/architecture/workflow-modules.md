@@ -101,7 +101,12 @@ workflow/                   publishes the two label vocabularies, `guard_transit
                             again only where the RECORD positively says there is nothing to end, since the probe
                             that asks is a request and a request can fail -- the same reading BOUND to an admitted
                             one instead, since the worker refetches and a reopen in that window would answer
-                            differently -- the hard-skip filter a held close
+                            differently -- the publication HOLD that postpones that drop, taken where the scheduler
+                            ADMITS the submit and given back by the task it wrapped, since a poll refused in
+                            between is refused precisely because a worker has the issue and the queue, the refetch
+                            and the label checks are all window a dropped reading would never be seen through, with
+                            one of its own taken over the handler this owner runs -- the only hold the sequential
+                            path has -- the hard-skip filter a held close
                             observation outranks (it is not this tick's reading, so a park, a reopen, and a relabel
                             off the swept labels each leave it standing -- an owner the enumeration never yields is
                             added by number), the family /
