@@ -108,7 +108,8 @@ polling tick, so all are safe to truncate, rotate, or delete.
 
 [`security.md`](security.md) — the project security checklist mapped to this repo: what the repo files enforce, what
 is operator-owned in GitHub or org settings, the comment trust boundary, the bounded agent spend one issue may ever
-reach, pinned-state authentication, and the cross-repo awareness disclosure.
+reach, pinned-state authentication, what a trusted pinned record still cannot license a publication to do, and the
+cross-repo awareness disclosure.
 
 The reporting channel is neither on that page nor in this directory. [`../SECURITY.md`](../SECURITY.md) is the root
 community-health file GitHub's Security tab and community profile read, and it is written for a reporter from outside

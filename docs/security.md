@@ -586,6 +586,37 @@ worker-thread clients), **and** its entire body is the state marker — exactly 
   authenticates *which comments are input*. Both are enforced independently, and the state boundary applies even when
   the allowlist is unset.
 
+## What a trusted pinned record still cannot license
+
+The section above authenticates *which comment is state*. It does not make that comment's contents true: the account
+backing the token wrote it, but a maintainer's hand edit, a half-written record a crash left, and a remote that moved
+since all leave a trusted comment claiming something GitHub no longer agrees with. What a publication does is
+irreversible there — a force-push over somebody's work, a second pull request opened over work the first already
+carries — so the publication side proves the record against the remote rather than acting on it.
+
+- **A publication receipt is a group, and a partial one is damage.** `implementing_published_sha`,
+  `implementing_published_lease` and `implementing_published_pr` are written in one call and cleared in one call, so a
+  group that reads back partial — a key that has gone, a value this build cannot read, a commit with no number beside
+  it — is a record nothing here produced. Every other reader in the domain is fail-closed and sees such a member as an
+  absence, which is exactly wrong for one deciding whether the record is *sound*: read as "no receipt" the candidate is
+  published, and the write behind that push puts a fresh group down over the damage, destroying the only evidence an
+  operator had. So it is refused at the size gate's own door, and by their own reconciliations on the two roads that
+  have no such door — `DECOMPOSE=off` with no caller-named candidate, and the accepted settlement. The park writes
+  nothing else: the receipt, the recorded number, the approval and any debt all stand for the terminal or the retry.
+- **A receipt is proof of nothing until the remote agrees.** It records what this stage last pushed and nothing about
+  where that went or whether it is still there, and it is never cleared — so a branch published rounds ago carries one
+  for the rest of the issue's life. A candidate is therefore waved past the size reading only where the pull request
+  the receipt *itself* names is open, in this repository, on the branch that seam would push, and standing on that
+  exact commit. Anything short of it parks rather than republishing, since measured and found small the commit would be
+  force-pushed onto a branch nothing could confirm.
+- **A fork cannot answer for one of this repository's publications.** A fork carries this repository's ref names over
+  this repository's commits, so a pull request opened from one agrees on the branch and the head together. Every reader
+  that freezes or proves a publication therefore asks `github/identity.py` whether the head repository is this one —
+  against the name GitHub itself uses, matched case-insensitively, so neither a fork nor a setting an operator typed in
+  another casing decides the question. The same qualification the artifact pass makes on the reclamation side
+  ([Scheduled artifact reclamation](#scheduled-artifact-reclamation)), made where the effect is a push rather than a
+  delete ([`state-machine/labels-and-state.md`](state-machine/labels-and-state.md#pinned-state)).
+
 ## Cross-repo awareness disclosure (`EXPOSE_TRACKED_REPOS`)
 
 When more than one repo is configured (`REPOS`) and `EXPOSE_TRACKED_REPOS` is on (the default), working-agent prompts

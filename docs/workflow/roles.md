@@ -503,9 +503,10 @@ it, and it is never searched for. `pr_number` is the relabel's write, so it is m
 proof exists for — a push that landed and a process that died before it — and the only other way to name one is a
 lookup by branch, which answers with whatever is open on that ref: a replacement somebody opened after closing the
 original satisfies every other term, and the relabel, the debt and the receipt would all be spent against a
-publication this stage never made. Absent or unreadable, the proof refuses, and what that costs is a park a human
-repairs. A receipt GROUP this build cannot read whole is refused one step earlier and told apart from an absent one,
-since every late field reads fail-closed and published over, the push would write a fresh group across the damage. The
+publication this stage never made. So a group that cannot produce a readable one is *damage* rather than a question
+the proof can answer, and what that costs is a park a human repairs. It is refused one step earlier, with every other
+shape a group this build cannot read whole takes, and told apart from a group that claims nothing at all: every late
+field reads fail-closed, and published over, the push would write a fresh group across the damage. The
 three are one record — written in one call, cleared in one call — so the check is over all three, and it stands at the
 gate's own door rather than beside the candidate question: every road out of a gate call ends in the write that puts a
 fresh group down, and the one an install with `DECOMPOSE=off` takes answers before that question is reached. The
@@ -1100,6 +1101,15 @@ for an open one and finds none. So the commit is what the pull request is found 
 recorded number is kept only while it is still open — a settled one is dropped rather than handed on. A lookup, or a
 recorded pull request, that could not be read parks (`late_pr_unreconciled`) rather than publishing on an answer
 nobody gave.
+
+That is the road for a verdict taken BEFORE anything was published. One taken past a publication searches for
+nothing: the entry names the pull request the work is already on, so the same owner proves it instead — the receipt
+group first and without asking the remote anything, since this road reaches the transport without the size gate's
+own door and the push it makes writes a fresh group over whatever the comment carries; then the pull request open,
+its head in *this* repository rather than in a fork carrying the same ref names, open on the branch this settlement
+resolves and pushes, and standing on the head the entry froze. Each of those parks the same way, and none of them
+drops what it could not confirm
+([`../state-machine/delivery-stages.md`](../state-machine/delivery-stages.md#the-size-gate-on-a-published-pull-request-every-push-onto-an-open-pr)).
 
 Two things the reconciliation deliberately does not do. It creates **no snapshot** — a snapshot exists so children
 can be cut from a candidate about to be superseded, and an accepted candidate supersedes nothing, so preserving a

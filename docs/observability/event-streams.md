@@ -890,9 +890,9 @@ this page.
 A refusal that *was* a reading therefore carries the step — the git layer's own vocabulary (`base_unreadable`,
 `base_absent`, `candidate_unreadable`, `candidate_absent`, `diff_unpinnable`, `diff_failed`, `diff_unreadable`) — and,
 where that step wrote one, the `detail` line beside it. One that reached no reading carries neither: the size gate
-also parks on a pinned record too damaged to act on, on a debt no push can pay, and on a publication receipt whose
-own pull request it could not show, and what those hold instead is the
-sentence they were about to tell a human, which is prose and has no field here. Every one of them is still
+also parks on a pinned record too damaged to act on, on a debt no push can pay, on a publication receipt group that
+does not read back whole, and on a receipt whose own pull request it could not show, and what those hold instead is
+the sentence they were about to tell a human, which is prose and has no field here. Every one of them is still
 `event: late_failure` with `failure: measurement_failed`, so a filter written against that pair matches all of them
 and the two fields only ever *narrow* what an analysis can group by. `events.measurement_failure_event` is the single
 constructor the emitters go through: it records the step only when it is a member, drops the line with it, and

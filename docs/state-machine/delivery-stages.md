@@ -1355,8 +1355,8 @@ The hash is re-persisted on every reaction so a single edit triggers exactly one
        issue's failure over there) — parks `late_measurement_failed`, and keeps the pair it froze for the retry.
        The record names the step as well as the family: a refusal that WAS a reading carries the
        `MeasurementFailure` it stopped at and the line that step wrote, while one that reached no reading — a pinned
-       record too damaged to act on, a debt no push can pay, a receipt whose own publication could not be shown —
-       carries the family alone, since those say what they
+       record too damaged to act on, a debt no push can pay, a receipt group that does not read back whole, a
+       receipt whose own publication could not be shown — carries the family alone, since those say what they
        are in their own words rather than in the measurement vocabulary.
        The two steps that name the TRANSPORT rather than the work are the exception, and only for as long as the
        bound allows: a base the remote would not answer for (`base_unreadable`) and one a fetch did not bring back
@@ -2051,11 +2051,20 @@ a publication since closed and *replaced* by another on the same ref agrees with
 **An authorized settlement proves its publication before it hands the candidate back.** A pre-publication verdict
 searches for the pull request its commit is on and drops a recorded pointer that turns out settled, because losing it
 costs nothing: the publication opens the pull request the work needs. A post-publication verdict knows which pull
-request the reading was about, so it checks rather than searches — the pull request must still be open and still be
-standing on the head the entry froze — and a check that fails **parks** (`late_pr_unreconciled`) instead of dropping
-what it could not confirm. Dropping the number there would push onto a branch whose pull request a human settled and
-open a second one for a change that was adjudicated against the first; publishing over a head that moved would
-publish on a reading the branch has already overtaken.
+request the reading was about, so it checks rather than searches, and a check that fails **parks**
+(`late_pr_unreconciled`) instead of dropping what it could not confirm. Dropping the number there would push onto a
+branch whose pull request a human settled and open a second one for a change that was adjudicated against the first;
+publishing over a head that moved would publish on a reading the branch has already overtaken.
+
+Five checks, in the order their costs run. The **receipt group** comes first and asks the remote nothing: this road
+reaches the transport without the size gate's own door, so the push it makes writes a fresh group over whatever the
+comment carries — and a group that does not read back whole is the one record that write destroys rather than
+corrects. Then the reading itself, which has to have come back and to say the pull request is still **open**. Then
+the **repository** its head lives in, because a fork carries this repository's ref names over its commits and would
+otherwise agree on everything below. Then the **branch**, compared against the one this settlement resolves for
+itself and pushes, since the number and the branch are separate fields on one pinned comment and a pull request open
+anywhere else is one the push would never touch. And last the **head**, which has to be the one the entry froze.
+Every refusal leaves the verdict, the exemption, the approval and the record exactly as they stand.
 
 The entry is what a call taken past publication has and one taken before it does not, and all three of its facts are
 frozen before any effect because a later tick could re-derive none of them: the **stage** the gate is taking the issue
@@ -2378,14 +2387,14 @@ is the one field saying which attempt the record was really about.
 
 **Which pull request the receipt is about is the receipt's OWN, written with it.** `implementing_published_pr` goes
 down in the same write as the commit and the head it replaced, because `pr_number` is the relabel's write and the
-relabel is exactly what this window is missing. Absent or unreadable, the proof refuses rather than searching: a
-lookup by branch answers with whatever is open on that ref, so a REPLACEMENT somebody opened after closing the
-original would be taken for the publication this stage made, and the relabel, the debt and the receipt would all be
-spent against it. A receipt GROUP this build cannot read whole — a hand edit, a half-written crash — is refused one
-step earlier, at the size gate's own DOOR — of the record and of no candidate, since every road out of a gate call
-ends in the write that puts a fresh group down and the road an install with `DECOMPOSE=off` takes never reaches the
-candidate question at all — and told apart from an absent one, since every late field reads fail-closed and published
-over, the push would write a fresh group across the damage. The accepted settlement has no gate door of its own,
+relabel is exactly what this window is missing. It is never searched for: a lookup by branch answers with whatever is
+open on that ref, so a REPLACEMENT somebody opened after closing the original would be taken for the publication this
+stage made, and the relabel, the debt and the receipt would all be spent against it. So a group that cannot produce a
+readable one is *damage* rather than a question the proof can answer, and it is refused one step earlier, at the size
+gate's own DOOR — of the record and of no candidate, since every road out of a gate call ends in the write that puts
+a fresh group down and the road an install with `DECOMPOSE=off` takes never reaches the candidate question at all.
+Told apart from a group that claims nothing at all, since every late field reads fail-closed and published over, the
+push would write a fresh group across the damage. The accepted settlement has no gate door of its own,
 reaching the transport directly, so its reconciliation refuses the same record on the same terms. Three shapes are
 damage: a member whose KEY is gone while its siblings are there — the write puts all three down, `null` included, so a
 missing one is a hand edit rather than the empty lease an initial publication records — a member carrying a value

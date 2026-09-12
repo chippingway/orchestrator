@@ -224,19 +224,34 @@ than a second source of truth: where the two disagree, the handler pages are aut
                                      never touches, and a fork carries these
                                      ref names over these commits, so nothing
                                      else tells one from this issue's own
+     a receipt group nothing can  ─► parked at the gate's own door, of the
+     read whole                      record and of no candidate: a member
+                                     whose key is gone, one carrying a value
+                                     nothing here can use, and one naming no
+                                     publication at all. The write behind any
+                                     push puts a fresh group down, so damage
+                                     is retained rather than completed --
+                                     including on the two roads with no gate
+                                     door of their own, DECOMPOSE=off with no
+                                     named candidate and the accepted
+                                     settlement
      a receipt naming this        ─► published without a reading only where
      candidate                       the remote agrees: the PR the receipt
                                      itself names, open here, on the branch
                                      this seam would push, standing on that
-                                     exact commit. Anything short of it parks
-                                     with the receipt, the recorded number and
-                                     any debt left as they stand -- an
-                                     exemption or an approval naming the same
-                                     commit included, since neither says where
-                                     the work went. Proved, the number is
-                                     carried: the push is leased to that
-                                     commit and the bookkeeping resolves that
-                                     PR again rather than searching the branch
+                                     exact commit, over a receipt recording no
+                                     LEASE -- this seam froze no publication
+                                     for one to be about. Anything short of it
+                                     parks with the receipt, the recorded
+                                     number and any debt left as they stand --
+                                     an exemption or an approval naming the
+                                     same commit included, since neither says
+                                     where the work went. Proved, the number
+                                     is carried: the push is leased to that
+                                     commit and the bookkeeping re-reads that
+                                     PR by number -- open, here, on the branch
+                                     and on the commit -- rather than
+                                     searching the branch for one
      work that ENDED before the   ─► handed back to the stage terminal, which
      reconciliation opened           marks the issue done or rejected with the
                                      record, the branch and the debt left as
