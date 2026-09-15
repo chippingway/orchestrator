@@ -35,6 +35,11 @@ land comes back to a pass this write already called finished, with the receipt
 it dropped: nothing tells that state from a `validating` approval handing the
 same head back, so the pass runs again rather than handing off on a receipt
 that could belong to either.
+
+Ahead of all of it, `subject` gives the docs commit its pull request's
+reference, and the id that hands back is the only one anything past it names:
+an amendment is a NEW commit, so an id taken before it would name a commit the
+branch no longer carries.
 """
 from __future__ import annotations
 
@@ -53,6 +58,7 @@ from orchestrator.workflow.stages.documenting import (
     models as _models,
     parks as _parks,
     state as _state,
+    subject as _subject,
 )
 from orchestrator.workflow.stages.implementing import (
     late_gate_models as _late_gate_models,
@@ -143,15 +149,23 @@ def _push_docs_and_advance(
     it whichever way the answer went -- so a push that landed and a process
     that died before this stage could record it comes back to a receipt naming
     the published commit rather than to a pass nothing remembers.
+
+    Every one of those ids is the commit `subject._referenced_docs_commit`
+    hands back before the gate is entered, so where the subject was amended
+    nothing this call writes or pushes names the commit the agent made.
     """
+    candidate = _subject._referenced_docs_commit(ctx, wt, after_sha)
+    if candidate is None:
+        return
     published = _late_push._publishes(
         _late_records._gate(ctx.gh, ctx.spec, ctx.issue, ctx.state, wt),
         ctx.branch,
         _late_gate_models._Entered(
-            # The commit this pass made, so the gate measures and pushes THAT
-            # rather than whatever the checkout became between the two reads
-            # -- which the stamp below would then record as documented.
-            candidate=after_sha,
+            # The commit this pass made, as its subject was amended above, so
+            # the gate measures and pushes THAT rather than whatever the
+            # checkout became between the two reads -- which the stamp below
+            # would then record as documented.
+            candidate=candidate,
             # The head the pull request was standing on before the pass ran.
             # Left for the gate to read afterwards, a pull request somebody
             # pushed to while the agent was out becomes the lease and this
@@ -159,7 +173,7 @@ def _push_docs_and_advance(
             # merge, so what it would drop is what that human would not see.
             head=entered_head,
             spends=_late_gate_models._Spends(fields=(
-                (_state._SETTLED_DOCS_SHA, after_sha),
+                (_state._SETTLED_DOCS_SHA, candidate),
             )),
         ),
     )
@@ -174,7 +188,7 @@ def _push_docs_and_advance(
             "push_failed",
         )
         return
-    _stamp_docs_verdict(ctx.state, after_sha, "updated")
+    _stamp_docs_verdict(ctx.state, candidate, "updated")
     _post_docs_notice(ctx, notice)
     _handoff._advance_after_docs_push(ctx.gh, ctx.issue, ctx.state)
 

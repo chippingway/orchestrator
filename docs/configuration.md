@@ -355,9 +355,11 @@ examples.
   number as an issue to close. `off` suffixes nothing, leaves a single-commit branch unrewritten, and does not amend
   the `docs:` commit. Turn it off on a target repo that lands pull requests with GitHub's **Squash and merge** and its
   default commit message: GitHub appends its own `(#N)` to the squash commit title, so a single-commit pull request
-  would carry the number twice. The switch is dormant for now — it is parsed and published on `orchestrator.config`,
-  but no publication road reads it yet, so neither value changes a published subject today. Parsed as a boolean:
-  `1` / `true` / `on` / `yes` enable, anything else disables.
+  would carry the number twice. Only the documenting pass reads it so far: the `docs:` commit is amended in place
+  before every road that publishes it, keeping its author, tree, and body, while the approval squash and a
+  single-commit branch keep their subjects unsuffixed whatever the value. A `docs:` commit whose amendment fails is
+  never published without the reference — the issue parks `subject_amend_failed` with the commit still on the
+  branch. Parsed as a boolean: `1` / `true` / `on` / `yes` enable, anything else disables.
 - `EXPOSE_TRACKED_REPOS` — default `on`. tell working agents about the *other* repos this orchestrator tracks (slug,
   local `target_root`, base branch) for cross-repo reference. Inert for single-repo hosts — the awareness block is
   emitted only when more than one repo is configured, so a default deployment sees zero added prompt tokens. The
