@@ -414,5 +414,53 @@ class DocsHandoffCrashTest(unittest.TestCase, gate._DocsGateFixtureMixin):
         )
 
 
+class AmendedCandidateTest(unittest.TestCase, gate._DocsGateFixtureMixin):
+    """The docs commit the gate is entered on is the one its subject became."""
+
+    def test_the_gate_names_only_the_amended_commit(self) -> None:
+        # An amendment is a new commit, so it comes before anything names one.
+        # Held, the candidate the adjudication is handed and the receipt the
+        # handoff is owed are the amended commit; allowed, so are the push and
+        # the receipt saying what reached the remote. The commit the agent made
+        # is never measured, recorded, or published -- handed to the gate
+        # instead, it would be refused as a checkout standing somewhere else.
+        for added in (UNDER_THE_CEILING, PAST_THE_CEILING):
+            with self.subTest(added=added):
+                github, mocks = self._fresh_pass(
+                    added_lines=added,
+                    head_shas=[
+                        ENTERED_HEAD,
+                        documenting.SHA_UNREFERENCED,
+                        MEASURED_CANDIDATE_SHA,
+                    ],
+                )
+
+                self.assertEqual(
+                    mocks[documenting.AMEND_COMMIT_MESSAGE].call_args.args[1],
+                    documenting.SHA_UNREFERENCED,
+                )
+                self.assertEqual(
+                    mocks[gate.COUNT_ADDED_LINES].call_args.args[1:],
+                    (MEASURED_BASE_SHA, MEASURED_CANDIDATE_SHA),
+                )
+                pinned = self._pinned(github)
+                if added > AT_THE_CEILING:
+                    self.assertEqual(
+                        pinned[gate.KEY_CANDIDATE_SHA], MEASURED_CANDIDATE_SHA,
+                    )
+                    self.assertEqual(
+                        pinned[gate.KEY_SETTLED_DOCS_SHA], MEASURED_CANDIDATE_SHA,
+                    )
+                    continue
+                self.assertEqual(
+                    mocks[documenting.PUSH_BRANCH].call_args.kwargs[gate.REVISION],
+                    MEASURED_CANDIDATE_SHA,
+                )
+                self.assertEqual(
+                    pinned[gate.KEY_RECEIPT_SHA], MEASURED_CANDIDATE_SHA,
+                )
+                self._assert_handed_off_once(github)
+
+
 if __name__ == "__main__":
     unittest.main()
