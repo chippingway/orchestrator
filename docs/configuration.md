@@ -607,9 +607,12 @@ error.
 - `LOG_DIR` — default `<REPO_ROOT>/logs`. directory `runtime/logs.py` attaches its `FileHandler` under
   (`orchestrator.log`, rotated ~10 MiB × 5). Also the default parent for `ANALYTICS_LOG_PATH`
   (`LOG_DIR/analytics.jsonl`). Already covered by the `*.log` `.gitignore` rule.
-- `AGENT_GIT_NAME` — default `chipping-orchestrator`. `GIT_AUTHOR_NAME`/`GIT_COMMITTER_NAME` injected into agent spawns
+- `AGENT_GIT_NAME` — default `chipping-orchestrator`. `GIT_AUTHOR_NAME`/`GIT_COMMITTER_NAME` injected into agent
+  spawns, and the name on the commits the orchestrator creates itself: the approval squash is authored and committed
+  under it, and the documenting pass's `PR_REF_IN_SUBJECT` replacement of the `docs:` commit is committed under it
+  while keeping that commit's own author
 - `AGENT_GIT_EMAIL` — default `chipping-orchestrator@users.noreply.github.com`. `GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_EMAIL`
-  injected into agent spawns
+  injected into agent spawns, and the email on those same orchestrator-created commits
 
 ## In-review behavior
 
